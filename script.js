@@ -1,8 +1,7 @@
+const homeButton = document.getElementById('homeButton');
 const homeScreen = document.getElementById('homeScreen');
 const makerScreen = document.getElementById('makerScreen');
 const studyScreen = document.getElementById('studyScreen');
-const backFromMaker = document.getElementById('backFromMaker');
-const backFromStudy = document.getElementById('backFromStudy');
 const cardForm = document.getElementById('cardForm');
 const questionInput = document.getElementById('questionInput');
 const answerInput = document.getElementById('answerInput');
@@ -19,7 +18,7 @@ const contextMenu = document.getElementById('contextMenu');
 let decks = [
     {
         id: 'starting-deck',
-        name: 'deck',
+        name: 'starting deck',
         cards: [
             { question: '1+1', answer: '2' },
             { question: '2+2', answer: '4' },
@@ -53,8 +52,6 @@ function loadDecks() {
         const parsedDecks = JSON.parse(savedDecks);
         if (Array.isArray(parsedDecks) && parsedDecks.length > 0) {
             decks = parsedDecks;
-            const startingDeck = decks.find((deck) => deck.id === 'starting-deck');
-            if (startingDeck && startingDeck.name === 'starting deck') startingDeck.name = 'deck';
             if (decks.some((deck) => deck.id === savedActiveDeck)) activeDeckId = savedActiveDeck;
         }
     } catch (error) {
@@ -65,39 +62,52 @@ function loadDecks() {
 
 function renderDecks() {
     deckList.innerHTML = '';
-    decks.forEach((deck) => {
-        const square = document.createElement('button');
-        square.className = `deck-square${deck.id === activeDeckId ? ' active-deck' : ''}`;
-        square.type = 'button';
-        square.dataset.deckId = deck.id;
-        const deckLabel = document.createElement('span');
-        deckLabel.className = 'deck-label';
-        deckLabel.textContent = deck.name;
-        square.appendChild(deckLabel);
-        window.requestAnimationFrame(() => fitDeckName(square));
+    decks.forEach((deck, index) => {
+        const row = document.createElement('div');
+        row.className = `deck-row${deck.id === activeDeckId ? ' active-deck' : ''}`;
+        row.dataset.deckId = deck.id;
 
-        square.addEventListener('click', () => {
+        const selectButton = document.createElement('button');
+        selectButton.className = 'deck-select';
+        selectButton.type = 'button';
+        selectButton.textContent = deck.name;
+        selectButton.addEventListener('click', () => {
             activeDeckId = deck.id;
             renderDecks();
             saveDecks();
         });
-        deckList.appendChild(square);
+
+        const moveUpButton = document.createElement('button');
+        moveUpButton.className = 'deck-control';
+        moveUpButton.type = 'button';
+        moveUpButton.textContent = 'up';
+        moveUpButton.disabled = index === 0;
+        moveUpButton.addEventListener('click', () => moveDeck(index, -1));
+
+        const moveDownButton = document.createElement('button');
+        moveDownButton.className = 'deck-control';
+        moveDownButton.type = 'button';
+        moveDownButton.textContent = 'down';
+        moveDownButton.disabled = index === decks.length - 1;
+        moveDownButton.addEventListener('click', () => moveDeck(index, 1));
+
+        row.append(selectButton, moveUpButton, moveDownButton);
+        deckList.appendChild(row);
     });
 }
 
-function fitDeckName(square) {
-    const deckLabel = square.querySelector('.deck-label');
-    let fontSize = 16;
-    deckLabel.style.fontSize = `${fontSize}px`;
-    while (deckLabel.scrollWidth > square.clientWidth - 16 && fontSize > 1) {
-        fontSize -= 0.25;
-        deckLabel.style.fontSize = `${fontSize}px`;
-    }
+function moveDeck(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= decks.length) return;
+    [decks[index], decks[newIndex]] = [decks[newIndex], decks[index]];
+    renderDecks();
+    saveDecks();
 }
 
 function beginDeckRename(deck) {
-    const square = deckList.querySelector(`[data-deck-id="${deck.id}"]`);
-    if (!square) return;
+    const row = deckList.querySelector(`[data-deck-id="${deck.id}"]`);
+    const selectButton = row && row.querySelector('.deck-select');
+    if (!selectButton) return;
 
     const renameInput = document.createElement('input');
     renameInput.className = 'deck-inline-input';
@@ -118,7 +128,7 @@ function beginDeckRename(deck) {
         if (event.key === 'Escape') finishRename(false);
     });
     renameInput.addEventListener('blur', () => finishRename(true));
-    square.replaceWith(renameInput);
+    selectButton.replaceWith(renameInput);
     renameInput.focus();
     renameInput.select();
 }
@@ -142,7 +152,7 @@ function renderCards() {
         item.dataset.cardIndex = index;
         const cardText = document.createElement('span');
         cardText.className = 'card-text';
-        cardText.textContent = card.question;
+        cardText.textContent = `${card.question} — ${card.answer}`;
 
         item.append(cardText);
         cardList.appendChild(item);
@@ -204,18 +214,16 @@ function showNextQuestion() {
     studyFeedback.textContent = '';
     answerOptions.innerHTML = '';
 
-    const wrongAnswers = [...new Set(cards
+    const wrongAnswers = cards
         .filter((card) => card.answer !== currentCard.answer)
-        .map((card) => card.answer)
-        .filter((answer) => answer !== ''))];
-    const distractors = shuffle(wrongAnswers).slice(0, 3);
-    const options = shuffle([currentCard.answer, ...distractors]);
-    options.forEach((option) => {
+        .map((card) => card.answer);
+    const options = shuffle([currentCard.answer, ...wrongAnswers]).slice(0, 4);
+    options.forEach((option, index) => {
         const button = document.createElement('button');
         button.className = 'answer-button';
         button.type = 'button';
         button.dataset.answer = option;
-        button.textContent = option;
+        button.textContent = `(${index + 1}) ${option}`;
         button.addEventListener('click', (event) => {
             event.stopPropagation();
             if (waitingForContinue) {
@@ -229,20 +237,15 @@ function showNextQuestion() {
 }
 
 function checkAnswer(selectedButton, selectedAnswer) {
-    answerOptions.querySelectorAll('.answer-button').forEach((button) => {
-        button.classList.remove('correct', 'incorrect');
-        button.style.removeProperty('border-color');
-        if (button.dataset.answer === currentCard.answer) {
-            button.classList.add('correct');
-            button.style.setProperty('border-color', '#00FF00', 'important');
-        }
+    document.querySelectorAll('.answer-button').forEach((button) => {
+        if (button.dataset.answer === currentCard.answer) button.classList.add('correct');
     });
     if (selectedAnswer === currentCard.answer) {
         studyFeedback.textContent = 'Correct!';
         showNextQuestion();
     } else {
         selectedButton.classList.add('incorrect');
-        selectedButton.style.setProperty('border-color', '#FF0000', 'important');
+        studyFeedback.textContent = `The answer is ${currentCard.answer}. Click anywhere to continue.`;
         waitingForContinue = true;
     }
 }
@@ -312,23 +315,20 @@ function showContextMenu(event, target) {
     }
 }
 
-function returnHome() {
+homeButton.addEventListener('click', () => {
     waitingForContinue = false;
     showScreen(homeScreen);
-}
-
-backFromMaker.addEventListener('click', returnHome);
-backFromStudy.addEventListener('click', returnHome);
+});
 document.getElementById('createCardButton').addEventListener('click', () => {
     renderCards();
     showScreen(makerScreen);
 });
 document.getElementById('randomStudyButton').addEventListener('click', startStudy);
 document.addEventListener('contextmenu', (event) => {
-    const deckSquare = event.target.closest('.deck-square');
+    const deckRow = event.target.closest('.deck-row');
     const cardItem = event.target.closest('.card-item');
-    if (deckSquare) {
-        const deck = decks.find((item) => item.id === deckSquare.dataset.deckId);
+    if (deckRow) {
+        const deck = decks.find((item) => item.id === deckRow.dataset.deckId);
         if (deck) showContextMenu(event, { type: 'deck', deck });
         return;
     }
@@ -342,7 +342,7 @@ contextMenu.addEventListener('contextmenu', (event) => event.preventDefault());
 contextMenu.addEventListener('click', (event) => event.stopPropagation());
 document.addEventListener('click', hideContextMenu);
 document.addEventListener('click', (event) => {
-    if (!waitingForContinue) {
+    if (!waitingForContinue || event.target === homeButton) {
         return;
     }
     showNextQuestion();
@@ -401,4 +401,3 @@ deckForm.addEventListener('submit', (event) => {
 
 loadDecks();
 renderDecks();
-if (document.fonts) document.fonts.ready.then(renderDecks);
