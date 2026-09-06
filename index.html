@@ -7,41 +7,56 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <button class="home-button" id="homeButton" type="button">home</button>
     <div class="context-menu" id="contextMenu" hidden></div>
-
     <main>
         <section class="screen actions-only" id="homeScreen" aria-label="Home">
+            <header class="screen-head">
+                <h1>recall</h1>
+                <p id="homeSubtitle">hope</p>
+            </header>
             <section class="deck-organizer" aria-label="deck organizer">
                 <h2>decks</h2>
-                <form id="deckForm" class="deck-form">
-                    <input id="deckNameInput" type="text" required placeholder="new deck name">
-                    <button class="basic-button" type="submit">create deck</button>
-                </form>
-                <div id="deckList"></div>
+                <div class="deck-bar">
+                    <div class="deck-picker">
+                        <button class="deck-toggle" id="deckToggle" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch deck" title="switch deck">↻</button>
+                        <div class="deck-menu" id="deckList" hidden></div>
+                    </div>
+                    <form id="deckForm" class="deck-form" novalidate>
+                        <input id="deckNameInput" type="text" placeholder="new deck name">
+                        <button class="basic-button" type="submit">create</button>
+                    </form>
+                </div>
             </section>
             <section class="quick-panel" aria-label="flashcard actions">
-                <button class="quick-action primary" id="createCardButton" type="button"><span class="action-icon">+</span><span><strong>create</strong><small>ʕ•ᴥ•ʔﾉ</small></span><b>→</b></button>
-                <button class="quick-action" id="randomStudyButton" type="button"><span class="action-icon play">▶</span><span><strong>practice</strong><small>.❛ ᴗ ❛.</small></span><b>→</b></button>
+                <button class="quick-action primary" id="createCardButton" type="button"><span class="action-icon">+</span><span><strong>create</strong><small>ʕ•ᴥ•ʔ</small></span><b>→</b></button>
+                <button class="quick-action" id="randomStudyButton" type="button"><span class="action-icon play">▶</span><span><strong>practice</strong><small>ʕᵔᴥᵔʔ</small></span><b>→</b></button>
             </section>
         </section>
-
         <section class="screen maker-screen" id="makerScreen" hidden>
-            <h1>create</h1>
-            <p>add a question bih</p>
-            <form id="cardForm">
+            <button class="back-button" type="button">←</button>
+            <header class="screen-head">
+                <h1>create</h1>
+                <p>add a question bih</p>
+            </header>
+            <form id="cardForm" novalidate>
                 <label for="questionInput">question</label>
-                <textarea id="questionInput" required placeholder="question here"></textarea>
+                <textarea id="questionInput" placeholder="question here"></textarea>
                 <label for="answerInput">answer</label>
-                <textarea id="answerInput" required placeholder="im going to demolish u"></textarea>
+                <textarea id="answerInput" placeholder="im going to demolish u"></textarea>
+                <p class="form-note" id="cardFormNote" aria-live="polite"></p>
                 <button class="basic-button" id="cardSubmitButton" type="submit">add flashcard</button>
             </form>
-            <h2>current cards</h2>
-            <ol id="cardList"><li class="empty-message">no cards :(</li></ol>
+            <section class="card-section" aria-label="current cards">
+                <h2>current cards</h2>
+                <ol id="cardList"><li class="empty-message">no cards yet</li></ol>
+            </section>
         </section>
-
         <section class="screen study-screen" id="studyScreen" hidden>
-            <h1>practice</h1>
+            <button class="back-button" type="button" aria-label="back" title="back">←</button>
+            <header class="screen-head">
+                <h1>practice</h1>
+                <p>hi</p>
+            </header>
             <div class="question-box">
                 <h2 id="studyQuestion"></h2>
                 <div class="answer-options" id="answerOptions"></div>
