@@ -1,10 +1,11 @@
-const homeButton = document.getElementById('homeButton');
+const backButtons = document.querySelectorAll('.back-button');
 const homeScreen = document.getElementById('homeScreen');
 const makerScreen = document.getElementById('makerScreen');
 const studyScreen = document.getElementById('studyScreen');
 const cardForm = document.getElementById('cardForm');
 const questionInput = document.getElementById('questionInput');
 const answerInput = document.getElementById('answerInput');
+const cardFormNote = document.getElementById('cardFormNote');
 const cardList = document.getElementById('cardList');
 const cardSubmitButton = document.getElementById('cardSubmitButton');
 const studyQuestion = document.getElementById('studyQuestion');
@@ -13,6 +14,8 @@ const studyFeedback = document.getElementById('studyFeedback');
 const deckForm = document.getElementById('deckForm');
 const deckNameInput = document.getElementById('deckNameInput');
 const deckList = document.getElementById('deckList');
+const deckToggle = document.getElementById('deckToggle');
+const homeSubtitle = document.getElementById('homeSubtitle');
 const contextMenu = document.getElementById('contextMenu');
 
 let decks = [
@@ -33,6 +36,7 @@ let currentCard;
 let waitingForContinue = false;
 let editingCardIndex = null;
 let lastDeleted = null;
+let draggedDeckId = null;
 
 function activeDeck() {
     return decks.find((deck) => deck.id === activeDeckId) || decks[0];
@@ -51,13 +55,56 @@ function loadDecks() {
     try {
         const parsedDecks = JSON.parse(savedDecks);
         if (Array.isArray(parsedDecks) && parsedDecks.length > 0) {
-            decks = parsedDecks;
+            decks = parsedDecks.map((deck) => ({
+                id: deck.id || `deck-${Math.random().toString(36).slice(2)}`,
+                name: deck.name || 'untitled deck',
+                cards: Array.isArray(deck.cards) ? deck.cards : []
+            }));
             if (decks.some((deck) => deck.id === savedActiveDeck)) activeDeckId = savedActiveDeck;
+            else activeDeckId = decks[0].id;
         }
     } catch (error) {
         window.localStorage.removeItem('flashcard-decks');
         window.localStorage.removeItem('flashcard-active-deck');
     }
+}
+
+/* ---- deck dropdown ---- */
+
+function openDeckMenu() {
+    deckList.hidden = false;
+    deckToggle.setAttribute('aria-expanded', 'true');
+}
+
+function closeDeckMenu() {
+    deckList.hidden = true;
+    deckToggle.setAttribute('aria-expanded', 'false');
+}
+
+function isDeckMenuOpen() {
+    return !deckList.hidden;
+}
+
+function updateDeckToggle() {
+    const deck = activeDeck();
+    homeSubtitle.textContent = `${deck.name} · ${deck.cards.length}`;
+    deckToggle.setAttribute('aria-label', `switch deck, currently ${deck.name}`);
+}
+
+function moveDeckToIndex(fromIndex, toIndex) {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    const [moved] = decks.splice(fromIndex, 1);
+    decks.splice(toIndex, 0, moved);
+    renderDecks();
+    saveDecks();
+}
+
+function moveDeck(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= decks.length) return;
+    moveDeckToIndex(index, newIndex);
+    const handles = deckList.querySelectorAll('.deck-handle');
+    if (handles[newIndex]) handles[newIndex].focus();
 }
 
 function renderDecks() {
@@ -67,6 +114,24 @@ function renderDecks() {
         row.className = `deck-row${deck.id === activeDeckId ? ' active-deck' : ''}`;
         row.dataset.deckId = deck.id;
 
+        const handle = document.createElement('button');
+        handle.className = 'deck-handle';
+        handle.type = 'button';
+        handle.setAttribute('aria-label', `reorder ${deck.name}, use arrow keys`);
+        handle.innerHTML = '<span></span><span></span><span></span>';
+        handle.addEventListener('mousedown', () => { row.draggable = true; });
+        handle.addEventListener('touchstart', () => { row.draggable = true; }, { passive: true });
+        handle.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                moveDeck(index, -1);
+            }
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                moveDeck(index, 1);
+            }
+        });
+
         const selectButton = document.createElement('button');
         selectButton.className = 'deck-select';
         selectButton.type = 'button';
@@ -74,37 +139,49 @@ function renderDecks() {
         selectButton.addEventListener('click', () => {
             activeDeckId = deck.id;
             renderDecks();
+            renderCards();
             saveDecks();
+            closeDeckMenu();
+            deckToggle.focus();
         });
 
-        const moveUpButton = document.createElement('button');
-        moveUpButton.className = 'deck-control';
-        moveUpButton.type = 'button';
-        moveUpButton.textContent = 'up';
-        moveUpButton.disabled = index === 0;
-        moveUpButton.addEventListener('click', () => moveDeck(index, -1));
+        const count = document.createElement('span');
+        count.className = 'deck-count';
+        count.textContent = deck.cards.length;
 
-        const moveDownButton = document.createElement('button');
-        moveDownButton.className = 'deck-control';
-        moveDownButton.type = 'button';
-        moveDownButton.textContent = 'down';
-        moveDownButton.disabled = index === decks.length - 1;
-        moveDownButton.addEventListener('click', () => moveDeck(index, 1));
+        row.addEventListener('dragstart', (event) => {
+            draggedDeckId = deck.id;
+            row.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', deck.id);
+        });
+        row.addEventListener('dragend', () => {
+            row.classList.remove('dragging');
+            row.draggable = false;
+            draggedDeckId = null;
+            deckList.querySelectorAll('.deck-row').forEach((item) => item.classList.remove('drop-target'));
+        });
+        row.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            if (draggedDeckId && draggedDeckId !== deck.id) row.classList.add('drop-target');
+        });
+        row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
+        row.addEventListener('drop', (event) => {
+            event.preventDefault();
+            row.classList.remove('drop-target');
+            if (!draggedDeckId || draggedDeckId === deck.id) return;
+            const fromIndex = decks.findIndex((item) => item.id === draggedDeckId);
+            moveDeckToIndex(fromIndex, index);
+        });
 
-        row.append(selectButton, moveUpButton, moveDownButton);
+        row.append(handle, selectButton, count);
         deckList.appendChild(row);
     });
-}
-
-function moveDeck(index, direction) {
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= decks.length) return;
-    [decks[index], decks[newIndex]] = [decks[newIndex], decks[index]];
-    renderDecks();
-    saveDecks();
+    updateDeckToggle();
 }
 
 function beginDeckRename(deck) {
+    openDeckMenu();
     const row = deckList.querySelector(`[data-deck-id="${deck.id}"]`);
     const selectButton = row && row.querySelector('.deck-select');
     if (!selectButton) return;
@@ -124,6 +201,7 @@ function beginDeckRename(deck) {
         saveDecks();
     };
     renameInput.addEventListener('keydown', (event) => {
+        event.stopPropagation();
         if (event.key === 'Enter') finishRename(true);
         if (event.key === 'Escape') finishRename(false);
     });
@@ -137,22 +215,25 @@ function showScreen(screen) {
     [homeScreen, makerScreen, studyScreen].forEach((item) => {
         item.hidden = item !== screen;
     });
+    closeDeckMenu();
 }
 
 function renderCards() {
     const cards = activeDeck().cards;
     cardList.innerHTML = '';
     if (cards.length === 0) {
-        cardList.innerHTML = '<li class="empty-message">none</li>';
+        cardList.innerHTML = '<li class="empty-message">no cards yet</li>';
         return;
     }
     cards.forEach((card, index) => {
         const item = document.createElement('li');
         item.className = 'card-item';
         item.dataset.cardIndex = index;
+
         const cardText = document.createElement('span');
         cardText.className = 'card-text';
         cardText.textContent = `${card.question} — ${card.answer}`;
+        cardText.title = `${card.question} — ${card.answer}`;
 
         item.append(cardText);
         cardList.appendChild(item);
@@ -166,6 +247,7 @@ function editCard(index) {
     questionInput.value = card.question;
     answerInput.value = card.answer;
     cardSubmitButton.textContent = 'save changes';
+    cardFormNote.textContent = '';
     showScreen(makerScreen);
     questionInput.focus();
 }
@@ -173,6 +255,7 @@ function editCard(index) {
 function resetCardForm() {
     editingCardIndex = null;
     cardForm.reset();
+    cardFormNote.textContent = '';
     cardSubmitButton.textContent = 'add flashcard';
 }
 
@@ -195,8 +278,9 @@ function showNextQuestion() {
     const cards = activeDeck().cards;
     waitingForContinue = false;
     if (cards.length === 0) {
-        studyQuestion.textContent = 'Add some flashcards first.';
+        studyQuestion.textContent = 'this deck is empty';
         answerOptions.innerHTML = '';
+        studyFeedback.textContent = 'go back and add a few cards first';
         return;
     }
 
@@ -214,16 +298,16 @@ function showNextQuestion() {
     studyFeedback.textContent = '';
     answerOptions.innerHTML = '';
 
-    const wrongAnswers = cards
-        .filter((card) => card.answer !== currentCard.answer)
-        .map((card) => card.answer);
-    const options = shuffle([currentCard.answer, ...wrongAnswers]).slice(0, 4);
-    options.forEach((option, index) => {
+    const wrongAnswers = [...new Set(cards.map((card) => card.answer))]
+        .filter((answer) => answer !== currentCard.answer);
+    const options = shuffle([currentCard.answer, ...shuffle(wrongAnswers).slice(0, 3)]);
+
+    options.forEach((option) => {
         const button = document.createElement('button');
         button.className = 'answer-button';
         button.type = 'button';
         button.dataset.answer = option;
-        button.textContent = `(${index + 1}) ${option}`;
+        button.textContent = option;
         button.addEventListener('click', (event) => {
             event.stopPropagation();
             if (waitingForContinue) {
@@ -241,11 +325,11 @@ function checkAnswer(selectedButton, selectedAnswer) {
         if (button.dataset.answer === currentCard.answer) button.classList.add('correct');
     });
     if (selectedAnswer === currentCard.answer) {
-        studyFeedback.textContent = 'Correct!';
-        showNextQuestion();
+        studyFeedback.textContent = 'correct';
+        setTimeout(showNextQuestion, 450);
     } else {
         selectedButton.classList.add('incorrect');
-        studyFeedback.textContent = `The answer is ${currentCard.answer}. Click anywhere to continue.`;
+        studyFeedback.textContent = `the answer is ${currentCard.answer} — click anywhere to continue`;
         waitingForContinue = true;
     }
 }
@@ -259,7 +343,7 @@ function showContextMenu(event, target) {
     event.preventDefault();
     contextMenu.innerHTML = '';
     contextMenu.hidden = false;
-    contextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 220)}px`;
+    contextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 200)}px`;
     contextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - 100)}px`;
 
     if (target.type === 'deck') {
@@ -268,9 +352,10 @@ function showContextMenu(event, target) {
         renameButton.type = 'button';
         renameButton.textContent = 'rename';
         renameButton.addEventListener('click', () => {
-            beginDeckRename(target.deck);
             hideContextMenu();
+            beginDeckRename(target.deck);
         });
+
         const deleteDeckButton = document.createElement('button');
         deleteDeckButton.className = 'context-action';
         deleteDeckButton.type = 'button';
@@ -283,6 +368,7 @@ function showContextMenu(event, target) {
             decks.splice(deletedIndex, 1);
             if (target.deck.id === activeDeckId) activeDeckId = decks[Math.max(0, deletedIndex - 1)].id;
             renderDecks();
+            renderCards();
             saveDecks();
             hideContextMenu();
         });
@@ -315,15 +401,45 @@ function showContextMenu(event, target) {
     }
 }
 
-homeButton.addEventListener('click', () => {
-    waitingForContinue = false;
-    showScreen(homeScreen);
+/* ---- keyboard quadrants ---- */
+
+const KEY_QUADRANTS = {
+    0: ['Backquote', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6',
+        'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT'],
+    1: ['Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal',
+        'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'BracketLeft', 'BracketRight', 'Backslash'],
+    2: ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG',
+        'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB'],
+    3: ['KeyH', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon', 'Quote',
+        'KeyN', 'KeyM', 'Comma', 'Period', 'Slash']
+};
+
+function quadrantForKey(code) {
+    return Object.keys(KEY_QUADRANTS).find((index) => KEY_QUADRANTS[index].includes(code));
+}
+
+/* ---- wiring ---- */
+
+deckToggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (isDeckMenuOpen()) closeDeckMenu();
+    else openDeckMenu();
+});
+deckList.addEventListener('click', (event) => event.stopPropagation());
+
+backButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        waitingForContinue = false;
+        showScreen(homeScreen);
+    });
 });
 document.getElementById('createCardButton').addEventListener('click', () => {
+    resetCardForm();
     renderCards();
     showScreen(makerScreen);
 });
 document.getElementById('randomStudyButton').addEventListener('click', startStudy);
+
 document.addEventListener('contextmenu', (event) => {
     const deckRow = event.target.closest('.deck-row');
     const cardItem = event.target.closest('.card-item');
@@ -336,18 +452,23 @@ document.addEventListener('contextmenu', (event) => {
         showContextMenu(event, { type: 'card', deck: activeDeck(), index: Number(cardItem.dataset.cardIndex) });
         return;
     }
-    showContextMenu(event, { type: 'blank' });
+    hideContextMenu();
 });
 contextMenu.addEventListener('contextmenu', (event) => event.preventDefault());
 contextMenu.addEventListener('click', (event) => event.stopPropagation());
-document.addEventListener('click', hideContextMenu);
+document.addEventListener('click', () => {
+    hideContextMenu();
+    closeDeckMenu();
+});
 document.addEventListener('click', (event) => {
-    if (!waitingForContinue || event.target === homeButton) {
-        return;
-    }
+    if (!waitingForContinue || event.target.closest('.back-button')) return;
     showNextQuestion();
 });
+
 document.addEventListener('keydown', (event) => {
+    const tag = event.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && lastDeleted) {
         event.preventDefault();
         if (lastDeleted.type === 'deck') {
@@ -362,19 +483,45 @@ document.addEventListener('keydown', (event) => {
         lastDeleted = null;
         return;
     }
+
+    // any other browser or system shortcut is none of our business
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+    if (event.key === 'Escape') {
+        if (isDeckMenuOpen()) {
+            closeDeckMenu();
+            deckToggle.focus();
+            return;
+        }
+        if (homeScreen.hidden) {
+            waitingForContinue = false;
+            showScreen(homeScreen);
+            return;
+        }
+    }
     if (waitingForContinue) {
         showNextQuestion();
         return;
     }
-    const optionNumber = Number(event.key);
-    if (optionNumber >= 1 && optionNumber <= 4) {
-        const optionButton = answerOptions.querySelectorAll('.answer-button')[optionNumber - 1];
-        if (optionButton) optionButton.click();
-    }
+    if (studyScreen.hidden) return;
+
+    const quadrant = quadrantForKey(event.code);
+    if (quadrant === undefined) return;
+    event.preventDefault();
+    const optionButton = answerOptions.querySelectorAll('.answer-button')[Number(quadrant)];
+    if (optionButton) optionButton.click();
 });
+
 cardForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    const card = { question: questionInput.value.trim(), answer: answerInput.value.trim() };
+    const question = questionInput.value.trim();
+    const answer = answerInput.value.trim();
+    if (!question || !answer) {
+        cardFormNote.textContent = 'fill in both the question and the answer';
+        (question ? answerInput : questionInput).focus();
+        return;
+    }
+    const card = { question, answer };
     if (editingCardIndex === null) {
         activeDeck().cards.push(card);
     } else {
@@ -390,14 +537,19 @@ cardForm.addEventListener('submit', (event) => {
 deckForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const name = deckNameInput.value.trim();
-    if (!name) return;
+    if (!name) {
+        deckNameInput.focus();
+        return;
+    }
     const deck = { id: `deck-${Date.now()}`, name, cards: [] };
     decks.push(deck);
     activeDeckId = deck.id;
     deckForm.reset();
     renderDecks();
+    renderCards();
     saveDecks();
 });
 
 loadDecks();
 renderDecks();
+renderCards();
