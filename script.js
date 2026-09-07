@@ -1,22 +1,64 @@
-const backButtons = document.querySelectorAll('.back-button');
+/* ============================================================
+   recall — script.js
+   ------------------------------------------------------------
+   1. elements
+   2. state
+   3. storage
+   4. sections   (the > menu)
+   5. decks      (the smiley menu)
+   6. cards      (create screen)
+   7. practice   (study screen)
+   8. context menu
+   9. keyboard
+   10. wiring
+   11. start
+   ============================================================ */
+
+/* ---------- 1. elements ---------- */
+
+// screens
 const homeScreen = document.getElementById('homeScreen');
 const makerScreen = document.getElementById('makerScreen');
 const studyScreen = document.getElementById('studyScreen');
+const backButtons = document.querySelectorAll('.back-button');
+
+// sections
+const headingButton = document.querySelector('.heading-button');
+const headingList = document.getElementById('headingList');
+const sectionTitle = document.getElementById('sectionTitle');
+const quickPanel = document.querySelector('.quick-panel');
+const scratchPanel = document.getElementById('scratchPanel');
+
+// decks
+const deckBar = document.querySelector('.deck-bar');
+const deckForm = document.getElementById('deckForm');
+const deckNameInput = document.getElementById('deckNameInput');
+const deckList = document.getElementById('deckList');
+const deckToggle = document.getElementById('deckToggle');
+const homeSubtitle = document.getElementById('homeSubtitle');
+
+// cards
 const cardForm = document.getElementById('cardForm');
 const questionInput = document.getElementById('questionInput');
 const answerInput = document.getElementById('answerInput');
 const cardFormNote = document.getElementById('cardFormNote');
 const cardList = document.getElementById('cardList');
 const cardSubmitButton = document.getElementById('cardSubmitButton');
+
+// practice
 const studyQuestion = document.getElementById('studyQuestion');
 const answerOptions = document.getElementById('answerOptions');
 const studyFeedback = document.getElementById('studyFeedback');
-const deckForm = document.getElementById('deckForm');
-const deckNameInput = document.getElementById('deckNameInput');
-const deckList = document.getElementById('deckList');
-const deckToggle = document.getElementById('deckToggle');
-const homeSubtitle = document.getElementById('homeSubtitle');
+
+// misc
 const contextMenu = document.getElementById('contextMenu');
+
+/* ---------- 2. state ---------- */
+
+const sections = [
+    { id: 'cards', name: 'cards' },
+    { id: 'scratch', name: 'scratch' }
+];
 
 let decks = [
     {
@@ -30,6 +72,8 @@ let decks = [
         ]
     }
 ];
+
+let activeSectionId = 'cards';
 let activeDeckId = 'starting-deck';
 let recentQuestions = [];
 let currentCard;
@@ -37,10 +81,13 @@ let waitingForContinue = false;
 let editingCardIndex = null;
 let lastDeleted = null;
 let draggedDeckId = null;
+let headingSpin = 0;
 
 function activeDeck() {
     return decks.find((deck) => deck.id === activeDeckId) || decks[0];
 }
+
+/* ---------- 3. storage ---------- */
 
 function saveDecks() {
     window.localStorage.setItem('flashcard-decks', JSON.stringify(decks));
@@ -69,7 +116,66 @@ function loadDecks() {
     }
 }
 
-/* ---- deck dropdown ---- */
+function loadSection() {
+    const saved = window.localStorage.getItem('active-section');
+    if (sections.some((section) => section.id === saved)) activeSectionId = saved;
+}
+
+/* ---------- 4. sections ---------- */
+
+function openHeadingMenu() {
+    headingList.hidden = false;
+    headingButton.setAttribute('aria-expanded', 'true');
+    headingSpin += 810;
+    headingButton.style.transform = `translateY(-50%) rotate(${headingSpin}deg)`;
+}
+
+function closeHeadingMenu() {
+    if (headingList.hidden) return;
+    headingList.hidden = true;
+    headingButton.setAttribute('aria-expanded', 'false');
+    headingSpin -= 90;
+    headingButton.style.transform = `translateY(-50%) rotate(${headingSpin}deg)`;
+}
+
+function isHeadingMenuOpen() {
+    return !headingList.hidden;
+}
+
+function renderSections() {
+    const active = sections.find((section) => section.id === activeSectionId);
+    sectionTitle.textContent = active.name;
+
+    // show only the panels belonging to the active section
+    deckBar.hidden = activeSectionId !== 'cards';
+    quickPanel.hidden = activeSectionId !== 'cards';
+    scratchPanel.hidden = activeSectionId !== 'scratch';
+
+    headingList.innerHTML = '';
+    sections.forEach((section) => {
+        const row = document.createElement('button');
+        row.className = `menu-row${section.id === activeSectionId ? ' active-section' : ''}`;
+        row.type = 'button';
+
+        const check = document.createElement('span');
+        check.className = 'menu-check';
+        check.textContent = section.id === activeSectionId ? '✓' : '';
+
+        const label = document.createElement('span');
+        label.textContent = section.name;
+
+        row.append(check, label);
+        row.addEventListener('click', () => {
+            activeSectionId = section.id;
+            window.localStorage.setItem('active-section', activeSectionId);
+            renderSections();
+            closeHeadingMenu();
+        });
+        headingList.appendChild(row);
+    });
+}
+
+/* ---------- 5. decks ---------- */
 
 function openDeckMenu() {
     deckList.hidden = false;
@@ -114,6 +220,7 @@ function renderDecks() {
         row.className = `deck-row${deck.id === activeDeckId ? ' active-deck' : ''}`;
         row.dataset.deckId = deck.id;
 
+        // drag handle
         const handle = document.createElement('button');
         handle.className = 'deck-handle';
         handle.type = 'button';
@@ -132,6 +239,7 @@ function renderDecks() {
             }
         });
 
+        // deck name
         const selectButton = document.createElement('button');
         selectButton.className = 'deck-select';
         selectButton.type = 'button';
@@ -145,10 +253,12 @@ function renderDecks() {
             deckToggle.focus();
         });
 
+        // card count
         const count = document.createElement('span');
         count.className = 'deck-count';
         count.textContent = deck.cards.length;
 
+        // drag and drop
         row.addEventListener('dragstart', (event) => {
             draggedDeckId = deck.id;
             row.classList.add('dragging');
@@ -191,6 +301,7 @@ function beginDeckRename(deck) {
     renameInput.type = 'text';
     renameInput.value = deck.name;
     renameInput.setAttribute('aria-label', `rename ${deck.name}`);
+
     let finished = false;
     const finishRename = (save) => {
         if (finished) return;
@@ -200,22 +311,27 @@ function beginDeckRename(deck) {
         renderDecks();
         saveDecks();
     };
+
     renameInput.addEventListener('keydown', (event) => {
         event.stopPropagation();
         if (event.key === 'Enter') finishRename(true);
         if (event.key === 'Escape') finishRename(false);
     });
     renameInput.addEventListener('blur', () => finishRename(true));
+
     selectButton.replaceWith(renameInput);
     renameInput.focus();
     renameInput.select();
 }
+
+/* ---------- 6. cards ---------- */
 
 function showScreen(screen) {
     [homeScreen, makerScreen, studyScreen].forEach((item) => {
         item.hidden = item !== screen;
     });
     closeDeckMenu();
+    closeHeadingMenu();
 }
 
 function renderCards() {
@@ -256,8 +372,10 @@ function resetCardForm() {
     editingCardIndex = null;
     cardForm.reset();
     cardFormNote.textContent = '';
-    cardSubmitButton.textContent = 'add flashcard';
+    cardSubmitButton.textContent = 'add card';
 }
+
+/* ---------- 7. practice ---------- */
 
 function shuffle(items) {
     const shuffledItems = [...items];
@@ -277,6 +395,7 @@ function startStudy() {
 function showNextQuestion() {
     const cards = activeDeck().cards;
     waitingForContinue = false;
+
     if (cards.length === 0) {
         studyQuestion.textContent = 'this deck is empty';
         answerOptions.innerHTML = '';
@@ -284,20 +403,20 @@ function showNextQuestion() {
         return;
     }
 
+    // don't repeat a question until half the deck has gone by
     const cooldownSize = Math.max(1, Math.floor(cards.length / 2));
     let availableCards = cards.filter((card) => !recentQuestions.includes(card));
-    if (availableCards.length === 0) {
-        availableCards = cards;
-    }
+    if (availableCards.length === 0) availableCards = cards;
+
     currentCard = shuffle(availableCards)[0];
     recentQuestions.push(currentCard);
-    if (recentQuestions.length > cooldownSize) {
-        recentQuestions.shift();
-    }
+    if (recentQuestions.length > cooldownSize) recentQuestions.shift();
+
     studyQuestion.textContent = currentCard.question;
     studyFeedback.textContent = '';
     answerOptions.innerHTML = '';
 
+    // three wrong answers borrowed from other cards in the deck
     const wrongAnswers = [...new Set(cards.map((card) => card.answer))]
         .filter((answer) => answer !== currentCard.answer);
     const options = shuffle([currentCard.answer, ...shuffle(wrongAnswers).slice(0, 3)]);
@@ -310,11 +429,8 @@ function showNextQuestion() {
         button.textContent = option;
         button.addEventListener('click', (event) => {
             event.stopPropagation();
-            if (waitingForContinue) {
-                showNextQuestion();
-            } else {
-                checkAnswer(button, option);
-            }
+            if (waitingForContinue) showNextQuestion();
+            else checkAnswer(button, option);
         });
         answerOptions.appendChild(button);
     });
@@ -324,15 +440,18 @@ function checkAnswer(selectedButton, selectedAnswer) {
     document.querySelectorAll('.answer-button').forEach((button) => {
         if (button.dataset.answer === currentCard.answer) button.classList.add('correct');
     });
+
     if (selectedAnswer === currentCard.answer) {
-        studyFeedback.textContent = 'correct';
+        studyFeedback.textContent = 'yes';
         setTimeout(showNextQuestion, 450);
     } else {
         selectedButton.classList.add('incorrect');
-        studyFeedback.textContent = `the answer is ${currentCard.answer} — click anywhere to continue`;
+        studyFeedback.textContent = `answer: ${currentCard.answer}`;
         waitingForContinue = true;
     }
 }
+
+/* ---------- 8. context menu ---------- */
 
 function hideContextMenu() {
     contextMenu.hidden = true;
@@ -372,6 +491,7 @@ function showContextMenu(event, target) {
             saveDecks();
             hideContextMenu();
         });
+
         contextMenu.append(renameButton, deleteDeckButton);
     }
 
@@ -390,19 +510,26 @@ function showContextMenu(event, target) {
         deleteButton.type = 'button';
         deleteButton.textContent = 'delete';
         deleteButton.addEventListener('click', () => {
-            lastDeleted = { type: 'card', item: target.deck.cards[target.index], index: target.index, deckId: target.deck.id };
+            lastDeleted = {
+                type: 'card',
+                item: target.deck.cards[target.index],
+                index: target.index,
+                deckId: target.deck.id
+            };
             target.deck.cards.splice(target.index, 1);
             renderCards();
             renderDecks();
             saveDecks();
             hideContextMenu();
         });
+
         contextMenu.append(editButton, deleteButton);
     }
 }
 
-/* ---- keyboard quadrants ---- */
+/* ---------- 9. keyboard ---------- */
 
+// the keyboard is split into four zones, one per answer button
 const KEY_QUADRANTS = {
     0: ['Backquote', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6',
         'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT'],
@@ -418,121 +545,36 @@ function quadrantForKey(code) {
     return Object.keys(KEY_QUADRANTS).find((index) => KEY_QUADRANTS[index].includes(code));
 }
 
-/* ---- wiring ---- */
+function undoLastDelete() {
+    if (lastDeleted.type === 'deck') {
+        decks.splice(lastDeleted.index, 0, lastDeleted.item);
+    } else {
+        const deck = decks.find((item) => item.id === lastDeleted.deckId);
+        if (deck) deck.cards.splice(lastDeleted.index, 0, lastDeleted.item);
+    }
+    renderDecks();
+    if (!makerScreen.hidden) renderCards();
+    saveDecks();
+    lastDeleted = null;
+}
 
+/* ---------- 10. wiring ---------- */
+
+// sections
+headingButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (isHeadingMenuOpen()) closeHeadingMenu();
+    else openHeadingMenu();
+});
+headingList.addEventListener('click', (event) => event.stopPropagation());
+
+// decks
 deckToggle.addEventListener('click', (event) => {
     event.stopPropagation();
     if (isDeckMenuOpen()) closeDeckMenu();
     else openDeckMenu();
 });
 deckList.addEventListener('click', (event) => event.stopPropagation());
-
-backButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-        waitingForContinue = false;
-        showScreen(homeScreen);
-    });
-});
-document.getElementById('createCardButton').addEventListener('click', () => {
-    resetCardForm();
-    renderCards();
-    showScreen(makerScreen);
-});
-document.getElementById('randomStudyButton').addEventListener('click', startStudy);
-
-document.addEventListener('contextmenu', (event) => {
-    const deckRow = event.target.closest('.deck-row');
-    const cardItem = event.target.closest('.card-item');
-    if (deckRow) {
-        const deck = decks.find((item) => item.id === deckRow.dataset.deckId);
-        if (deck) showContextMenu(event, { type: 'deck', deck });
-        return;
-    }
-    if (cardItem) {
-        showContextMenu(event, { type: 'card', deck: activeDeck(), index: Number(cardItem.dataset.cardIndex) });
-        return;
-    }
-    hideContextMenu();
-});
-contextMenu.addEventListener('contextmenu', (event) => event.preventDefault());
-contextMenu.addEventListener('click', (event) => event.stopPropagation());
-document.addEventListener('click', () => {
-    hideContextMenu();
-    closeDeckMenu();
-});
-document.addEventListener('click', (event) => {
-    if (!waitingForContinue || event.target.closest('.back-button')) return;
-    showNextQuestion();
-});
-
-document.addEventListener('keydown', (event) => {
-    const tag = event.target.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && lastDeleted) {
-        event.preventDefault();
-        if (lastDeleted.type === 'deck') {
-            decks.splice(lastDeleted.index, 0, lastDeleted.item);
-        } else {
-            const deck = decks.find((item) => item.id === lastDeleted.deckId);
-            if (deck) deck.cards.splice(lastDeleted.index, 0, lastDeleted.item);
-        }
-        renderDecks();
-        if (!makerScreen.hidden) renderCards();
-        saveDecks();
-        lastDeleted = null;
-        return;
-    }
-
-    // any other browser or system shortcut is none of our business
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
-
-    if (event.key === 'Escape') {
-        if (isDeckMenuOpen()) {
-            closeDeckMenu();
-            deckToggle.focus();
-            return;
-        }
-        if (homeScreen.hidden) {
-            waitingForContinue = false;
-            showScreen(homeScreen);
-            return;
-        }
-    }
-    if (waitingForContinue) {
-        showNextQuestion();
-        return;
-    }
-    if (studyScreen.hidden) return;
-
-    const quadrant = quadrantForKey(event.code);
-    if (quadrant === undefined) return;
-    event.preventDefault();
-    const optionButton = answerOptions.querySelectorAll('.answer-button')[Number(quadrant)];
-    if (optionButton) optionButton.click();
-});
-
-cardForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const question = questionInput.value.trim();
-    const answer = answerInput.value.trim();
-    if (!question || !answer) {
-        cardFormNote.textContent = 'fill in both the question and the answer';
-        (question ? answerInput : questionInput).focus();
-        return;
-    }
-    const card = { question, answer };
-    if (editingCardIndex === null) {
-        activeDeck().cards.push(card);
-    } else {
-        activeDeck().cards[editingCardIndex] = card;
-    }
-    resetCardForm();
-    renderCards();
-    renderDecks();
-    saveDecks();
-    questionInput.focus();
-});
 
 deckForm.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -550,6 +592,125 @@ deckForm.addEventListener('submit', (event) => {
     saveDecks();
 });
 
+// navigation
+backButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        waitingForContinue = false;
+        showScreen(homeScreen);
+    });
+});
+document.getElementById('createCardButton').addEventListener('click', () => {
+    resetCardForm();
+    renderCards();
+    showScreen(makerScreen);
+});
+document.getElementById('randomStudyButton').addEventListener('click', startStudy);
+
+// card form
+cardForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const question = questionInput.value.trim();
+    const answer = answerInput.value.trim();
+    if (!question || !answer) {
+        cardFormNote.textContent = 'fill in both the question and the answer';
+        (question ? answerInput : questionInput).focus();
+        return;
+    }
+    const card = { question, answer };
+    if (editingCardIndex === null) activeDeck().cards.push(card);
+    else activeDeck().cards[editingCardIndex] = card;
+
+    resetCardForm();
+    renderCards();
+    renderDecks();
+    saveDecks();
+    questionInput.focus();
+});
+
+// right click
+document.addEventListener('contextmenu', (event) => {
+    const deckRow = event.target.closest('.deck-row');
+    const cardItem = event.target.closest('.card-item');
+
+    if (deckRow) {
+        const deck = decks.find((item) => item.id === deckRow.dataset.deckId);
+        if (deck) showContextMenu(event, { type: 'deck', deck });
+        return;
+    }
+    if (cardItem) {
+        showContextMenu(event, {
+            type: 'card',
+            deck: activeDeck(),
+            index: Number(cardItem.dataset.cardIndex)
+        });
+        return;
+    }
+    hideContextMenu();
+});
+contextMenu.addEventListener('contextmenu', (event) => event.preventDefault());
+contextMenu.addEventListener('click', (event) => event.stopPropagation());
+
+// clicking anywhere closes the menus
+document.addEventListener('click', () => {
+    hideContextMenu();
+    closeDeckMenu();
+    closeHeadingMenu();
+});
+
+// clicking anywhere also advances a wrong answer
+document.addEventListener('click', (event) => {
+    if (!waitingForContinue || event.target.closest('.back-button')) return;
+    showNextQuestion();
+});
+
+document.addEventListener('keydown', (event) => {
+    const tag = event.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && lastDeleted) {
+        event.preventDefault();
+        undoLastDelete();
+        return;
+    }
+
+    // any other browser or system shortcut is none of our business
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+    if (event.key === 'Escape') {
+        if (isDeckMenuOpen()) {
+            closeDeckMenu();
+            deckToggle.focus();
+            return;
+        }
+        if (isHeadingMenuOpen()) {
+            closeHeadingMenu();
+            headingButton.focus();
+            return;
+        }
+        if (homeScreen.hidden) {
+            waitingForContinue = false;
+            showScreen(homeScreen);
+            return;
+        }
+    }
+
+    if (waitingForContinue) {
+        showNextQuestion();
+        return;
+    }
+    if (studyScreen.hidden) return;
+
+    const quadrant = quadrantForKey(event.code);
+    if (quadrant === undefined) return;
+    event.preventDefault();
+    const optionButton = answerOptions.querySelectorAll('.answer-button')[Number(quadrant)];
+    if (optionButton) optionButton.click();
+});
+
+/* ---------- 11. start ---------- */
+
 loadDecks();
+loadSection();
 renderDecks();
 renderCards();
+renderSections();
