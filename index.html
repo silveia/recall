@@ -3,22 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>recall - flashcards</title>
+    <title>:p</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+    <!-- right-click menu, shared by every screen -->
     <div class="context-menu" id="contextMenu" hidden></div>
+
     <main>
-        <section class="screen actions-only" id="homeScreen" aria-label="Home">
+
+        <!-- ============ home ============ -->
+        <section class="screen" id="homeScreen" aria-label="home">
+
             <header class="screen-head">
-                <h1>recall</h1>
-                <p id="homeSubtitle">hope</p>
+                <h1>food</h1>
+                <p id="homeSubtitle">hello</p>
             </header>
-            <section class="deck-organizer" aria-label="deck organizer">
-                <h2>decks</h2>
+
+            <!-- section switcher -->
+            <section class="deck-organizer" aria-label="sections">
+                <div class="deck-heading">
+                    <h2 id="sectionTitle">cards</h2>
+                    <button class="heading-button" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch section">&gt;</button>
+                    <div class="heading-menu" id="headingList" hidden></div>
+                </div>
+
+                <!-- deck picker + new deck form -->
                 <div class="deck-bar">
                     <div class="deck-picker">
-                        <button class="deck-toggle" id="deckToggle" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch deck" title="switch deck">↻</button>
+                        <button class="deck-toggle" id="deckToggle" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch deck" title="switch deck">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"/>
+                                <path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/>
+                                <circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none"/>
+                                <circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none"/>
+                            </svg>
+                        </button>
                         <div class="deck-menu" id="deckList" hidden></div>
                     </div>
                     <form id="deckForm" class="deck-form" novalidate>
@@ -27,43 +48,74 @@
                     </form>
                 </div>
             </section>
-            <section class="quick-panel" aria-label="flashcard actions">
-                <button class="quick-action primary" id="createCardButton" type="button"><span class="action-icon">+</span><span><strong>create</strong><small>ʕ•ᴥ•ʔ</small></span><b>→</b></button>
-                <button class="quick-action" id="randomStudyButton" type="button"><span class="action-icon play">▶</span><span><strong>practice</strong><small>ʕᵔᴥᵔʔ</small></span><b>→</b></button>
+
+            <!-- the two big tiles -->
+            <section class="quick-panel" aria-label="card actions">
+                <button class="quick-action primary" id="createCardButton" type="button">
+                    <span class="action-icon">+</span>
+                    <span><strong>create</strong><small>&#x0295;&#x2022;&#x1D25;&#x2022;&#x0294;</small></span>
+                    <b>&rarr;</b>
+                </button>
+                <button class="quick-action" id="randomStudyButton" type="button">
+                    <span class="action-icon play">&#x25B6;</span>
+                    <span><strong>practice</strong><small>&#x0295;-&#x1D25;-&#x0294;</small></span>
+                    <b>&rarr;</b>
+                </button>
             </section>
+
+            <!-- second section, empty for now -->
+            <section class="section-panel" id="scratchPanel" hidden>
+                <p class="empty-message">nothing here yet</p>
+            </section>
+
         </section>
+
+        <!-- ============ create ============ -->
         <section class="screen maker-screen" id="makerScreen" hidden>
-            <button class="back-button" type="button">←</button>
+
+            <button class="back-button" type="button" aria-label="back" title="back">&larr;</button>
+
             <header class="screen-head">
                 <h1>create</h1>
-                <p>add a question bih</p>
+                <p>add questions</p>
             </header>
+
             <form id="cardForm" novalidate>
                 <label for="questionInput">question</label>
-                <textarea id="questionInput" placeholder="question here"></textarea>
+                <textarea id="questionInput" placeholder="question goes here"></textarea>
                 <label for="answerInput">answer</label>
-                <textarea id="answerInput" placeholder="im going to demolish u"></textarea>
+                <textarea id="answerInput" placeholder="hiihi"></textarea>
                 <p class="form-note" id="cardFormNote" aria-live="polite"></p>
-                <button class="basic-button" id="cardSubmitButton" type="submit">add flashcard</button>
+                <button class="basic-button" id="cardSubmitButton" type="submit">add card</button>
             </form>
+
             <section class="card-section" aria-label="current cards">
                 <h2>current cards</h2>
                 <ol id="cardList"><li class="empty-message">no cards yet</li></ol>
             </section>
+
         </section>
+
+        <!-- ============ practice ============ -->
         <section class="screen study-screen" id="studyScreen" hidden>
-            <button class="back-button" type="button" aria-label="back" title="back">←</button>
+
+            <button class="back-button" type="button" aria-label="back" title="back">&larr;</button>
+
             <header class="screen-head">
                 <h1>practice</h1>
-                <p>hi</p>
+                <p>hope</p>
             </header>
+
             <div class="question-box">
                 <h2 id="studyQuestion"></h2>
                 <div class="answer-options" id="answerOptions"></div>
                 <p id="studyFeedback" aria-live="polite"></p>
             </div>
+
         </section>
+
     </main>
+
     <script src="script.js"></script>
 </body>
 </html>
