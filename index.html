@@ -17,7 +17,7 @@
         <section class="screen" id="homeScreen" aria-label="home">
 
             <header class="screen-head">
-                <h1>food</h1>
+                <h1>home</h1>
                 <p id="homeSubtitle">hello</p>
             </header>
 
@@ -63,11 +63,43 @@
                 </button>
             </section>
 
-            <!-- second section, empty for now -->
-            <section class="section-panel" id="scratchPanel" hidden>
-                <p class="empty-message">nothing here yet</p>
-            </section>
+            <!-- second section — record + sensing -->
+            <!-- second section — record + sensing -->
+            <section class="recorder-panel" id="scratchPanel" hidden>
 
+                <div class="record-row">
+                    <button class="basic-button" id="recordToggle" type="button">record</button>
+                    <button class="gear-button" id="senseToggle" type="button" aria-expanded="false" aria-label="sensing settings" title="sensing settings">&#9881;</button>
+                </div>
+
+                <div class="preview-wrap" id="previewWrap" hidden>
+                    <video id="previewVideo" muted playsinline></video>
+                    <div class="sense-box" id="senseBox"></div>
+
+                    <div class="live-bar">
+                        <span class="clip-pulse"></span>
+                        <canvas id="levelCanvas" width="600" height="10"></canvas>
+                        <span class="clip-label" id="liveLabel"></span>
+                    </div>
+
+                    <div class="sense-controls" id="senseControls" hidden>
+                        <div class="panel-handle" aria-hidden="true"></div>
+                        <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
+                        <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
+                        <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
+                        <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
+                        <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="2"><output id="senseThresholdOut"></output></label>
+                        <button class="text-button" id="senseReset" type="button">reset to default</button>
+                    </div>
+                </div>
+
+                <div class="meter-idle">Ugh... Finals are next week... Blegh!!</div>
+
+                <ol id="recordingList"></ol>
+
+                <p class="record-status" id="recordStatus" aria-live="polite"></p>
+                <p class="sense-readout" id="senseReadout" hidden>change 0.0 · triggers 0</p>
+            </section>
         </section>
 
         <!-- ============ create ============ -->
