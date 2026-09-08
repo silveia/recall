@@ -53,6 +53,10 @@ const studyFeedback = document.getElementById('studyFeedback');
 // misc
 const contextMenu = document.getElementById('contextMenu');
 
+// poop
+const levelCanvas = document.getElementById('levelCanvas');
+const levelContext = levelCanvas.getContext('2d');
+
 /* ---------- 2. state ---------- */
 
 const sections = [
@@ -79,9 +83,19 @@ let recentQuestions = [];
 let currentCard;
 let waitingForContinue = false;
 let editingCardIndex = null;
+let editingDeckId = null;
 let lastDeleted = null;
 let draggedDeckId = null;
 let headingSpin = 0;
+let audioContext = null;
+let analyser = null;
+let levelFrame = null;
+let levelData = null;
+const MIN_CLIP_MS = 2000;   // clips shorter than this are thrown away
+let clipCount = 0;
+let changeArmed = false;    // a change was seen, waiting for it to settle
+let lastCutAt = 0;
+let recorderReady = false;
 
 function activeDeck() {
     return decks.find((deck) => deck.id === activeDeckId) || decks[0];
@@ -150,6 +164,7 @@ function renderSections() {
     deckBar.hidden = activeSectionId !== 'cards';
     quickPanel.hidden = activeSectionId !== 'cards';
     scratchPanel.hidden = activeSectionId !== 'scratch';
+    if (activeSectionId !== 'scratch' && recorderReady) stopCapture();
 
     headingList.innerHTML = '';
     sections.forEach((section) => {
@@ -360,6 +375,7 @@ function editCard(index) {
     const card = activeDeck().cards[index];
     if (!card) return;
     editingCardIndex = index;
+    editingDeckId = activeDeckId;
     questionInput.value = card.question;
     answerInput.value = card.answer;
     cardSubmitButton.textContent = 'save changes';
@@ -370,6 +386,7 @@ function editCard(index) {
 
 function resetCardForm() {
     editingCardIndex = null;
+    editingDeckId = null;
     cardForm.reset();
     cardFormNote.textContent = '';
     cardSubmitButton.textContent = 'add card';
@@ -406,7 +423,10 @@ function showNextQuestion() {
     // don't repeat a question until half the deck has gone by
     const cooldownSize = Math.max(1, Math.floor(cards.length / 2));
     let availableCards = cards.filter((card) => !recentQuestions.includes(card));
-    if (availableCards.length === 0) availableCards = cards;
+    if (availableCards.length === 0) {
+        availableCards = cards.filter((card) => card !== currentCard);
+        if (availableCards.length === 0) availableCards = cards;
+    }
 
     currentCard = shuffle(availableCards)[0];
     recentQuestions.push(currentCard);
@@ -443,6 +463,9 @@ function checkAnswer(selectedButton, selectedAnswer) {
 
     if (selectedAnswer === currentCard.answer) {
         studyFeedback.textContent = 'yes';
+        document.querySelectorAll('.answer-button').forEach((button) => {
+            button.disabled = true;
+        });
         setTimeout(showNextQuestion, 450);
     } else {
         selectedButton.classList.add('incorrect');
@@ -546,14 +569,19 @@ function quadrantForKey(code) {
 }
 
 function undoLastDelete() {
+    if (!lastDeleted) return;
     if (lastDeleted.type === 'deck') {
         decks.splice(lastDeleted.index, 0, lastDeleted.item);
+        activeDeckId = lastDeleted.item.id;
     } else {
         const deck = decks.find((item) => item.id === lastDeleted.deckId);
-        if (deck) deck.cards.splice(lastDeleted.index, 0, lastDeleted.item);
+        if (deck) {
+            deck.cards.splice(lastDeleted.index, 0, lastDeleted.item);
+            activeDeckId = deck.id;
+        }
     }
     renderDecks();
-    if (!makerScreen.hidden) renderCards();
+    renderCards();
     saveDecks();
     lastDeleted = null;
 }
@@ -617,8 +645,12 @@ cardForm.addEventListener('submit', (event) => {
         return;
     }
     const card = { question, answer };
-    if (editingCardIndex === null) activeDeck().cards.push(card);
-    else activeDeck().cards[editingCardIndex] = card;
+    if (editingCardIndex === null) {
+        activeDeck().cards.push(card);
+    } else {
+        const deck = decks.find((item) => item.id === editingDeckId) || activeDeck();
+        deck.cards[editingCardIndex] = card;
+    }
 
     resetCardForm();
     renderCards();
@@ -714,3 +746,650 @@ loadSection();
 renderDecks();
 renderCards();
 renderSections();
+
+/* ---------- 12. capture, sensing, recording ---------- */
+
+const recordToggle = document.getElementById('recordToggle');
+const recordStatus = document.getElementById('recordStatus');
+const recordingList = document.getElementById('recordingList');
+const previewWrap = document.getElementById('previewWrap');
+const previewVideo = document.getElementById('previewVideo');
+const senseBox = document.getElementById('senseBox');
+const senseControls = document.getElementById('senseControls');
+const senseReadout = document.getElementById('senseReadout');
+const senseToggle = document.getElementById('senseToggle');
+const senseReset = document.getElementById('senseReset');
+
+const SENSE_KEYS = ['left', 'bottom', 'width', 'height', 'threshold'];
+const senseInputs = {
+    left: document.getElementById('senseLeft'),
+    bottom: document.getElementById('senseBottom'),
+    width: document.getElementById('senseWidth'),
+    height: document.getElementById('senseHeight'),
+    threshold: document.getElementById('senseThreshold')
+};
+const senseOutputs = {
+    left: document.getElementById('senseLeftOut'),
+    bottom: document.getElementById('senseBottomOut'),
+    width: document.getElementById('senseWidthOut'),
+    height: document.getElementById('senseHeightOut'),
+    threshold: document.getElementById('senseThresholdOut')
+};
+
+const DEFAULT_SENSE = { left: 4, bottom: 4, width: 25, height: 4, threshold: 2 };
+let senseSettings = { ...DEFAULT_SENSE };
+
+let activeStream = null;
+let mediaRecorder = null;
+let recordStartTime = 0;
+let timerInterval = null;
+let senseInterval = null;
+let previousSample = null;
+let triggerCount = 0;
+let triggerFlashTimer = null;
+
+const SAMPLE_SIZE = 48;
+const sampleCanvas = document.createElement('canvas');
+sampleCanvas.width = SAMPLE_SIZE;
+sampleCanvas.height = SAMPLE_SIZE;
+const sampleContext = sampleCanvas.getContext('2d', { willReadFrequently: true });
+
+/* --- status --- */
+
+function setRecordStatus(text, isError) {
+    recordStatus.textContent = text;
+    recordStatus.classList.toggle('is-error', Boolean(isError));
+}
+
+function formatDuration(milliseconds) {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${minutes}:${seconds}`;
+}
+
+/* --- the sensing box --- */
+
+function loadSenseSettings() {
+    const saved = window.localStorage.getItem('sense-region');
+    if (!saved) return;
+    try {
+        const parsed = JSON.parse(saved);
+        SENSE_KEYS.forEach((key) => {
+            if (typeof parsed[key] === 'number') senseSettings[key] = parsed[key];
+        });
+    } catch (error) {
+        window.localStorage.removeItem('sense-region');
+    }
+}
+
+function saveSenseSettings() {
+    window.localStorage.setItem('sense-region', JSON.stringify(senseSettings));
+}
+
+function applySenseSettings() {
+    // keep the box inside the frame
+    senseSettings.width = Math.min(senseSettings.width, 100 - senseSettings.left);
+    senseSettings.height = Math.min(senseSettings.height, 100 - senseSettings.bottom);
+
+    SENSE_KEYS.forEach((key) => {
+        senseInputs[key].value = senseSettings[key];
+        senseOutputs[key].textContent = key === 'threshold'
+            ? senseSettings[key]
+            : `${senseSettings[key]}%`;
+    });
+
+    senseBox.style.left = `${senseSettings.left}%`;
+    senseBox.style.bottom = `${senseSettings.bottom}%`;
+    senseBox.style.width = `${senseSettings.width}%`;
+    senseBox.style.height = `${senseSettings.height}%`;
+
+    previousSample = null; // region moved, old frame is meaningless
+}
+
+SENSE_KEYS.forEach((key) => {
+    senseInputs[key].addEventListener('input', () => {
+        senseSettings[key] = Number(senseInputs[key].value);
+        applySenseSettings();
+        saveSenseSettings();
+    });
+});
+
+senseToggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const nowOpen = senseControls.hidden;
+    senseControls.hidden = !nowOpen;
+    senseToggle.setAttribute('aria-expanded', String(nowOpen));
+    previewWrap.classList.toggle('showing-video', nowOpen);
+});
+
+senseReset.addEventListener('click', (event) => {
+    event.stopPropagation();
+    senseSettings = { ...DEFAULT_SENSE };
+    applySenseSettings();
+    saveSenseSettings();
+});
+
+/* --- dragging the settings panel --- */
+
+let panelDrag = null;
+
+document.querySelector('.panel-handle').addEventListener('pointerdown', (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    const box = senseControls.getBoundingClientRect();
+    panelDrag = { x: event.clientX, y: event.clientY, top: box.top, left: box.left };
+    senseControls.style.right = 'auto';
+    senseControls.style.top = `${box.top}px`;
+    senseControls.style.left = `${box.left}px`;
+    senseControls.style.position = 'fixed';
+    event.target.setPointerCapture(event.pointerId);
+});
+
+document.addEventListener('pointermove', (event) => {
+    if (!panelDrag) return;
+    senseControls.style.left = `${panelDrag.left + (event.clientX - panelDrag.x)}px`;
+    senseControls.style.top = `${panelDrag.top + (event.clientY - panelDrag.y)}px`;
+});
+
+document.addEventListener('pointerup', () => { panelDrag = null; });
+
+/* --- dragging the sensing box --- */
+
+let dragMode = null;
+let dragStart = null;
+
+function boxPointerMode(event, box) {
+    const edge = 12;
+    const nearRight = event.clientX > box.right - edge;
+    const nearTop = event.clientY < box.top + edge;
+    if (nearRight && nearTop) return 'resize-both';
+    if (nearRight) return 'resize-x';
+    if (nearTop) return 'resize-y';
+    return 'move';
+}
+
+senseBox.addEventListener('pointerdown', (event) => {
+    if (!previewWrap.classList.contains('showing-video')) return;
+    event.stopPropagation();
+    event.preventDefault();
+
+    const frame = previewVideo.getBoundingClientRect();
+    dragMode = boxPointerMode(event, senseBox.getBoundingClientRect());
+    dragStart = {
+        x: event.clientX,
+        y: event.clientY,
+        frameWidth: frame.width,
+        frameHeight: frame.height,
+        ...senseSettings
+    };
+    senseBox.setPointerCapture(event.pointerId);
+});
+
+senseBox.addEventListener('pointermove', (event) => {
+    if (!dragMode || !dragStart) return;
+
+    // pixels moved, converted to percent of the frame
+    const dx = (event.clientX - dragStart.x) / dragStart.frameWidth * 100;
+    const dy = (event.clientY - dragStart.y) / dragStart.frameHeight * 100;
+
+    const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+
+    if (dragMode === 'move') {
+        senseSettings.left = clamp(dragStart.left + dx, 0, 100 - senseSettings.width);
+        senseSettings.bottom = clamp(dragStart.bottom - dy, 0, 100 - senseSettings.height);
+    }
+    if (dragMode === 'resize-x' || dragMode === 'resize-both') {
+        senseSettings.width = clamp(dragStart.width + dx, 2, 100 - senseSettings.left);
+    }
+    if (dragMode === 'resize-y' || dragMode === 'resize-both') {
+        senseSettings.height = clamp(dragStart.height - dy, 2, 100 - senseSettings.bottom);
+    }
+
+    applySenseSettings();
+});
+
+senseBox.addEventListener('pointerup', (event) => {
+    if (!dragMode) return;
+    dragMode = null;
+    dragStart = null;
+    senseBox.releasePointerCapture(event.pointerId);
+    saveSenseSettings();
+});
+
+/* --- change detection --- */
+
+function readRegion() {
+    const frameWidth = previewVideo.videoWidth;
+    const frameHeight = previewVideo.videoHeight;
+    if (!frameWidth || !frameHeight) return null;
+
+    const regionWidth = Math.max(1, Math.round(frameWidth * senseSettings.width / 100));
+    const regionHeight = Math.max(1, Math.round(frameHeight * senseSettings.height / 100));
+    const regionX = Math.round(frameWidth * senseSettings.left / 100);
+    const regionY = Math.max(0, Math.round(
+        frameHeight * (100 - senseSettings.bottom - senseSettings.height) / 100
+    ));
+
+    sampleContext.drawImage(
+        previewVideo,
+        regionX, regionY, regionWidth, regionHeight,
+        0, 0, SAMPLE_SIZE, SAMPLE_SIZE
+    );
+    return sampleContext.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data;
+}
+
+function checkForChange() {
+    const sample = readRegion();
+    if (!sample) return;
+
+    if (!previousSample) {
+        previousSample = sample;
+        return;
+    }
+
+    let total = 0;
+    for (let index = 0; index < sample.length; index += 4) {
+        total += Math.abs(sample[index] - previousSample[index]);
+        total += Math.abs(sample[index + 1] - previousSample[index + 1]);
+        total += Math.abs(sample[index + 2] - previousSample[index + 2]);
+    }
+    const pixelCount = sample.length / 4;
+    const changeAmount = (total / (pixelCount * 3)) / 255 * 100;
+    previousSample = sample;
+
+    if (changeAmount >= senseSettings.threshold) {
+        // cut immediately, but not twice for one switch
+        const now = Date.now();
+        if (now - lastCutAt > 700) {
+            lastCutAt = now;
+            triggerCount += 1;
+            cutClip();
+        }
+        senseBox.classList.add('is-triggered');
+        window.clearTimeout(triggerFlashTimer);
+        triggerFlashTimer = window.setTimeout(() => {
+            senseBox.classList.remove('is-triggered');
+        }, 300);
+    }
+
+    senseReadout.textContent = `change ${changeAmount.toFixed(1)} · triggers ${triggerCount}`;
+}
+
+function refreshEmptyMessage() {
+    const hasClips = recordingList.querySelector('.recording-item');
+    const existing = recordingList.querySelector('.empty-message');
+    const shouldShow = !hasClips && !activeStream;
+
+    if (shouldShow && !existing) {
+        recordingList.innerHTML = '<li class="empty-message">T_T</li>';
+    } else if (!shouldShow && existing) {
+        existing.remove();
+    }
+}
+
+/* --- clip storage (survives refresh) --- */
+
+const CLIP_DB = 'recall-clips';
+const CLIP_STORE = 'clips';
+let clipDbPromise = null;
+
+function openClipDb() {
+    if (clipDbPromise) return clipDbPromise;
+    clipDbPromise = new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(CLIP_DB, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(CLIP_STORE)) {
+                db.createObjectStore(CLIP_STORE, { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+    return clipDbPromise;
+}
+
+async function saveClip(record) {
+    try {
+        const db = await openClipDb();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(CLIP_STORE, 'readwrite');
+            tx.objectStore(CLIP_STORE).put(record);
+            tx.oncomplete = resolve;
+            tx.onerror = () => reject(tx.error);
+        });
+    } catch (error) {
+        setRecordStatus('could not save that clip', true);
+    }
+}
+
+async function deleteClip(id) {
+    try {
+        const db = await openClipDb();
+        const tx = db.transaction(CLIP_STORE, 'readwrite');
+        tx.objectStore(CLIP_STORE).delete(id);
+    } catch (error) {
+        // nothing useful to do; the row is already gone from the page
+    }
+}
+
+async function loadStoredClips() {
+    try {
+        const db = await openClipDb();
+        const stored = await new Promise((resolve, reject) => {
+            const request = db.transaction(CLIP_STORE, 'readonly')
+                .objectStore(CLIP_STORE)
+                .getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+
+        stored.sort((a, b) => a.number - b.number);
+        stored.forEach((record) => {
+            if (record.number > clipCount) clipCount = record.number;
+            addRecording(record, true);
+        });
+    } catch (error) {
+        // no stored clips, or storage unavailable
+    }
+    refreshEmptyMessage();
+}
+
+/* --- recordings list --- */
+
+function addRecording(record, alreadySaved) {
+    const url = URL.createObjectURL(record.blob);
+
+    const item = document.createElement('li');
+    item.className = 'recording-item';
+
+    const player = document.createElement('audio');
+    player.src = url;
+    player.preload = 'metadata';
+
+    // play / pause
+    const playButton = document.createElement('button');
+    playButton.className = 'clip-play';
+    playButton.type = 'button';
+    playButton.setAttribute('aria-label', `play clip ${record.number}`);
+    playButton.textContent = '▶';
+    playButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (player.paused) {
+            document.querySelectorAll('.recording-item audio').forEach((other) => {
+                if (other !== player) other.pause();
+            });
+            player.play().catch(() => {});
+        } else {
+            player.pause();
+        }
+    });
+
+    player.addEventListener('play', () => {
+        playButton.textContent = '❙❙';
+        item.classList.add('is-playing');
+    });
+    player.addEventListener('pause', () => {
+        playButton.textContent = '▶';
+        item.classList.remove('is-playing');
+    });
+    player.addEventListener('ended', () => {
+        player.currentTime = 0;
+        fill.style.width = '0%';
+    });
+
+    // progress bar, scrubbable
+    const track = document.createElement('div');
+    track.className = 'clip-track';
+    const fill = document.createElement('div');
+    fill.className = 'clip-fill';
+    track.append(fill);
+
+    const totalSeconds = record.durationMs ? record.durationMs / 1000 : 0;
+
+    track.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (!totalSeconds) return;
+        const box = track.getBoundingClientRect();
+        const ratio = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
+        player.currentTime = ratio * totalSeconds;
+        fill.style.width = `${ratio * 100}%`;
+    });
+
+    player.addEventListener('timeupdate', () => {
+        if (!totalSeconds) return;
+        fill.style.width = `${Math.min(100, (player.currentTime / totalSeconds) * 100)}%`;
+    });
+
+    // label and discard
+    const label = document.createElement('span');
+    label.className = 'clip-label';
+    label.textContent = `${record.number} · ${record.duration}`;
+
+    const discard = document.createElement('button');
+    discard.className = 'clip-discard';
+    discard.type = 'button';
+    discard.setAttribute('aria-label', `discard clip ${record.number}`);
+    discard.textContent = '×';
+    discard.addEventListener('click', (event) => {
+        event.stopPropagation();
+        player.pause();
+        player.src = '';
+        URL.revokeObjectURL(url);
+        item.remove();
+        deleteClip(record.id);
+        refreshEmptyMessage();
+    });
+
+    item.append(playButton, track, label, discard, player);
+    recordingList.prepend(item);
+    refreshEmptyMessage();
+
+    if (!alreadySaved) saveClip(record);
+}
+
+/* --- recording --- */
+
+function pickRecordingType() {
+    const candidates = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm'
+    ];
+    return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || '';
+}
+
+function startRecording() {
+    if (!activeStream) return;
+
+    const mimeType = pickRecordingType();
+    const recorder = new MediaRecorder(activeStream, mimeType ? { mimeType } : undefined);
+    mediaRecorder = recorder;
+
+    const chunks = [];   // this clip's own list, not shared
+
+    recorder.addEventListener('dataavailable', (event) => {
+        if (event.data && event.data.size > 0) chunks.push(event.data);
+    });
+
+    recorder.start(500);
+    const startedAt = Date.now();
+    recordStartTime = startedAt;
+
+    recorder.addEventListener('stop', () => {
+        const elapsed = Date.now() - startedAt;
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+        if (blob.size > 0 && elapsed >= MIN_CLIP_MS) {
+            clipCount += 1;
+            addRecording({
+                id: `clip-${Date.now()}-${clipCount}`,
+                number: clipCount,
+                duration: formatDuration(elapsed),
+                durationMs: elapsed,
+                blob
+            }, false);
+        }
+    });
+
+    recordToggle.classList.add('recording');
+    recordToggle.textContent = 'stop';
+
+    showLiveRow();
+    window.clearInterval(timerInterval);
+    timerInterval = window.setInterval(() => {
+        const elapsed = formatDuration(Date.now() - recordStartTime);
+        const liveLabel = document.getElementById('liveLabel');
+        if (liveLabel) liveLabel.textContent = `${clipCount + 1} · ${elapsed}`;
+    }, 250);
+}
+
+/* --- audio level line --- */
+
+function drawLevel() {
+    levelFrame = window.requestAnimationFrame(drawLevel);
+    if (!analyser) return;
+
+    analyser.getByteTimeDomainData(levelData);
+
+    // loudest sample in this frame, 0 to 1
+    let peak = 0;
+    for (let index = 0; index < levelData.length; index += 1) {
+        const value = Math.abs(levelData[index] - 128) / 128;
+        if (value > peak) peak = value;
+    }
+
+    const width = levelCanvas.width;
+    const height = levelCanvas.height;
+    levelContext.clearRect(0, 0, width, height);
+
+    const barHeight = 8;
+    const y = (height - barHeight) / 2;
+    const style = getComputedStyle(levelCanvas);
+
+    levelContext.globalAlpha = 1;
+    levelContext.strokeStyle = '#fff';
+    levelContext.lineWidth = 1;
+    levelContext.strokeRect(0.5, 0.5, width - 1, height - 1);
+    levelContext.fillStyle = '#fff';
+    levelContext.fillRect(0, 0, width * Math.min(1, peak * 1.4), height);
+}
+
+function startLevelMeter() {
+    if (activeStream.getAudioTracks().length === 0) return;
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 1024;
+    levelData = new Uint8Array(analyser.fftSize);
+    audioContext.createMediaStreamSource(activeStream).connect(analyser);
+    drawLevel();
+}
+
+function stopLevelMeter() {
+    window.cancelAnimationFrame(levelFrame);
+    levelFrame = null;
+    analyser = null;
+    levelData = null;
+    if (audioContext) audioContext.close();
+    audioContext = null;
+    levelContext.clearRect(0, 0, levelCanvas.width, levelCanvas.height);
+}
+
+function cutClip() {
+    if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+    mediaRecorder.stop();   // its stop handler saves the clip
+    startRecording();       // immediately begin the next one
+}
+
+/* --- the clip being recorded right now --- */
+
+function showLiveRow() {
+    const liveLabel = document.getElementById('liveLabel');
+    if (liveLabel) liveLabel.textContent = '';
+}
+
+function hideLiveRow() {
+    const liveLabel = document.getElementById('liveLabel');
+    if (liveLabel) liveLabel.textContent = '';
+}
+
+/* --- capture --- */
+
+function stopCapture() {
+    if (!activeStream) return;
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    mediaRecorder = null;
+    window.clearInterval(timerInterval);
+    timerInterval = null;
+    hideLiveRow();
+    window.clearInterval(senseInterval);
+    senseInterval = null;
+    stopLevelMeter();
+    previewWrap.classList.remove('showing-video');
+    if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
+    activeStream = null;
+    previewVideo.srcObject = null;
+    previousSample = null;
+    previewWrap.hidden = true;
+    senseReadout.hidden = true;
+    senseReadout.textContent = 'change 0.0 · triggers 0';
+    senseControls.hidden = true;
+    senseToggle.setAttribute('aria-expanded', 'false');
+    recordToggle.classList.remove('recording');
+    recordToggle.textContent = 'record';
+    setRecordStatus('', false);
+    refreshEmptyMessage();
+}
+
+async function startCapture() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        setRecordStatus('this browser cannot record tabs — use chrome', true);
+        return;
+    }
+
+    try {
+        activeStream = await navigator.mediaDevices.getDisplayMedia({
+            video: { frameRate: 30 },
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+    } catch (error) {
+        activeStream = null;
+        setRecordStatus('', false);
+        return;
+    }
+
+
+    previewVideo.srcObject = activeStream;
+    await previewVideo.play().catch(() => {});
+
+    previewWrap.hidden = false;
+    refreshEmptyMessage();
+    senseReadout.hidden = false;
+    triggerCount = 0;
+    changeArmed = false;
+    previousSample = null;
+    applySenseSettings();
+
+    if (activeStream.getAudioTracks().length === 0) {
+        setRecordStatus('no audio — stop, and tick "also share tab audio"', true);
+    }
+
+    activeStream.getVideoTracks()[0].addEventListener('ended', stopCapture);
+
+    window.clearInterval(senseInterval);
+    senseInterval = window.setInterval(checkForChange, 60);
+
+    startLevelMeter();
+    startRecording();
+}
+
+recordToggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (activeStream) stopCapture();
+    else startCapture();
+});
+
+loadSenseSettings();
+applySenseSettings();
+recorderReady = true;
+loadStoredClips();
