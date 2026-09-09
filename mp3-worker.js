@@ -6,7 +6,7 @@
    do that) and hands the samples over; this sends mp3 bytes back.
    ============================================================ */
 
-importScripts('https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js');
+importScripts('lame.min.js');   // vendored, so downloads work offline
 
 function toInt16(samples) {
     const out = new Int16Array(samples.length);

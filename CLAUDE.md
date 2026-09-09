@@ -82,3 +82,8 @@ person's turn.
 - `style.css` — numbered sections, see the table of contents at the top
 - `script.js` — numbered sections, see the table of contents at the top
 - `mp3-worker.js` — mp3 encoding, kept off the main thread
+- `lame.min.js` — the mp3 encoder itself (lamejs 1.2.1), vendored rather than
+  loaded from a CDN so downloads work offline. Only the worker loads it.
+
+All five need to be uploaded to GitHub Pages. Missing `mp3-worker.js` or
+`lame.min.js` breaks downloads with a worker error that looks like a code bug.
