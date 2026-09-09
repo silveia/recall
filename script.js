@@ -1306,7 +1306,8 @@ function addRecording(record, alreadySaved) {
             a.click();
             window.setTimeout(() => URL.revokeObjectURL(href), 10000);
         } catch (error) {
-            setRecordStatus('could not turn that clip into an mp3', true);
+            console.error('mp3 export failed', error);
+            setRecordStatus(`mp3 failed — ${error.message}`, true);
         }
         download.disabled = false;
         download.textContent = '↓';

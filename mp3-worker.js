@@ -54,6 +54,6 @@ self.onmessage = (event) => {
 
         self.postMessage({ ok: true, mp3: mp3.buffer }, [mp3.buffer]);
     } catch (error) {
-        self.postMessage({ ok: false, message: String(error) });
+        self.postMessage({ ok: false, message: error && error.message ? error.message : String(error) });
     }
 };
