@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>:p</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- right-click menu, shared by every screen -->
+    <div class="context-menu" id="contextMenu" hidden></div>
+
+    <main>
+
+        <!-- ============ home ============ -->
+        <section class="screen" id="homeScreen" aria-label="home">
+
+            <header class="screen-head">
+                <h1>home</h1>
+                <p id="homeSubtitle">hello</p>
+            </header>
+
+            <!-- section switcher -->
+            <section class="deck-organizer" aria-label="sections">
+                <div class="deck-heading">
+                    <h2 id="sectionTitle">cards</h2>
+                    <button class="heading-button" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch section">&gt;</button>
+                    <div class="heading-menu" id="headingList" hidden></div>
+                </div>
+
+                <!-- deck picker + new deck form -->
+                <div class="deck-bar">
+                    <div class="deck-picker">
+                        <button class="deck-toggle" id="deckToggle" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch deck" title="switch deck">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"/>
+                                <path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/>
+                                <circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none"/>
+                                <circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none"/>
+                            </svg>
+                        </button>
+                        <div class="deck-menu" id="deckList" hidden></div>
+                    </div>
+                    <form id="deckForm" class="deck-form" novalidate>
+                        <input id="deckNameInput" type="text" placeholder="new deck name">
+                        <button class="basic-button" type="submit">create</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- the two big tiles -->
+            <section class="quick-panel" aria-label="card actions">
+                <button class="quick-action primary" id="createCardButton" type="button">
+                    <span class="action-icon">+</span>
+                    <span><strong>create</strong><small>&#x0295;&#x2022;&#x1D25;&#x2022;&#x0294;</small></span>
+                    <b>&rarr;</b>
+                </button>
+                <button class="quick-action" id="randomStudyButton" type="button">
+                    <span class="action-icon play">&#x25B6;</span>
+                    <span><strong>practice</strong><small>&#x0295;-&#x1D25;-&#x0294;</small></span>
+                    <b>&rarr;</b>
+                </button>
+            </section>
+
+            <!-- audio section — record + speaker sensing -->
+            <section class="recorder-panel" id="audioPanel" hidden>
+
+                <div class="record-row">
+                    <button class="basic-button" id="recordToggle" type="button">record</button>
+                    <button class="gear-button" id="senseToggle" type="button" aria-expanded="false" aria-label="sensing settings" title="sensing settings">&#9881;</button>
+                </div>
+
+                <div class="preview-wrap" id="previewWrap" hidden>
+                    <video id="previewVideo" muted playsinline></video>
+                    <div class="sense-box" id="senseBox"></div>
+
+                    <div class="live-bar">
+                        <span class="clip-pulse"></span>
+                        <canvas id="levelCanvas" width="600" height="10"></canvas>
+                        <span class="clip-label" id="liveLabel"></span>
+                    </div>
+
+                    <div class="sense-controls" id="senseControls" hidden>
+                        <div class="panel-handle" aria-hidden="true"></div>
+                        <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
+                        <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
+                        <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
+                        <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
+                        <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="2"><output id="senseThresholdOut"></output></label>
+                        <button class="text-button" id="senseReset" type="button">reset to default</button>
+                    </div>
+                </div>
+
+                <div class="meter-idle">nofing T_T</div>
+
+                <ol id="recordingList"></ol>
+
+                <p class="record-status" id="recordStatus" aria-live="polite"></p>
+                <p class="sense-readout" id="senseReadout" hidden>change 0.0 · triggers 0</p>
+            </section>
+        </section>
+
+        <!-- ============ create ============ -->
+        <section class="screen maker-screen" id="makerScreen" hidden>
+
+            <button class="back-button" type="button" aria-label="back" title="back">&larr;</button>
+
+            <header class="screen-head">
+                <h1>create</h1>
+                <p>add questions</p>
+            </header>
+
+            <form id="cardForm" novalidate>
+                <label for="questionInput">question</label>
+                <textarea id="questionInput" placeholder="question goes here"></textarea>
+                <label for="answerInput">answer</label>
+                <textarea id="answerInput" placeholder="hiihi"></textarea>
+                <p class="form-note" id="cardFormNote" aria-live="polite"></p>
+                <button class="basic-button" id="cardSubmitButton" type="submit">add card</button>
+            </form>
+
+            <section class="card-section" aria-label="current cards">
+                <h2>current cards</h2>
+                <ol id="cardList"><li class="empty-message">no cards yet</li></ol>
+            </section>
+
+        </section>
+
+        <!-- ============ practice ============ -->
+        <section class="screen study-screen" id="studyScreen" hidden>
+
+            <button class="back-button" type="button" aria-label="back" title="back">&larr;</button>
+
+            <header class="screen-head">
+                <h1>practice</h1>
+                <p>hope</p>
+            </header>
+
+            <div class="question-box">
+                <h2 id="studyQuestion"></h2>
+                <div class="answer-options" id="answerOptions"></div>
+                <p id="studyFeedback" aria-live="polite"></p>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
