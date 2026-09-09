@@ -1095,51 +1095,56 @@ async function loadStoredClips() {
 
 /* --- webm/opus -> mp3, only when a clip is downloaded --- */
 
-function toInt16(samples) {
-    const out = new Int16Array(samples.length);
-    for (let i = 0; i < samples.length; i += 1) {
-        const clamped = Math.max(-1, Math.min(1, samples[i]));
-        out[i] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
-    }
-    return out;
-}
-
+/* decoding has to happen here (a worker has no AudioContext), but the
+   encoding is the slow part, so that goes to mp3-worker.js and the page
+   stays responsive while it runs. */
 async function blobToMp3(blob) {
     const context = new AudioContext();
     const audio = await context.decodeAudioData(await blob.arrayBuffer());
     context.close();
 
-    const channels = Math.min(2, audio.numberOfChannels);
-    const encoder = new lamejs.Mp3Encoder(channels, audio.sampleRate, 128);
-    const left = toInt16(audio.getChannelData(0));
-    const right = channels > 1 ? toInt16(audio.getChannelData(1)) : null;
+    // copies, because the worker takes ownership of whatever it is handed
+    const left = new Float32Array(audio.getChannelData(0));
+    const right = audio.numberOfChannels > 1
+        ? new Float32Array(audio.getChannelData(1))
+        : null;
 
-    const parts = [];
-    const frame = 1152;   // one mp3 frame's worth of samples
-    for (let offset = 0; offset < left.length; offset += frame) {
-        const encoded = encoder.encodeBuffer(
-            left.subarray(offset, offset + frame),
-            right ? right.subarray(offset, offset + frame) : undefined
-        );
-        if (encoded.length) parts.push(encoded);
+    const worker = new Worker('mp3-worker.js');
+    try {
+        const mp3 = await new Promise((resolve, reject) => {
+            worker.onmessage = (event) => {
+                if (event.data.ok) resolve(event.data.mp3);
+                else reject(new Error(event.data.message));
+            };
+            worker.onerror = () => reject(new Error('mp3 worker failed to start'));
+
+            const payload = { left: left.buffer, right: right && right.buffer, sampleRate: audio.sampleRate };
+            const transfer = right ? [left.buffer, right.buffer] : [left.buffer];
+            worker.postMessage(payload, transfer);
+        });
+        return new Blob([mp3], { type: 'audio/mpeg' });
+    } finally {
+        worker.terminate();
     }
-    const tail = encoder.flush();
-    if (tail.length) parts.push(tail);
-
-    return new Blob(parts, { type: 'audio/mpeg' });
 }
 
 /* --- recordings list --- */
 
 function addRecording(record, alreadySaved) {
-    const url = URL.createObjectURL(record.blob);
-
     const item = document.createElement('li');
     item.className = 'recording-item';
 
+    // the clip is only handed to the audio element on first play, so opening
+    // the page with a full list doesn't start a decoder for every row
+    let url = null;
     const player = document.createElement('audio');
-    player.src = url;
-    player.preload = 'metadata';
+    player.preload = 'none';
+
+    const loadPlayer = () => {
+        if (url) return;
+        url = URL.createObjectURL(record.blob);
+        player.src = url;
+    };
 
     // play / pause
     const playButton = document.createElement('button');
@@ -1153,6 +1158,7 @@ function addRecording(record, alreadySaved) {
             document.querySelectorAll('.recording-item audio').forEach((other) => {
                 if (other !== player) other.pause();
             });
+            loadPlayer();
             player.play().catch(() => {});
         } else {
             player.pause();
@@ -1191,6 +1197,7 @@ function addRecording(record, alreadySaved) {
 
     const seekTo = (clientX) => {
         if (isEditing() || !totalSeconds) return;
+        loadPlayer();
         const box = track.getBoundingClientRect();
         const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
         player.currentTime = ratio * totalSeconds;
@@ -1314,7 +1321,7 @@ function addRecording(record, alreadySaved) {
         event.stopPropagation();
         player.pause();
         player.src = '';
-        URL.revokeObjectURL(url);
+        if (url) URL.revokeObjectURL(url);
         item.remove();
         deleteClip(record.id);
         refreshEmptyMessage();
