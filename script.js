@@ -12,6 +12,10 @@
    9. keyboard
    10. wiring
    11. start
+   12. capture, sensing, recording   (the audio section)
+         status · sensing box · change detection
+         clip storage · mp3 export · clip rows
+         recording · level line · capture
    ============================================================ */
 
 /* ---------- 1. elements ---------- */
@@ -27,7 +31,7 @@ const headingButton = document.querySelector('.heading-button');
 const headingList = document.getElementById('headingList');
 const sectionTitle = document.getElementById('sectionTitle');
 const quickPanel = document.querySelector('.quick-panel');
-const scratchPanel = document.getElementById('scratchPanel');
+const audioPanel = document.getElementById('audioPanel');
 
 // decks
 const deckBar = document.querySelector('.deck-bar');
@@ -53,7 +57,7 @@ const studyFeedback = document.getElementById('studyFeedback');
 // misc
 const contextMenu = document.getElementById('contextMenu');
 
-// poop
+// audio level meter
 const levelCanvas = document.getElementById('levelCanvas');
 const levelContext = levelCanvas.getContext('2d');
 
@@ -61,7 +65,7 @@ const levelContext = levelCanvas.getContext('2d');
 
 const sections = [
     { id: 'cards', name: 'cards' },
-    { id: 'scratch', name: 'scratch' }
+    { id: 'audio', name: 'audio' }
 ];
 
 let decks = [
@@ -163,8 +167,8 @@ function renderSections() {
     // show only the panels belonging to the active section
     deckBar.hidden = activeSectionId !== 'cards';
     quickPanel.hidden = activeSectionId !== 'cards';
-    scratchPanel.hidden = activeSectionId !== 'scratch';
-    if (activeSectionId !== 'scratch' && recorderReady) stopCapture();
+    audioPanel.hidden = activeSectionId !== 'audio';
+    if (activeSectionId !== 'audio' && recorderReady) stopCapture();
 
     headingList.innerHTML = '';
     sections.forEach((section) => {
@@ -1017,15 +1021,8 @@ function checkForChange() {
 }
 
 function refreshEmptyMessage() {
-    const hasClips = recordingList.querySelector('.recording-item');
     const existing = recordingList.querySelector('.empty-message');
-    const shouldShow = !hasClips && !activeStream;
-
-    if (shouldShow && !existing) {
-        recordingList.innerHTML = '<li class="empty-message">T_T</li>';
-    } else if (!shouldShow && existing) {
-        existing.remove();
-    }
+    if (existing) existing.remove();
 }
 
 /* --- clip storage (survives refresh) --- */
@@ -1096,17 +1093,58 @@ async function loadStoredClips() {
     refreshEmptyMessage();
 }
 
+/* --- webm/opus -> mp3, only when a clip is downloaded --- */
+
+/* decoding has to happen here (a worker has no AudioContext), but the
+   encoding is the slow part, so that goes to mp3-worker.js and the page
+   stays responsive while it runs. */
+async function blobToMp3(blob) {
+    const context = new AudioContext();
+    const audio = await context.decodeAudioData(await blob.arrayBuffer());
+    context.close();
+
+    // copies, because the worker takes ownership of whatever it is handed
+    const left = new Float32Array(audio.getChannelData(0));
+    const right = audio.numberOfChannels > 1
+        ? new Float32Array(audio.getChannelData(1))
+        : null;
+
+    const worker = new Worker('mp3-worker.js');
+    try {
+        const mp3 = await new Promise((resolve, reject) => {
+            worker.onmessage = (event) => {
+                if (event.data.ok) resolve(event.data.mp3);
+                else reject(new Error(event.data.message));
+            };
+            worker.onerror = () => reject(new Error('mp3 worker failed to start'));
+
+            const payload = { left: left.buffer, right: right && right.buffer, sampleRate: audio.sampleRate };
+            const transfer = right ? [left.buffer, right.buffer] : [left.buffer];
+            worker.postMessage(payload, transfer);
+        });
+        return new Blob([mp3], { type: 'audio/mpeg' });
+    } finally {
+        worker.terminate();
+    }
+}
+
 /* --- recordings list --- */
 
 function addRecording(record, alreadySaved) {
-    const url = URL.createObjectURL(record.blob);
-
     const item = document.createElement('li');
     item.className = 'recording-item';
 
+    // the clip is only handed to the audio element on first play, so opening
+    // the page with a full list doesn't start a decoder for every row
+    let url = null;
     const player = document.createElement('audio');
-    player.src = url;
-    player.preload = 'metadata';
+    player.preload = 'none';
+
+    const loadPlayer = () => {
+        if (url) return;
+        url = URL.createObjectURL(record.blob);
+        player.src = url;
+    };
 
     // play / pause
     const playButton = document.createElement('button');
@@ -1120,6 +1158,7 @@ function addRecording(record, alreadySaved) {
             document.querySelectorAll('.recording-item audio').forEach((other) => {
                 if (other !== player) other.pause();
             });
+            loadPlayer();
             player.play().catch(() => {});
         } else {
             player.pause();
@@ -1137,6 +1176,7 @@ function addRecording(record, alreadySaved) {
     player.addEventListener('ended', () => {
         player.currentTime = 0;
         fill.style.width = '0%';
+        label.textContent = `00:00 / ${record.duration}`;
     });
 
     // progress bar, scrubbable
@@ -1144,28 +1184,134 @@ function addRecording(record, alreadySaved) {
     track.className = 'clip-track';
     const fill = document.createElement('div');
     fill.className = 'clip-fill';
-    track.append(fill);
+
+    const trackText = document.createElement('span');
+    trackText.className = 'clip-text';
+    trackText.textContent = record.name || `clip ${record.number}`;
+
+    track.append(fill, trackText);
 
     const totalSeconds = record.durationMs ? record.durationMs / 1000 : 0;
 
-    track.addEventListener('click', (event) => {
-        event.stopPropagation();
-        if (!totalSeconds) return;
+    const isEditing = () => trackText.classList.contains('is-editing');
+
+    const seekTo = (clientX) => {
+        if (isEditing() || !totalSeconds) return;
+        loadPlayer();
         const box = track.getBoundingClientRect();
-        const ratio = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
+        const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
         player.currentTime = ratio * totalSeconds;
         fill.style.width = `${ratio * 100}%`;
+        label.textContent = `${formatDuration(player.currentTime * 1000)} / ${record.duration}`;
+    };
+
+    // a plain click landing on the name is for renaming, not seeking
+    const overText = (clientX) => {
+        const box = trackText.getBoundingClientRect();
+        return clientX >= box.left - 2 && clientX <= box.right + 2;
+    };
+
+    track.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (overText(event.clientX)) return;
+        seekTo(event.clientX);
+    });
+
+    track.addEventListener('mousedown', (event) => {
+        event.stopPropagation();
+        if (isEditing()) return;
+        const startX = event.clientX;
+        let isDragging = false;
+
+        // a few stray pixels while double-clicking the name shouldn't seek
+        const onMouseMove = (e) => {
+            if (!isDragging && Math.abs(e.clientX - startX) < 4) return;
+            isDragging = true;
+            seekTo(e.clientX);
+        };
+
+        const onMouseUp = () => {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+
+    // double-click the bar to rename the clip
+    track.addEventListener('dblclick', (event) => {
+        event.stopPropagation();
+        if (isEditing()) return;
+        trackText.classList.add('is-editing');
+        trackText.contentEditable = 'plaintext-only';
+        trackText.focus();
+        const range = document.createRange();
+        range.selectNodeContents(trackText);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+    });
+
+    const stopEditing = (keep) => {
+        if (!isEditing()) return;
+        const typed = trackText.textContent.trim();
+        if (keep && typed) record.name = typed;
+        trackText.textContent = record.name || `clip ${record.number}`;
+        trackText.classList.remove('is-editing');
+        trackText.contentEditable = 'false';
+        window.getSelection().removeAllRanges();
+        if (keep && typed) saveClip(record);
+    };
+
+    trackText.addEventListener('blur', () => stopEditing(true));
+    trackText.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            trackText.blur();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            stopEditing(false);
+        }
     });
 
     player.addEventListener('timeupdate', () => {
         if (!totalSeconds) return;
         fill.style.width = `${Math.min(100, (player.currentTime / totalSeconds) * 100)}%`;
+        label.textContent = `${formatDuration(player.currentTime * 1000)} / ${record.duration}`;
     });
 
-    // label and discard
+    // label with duration
     const label = document.createElement('span');
     label.className = 'clip-label';
-    label.textContent = `${record.number} · ${record.duration}`;
+    label.textContent = `00:00 / ${record.duration}`;
+
+    const download = document.createElement('button');
+    download.className = 'clip-download';
+    download.type = 'button';
+    download.setAttribute('aria-label', `download clip ${record.number}`);
+    download.textContent = '↓';
+    download.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        if (download.disabled) return;
+        download.disabled = true;
+        download.textContent = '·';
+        try {
+            const mp3 = await blobToMp3(record.blob);
+            const href = URL.createObjectURL(mp3);
+            const a = document.createElement('a');
+            a.href = href;
+            a.download = `${record.name || `clip-${record.number}`}.mp3`;
+            a.click();
+            window.setTimeout(() => URL.revokeObjectURL(href), 10000);
+        } catch (error) {
+            console.error('mp3 export failed', error);
+            setRecordStatus(`mp3 failed — ${error.message}`, true);
+        }
+        download.disabled = false;
+        download.textContent = '↓';
+    });
 
     const discard = document.createElement('button');
     discard.className = 'clip-discard';
@@ -1176,13 +1322,13 @@ function addRecording(record, alreadySaved) {
         event.stopPropagation();
         player.pause();
         player.src = '';
-        URL.revokeObjectURL(url);
+        if (url) URL.revokeObjectURL(url);
         item.remove();
         deleteClip(record.id);
         refreshEmptyMessage();
     });
 
-    item.append(playButton, track, label, discard, player);
+    item.append(playButton, track, label, download, discard, player);
     recordingList.prepend(item);
     refreshEmptyMessage();
 
@@ -1193,9 +1339,8 @@ function addRecording(record, alreadySaved) {
 
 function pickRecordingType() {
     const candidates = [
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm'
+        'audio/webm;codecs=opus',
+        'audio/webm'
     ];
     return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || '';
 }
@@ -1203,8 +1348,11 @@ function pickRecordingType() {
 function startRecording() {
     if (!activeStream) return;
 
+    // the video track stays on activeStream for the pixel sampling,
+    // but only the audio goes into the clip
+    const audioOnly = new MediaStream(activeStream.getAudioTracks());
     const mimeType = pickRecordingType();
-    const recorder = new MediaRecorder(activeStream, mimeType ? { mimeType } : undefined);
+    const recorder = new MediaRecorder(audioOnly, mimeType ? { mimeType } : undefined);
     mediaRecorder = recorder;
 
     const chunks = [];   // this clip's own list, not shared
@@ -1219,7 +1367,7 @@ function startRecording() {
 
     recorder.addEventListener('stop', () => {
         const elapsed = Date.now() - startedAt;
-        const blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
         if (blob.size > 0 && elapsed >= MIN_CLIP_MS) {
             clipCount += 1;
             addRecording({
@@ -1234,6 +1382,7 @@ function startRecording() {
 
     recordToggle.classList.add('recording');
     recordToggle.textContent = 'stop';
+    senseToggle.hidden = false;
 
     showLiveRow();
     window.clearInterval(timerInterval);
@@ -1265,8 +1414,6 @@ function drawLevel() {
 
     const barHeight = 8;
     const y = (height - barHeight) / 2;
-    const style = getComputedStyle(levelCanvas);
-
     levelContext.globalAlpha = 1;
     levelContext.strokeStyle = '#fff';
     levelContext.lineWidth = 1;
@@ -1337,6 +1484,7 @@ function stopCapture() {
     senseToggle.setAttribute('aria-expanded', 'false');
     recordToggle.classList.remove('recording');
     recordToggle.textContent = 'record';
+    senseToggle.hidden = true;
     setRecordStatus('', false);
     refreshEmptyMessage();
 }
@@ -1393,3 +1541,4 @@ loadSenseSettings();
 applySenseSettings();
 recorderReady = true;
 loadStoredClips();
+senseToggle.hidden = true;
