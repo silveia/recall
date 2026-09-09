@@ -19,8 +19,10 @@ Must be served over http, not opened as a file:
 
     python3 -m http.server 8000
 
-Then open `http://localhost:8000`. On `file://` the screen capture is blocked
-and the audio section won't work at all.
+Then open `http://localhost:8000`. Never open `index.html` by double-clicking
+it. On `file://` two things break: screen capture is blocked, and Chrome
+refuses to load `mp3-worker.js` at all ("cannot be accessed from origin
+'null'"), so downloads fail with a worker error.
 
 ## Look and feel
 
