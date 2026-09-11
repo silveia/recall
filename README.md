@@ -1,1 +1,1 @@
-stan newjeans :p
+stan newjeans
