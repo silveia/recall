@@ -4,7 +4,7 @@
    1. elements
    2. state
    3. storage
-   4. sections   (the > menu)
+   4. sections   (the cards / audio tabs)
    5. decks      (the smiley menu)
    6. cards      (create screen)
    7. practice   (study screen)
@@ -24,22 +24,27 @@
 const homeScreen = document.getElementById('homeScreen');
 const makerScreen = document.getElementById('makerScreen');
 const studyScreen = document.getElementById('studyScreen');
-const backButtons = document.querySelectorAll('.back-button');
+const backButton = document.querySelector('.back-button');
+const topbarTitle = document.getElementById('topbarTitle');
 
 // sections
-const headingButton = document.querySelector('.heading-button');
-const headingList = document.getElementById('headingList');
-const sectionTitle = document.getElementById('sectionTitle');
+const sectionTabs = document.getElementById('sectionTabs');
 const quickPanel = document.querySelector('.quick-panel');
 const audioPanel = document.getElementById('audioPanel');
 
 // decks
 const deckBar = document.querySelector('.deck-bar');
+const deckListSlot = document.getElementById('deckListSlot');
+const sharePanel = document.getElementById('sharePanel');
+const shareToggle = document.getElementById('shareToggle');
+const shareOut = document.getElementById('shareOut');
+const shareIn = document.getElementById('shareIn');
+const shareNote = document.getElementById('shareNote');
+const helpBox = document.querySelector('.help-box');
 const deckForm = document.getElementById('deckForm');
 const deckNameInput = document.getElementById('deckNameInput');
 const deckList = document.getElementById('deckList');
 const deckToggle = document.getElementById('deckToggle');
-const homeSubtitle = document.getElementById('homeSubtitle');
 
 // cards
 const cardForm = document.getElementById('cardForm');
@@ -90,7 +95,6 @@ let editingCardIndex = null;
 let editingDeckId = null;
 let lastDeleted = null;
 let draggedDeckId = null;
-let headingSpin = 0;
 let audioContext = null;
 let analyser = null;
 let levelFrame = null;
@@ -123,6 +127,7 @@ function loadDecks() {
             decks = parsedDecks.map((deck) => ({
                 id: deck.id || `deck-${Math.random().toString(36).slice(2)}`,
                 name: deck.name || 'untitled deck',
+                look: Number.isInteger(deck.look) ? deck.look : undefined,
                 cards: Array.isArray(deck.cards) ? deck.cards : []
             }));
             if (decks.some((deck) => deck.id === savedActiveDeck)) activeDeckId = savedActiveDeck;
@@ -141,56 +146,52 @@ function loadSection() {
 
 /* ---------- 4. sections ---------- */
 
-function openHeadingMenu() {
-    headingList.hidden = false;
-    headingButton.setAttribute('aria-expanded', 'true');
-    headingSpin += 810;
-    headingButton.style.transform = `translateY(-50%) rotate(${headingSpin}deg)`;
-}
+let sectionSwapping = false;
 
-function closeHeadingMenu() {
-    if (headingList.hidden) return;
-    headingList.hidden = true;
-    headingButton.setAttribute('aria-expanded', 'false');
-    headingSpin -= 90;
-    headingButton.style.transform = `translateY(-50%) rotate(${headingSpin}deg)`;
-}
+// the old panels fade out before the new ones come in, so the two
+// sections cross over instead of one cutting to the other
+function switchSection(id) {
+    if (id === activeSectionId || sectionSwapping) return;
+    sectionSwapping = true;
+    homeScreen.classList.add('section-swap');
 
-function isHeadingMenuOpen() {
-    return !headingList.hidden;
+    window.setTimeout(() => {
+        activeSectionId = id;
+        window.localStorage.setItem('active-section', activeSectionId);
+        renderSections();
+        homeScreen.classList.remove('section-swap');
+        sectionSwapping = false;
+    }, 150);
 }
 
 function renderSections() {
-    const active = sections.find((section) => section.id === activeSectionId);
-    sectionTitle.textContent = active.name;
-
     // show only the panels belonging to the active section
     deckBar.hidden = activeSectionId !== 'cards';
     quickPanel.hidden = activeSectionId !== 'cards';
+    updateDeckToggle();
+    deckListSlot.hidden = activeSectionId !== 'cards';
+    helpBox.hidden = activeSectionId !== 'cards';
+    if (activeSectionId !== 'cards') closeSharePanel();
     audioPanel.hidden = activeSectionId !== 'audio';
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
 
-    headingList.innerHTML = '';
-    sections.forEach((section) => {
-        const row = document.createElement('button');
-        row.className = `menu-row${section.id === activeSectionId ? ' active-section' : ''}`;
-        row.type = 'button';
-
-        const check = document.createElement('span');
-        check.className = 'menu-check';
-        check.textContent = section.id === activeSectionId ? '✓' : '';
-
-        const label = document.createElement('span');
-        label.textContent = section.name;
-
-        row.append(check, label);
-        row.addEventListener('click', () => {
-            activeSectionId = section.id;
-            window.localStorage.setItem('active-section', activeSectionId);
-            renderSections();
-            closeHeadingMenu();
+    // one tab per section; whichever is active grows, the rest shrink.
+    // tabs are only built once so the size change can animate.
+    if (!sectionTabs.children.length) {
+        sections.forEach((section) => {
+            const tab = document.createElement('button');
+            tab.className = 'section-tab';
+            tab.type = 'button';
+            tab.dataset.section = section.id;
+            tab.textContent = section.name;
+            tab.addEventListener('click', () => switchSection(section.id));
+            sectionTabs.appendChild(tab);
         });
-        headingList.appendChild(row);
+    }
+    [...sectionTabs.children].forEach((tab) => {
+        const active = tab.dataset.section === activeSectionId;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-current', active ? 'page' : 'false');
     });
 }
 
@@ -212,8 +213,9 @@ function isDeckMenuOpen() {
 
 function updateDeckToggle() {
     const deck = activeDeck();
-    homeSubtitle.textContent = `${deck.name} · ${deck.cards.length}`;
     deckToggle.setAttribute('aria-label', `switch deck, currently ${deck.name}`);
+    // the code on show always belongs to the deck on show
+    if (!sharePanel.hidden) refreshShareCode();
 }
 
 function moveDeckToIndex(fromIndex, toIndex) {
@@ -230,6 +232,85 @@ function moveDeck(index, direction) {
     moveDeckToIndex(index, newIndex);
     const handles = deckList.querySelectorAll('.deck-handle');
     if (handles[newIndex]) handles[newIndex].focus();
+}
+
+// a deck's "look" is one of eight outline shapes. it starts off derived
+// from the deck's id so two decks rarely match, and right-click cycles it.
+const LOOK_COUNT = 8;
+
+const DECK_SHAPES = [
+    '<circle cx="14" cy="14" r="9"/>',
+    '<rect x="5" y="5" width="18" height="18" rx="2"/>',
+    '<path d="M14 4.5 24 22.5H4z"/>',
+    '<path d="M14 4 24 14 14 24 4 14z"/>',
+    '<path d="M14 4.5l2.9 6.4 6.9.8-5.1 4.7 1.4 6.8-6.1-3.4-6.1 3.4 1.4-6.8L4.2 11.7l6.9-.8z"/>',
+    '<path d="M14 23.5S4.5 17.8 4.5 11.4a4.9 4.9 0 0 1 9.5-1.8 4.9 4.9 0 0 1 9.5 1.8c0 6.4-9.5 12.1-9.5 12.1z"/>',
+    '<path d="M14 4l8.7 5v10L14 24l-8.7-5V9z"/>',
+    '<path d="M8 21h9.5a4.5 4.5 0 0 0 .6-9 6 6 0 0 0-11.3-1.6A4.2 4.2 0 0 0 8 21z"/>'
+];
+
+function shapeFor(deck) {
+    return `<svg viewBox="0 0 28 28" width="28" height="28" fill="none" stroke="currentColor"
+        stroke-width="2" stroke-linejoin="round" stroke-linecap="round"
+        aria-hidden="true">${DECK_SHAPES[lookFor(deck)]}</svg>`;
+}
+
+function lookFor(deck) {
+    if (Number.isInteger(deck.look)) return ((deck.look % LOOK_COUNT) + LOOK_COUNT) % LOOK_COUNT;
+    let sum = 0;
+    for (let i = 0; i < deck.id.length; i += 1) sum = (sum * 31 + deck.id.charCodeAt(i)) % 9973;
+    return sum % LOOK_COUNT;
+}
+
+// the deck entries under the deck bar — same face as the smiley wears,
+// plus the name, the card count and how long the deck is
+let deckCardsShape = '';
+
+function renderDeckCards() {
+    // rebuilding replays every entry's arrival animation, so when only
+    // the selection moved, just move the highlight
+    const shape = decks.map((deck) => `${deck.id}:${deck.name}:${lookFor(deck)}:${deck.cards.length}:${deck.cards[0] ? deck.cards[0].question : ''}`).join('|');
+    if (shape === deckCardsShape && deckListSlot.children.length === decks.length) {
+        [...deckListSlot.children].forEach((entry) => {
+            entry.classList.toggle('active-deck', entry.dataset.deckId === activeDeckId);
+        });
+        return;
+    }
+    deckCardsShape = shape;
+    deckListSlot.innerHTML = '';
+    decks.forEach((deck) => {
+        const entry = document.createElement('button');
+        entry.className = `deck-card${deck.id === activeDeckId ? ' active-deck' : ''}`;
+        entry.type = 'button';
+        entry.dataset.deckId = deck.id;
+
+        const swatch = document.createElement('span');
+        swatch.className = 'deck-shape';
+        swatch.innerHTML = shapeFor(deck);
+
+        const text = document.createElement('span');
+        text.className = 'deck-card-text';
+
+        const name = document.createElement('strong');
+        name.textContent = deck.name;
+
+        const detail = document.createElement('small');
+        const total = deck.cards.length;
+        detail.textContent = total === 0
+            ? 'empty · add some cards'
+            : `${total} card${total === 1 ? '' : 's'} · ${deck.cards[0].question}`;
+
+        text.append(name, detail);
+        entry.append(swatch, text);
+        entry.addEventListener('click', () => {
+            if (deck.id === activeDeckId) return;
+            activeDeckId = deck.id;
+            renderDecks();
+            renderCards();
+            saveDecks();
+        });
+        deckListSlot.appendChild(entry);
+    });
 }
 
 function renderDecks() {
@@ -306,6 +387,7 @@ function renderDecks() {
         row.append(handle, selectButton, count);
         deckList.appendChild(row);
     });
+    renderDeckCards();
     updateDeckToggle();
 }
 
@@ -346,11 +428,21 @@ function beginDeckRename(deck) {
 /* ---------- 6. cards ---------- */
 
 function showScreen(screen) {
+    // home is the top of the stack, so anything else is "forward".
+    // the new screen slides in from whichever side you came from.
+    const goingBack = screen === homeScreen;
     [homeScreen, makerScreen, studyScreen].forEach((item) => {
+        item.classList.remove('enter-forward', 'enter-back');
         item.hidden = item !== screen;
     });
+    screen.classList.add(goingBack ? 'enter-back' : 'enter-forward');
+
+    topbarTitle.textContent = screen.dataset.title;
+    topbarTitle.classList.remove('swap');
+    void topbarTitle.offsetWidth;   // forces the animation to start over
+    topbarTitle.classList.add('swap');
+    backButton.hidden = screen === homeScreen;
     closeDeckMenu();
-    closeHeadingMenu();
 }
 
 function renderCards() {
@@ -519,7 +611,18 @@ function showContextMenu(event, target) {
             hideContextMenu();
         });
 
-        contextMenu.append(renameButton, deleteDeckButton);
+        const lookButton = document.createElement('button');
+        lookButton.className = 'context-action';
+        lookButton.type = 'button';
+        lookButton.textContent = 'change look';
+        lookButton.addEventListener('click', () => {
+            target.deck.look = (lookFor(target.deck) + 1) % LOOK_COUNT;
+            renderDecks();
+            saveDecks();
+            hideContextMenu();
+        });
+
+        contextMenu.append(renameButton, lookButton, deleteDeckButton);
     }
 
     if (target.type === 'card') {
@@ -592,14 +695,6 @@ function undoLastDelete() {
 
 /* ---------- 10. wiring ---------- */
 
-// sections
-headingButton.addEventListener('click', (event) => {
-    event.stopPropagation();
-    if (isHeadingMenuOpen()) closeHeadingMenu();
-    else openHeadingMenu();
-});
-headingList.addEventListener('click', (event) => event.stopPropagation());
-
 // decks
 deckToggle.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -624,12 +719,130 @@ deckForm.addEventListener('submit', (event) => {
     saveDecks();
 });
 
-// navigation
-backButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-        waitingForContinue = false;
-        showScreen(homeScreen);
+// --- deck codes ---
+// a deck travels as one string: a tag, then base64url of the json,
+// deflated when the browser can do it (chrome can).
+
+function bytesToCode(bytes) {
+    let binary = '';
+    bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+    return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function codeToBytes(text) {
+    const padded = text.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = window.atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+}
+
+async function squeeze(bytes, mode) {
+    const Stream = mode === 'in' ? window.CompressionStream : window.DecompressionStream;
+    if (!Stream) return null;
+    const piped = new Blob([bytes]).stream().pipeThrough(new Stream('deflate-raw'));
+    return new Uint8Array(await new Response(piped).arrayBuffer());
+}
+
+async function deckToCode(deck) {
+    const payload = JSON.stringify({
+        n: deck.name,
+        l: lookFor(deck),
+        c: deck.cards.map((card) => [card.question, card.answer])
     });
+    const bytes = new TextEncoder().encode(payload);
+    let packed = null;
+    try {
+        packed = await squeeze(bytes, 'in');
+    } catch (error) {
+        packed = null;
+    }
+    if (packed && packed.length < bytes.length) return `rc2.${bytesToCode(packed)}`;
+    return `rc1.${bytesToCode(bytes)}`;
+}
+
+async function codeToDeck(code) {
+    const clean = code.trim().replace(/\s+/g, '');
+    const dot = clean.indexOf('.');
+    const tag = clean.slice(0, dot);
+    if (tag !== 'rc1' && tag !== 'rc2') throw new Error('bad tag');
+
+    let bytes = codeToBytes(clean.slice(dot + 1));
+    if (tag === 'rc2') bytes = await squeeze(bytes, 'out');
+
+    const parsed = JSON.parse(new TextDecoder().decode(bytes));
+    if (!parsed || typeof parsed.n !== 'string') throw new Error('bad payload');
+    return {
+        id: `deck-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: parsed.n,
+        look: Number.isInteger(parsed.l) ? parsed.l : undefined,
+        cards: (Array.isArray(parsed.c) ? parsed.c : [])
+            .filter((pair) => Array.isArray(pair) && typeof pair[0] === 'string' && typeof pair[1] === 'string')
+            .map((pair) => ({ question: pair[0], answer: pair[1] }))
+    };
+}
+
+async function refreshShareCode() {
+    const deck = activeDeck();
+    shareOut.value = await deckToCode(deck);
+    shareOut.setAttribute('aria-label', `code for ${deck.name}`);
+}
+
+function closeSharePanel() {
+    sharePanel.hidden = true;
+    shareToggle.setAttribute('aria-expanded', 'false');
+}
+
+async function openSharePanel() {
+    sharePanel.hidden = false;
+    shareToggle.setAttribute('aria-expanded', 'true');
+    shareNote.textContent = '';
+    await refreshShareCode();
+}
+
+shareToggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (sharePanel.hidden) openSharePanel();
+    else closeSharePanel();
+});
+sharePanel.addEventListener('click', (event) => event.stopPropagation());
+
+document.getElementById('copyCode').addEventListener('click', async () => {
+    shareOut.select();
+    try {
+        await navigator.clipboard.writeText(shareOut.value);
+        shareNote.textContent = 'copied ✓ paste it to anyone';
+    } catch (error) {
+        // clipboard is blocked on file:// and without focus — the text
+        // is selected either way, so ctrl+c still works
+        shareNote.textContent = 'selected — hit ctrl+c / cmd+c';
+    }
+});
+
+document.getElementById('loadCode').addEventListener('click', async () => {
+    const typed = shareIn.value.trim();
+    if (!typed) {
+        shareIn.focus();
+        return;
+    }
+    try {
+        const deck = await codeToDeck(typed);
+        decks.push(deck);
+        activeDeckId = deck.id;
+        shareIn.value = '';
+        renderDecks();
+        renderCards();
+        saveDecks();
+        shareNote.textContent = `got "${deck.name}" · ${deck.cards.length} cards`;
+    } catch (error) {
+        shareNote.textContent = "that code didn't work T_T";
+    }
+});
+
+// navigation
+backButton.addEventListener('click', () => {
+    waitingForContinue = false;
+    showScreen(homeScreen);
 });
 document.getElementById('createCardButton').addEventListener('click', () => {
     resetCardForm();
@@ -665,7 +878,7 @@ cardForm.addEventListener('submit', (event) => {
 
 // right click
 document.addEventListener('contextmenu', (event) => {
-    const deckRow = event.target.closest('.deck-row');
+    const deckRow = event.target.closest('.deck-row, .deck-card');
     const cardItem = event.target.closest('.card-item');
 
     if (deckRow) {
@@ -690,7 +903,7 @@ contextMenu.addEventListener('click', (event) => event.stopPropagation());
 document.addEventListener('click', () => {
     hideContextMenu();
     closeDeckMenu();
-    closeHeadingMenu();
+    closeSharePanel();
 });
 
 // clicking anywhere also advances a wrong answer
@@ -718,9 +931,9 @@ document.addEventListener('keydown', (event) => {
             deckToggle.focus();
             return;
         }
-        if (isHeadingMenuOpen()) {
-            closeHeadingMenu();
-            headingButton.focus();
+        if (!sharePanel.hidden) {
+            closeSharePanel();
+            shareToggle.focus();
             return;
         }
         if (homeScreen.hidden) {
@@ -745,22 +958,29 @@ document.addEventListener('keydown', (event) => {
 
 /* ---------- 11. start ---------- */
 
-loadDecks();
-loadSection();
-renderDecks();
-renderCards();
-renderSections();
+// the body of this runs at the very bottom of the file, once section
+// 12 has declared its elements — renderSections() reads the clip list
+function start() {
+    loadDecks();
+    loadSection();
+    renderDecks();
+    renderCards();
+    renderSections();
+}
 
 /* ---------- 12. capture, sensing, recording ---------- */
 
 const recordToggle = document.getElementById('recordToggle');
 const recordStatus = document.getElementById('recordStatus');
 const recordingList = document.getElementById('recordingList');
+const clearClipsButton = document.getElementById('clearClips');
 const previewWrap = document.getElementById('previewWrap');
 const previewVideo = document.getElementById('previewVideo');
 const senseBox = document.getElementById('senseBox');
 const senseControls = document.getElementById('senseControls');
 const senseReadout = document.getElementById('senseReadout');
+const switchCount = document.getElementById('switchCount');
+const downloadAllButton = document.getElementById('downloadAll');
 const senseToggle = document.getElementById('senseToggle');
 const senseReset = document.getElementById('senseReset');
 
@@ -1017,13 +1237,106 @@ function checkForChange() {
         }, 300);
     }
 
-    senseReadout.textContent = `change ${changeAmount.toFixed(1)} · triggers ${triggerCount}`;
+    senseReadout.textContent = `change ${changeAmount.toFixed(1)}`;
+    switchCount.textContent = `${triggerCount} switch${triggerCount === 1 ? '' : 'es'}`;
 }
 
+function clipTotal() {
+    return recordingList.querySelectorAll('.recording-item').length;
+}
+
+// keeps the empty line, the bin button and the subtitle in step with
+// however many clips are actually in the list
 function refreshEmptyMessage() {
     const existing = recordingList.querySelector('.empty-message');
-    if (existing) existing.remove();
+    const total = clipTotal();
+
+    if (total === 0 && !existing) {
+        const placeholder = document.createElement('li');
+        placeholder.className = 'empty-message';
+        placeholder.textContent = 'no clips yet T_T';
+        recordingList.appendChild(placeholder);
+    } else if (total > 0 && existing) {
+        existing.remove();
+    }
+
+    clearClipsButton.disabled = total === 0;
+    downloadAllButton.disabled = total === 0;
 }
+
+async function clearAllClips() {
+    const total = recordingList.querySelectorAll('.recording-item').length;
+    if (!total) return;
+    if (!window.confirm(`bin all ${total} clip${total === 1 ? '' : 's'}? this can't be undone.`)) return;
+
+    recordingList.querySelectorAll('audio').forEach((player) => {
+        player.pause();
+        if (player.src.startsWith('blob:')) URL.revokeObjectURL(player.src);
+        player.src = '';
+    });
+    recordingList.innerHTML = '';
+
+    try {
+        const db = await openClipDb();
+        const tx = db.transaction(CLIP_STORE, 'readwrite');
+        tx.objectStore(CLIP_STORE).clear();
+    } catch (error) {
+        setRecordStatus('could not clear the saved clips', true);
+    }
+    clipCount = 0;
+    refreshEmptyMessage();
+}
+
+clearClipsButton.addEventListener('click', clearAllClips);
+
+// every clip as an mp3, oldest first. they go one at a time — chrome
+// drops a burst of downloads, and encoding them all at once would
+// stall the page anyway.
+async function storedClipsInOrder() {
+    const db = await openClipDb();
+    const stored = await new Promise((resolve, reject) => {
+        const request = db.transaction(CLIP_STORE, 'readonly').objectStore(CLIP_STORE).getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+    });
+    return stored.sort((a, b) => a.number - b.number);
+}
+
+async function downloadAllClips() {
+    if (downloadAllButton.disabled) return;
+    let clips;
+    try {
+        clips = await storedClipsInOrder();
+    } catch (error) {
+        setRecordStatus('could not read the saved clips', true);
+        return;
+    }
+    if (!clips.length) return;
+
+    downloadAllButton.disabled = true;
+    let done = 0;
+    for (const record of clips) {
+        setRecordStatus(`packing ${done + 1} of ${clips.length}...`);
+        try {
+            const mp3 = await blobToMp3(record.blob);
+            const href = URL.createObjectURL(mp3);
+            const link = document.createElement('a');
+            link.href = href;
+            link.download = `${record.name || `clip-${record.number}`}.mp3`;
+            link.click();
+            window.setTimeout(() => URL.revokeObjectURL(href), 10000);
+            done += 1;
+        } catch (error) {
+            setRecordStatus(`clip ${record.number} failed — ${error.message}`, true);
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 400));
+    }
+    setRecordStatus(done === clips.length ? '' : `only ${done} of ${clips.length} worked`, done !== clips.length);
+    downloadAllButton.disabled = false;
+    refreshEmptyMessage();
+}
+
+downloadAllButton.addEventListener('click', downloadAllClips);
 
 /* --- clip storage (survives refresh) --- */
 
@@ -1479,7 +1792,7 @@ function stopCapture() {
     previousSample = null;
     previewWrap.hidden = true;
     senseReadout.hidden = true;
-    senseReadout.textContent = 'change 0.0 · triggers 0';
+    senseReadout.textContent = 'change 0.0';
     senseControls.hidden = true;
     senseToggle.setAttribute('aria-expanded', 'false');
     recordToggle.classList.remove('recording');
@@ -1514,6 +1827,7 @@ async function startCapture() {
     refreshEmptyMessage();
     senseReadout.hidden = false;
     triggerCount = 0;
+    switchCount.textContent = '0 switches';
     changeArmed = false;
     previousSample = null;
     applySenseSettings();
@@ -1542,3 +1856,5 @@ applySenseSettings();
 recorderReady = true;
 loadStoredClips();
 senseToggle.hidden = true;
+
+start();

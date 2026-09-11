@@ -11,141 +11,292 @@
     <!-- right-click menu, shared by every screen -->
     <div class="context-menu" id="contextMenu" hidden></div>
 
-    <main>
+    <div class="app-shell">
 
-        <!-- ============ home ============ -->
-        <section class="screen" id="homeScreen" aria-label="home">
+        <!-- left bar — full height, runs past the top bar.
+             TEMPORARY: holding a note from claude. delete the
+             .rail-note block when you've read it. -->
+        <aside class="rail rail-left" aria-label="left menu">
+            <div class="rail-note">
 
-            <header class="screen-head">
-                <h1>home</h1>
-                <p id="homeSubtitle">hello</p>
-            </header>
+                <h3>just did</h3>
+                <ul>
+                    <li><b>no colour anywhere.</b> the red and green were a leftover rule break &mdash; right answers fill in black, wrong ones get struck through, and error text is just bold ink</li>
+                    <li>messages no longer push the page around. the record status <b>covers the meter</b> instead of taking its own line, and the "sent" message is gone entirely</li>
+                    <li>caption under cards / audio removed</li>
+                    <li>four steps, all at the top of style.css: <code>--gap</code> 32 (corners, separate blocks), <code>--group</code> 16 (a bar and its list), <code>--tight</code> 8 (controls side by side), <code>--rail-pad</code> 16 (the narrow side bars)</li>
+                    <li>a bar and the list it feeds sit <b>16</b> apart &mdash; that's <code>--group</code>, and every section gets it, cards, audio and whatever you add next</li>
+                    <li>switching cards &harr; audio cross-fades now &mdash; the old panels ease out, then the new ones come in. the tabs stay put since they're what you clicked</li>
+                    <li><b>create and practice fill the page</b> now, same frame as the other two. create is a bar of fields feeding the card list; practice puts the question across the top and the four answers as real quadrants &mdash; which finally makes the keyboard mapping make sense</li>
+                </ul>
 
-            <!-- section switcher -->
-            <section class="deck-organizer" aria-label="sections">
-                <div class="deck-heading">
-                    <h2 id="sectionTitle">cards</h2>
-                    <button class="heading-button" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch section">&gt;</button>
-                    <div class="heading-menu" id="headingList" hidden></div>
-                </div>
+                <h3>ideas &#x0295;&#x2022;&#x1D25;&#x2022;&#x0294;</h3>
+                <ol>
+                    <li><b>practice remembers what you miss</b> and asks it again sooner. biggest actual feature win &mdash; right now every card is equally likely forever</li>
+                    <li><b>a clip becomes a card.</b> record in audio &rarr; attach it as a question. this is the one thing only <i>your</i> site could do</li>
+                    <li><b>dark mode = invert.</b> black page, white ink. your 2-tone rule gives it to you basically free</li>
+                    <li><b>show the quadrant keys</b> on the answer buttons. you built asdf/hjkl mapping and nobody can see it</li>
+                    <li><b>"done today" count</b> somewhere small. cheap, and it makes you come back</li>
+                    <li><b>drag the deck entries</b> to reorder, like the smiley list already does</li>
+                </ol>
 
-                <!-- deck picker + new deck form -->
-                <div class="deck-bar">
-                    <div class="deck-picker">
-                        <button class="deck-toggle" id="deckToggle" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch deck" title="switch deck">
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                                <circle cx="12" cy="12" r="9"/>
-                                <path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/>
-                                <circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none"/>
-                                <circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none"/>
-                            </svg>
-                        </button>
-                        <div class="deck-menu" id="deckList" hidden></div>
-                    </div>
-                    <form id="deckForm" class="deck-form" novalidate>
-                        <input id="deckNameInput" type="text" placeholder="new deck name">
-                        <button class="basic-button" type="submit">create</button>
-                    </form>
-                </div>
-            </section>
+                <h3>watch out</h3>
+                <ul>
+                    <li>decks live only in this browser &mdash; <b>copy a code somewhere safe now and then</b>, it doubles as a backup</li>
+                    <li>create + practice screens are still a narrow centred column while home is full width</li>
+                </ul>
 
-            <!-- the two big tiles -->
-            <section class="quick-panel" aria-label="card actions">
-                <button class="quick-action primary" id="createCardButton" type="button">
-                    <span class="action-icon">+</span>
-                    <span><strong>create</strong><small>&#x0295;&#x2022;&#x1D25;&#x2022;&#x0294;</small></span>
-                    <b>&rarr;</b>
-                </button>
-                <button class="quick-action" id="randomStudyButton" type="button">
-                    <span class="action-icon play">&#x25B6;</span>
-                    <span><strong>practice</strong><small>&#x0295;-&#x1D25;-&#x0294;</small></span>
-                    <b>&rarr;</b>
-                </button>
-            </section>
-
-            <!-- audio section — record + speaker sensing -->
-            <section class="recorder-panel" id="audioPanel" hidden>
-
-                <div class="record-row">
-                    <button class="basic-button" id="recordToggle" type="button">record</button>
-                    <button class="gear-button" id="senseToggle" type="button" aria-expanded="false" aria-label="sensing settings" title="sensing settings">&#9881;</button>
-                </div>
-
-                <div class="preview-wrap" id="previewWrap" hidden>
-                    <video id="previewVideo" muted playsinline></video>
-                    <div class="sense-box" id="senseBox"></div>
-
-                    <div class="live-bar">
-                        <span class="clip-pulse"></span>
-                        <canvas id="levelCanvas" width="600" height="10"></canvas>
-                        <span class="clip-label" id="liveLabel"></span>
-                    </div>
-
-                    <div class="sense-controls" id="senseControls" hidden>
-                        <div class="panel-handle" aria-hidden="true"></div>
-                        <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
-                        <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
-                        <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
-                        <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
-                        <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="2"><output id="senseThresholdOut"></output></label>
-                        <button class="text-button" id="senseReset" type="button">reset to default</button>
-                    </div>
-                </div>
-
-                <div class="meter-idle">nofing T_T</div>
-
-                <ol id="recordingList"></ol>
-
-                <p class="record-status" id="recordStatus" aria-live="polite"></p>
-                <p class="sense-readout" id="senseReadout" hidden>change 0.0 · triggers 0</p>
-            </section>
-        </section>
-
-        <!-- ============ create ============ -->
-        <section class="screen maker-screen" id="makerScreen" hidden>
-
-            <button class="back-button" type="button" aria-label="back" title="back">&larr;</button>
-
-            <header class="screen-head">
-                <h1>create</h1>
-                <p>add questions</p>
-            </header>
-
-            <form id="cardForm" novalidate>
-                <label for="questionInput">question</label>
-                <textarea id="questionInput" placeholder="question goes here"></textarea>
-                <label for="answerInput">answer</label>
-                <textarea id="answerInput" placeholder="hiihi"></textarea>
-                <p class="form-note" id="cardFormNote" aria-live="polite"></p>
-                <button class="basic-button" id="cardSubmitButton" type="submit">add card</button>
-            </form>
-
-            <section class="card-section" aria-label="current cards">
-                <h2>current cards</h2>
-                <ol id="cardList"><li class="empty-message">no cards yet</li></ol>
-            </section>
-
-        </section>
-
-        <!-- ============ practice ============ -->
-        <section class="screen study-screen" id="studyScreen" hidden>
-
-            <button class="back-button" type="button" aria-label="back" title="back">&larr;</button>
-
-            <header class="screen-head">
-                <h1>practice</h1>
-                <p>hope</p>
-            </header>
-
-            <div class="question-box">
-                <h2 id="studyQuestion"></h2>
-                <div class="answer-options" id="answerOptions"></div>
-                <p id="studyFeedback" aria-live="polite"></p>
             </div>
+        </aside>
 
-        </section>
+        <div class="app-right">
 
-    </main>
+            <!-- top bar — starts beside the left bar, spans the right bar.
+                 carries the current screen's name and the way back. -->
+            <header class="topbar" aria-label="top menu">
+                <button class="back-button" type="button" aria-label="back" title="back" hidden>&larr;</button>
+                <h1 id="topbarTitle">home</h1>
+            </header>
+
+            <div class="app-body">
+
+                <main class="app-content">
+
+                    <!-- ============ home ============ -->
+                    <section class="screen" id="homeScreen" data-title="home" aria-label="home">
+
+                        <section class="deck-organizer">
+
+                            <!-- section tabs — the active one is big, the rest small -->
+                            <nav class="section-tabs" id="sectionTabs" aria-label="sections"></nav>
+
+                            <!-- deck picker, new deck form, decks in and out -->
+                            <div class="deck-bar">
+                                <div class="deck-picker">
+                                    <button class="square-button deck-toggle" id="deckToggle" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch deck" title="switch deck">
+                                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"/>
+                                            <path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/>
+                                            <circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none"/>
+                                            <circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none"/>
+                                        </svg>
+                                    </button>
+                                    <div class="deck-menu" id="deckList" hidden></div>
+                                </div>
+                                <form id="deckForm" class="deck-form" novalidate>
+                                    <input id="deckNameInput" type="text" placeholder="new deck name">
+                                    <button class="basic-button" type="submit">create</button>
+                                </form>
+                                <div class="share-picker">
+                                    <button class="square-button" id="shareToggle" type="button" aria-expanded="false" aria-controls="sharePanel" aria-label="share this deck" title="share this deck">
+                                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <rect x="9" y="9" width="11" height="11" rx="2"/>
+                                            <path d="M5 15V5a2 2 0 0 1 2-2h8"/>
+                                        </svg>
+                                    </button>
+
+                                    <!-- deck codes — a popup, anchored to the button -->
+                                    <div class="share-panel" id="sharePanel" hidden>
+
+                                        <label for="shareIn">paste someone's code</label>
+                                        <div class="share-row">
+                                            <textarea id="shareIn" rows="2" spellcheck="false" placeholder="rc2...."></textarea>
+                                            <button class="basic-button" id="loadCode" type="button">load</button>
+                                        </div>
+
+                                        <label for="shareOut">this deck's code</label>
+                                        <div class="share-row">
+                                            <textarea id="shareOut" rows="2" readonly spellcheck="false"></textarea>
+                                            <button class="basic-button" id="copyCode" type="button">copy</button>
+                                        </div>
+
+                                        <p class="share-note" id="shareNote" aria-live="polite"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </section>
+
+                        <!-- placeholder — the deck list is going here.
+                             the smiley stays either way, it'll hold
+                             something else. -->
+                        <div class="deck-list-slot" id="deckListSlot"></div>
+
+                        <!-- audio section — laid out like the cards page:
+                             a control bar, then a list beside a stage -->
+                        <section class="recorder-panel" id="audioPanel" hidden>
+
+                            <div class="audio-bar">
+                                <button class="basic-button" id="recordToggle" type="button">record</button>
+
+                                <!-- the recorder itself, right beside the button -->
+                                <div class="bar-meter">
+                                    <p class="record-status" id="recordStatus" aria-live="polite"></p>
+                                    <div class="meter-idle">nofing T_T</div>
+                                    <div class="live-meter" id="liveMeter">
+                                        <span class="clip-pulse"></span>
+                                        <canvas id="levelCanvas" width="600" height="10"></canvas>
+                                        <span class="clip-label" id="liveLabel"></span>
+                                        <span class="switch-count" id="switchCount">0 switches</span>
+                                    </div>
+                                </div>
+
+                                <button class="square-button" id="senseToggle" type="button" aria-expanded="false" aria-label="sensing settings" title="sensing settings">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="3.2"/>
+                                        <path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2L5.6 5.6"/>
+                                    </svg>
+                                </button>
+                                <button class="square-button" id="downloadAll" type="button" aria-label="download every clip" title="download every clip, oldest first">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M12 3.5v10"/>
+                                        <path d="M8.5 10.5l3.5 3.5 3.5-3.5"/>
+                                        <path d="M4.5 16v3.5h15V16"/>
+                                    </svg>
+                                </button>
+                                <button class="square-button" id="clearClips" type="button" aria-label="bin every clip" title="bin every clip">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M4.5 6.5h15"/>
+                                        <path d="M10 6.5V4.5h4v2"/>
+                                        <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
+                                        <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div class="audio-body">
+
+                                <!-- the clips, in the same box the decks get -->
+                                <ol id="recordingList"></ol>
+
+                                <!-- everything live goes here -->
+                                <div class="audio-stage">
+                                    <div class="preview-wrap" id="previewWrap" hidden>
+                                        <video id="previewVideo" muted playsinline></video>
+                                        <div class="sense-box" id="senseBox"></div>
+
+                                        <div class="sense-controls" id="senseControls" hidden>
+                                            <div class="panel-handle" aria-hidden="true"></div>
+                                            <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
+                                            <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
+                                            <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
+                                            <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
+                                            <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="2"><output id="senseThresholdOut"></output></label>
+                                            <button class="text-button" id="senseReset" type="button">reset to default</button>
+                                        </div>
+                                    </div>
+
+                                    <p class="sense-readout" id="senseReadout" hidden>change 0.0</p>
+                                </div>
+                            </div>
+                        </section>
+                    </section>
+
+                    <!-- ============ create ============ -->
+                    <section class="screen maker-screen" id="makerScreen" data-title="create" hidden>
+
+                        <!-- a bar that feeds a list, same shape as the other pages -->
+                        <form id="cardForm" class="maker-bar" novalidate>
+                            <label class="maker-field">
+                                <span>question</span>
+                                <textarea id="questionInput" placeholder="question goes here"></textarea>
+                            </label>
+                            <label class="maker-field">
+                                <span>answer</span>
+                                <textarea id="answerInput" placeholder="hiihi"></textarea>
+                            </label>
+                            <button class="basic-button" id="cardSubmitButton" type="submit">add card</button>
+                            <p class="form-note" id="cardFormNote" aria-live="polite"></p>
+                        </form>
+
+                        <ol id="cardList"><li class="empty-message">no cards yet</li></ol>
+
+                    </section>
+
+                    <!-- ============ practice ============ -->
+                    <section class="screen study-screen" id="studyScreen" data-title="practice" hidden>
+
+                        <!-- question across the top, the four answers
+                             filling the rest as real quadrants -->
+                        <div class="question-box">
+                            <h2 id="studyQuestion"></h2>
+                            <p id="studyFeedback" aria-live="polite"></p>
+                        </div>
+
+                        <div class="answer-options" id="answerOptions"></div>
+
+                    </section>
+
+                </main>
+
+                <!-- right bar — always in, sits under the top bar -->
+                <aside class="rail rail-right" aria-label="right menu">
+
+                    <!-- help — keep this current whenever something new
+                         lands on the site -->
+                    <section class="help-box" aria-label="help">
+                        <h2>help</h2>
+
+                        <details>
+                            <summary>what is this</summary>
+                            <p>two things in one. <b>cards</b> is flashcards, <b>audio</b> records a chrome tab. swap with the big words at the top left.</p>
+                        </details>
+
+                        <details>
+                            <summary>make a deck</summary>
+                            <p>type a name in the bar, hit <b>create</b>. each deck shows up in the list below it with its own face.</p>
+                        </details>
+
+                        <details>
+                            <summary>your decks</summary>
+                            <p>click one to switch to it &mdash; the black one is the deck you're on. <b>right-click</b> any of them to rename, delete, or <b>change look</b> (eight shapes, and the one you pick travels with the deck's code). <b>ctrl+z</b> puts back whatever you just deleted. the smiley opens the same list as a dropdown, where you can drag to reorder.</p>
+                        </details>
+
+                        <details>
+                            <summary>add cards</summary>
+                            <p>the <b>create</b> tile takes you to a question / answer form. cards land in whichever deck is open.</p>
+                        </details>
+
+                        <details>
+                            <summary>practice</summary>
+                            <p>the four answers fill the page as quadrants, and the keyboard matches where they sit: <b>qwert</b> top-left, <b>yuiop</b> top-right, <b>asdf/zxcv</b> bottom-left, <b>hjkl/nm</b> bottom-right. wrong answer &rarr; click or press anything to move on.</p>
+                        </details>
+
+                        <details>
+                            <summary>audio</summary>
+                            <p>hit record and pick a chrome tab &mdash; <b>tick "also share tab audio"</b> or you get silence. it watches a small box over the speaker's name and starts a fresh clip whenever that name changes; the counter in the meter tells you how many switches it's caught. clips under 2s are binned. the gear shows the video so you can aim that box, the &darr; saves every clip as mp3 oldest-first, and the bin clears the lot.</p>
+                        </details>
+
+                        <details>
+                            <summary>share a deck</summary>
+                            <p>the square button next to <b>create</b> opens deck codes. <b>copy</b> gives you a code for the deck you're on &mdash; send it to anyone. paste one in and hit <b>load</b> to get their deck.</p>
+                        </details>
+
+                        <details>
+                            <summary>don't lose your stuff</summary>
+                            <p>everything lives in this browser only, so clearing site data wipes it. a code is also a backup &mdash; copy one somewhere safe.</p>
+                        </details>
+                    </section>
+
+                    <!-- the two tiles, stacked -->
+                    <section class="quick-panel" aria-label="card actions">
+                        <button class="quick-action primary" id="createCardButton" type="button">
+                            <span class="action-icon">+</span>
+                            <span><strong>create</strong><small>&#x0295;&#x2022;&#x1D25;&#x2022;&#x0294;</small></span>
+                            <b>&rarr;</b>
+                        </button>
+                        <button class="quick-action" id="randomStudyButton" type="button">
+                            <span class="action-icon play">&#x25B6;</span>
+                            <span><strong>practice</strong><small>&#x0295;-&#x1D25;-&#x0294;</small></span>
+                            <b>&rarr;</b>
+                        </button>
+                    </section>
+
+                </aside>
+
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>

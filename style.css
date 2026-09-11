@@ -1,6 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&family=Bitcount+Prop+Double:wght@400;700&display=swap');
 
 /* =========================================================
+   recall — style.css
+   ---------------------------------------------------------
+   1.  tokens
+   2.  reset + base
+   3.  app shell — the bars around the page
+   4.  page column — one layout for every screen
+   5.  shared pieces — buttons and the deck dropdown
+   6.  home — section tabs
+   7.  home — deck bar
+   8.  home — deck dropdown rows
+   9.  right bar — help box and the two tiles
+   10. create screen
+   11. practice screen
+   12. right-click menu
+   13. audio — layout
+   14. audio — the live bar
+   15. audio — sensing box and its settings
+   16. audio — saved clips
+   17. audio — the clip being recorded right now
+   18. small screens
+   ========================================================= */
+
+/* =========================================================
    1. tokens
    ========================================================= */
 :root {
@@ -9,14 +32,28 @@
 	--muted: #8a8a8a;   /* placeholder text only */
 	--hover: #f1f1f1;   /* tinted hover surface */
 	--line: #000;
-	--right: #1f7a55;
-	--wrong: #bc3f3f;
 
-	--col: 34rem;      /* max page width */
+	--col: 34rem;      /* max width of the content column */
+	--rail: 19rem;     /* width of both side bars */
+	--topbar: 3.25rem; /* height of the top bar */
 	--radius: 10px;
 	--field: 42px;     /* height of every control in the deck bar */
 
 	--stack: 0.75rem;  /* gap between sibling panels and list rows */
+	/* two steps, and only two. --gap is the layout one: every corner
+	   inset and every gap between separate boxes, on every page.
+	   --tight is for things that belong together — controls sitting
+	   side by side in a bar, rows inside one list. */
+	--gap: 2rem;       /* corners, and between separate blocks */
+	--group: 1rem;     /* a control bar and the list it feeds — every
+	                      section uses this, cards, audio and whatever
+	                      comes next */
+	--tight: 0.5rem;   /* controls sitting side by side in one bar */
+	--rail-pad: 1rem;  /* the side bars are narrow — they run tighter */
+
+	--ease: cubic-bezier(0.22, 1, 0.36, 1);   /* soft, decelerating */
+	--quick: 0.18s;    /* hovers and presses */
+	--slow: 0.4s;      /* things arriving on screen */
 
 	--font: 'Amiko', 'Segoe UI', system-ui, sans-serif;
 	--title-font: 'Bitcount Prop Double', 'Courier New', monospace;
@@ -54,45 +91,312 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 	outline: 2px solid var(--ink);
 	outline-offset: 2px;
 }
+.topbar :focus-visible { outline-color: #fff; }
 
 ::selection { color: #fff; background: var(--ink); }
 
+/* nothing on the page shows a scrollbar — a gray one would break the
+   two-tone rule anyway. everything still scrolls. */
+.app-content, .rail, .help-box, .deck-menu, #recordingList, .sense-controls {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.app-content::-webkit-scrollbar,
+.rail::-webkit-scrollbar,
+.help-box::-webkit-scrollbar,
+.deck-menu::-webkit-scrollbar,
+#recordingList::-webkit-scrollbar,
+.sense-controls::-webkit-scrollbar { width: 0; height: 0; }
+
 /* =========================================================
-   3. page shell — one layout for every screen
+   2b. motion — hovers, presses, and things arriving
+   ========================================================= */
+button, .deck-row, summary {
+	transition:
+		color var(--quick) var(--ease),
+		background-color var(--quick) var(--ease),
+		border-color var(--quick) var(--ease),
+		transform var(--quick) var(--ease);
+}
+button:active { transform: scale(0.97); }
+/* icon buttons keep still — a 2px stroke shimmers when it scales, and
+   it only renders crisply if the button lands on a whole pixel, which
+   is why the rows above it have whole-pixel heights */
+.square-button:active, .deck-card:active { transform: none; }
+
+/* a screen arriving: rises, overshoots a hair, settles */
+@keyframes rise-in {
+	0%   { opacity: 0; transform: translateY(14px) scale(0.985); }
+	60%  { opacity: 1; transform: translateY(-3px) scale(1.004); }
+	100% { opacity: 1; transform: none; }
+}
+.screen:not([hidden]) { animation: rise-in var(--slow) var(--ease) both; }
+
+/* moving between screens: the new one comes in from the side you're
+   heading, overshoots slightly, settles. going back mirrors it. */
+@keyframes screen-forward {
+	0%   { opacity: 0; transform: translateX(34px) scale(0.985); }
+	55%  { opacity: 1; transform: translateX(-6px) scale(1.004); }
+	100% { opacity: 1; transform: none; }
+}
+@keyframes screen-back {
+	0%   { opacity: 0; transform: translateX(-34px) scale(0.985); }
+	55%  { opacity: 1; transform: translateX(6px) scale(1.004); }
+	100% { opacity: 1; transform: none; }
+}
+.screen.enter-forward:not([hidden]) { animation: screen-forward 0.44s var(--ease) both; }
+.screen.enter-back:not([hidden]) { animation: screen-back 0.44s var(--ease) both; }
+
+/* the title changes with the screen, so it swaps rather than cuts */
+@keyframes title-swap {
+	0%   { opacity: 0; transform: translateY(8px); }
+	100% { opacity: 1; transform: none; }
+}
+.topbar h1.swap { animation: title-swap 0.34s var(--ease) both; }
+
+/* and the way back fades in behind it */
+.back-button:not([hidden]) { animation: title-swap 0.34s var(--ease) 0.06s both; }
+
+/* panels inside a screen follow it in, one behind the other */
+.deck-organizer:not([hidden]) { animation: rise-in 0.3s var(--ease) both; }
+.deck-list-slot:not([hidden]) { animation: rise-in 0.3s var(--ease) 0.06s both; }
+.recorder-panel:not([hidden]) { animation: rise-in 0.3s var(--ease) 0.06s both; }
+.help-box:not([hidden]) { animation: rise-in 0.34s var(--ease) 0.06s both; }
+.quick-panel:not([hidden]) { animation: rise-in 0.34s var(--ease) 0.12s both; }
+#studyQuestion { animation: rise-in 0.34s var(--ease) both; }
+
+/* leaving a section: the panels under the tabs ease out together.
+   the tabs themselves stay put, since they're what you just clicked. */
+.section-swap .deck-bar,
+.section-swap .deck-list-slot,
+.section-swap .recorder-panel {
+	animation: none !important;
+	opacity: 0;
+	transform: translateY(8px);
+	transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
+}
+
+/* the answer buttons deal themselves out one after another */
+@keyframes deal-in {
+	from { opacity: 0; transform: translateY(10px) rotate(-1.5deg); }
+	to   { opacity: 1; transform: none; }
+}
+
+/* right answer pops, wrong one shakes its head */
+@keyframes pop {
+	0%   { transform: none; }
+	40%  { transform: scale(1.05); }
+	100% { transform: none; }
+}
+@keyframes shake {
+	0%, 100% { transform: none; }
+	20% { transform: translateX(-5px); }
+	40% { transform: translateX(4px); }
+	60% { transform: translateX(-3px); }
+	80% { transform: translateX(2px); }
+}
+
+/* the deck entries cascade in */
+@keyframes slide-in {
+	from { opacity: 0; transform: translateX(-10px); }
+	to   { opacity: 1; transform: none; }
+}
+.deck-card { animation: slide-in 0.3s var(--ease) both; }
+.deck-card:nth-child(1) { animation-delay: 0.02s; }
+.deck-card:nth-child(2) { animation-delay: 0.06s; }
+.deck-card:nth-child(3) { animation-delay: 0.1s; }
+.deck-card:nth-child(4) { animation-delay: 0.14s; }
+.deck-card:nth-child(5) { animation-delay: 0.18s; }
+.deck-card:nth-child(n+6) { animation-delay: 0.22s; }
+
+/* a tab springs when it takes over */
+@keyframes tab-pop {
+	0%   { transform: scale(0.92); }
+	55%  { transform: scale(1.04); }
+	100% { transform: none; }
+}
+.section-tab.active { animation: tab-pop 0.4s var(--ease); }
+
+/* a popup unfolding from the button it hangs off */
+@keyframes drop-in {
+	from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+	to   { opacity: 1; transform: none; }
+}
+.share-panel:not([hidden]), .deck-menu:not([hidden]) {
+	animation: drop-in 0.22s var(--ease) both;
+}
+.share-panel { transform-origin: top right; }
+.deck-menu { transform-origin: top left; }
+
+/* help rows unroll instead of snapping open */
+@keyframes unroll {
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: none; }
+}
+.help-box details[open] p { animation: unroll 0.25s var(--ease) both; }
+
+/* =========================================================
+   3. app shell — the bars around the page
+   ========================================================= */
+/* left bar runs the full height; the top bar starts beside it and
+   spans the right bar, which hangs below it. */
+.app-shell {
+	display: flex;
+	height: 100vh;
+	overflow: hidden;
+}
+
+.app-right {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.rail {
+	flex: 0 0 var(--rail);
+	background: var(--paper);
+	overflow-y: auto;
+}
+
+/* the left bar's edge is a wavy line instead of a straight one.
+   overflow must stay visible or the ::after gets clipped. */
+.rail-left {
+	position: relative;
+	overflow: visible;
+	z-index: 1;
+}
+.rail-left::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	right: -22px;   /* cusps sit on the bar's edge, bumps push 13px out */
+	width: 26px;
+	height: 100%;
+	pointer-events: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23fff'/%3E%3Cpath d='M4 0 A 25 25 0 0 1 4 44' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+	background-repeat: repeat-y;
+	background-size: 26px 44px;
+}
+/* the right bar holds the two tiles and is always in. its edge is a
+   column of round dots rather than a line — a real border can only
+   do square dashes, so it's drawn as a repeating background. */
+.rail-right {
+	display: flex;
+	flex-direction: column;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='16' viewBox='0 0 2 16'%3E%3Ccircle cx='1' cy='8' r='1' fill='%23000'/%3E%3C/svg%3E");
+	background-repeat: repeat-y;
+	background-position: left top;
+	background-size: 2px 16px;
+	/* reaches 13px past the bar, matching the scallop's outermost bump */
+	margin-left: -13px;
+	background-clip: border-box;
+	/* every inset in here is one value, including the one off the dots */
+	gap: var(--rail-pad);
+	padding: var(--rail-pad);
+	overflow: hidden;   /* the help box scrolls, the bar doesn't */
+}
+
+/* TEMPORARY — styles the note sitting in the left bar. safe to
+   delete along with the .rail-note block in index.html. */
+.rail-note {
+	padding: 1.25rem 1.75rem 2rem 1.25rem;
+	font-size: 0.78rem;
+	line-height: 1.45;
+	text-align: left;
+}
+.rail-note h3 {
+	margin: 1.5rem 0 0.4rem;
+	font-family: var(--title-font);
+	font-size: 1rem;
+}
+.rail-note h3:first-child { margin-top: 0; }
+.rail-note ul, .rail-note ol { margin: 0; padding-left: 1.1rem; }
+.rail-note li { margin-bottom: 0.4rem; }
+.rail-note code { font-family: var(--title-font); font-size: 0.95em; }
+
+.topbar {
+	position: relative;   /* the back button hangs off this */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 var(--topbar);
+	color: #fff;
+	background: var(--ink);
+}
+.topbar h1 { font-size: 1.6rem; line-height: 1; }
+
+.app-body {
+	display: flex;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+}
+
+.app-content {
+	flex: 1;
+	min-width: 0;
+	overflow-y: auto;
+}
+
+/* =========================================================
+   4. page column — one layout for every screen
    ========================================================= */
 .screen {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: 1.5rem;
+	gap: var(--gap);
 	width: 100%;
 	max-width: var(--col);
-	min-height: 100vh;
+	min-height: 100%;
+	justify-content: safe center;
 	margin: 0 auto;
-	padding: 5rem 1.25rem 1.5rem;
+	padding: var(--gap);
 	text-align: center;
 }
 
-.screen-head p {
-	margin: 0.35rem 0 0;
-	color: var(--ink);
+#homeScreen {
+	max-width: none;
+	height: 100%;
+	min-height: 0;
+	justify-content: flex-start;
+	gap: var(--group);
+	padding: var(--gap);
+	overflow: hidden;     /* the page never scrolls — the boxes do */
+	text-align: left;
+}
+#homeScreen .deck-organizer { flex: none; }
+
+/* create and practice run on the same frame as home */
+#makerScreen, #studyScreen {
+	max-width: none;
+	height: 100%;
+	min-height: 0;
+	justify-content: flex-start;
+	gap: var(--group);
+	padding: var(--gap);
+	overflow: hidden;
+	text-align: left;
 }
 
+/* sits in the top bar, so the title stays centred in the bar */
 .back-button {
 	position: absolute;
-	top: 5rem;
+	top: 50%;
 	left: 1.25rem;
 	padding: 0.25rem 0.4rem;
-	color: var(--ink);
+	color: #fff;
 	background: none;
 	border: 0;
 	font-size: 1.5rem;
 	line-height: 1;
 	cursor: pointer;
+	transform: translateY(-50%);
 }
 
 /* =========================================================
-   4. shared pieces — buttons, dropdown panels, menu rows
+   5. shared pieces — buttons and the deck dropdown
    ========================================================= */
 
 /* pill button */
@@ -108,9 +412,9 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 }
 
 /* floating white panel, used by both dropdowns */
-.deck-menu, .heading-menu {
+.deck-menu {
 	position: absolute;
-	top: calc(100% + 0.35rem);
+	top: calc(100% + 0.375rem);
 	z-index: 20;
 	max-height: 13rem;
 	padding: 0.25rem;
@@ -121,38 +425,6 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 .deck-menu { left: 0; width: max(100%, 15rem); }
-.heading-menu { right: 0; width: 15rem; }
-
-/* a row inside the section dropdown */
-.menu-row {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
-	width: 100%;
-	padding: 0.55rem 0.6rem;
-	background: none;
-	border: 0;
-	border-radius: 6px;
-	text-align: left;
-	font-weight: 600;
-	cursor: pointer;
-}
-.menu-row + .menu-row { border-top: 1px solid var(--line); }
-.menu-row:hover { background: var(--hover); }
-.menu-row .menu-check {
-	flex: none;
-	width: 1rem;
-	color: var(--ink);
-}
-.menu-row.active-section { box-shadow: inset 3px 0 0 var(--ink); }
-
-/* a bordered white surface — card list, clip list, panels */
-.section-panel {
-	width: 100%;
-	background: #fff;
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-}
 
 .empty-message {
 	padding: 0.9rem 0;
@@ -161,50 +433,51 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 }
 
 /* =========================================================
-   5. home — section heading
+   6. home — section tabs
    ========================================================= */
 .deck-organizer, .quick-panel, .recorder-panel { width: 100%; }
 .deck-organizer {
-	margin-top: 1rem;
+	position: relative;
+	z-index: 2;   /* dropdowns hang out of here, so it outranks the slot */
+	display: flex;
+	flex-direction: column;
+	gap: var(--gap);
 	text-align: left;
 }
 
-.deck-heading {
-	position: relative;
-	margin: 0 0.65rem 1rem;
-}
-
-.deck-organizer h2 {
+/* section tabs — "cards  audio". the active one is big in the
+   title font, the others sit small on the same baseline. */
+.section-tabs {
+	display: flex;
+	align-items: baseline;
+	gap: 1.25rem;
+	height: 2.75rem;   /* whole pixels — see the note on .square-button */
 	margin: 0;
-	font-size: 1rem;
-	text-align: center;
 }
 
-/* the spinning arrow. transform is also set from JS,
-   which must keep the translateY(-50%) or it jumps. */
-.heading-button {
-	position: absolute;
-	top: 50%;
-	right: 0;
+.section-tab {
 	padding: 0;
 	background: none;
 	border: 0;
-	font-size: 1rem;
+	font-family: var(--title-font);
+	font-size: 1.1rem;
 	font-weight: 700;
-	line-height: 1.5;
+	line-height: 1.1;
 	cursor: pointer;
-	transform: translateY(-50%);
-	transition: transform 0.7s cubic-bezier(0.16, 0.84, 0.3, 1);
+	transition: font-size 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
+.section-tab.active { font-size: 2.25rem; cursor: default; }
+
 
 /* =========================================================
-   6. home — deck bar
+   7. home — deck bar
    ========================================================= */
-.deck-bar { display: flex; align-items: center; gap: 0.5rem; }
+.deck-bar { display: flex; align-items: center; gap: var(--tight); }
 
-.deck-picker { position: relative; flex: none; }
+.deck-picker { position: relative; z-index: 30; flex: none; }
 
-.deck-toggle {
+/* square icon button — the deck smiley, import, export */
+.square-button {
 	display: grid;
 	place-items: center;
 	flex: none;
@@ -217,9 +490,13 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 	line-height: 1;
 	cursor: pointer;
 }
-.deck-toggle[aria-expanded="true"] { color: #fff; background: var(--ink); border-color: var(--ink); }
+.square-button:hover, .deck-toggle[aria-expanded="true"] {
+	color: #fff;
+	background: var(--ink);
+	border-color: var(--ink);
+}
 
-.deck-form { display: flex; flex: 1; gap: 0.5rem; }
+.deck-form { display: flex; flex: 1; gap: var(--tight); }
 .deck-form input {
 	flex: 1;
 	min-width: 0;
@@ -232,8 +509,108 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 .deck-form input::placeholder { color: var(--muted); }
 .deck-form .basic-button { flex: none; height: var(--field); padding: 0 1.1rem; }
 
+/* deck codes — a popup hanging off the share button */
+.share-picker { position: relative; z-index: 30; flex: none; }
+.share-panel {
+	position: absolute;
+	top: calc(100% + 0.375rem);
+	right: 0;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	width: 28rem;
+	max-width: 78vw;
+	padding: var(--tight);
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+	text-align: left;
+}
+.share-panel label { font-weight: 700; font-size: 0.85rem; }
+.share-panel label + .share-row { margin-bottom: 0.5rem; }
+
+.share-row { display: flex; align-items: stretch; gap: var(--tight); }
+.share-row textarea {
+	flex: 1;
+	min-width: 0;
+	/* exactly two lines tall, so a long code never leaves half a line
+	   showing at the bottom — the rest scrolls */
+	height: calc(2 * 1.4em + 1rem + 2px);
+	padding: 0.5rem 0.7rem;
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font-size: 0.8rem;
+	line-height: 1.4;
+	resize: vertical;
+	overflow-wrap: anywhere;
+}
+.share-row textarea::placeholder { color: var(--muted); }
+.share-row .basic-button { flex: none; align-self: stretch; padding: 0 1.1rem; }
+
+.share-note { min-height: 1.2rem; margin: 0; font-size: 0.8rem; }
+
+/* placeholder box for the deck list — a third of the width,
+   filling the blank space under the deck bar */
+.deck-list-slot {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--tight);
+	width: 33%;
+	min-height: 12rem;
+	padding: var(--tight);
+	overflow-y: auto;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	scrollbar-width: none;
+}
+.deck-list-slot::-webkit-scrollbar { width: 0; }
+
+/* one deck — the smiley's face, then the name and what's in it */
+.deck-card {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: 0.7rem;
+	width: 100%;
+	padding: 0.6rem 0.7rem;
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	text-align: left;
+	cursor: pointer;
+}
+.deck-card:hover { color: #fff; background: var(--ink); }
+.deck-card.active-deck {
+	color: #fff;
+	background: var(--ink);
+	border-color: var(--ink);
+	cursor: default;
+}
+
+/* a deck's look — one of eight outline shapes. it takes the row's
+   colour, so it flips to white on the active row. */
+.deck-shape {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+}
+
+.deck-card-text { min-width: 0; }
+.deck-card-text strong,
+.deck-card-text small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deck-card-text strong { font-size: 0.95rem; }
+.deck-card-text small { font-size: 0.78rem; }
+
 /* =========================================================
-   7. home — deck dropdown rows
+   8. home — deck dropdown rows
    ========================================================= */
 .deck-row {
 	display: flex;
@@ -307,22 +684,63 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 }
 
 /* =========================================================
-   8. home — the big tiles
+   9. right bar — help box and the two tiles
 
-   shared by the create/practice pair and the record tile,
-   so all three keep the same height, border, and face.
+   the tiles are shared by the create/practice pair and the
+   record tile, so all three keep the same height and face.
    ========================================================= */
-.quick-panel { display: flex; gap: var(--stack); }
+
+/* fills the blank area above the tiles. it scrolls inside itself, so
+   opening a row never moves the tiles. */
+.help-box {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding: var(--tight);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font-size: 0.78rem;
+	line-height: 1.45;
+	text-align: left;
+}
+.help-box h2 {
+	margin: 0 0 0.4rem;
+	font-family: var(--title-font);
+	font-size: 1rem;
+}
+.help-box details { border-top: 1px solid var(--line); }
+.help-box summary {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.5rem;
+	padding: 0.4rem 0;
+	font-weight: 700;
+	list-style: none;
+	cursor: pointer;
+}
+.help-box summary::-webkit-details-marker { display: none; }
+.help-box summary::after { content: '+'; }
+.help-box details[open] summary::after { content: '\2212'; }
+.help-box summary:hover { text-decoration: underline; }
+.help-box p { margin: 0 0 0.6rem; }
+/* stacked at the bottom of the right bar. the bar supplies the
+   edge inset, so this only has to match it between the tiles. */
+.quick-panel {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	gap: var(--rail-pad);
+}
 
 .quick-action {
 	display: flex;
-	flex: 1;
+	flex: none;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 0.4rem;
-	min-height: 10rem;
-	padding: 1.5rem 1rem;
+	gap: 0.3rem;
+	min-height: 10.5rem;
+	padding: 1.5rem 0.75rem;
 	background: #fff;
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
@@ -330,55 +748,70 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 }
 .quick-action.primary { color: #fff; background: var(--ink); border-color: var(--ink); }
 
+/* hover lifts the tile and wakes its face up — the colours stay put */
+.quick-action { transition: transform var(--quick) var(--ease); }
+.quick-action:hover { transform: translateY(-4px); }
+.quick-action:active { transform: translateY(-1px); }
+.quick-action small { transition: transform 0.25s var(--ease); }
+.quick-action:hover small { animation: face-wiggle 0.5s var(--ease); }
+
+@keyframes face-wiggle {
+	0%   { transform: none; }
+	25%  { transform: translateY(-3px) rotate(-6deg); }
+	55%  { transform: translateY(0) rotate(5deg); }
+	80%  { transform: translateY(-1px) rotate(-2deg); }
+	100% { transform: none; }
+}
+
 .quick-action .action-icon { color: var(--ink); font-size: 0.85rem; }
 .quick-action.primary .action-icon { color: #fff; }
 
 .quick-action strong, .quick-action small { display: block; }
 .quick-action small {
 	order: -1;
-	margin-bottom: 0.5rem;
-	font-size: 1.5rem;
+	margin-bottom: 0.3rem;
+	font-size: 1.15rem;
 	line-height: 1.2;
 }
-.quick-action strong { font-size: 1.05rem; font-weight: 700; }
+.quick-action strong { font-size: 0.95rem; font-weight: 700; }
 .quick-action b { display: none; }
 
 /* =========================================================
-   9. create screen
+   10. create screen
    ========================================================= */
-#cardForm {
+
+.form-note:empty { display: none; }
+
+.maker-bar {
+	position: relative;   /* the note hangs off this */
 	display: flex;
-	flex-direction: column;
-	gap: 0.35rem;
+	align-items: flex-end;
+	flex: none;
+	gap: var(--tight);
 	width: 100%;
-	margin: 0;
-	text-align: left;
 }
-#cardForm label { color: var(--ink); font-size: 0.9rem; }
-#cardForm textarea {
+.maker-field { display: flex; flex: 1; flex-direction: column; gap: 0.25rem; min-width: 0; }
+.maker-field span { font-size: 0.85rem; font-weight: 700; }
+.maker-field textarea {
 	width: 100%;
-	min-height: 3.5rem;
-	padding: 0.7rem 0.8rem;
+	height: 4.5rem;
+	padding: 0.6rem 0.75rem;
 	background: #fff;
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
-	resize: vertical;
+	resize: none;
 }
-#cardForm textarea::placeholder { color: var(--muted); }
-#cardForm textarea + label { margin-top: 0.5rem; }
+.maker-field textarea::placeholder { color: var(--muted); }
+.maker-bar .basic-button { flex: none; height: 4.5rem; align-self: flex-end; padding: 0 1.5rem; }
 
+/* the note sits over the bar's corner, so nothing shifts for it */
 .form-note {
-	min-height: 1.25rem;
-	margin: 0.4rem 0 0;
-	color: var(--wrong);
-	font-size: 0.9rem;
-}
-
-.card-section { width: 100%; text-align: left; }
-.card-section h2 {
-	margin: 0 0 0.4rem;
-	font-size: 1rem;
-	text-align: center;
+	position: absolute;
+	right: 0;
+	bottom: calc(100% + 0.25rem);
+	margin: 0;
+	font-weight: 700;
+	font-size: 0.85rem;
 }
 
 /* the two scrolling lists share their frame and scrollbar */
@@ -397,7 +830,24 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 #cardList::-webkit-scrollbar,
 #recordingList::-webkit-scrollbar { display: none; }
 
-#cardList { max-height: 6rem; }
+#cardList {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--tight);
+	min-height: 0;
+	padding: var(--tight);
+}
+#cardList .empty-message { padding: 1.25rem 0; }
+#recordingList { display: flex; flex-direction: column; gap: var(--tight); padding: var(--tight); }
+#recordingList .empty-message { padding: 1.25rem 0; }
+
+/* a disabled icon button stays black and white — just quieter */
+.square-button:disabled {
+	cursor: default;
+	opacity: 0.35;
+}
+.square-button:disabled:hover { color: var(--ink); background: #fff; }
 
 #cardList .card-item {
 	display: flex;
@@ -407,7 +857,6 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 	border-radius: 6px;
 	cursor: context-menu;
 }
-#cardList .card-item + .card-item { border-top: 1px solid var(--line); }
 #cardList .card-item:hover { background: var(--hover); }
 #cardList .card-text {
 	flex: 1;
@@ -418,67 +867,92 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 }
 
 /* =========================================================
-   10. practice screen
+   11. practice screen
    ========================================================= */
-.question-box { width: 100%; }
+.question-box { position: relative; flex: none; width: 100%; }
 
 #studyQuestion {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 7rem;
-	max-height: 40vh;
+	min-height: 8rem;
 	margin: 0;
 	padding: 1.5rem 1.25rem;
 	overflow-y: auto;
 	background: #fff;
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
-	font-size: clamp(1.1rem, 3.5vw, 1.6rem);
-	line-height: 1.35;
+	font-size: clamp(1.3rem, 4vw, 2.1rem);
+	line-height: 1.3;
+	text-align: center;
 	overflow-wrap: anywhere;
 }
 
+/* the four answers fill the rest, so the keyboard quadrants line up
+   with where the buttons actually are */
 .answer-options {
 	display: grid;
+	flex: 1;
 	grid-template-columns: 1fr 1fr;
-	gap: 0.6rem;
-	margin: 0.75rem 0;
+	grid-template-rows: 1fr 1fr;
+	gap: var(--tight);
+	min-height: 0;
+	margin: 0;
 }
 .answer-button {
 	display: flex;
 	align-items: center;
+	justify-content: center;
+	animation: deal-in 0.3s var(--ease) both;
 	min-width: 0;
-	min-height: 3.75rem;
-	padding: 0.75rem 0.9rem;
+	min-height: 0;
+	padding: 1rem 1.25rem;
+	font-size: 1.05rem;
+	text-align: center;
 	background: #fff;
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-weight: 600;
-	text-align: left;
 	overflow-wrap: anywhere;
 	hyphens: auto;
 	cursor: pointer;
 }
+.answer-button:nth-child(1) { animation-delay: 0.02s; }
+.answer-button:nth-child(2) { animation-delay: 0.07s; }
+.answer-button:nth-child(3) { animation-delay: 0.12s; }
+.answer-button:nth-child(4) { animation-delay: 0.17s; }
+.answer-button:hover { color: #fff; background: var(--ink); }
+.answer-button.correct:hover, .answer-button.incorrect:hover { color: inherit; background: inherit; }
+
+.answer-button.correct { animation: pop 0.35s var(--ease); }
+.answer-button.incorrect { animation: shake 0.4s ease-in-out; }
+
+/* right fills in, wrong gets struck through — no colour needed */
 .answer-button.correct {
-	color: var(--right);
-	background: #eef7f2;
-	border-color: var(--right);
+	color: #fff;
+	background: var(--ink);
+	border-color: var(--ink);
 }
 .answer-button.incorrect {
-	color: var(--wrong);
-	background: #fbeeee;
-	border-color: var(--wrong);
+	color: var(--ink);
+	background: #fff;
+	border-color: var(--ink);
+	text-decoration: line-through;
 }
 
+/* sits over the question's corner — the grid below never moves */
+#studyFeedback:empty { display: none; }
 #studyFeedback {
-	min-height: 1.5rem;
+	position: absolute;
+	right: 0.75rem;
+	bottom: 0.5rem;
 	margin: 0;
-	color: var(--ink);
+	font-size: 0.85rem;
+	font-weight: 700;
 }
 
 /* =========================================================
-   11. right-click menu
+   12. right-click menu
    ========================================================= */
 .context-menu {
 	position: fixed;
@@ -504,54 +978,121 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 .context-action:disabled { color: var(--ink); opacity: 0.35; cursor: not-allowed; }
 
 /* =========================================================
-   12. audio — layout
+   13. audio — layout
    ========================================================= */
 .recorder-panel {
 	display: flex;
+	flex: 1;
 	flex-direction: column;
-	margin-top: -1.5rem;
-	gap: 1.1rem;
+	gap: var(--group);
+	min-height: 0;
+	/* makes up whatever the screen gap above already supplied, so the
+	   tabs always clear this panel by a full --gap */
+	margin-top: calc(var(--gap) - var(--group));
 }
 
-/* record button with the settings gear beside it */
-.record-row {
+/* the control row, same shape as the deck bar */
+.audio-bar {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	gap: 0.5rem;
+	gap: var(--tight);
 }
-.record-row .basic-button { height: var(--field); padding: 0 1.4rem; }
+.audio-bar .basic-button { height: var(--field); padding: 0 1.4rem; }
+.audio-bar .record-status { flex: 1; margin: 0 0 0 0.5rem; }
+
+/* list on the left, everything live on the right */
+.audio-body {
+	display: flex;
+	flex: 1;
+	gap: var(--gap);
+	min-height: 0;
+}
+#recordingList {
+	width: 100%;           /* the whole row until there's a video beside it */
+	flex: none;
+	align-self: stretch;
+	min-height: 0;
+}
+
+/* the stage only exists while you're aiming the sensing box */
+.audio-stage { display: none; }
+.recorder-panel:has(.preview-wrap.showing-video) .audio-stage { display: flex; }
+.recorder-panel:has(.preview-wrap.showing-video) #recordingList { width: 33%; }
+.audio-stage {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--gap);
+	min-width: 0;
+}
 #recordToggle.recording {
 	color: var(--ink);
 	background: #fff;
 	border-color: var(--line);
 }
 
-/* stands in for the meter while idle */
-.meter-idle {
-	display: grid;
-	place-items: center;
+/* the recorder sits in the bar between record and the options.
+   idle it's a placeholder; live it's the pulse, level and switch count. */
+.bar-meter { position: relative; flex: 1; min-width: 0; }
+
+.meter-idle,
+.live-meter {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
 	width: 100%;
-	height: 3.25rem;
+	height: var(--field);
+	padding: 0 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font-size: 0.85rem;
+}
+.meter-idle { justify-content: center; background: #fff; }
+.live-meter { color: #fff; background: var(--ink); }
+.live-meter #levelCanvas { flex: 1; min-width: 0; height: 10px; }
+.live-meter .clip-label { flex: none; font-size: 0.78rem; }
+.live-meter .switch-count {
+	flex: none;
+	padding: 0.1rem 0.5rem;
+	color: var(--ink);
+	background: #fff;
+	border-radius: 999px;
+	font-size: 0.72rem;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+/* whichever of the two fits the moment */
+.recorder-panel:has(#previewWrap:not([hidden])) .meter-idle { display: none; }
+.recorder-panel:has(#previewWrap[hidden]) .live-meter { display: none; }
+
+/* the video only shows while you're aiming the sensing box */
+.preview-wrap:not(.showing-video) { display: none; }
+
+/* a message covers the meter rather than pushing anything down.
+   it's the same box, so the page never moves for it. */
+.record-status {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4rem;
 	padding: 0 0.75rem;
 	background: #fff;
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
-	font-size: 0.85rem;
-	text-align: center;
-}
-.recorder-panel:has(#previewWrap:not([hidden])) .meter-idle { display: none; }
-
-.record-status {
-	min-height: 1.25rem;
 	margin: 0;
 	font-size: 0.85rem;
 	text-align: center;
 }
-.record-status.is-error { color: var(--wrong); }
+.record-status:not(:empty) { display: flex; }
+.record-status.is-error { font-weight: 700; }
+
 
 /* =========================================================
-   13. audio — the live bar
+   14. audio — the live bar
 
    the video sits in the box so pixels can be sampled, but is
    invisible unless the settings panel is open.
@@ -592,7 +1133,7 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 }
 
 /* =========================================================
-   14. audio — sensing box and its settings
+   15. audio — sensing box and its settings
    ========================================================= */
 .preview-wrap:not(.showing-video) .sense-box { display: none; }
 
@@ -601,15 +1142,15 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 	z-index: 4;
 	cursor: move;
 	touch-action: none;
-	border: 2px solid var(--wrong);
-	background: rgba(188, 63, 63, 0.14);
+	/* sits over arbitrary video, so it's a white frame with a black
+	   outline either side — readable on any footage */
+	border: 2px solid #fff;
+	box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px var(--ink);
+	background: rgba(255, 255, 255, 0.16);
 	border-radius: 3px;
 }
 
-.sense-box.is-triggered {
-	border-color: var(--right);
-	background: rgba(31, 122, 85, 0.28);
-}
+.sense-box.is-triggered { background: rgba(255, 255, 255, 0.5); }
 
 .gear-button {
 	position: static;
@@ -731,13 +1272,14 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 .panel-handle:active { cursor: grabbing; }
 
 /* =========================================================
-   15. audio — saved clips
+   16. audio — saved clips
 
    one row per clip: play, scrubber, label, discard. the
    native audio element is kept in the dom for playback only,
    since its own controls can't be recolored.
    ========================================================= */
-#recordingList { max-height: 9.5rem; }
+/* the clip list fills its column now, so it no longer needs a cap —
+   and it always holds at least the empty line */
 #recordingList:empty { display: none; }
 
 .recording-item {
@@ -748,7 +1290,6 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 	padding: 0.75rem 0.6rem;
 	border-radius: 6px;
 }
-.recording-item + .recording-item { border-top: 1px solid var(--line); }
 .recording-item audio { display: none; }
 
 /* play / pause */
@@ -837,7 +1378,7 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 .clip-discard { font-size: 1.1rem; margin-top: 1px; }
 
 /* =========================================================
-   17. audio — the row for the clip being recorded right now
+   17. audio — the clip being recorded right now
    ========================================================= */
 .live-bar {
 	position: absolute;
@@ -894,14 +1435,31 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 }
 
 /* =========================================================
-   16. small screens
+   18. small screens
    ========================================================= */
+/* no room for a right bar — it becomes a strip under the content,
+   so the two tiles stay reachable */
+@media (max-width: 1000px) {
+	.app-body { flex-direction: column; }
+	.rail-right {
+		flex: none;
+		background-repeat: repeat-x;
+		background-size: 16px 2px;
+		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='2' viewBox='0 0 16 2'%3E%3Ccircle cx='8' cy='1' r='1' fill='%23000'/%3E%3C/svg%3E");
+		margin-left: 0;
+	}
+	.quick-panel { flex-direction: row; }
+	.quick-action { flex: 1; }
+	.help-box { flex: none; overflow-y: visible; }
+}
+
+@media (max-width: 760px) {
+	.rail-left { display: none; }
+}
+
 @media (max-width: 560px) {
-	.screen { gap: 1.25rem; padding: 4rem 1rem 2rem; }
+	.screen { gap: 1.25rem; padding: 2.5rem 1rem 2.5rem; }
 	h1 { font-size: 1.6rem; }
-	.back-button { top: 4.05rem; }
-	.quick-panel { flex-direction: column; }
-	.quick-action { min-height: 7.5rem; }
 	.deck-bar { flex-direction: column; }
 	.deck-picker { align-self: flex-start; }
 	.deck-form { width: 100%; }
@@ -915,9 +1473,9 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 }
 
 @media (max-width: 380px) {
-	.screen { padding: 3.5rem 0.75rem 1.5rem; }
+	.screen { padding: 2rem 0.75rem 2rem; }
 	.answer-button { min-height: 3rem; font-size: 0.85rem; }
-	.quick-action { min-height: 6.5rem; }
+	.quick-action { min-height: 8rem; }
 	.quick-action small { font-size: 1.25rem; }
 }
 
