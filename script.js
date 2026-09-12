@@ -1938,6 +1938,9 @@ function measureSlots() {
     lift.rows = [...recordingList.querySelectorAll('.recording-item')];
     lift.tops = lift.rows.map((row) => row.offsetTop);
     lift.heights = lift.rows.map((row) => row.offsetHeight);
+    // the top row's own offset is the list's padding — it's how far a
+    // clip sits off the wall, and the carried one stops there too
+    lift.pad = lift.tops.length ? lift.tops[0] : 0;
 }
 
 // the list is the rows' offset parent, so a slot is its own top plus
@@ -1987,8 +1990,11 @@ function placeLifted() {
     if (index === -1) return;
     const height = lift.heights[index];
 
+    // it stops where the first and last clips sit, not against the frame
+    const highest = lift.listTop + 1 + lift.pad;
+    const lowest = lift.listBottom - 1 - lift.pad - height;
     let wanted = lift.pointerY - lift.grab;
-    wanted = Math.max(lift.listTop + 1, Math.min(wanted, lift.listBottom - height - 1));
+    wanted = Math.max(highest, Math.min(wanted, lowest));
 
     lift.shift = wanted - slotTop(index);
     liftedClip.style.transform = `translate3d(0, ${lift.shift}px, 0)`;
