@@ -474,6 +474,11 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	gap: 1.25rem;
 	height: 2.25rem;   /* whole pixels — see the note on .square-button */
 	margin: 0;
+	/* the words sit on a baseline, so the row is padded rather than
+	   centred: this drops them halfway between the white bar above and
+	   the record / deck bar below. the 1px clears the font's own left
+	   bearing, so the first letter starts on the button edge under it. */
+	padding: 0.65rem 0 0 1px;
 }
 
 .section-tab {
@@ -1026,6 +1031,47 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 }
 .audio-bar .basic-button { height: var(--field); padding: 0 1.4rem; }
 .audio-bar .record-status { flex: 1; margin: 0 0 0 0.5rem; }
+
+/* the ask before something that can't be taken back. it slides into
+   the bar beside the button that started it — nothing is covered and
+   nothing has to be dealt with, it drops itself after a moment. */
+@keyframes chip-in {
+	from { opacity: 0; transform: translateX(10px) scale(0.96); }
+	to   { opacity: 1; transform: none; }
+}
+.confirm-chip {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--tight);
+	height: var(--field);
+	padding: 0 var(--tight) 0 0.9rem;
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	white-space: nowrap;
+	font-size: 0.85rem;
+	animation: chip-in 0.24s var(--ease);
+}
+.chip-button {
+	padding: 0.25rem 0.85rem;
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font-size: 0.85rem;
+	font-weight: 700;
+	cursor: pointer;
+}
+.chip-button:hover { color: #fff; background: var(--ink); }
+#confirmChipYes { color: #fff; background: var(--ink); }
+#confirmChipYes:hover { color: var(--ink); background: #fff; }
+
+/* the button that asked stays lit while the chip is up */
+.square-button.is-armed {
+	color: #fff;
+	background: var(--ink);
+	border-color: var(--ink);
+}
 
 /* list on the left, everything live on the right */
 .audio-body {

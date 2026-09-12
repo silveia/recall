@@ -1293,10 +1293,51 @@ function refreshEmptyMessage() {
     downloadAllButton.disabled = total === 0;
 }
 
+/* the ask before anything that can't be taken back, or that runs for a
+   while. it's a chip in the bar rather than a browser alert — nothing
+   is blocked, and it drops itself if you ignore it. */
+const confirmChip = document.getElementById('confirmChip');
+const confirmChipText = document.getElementById('confirmChipText');
+const confirmChipYes = document.getElementById('confirmChipYes');
+const confirmChipNo = document.getElementById('confirmChipNo');
+let settleConfirm = null;
+
+function askConfirm(question, button) {
+    if (settleConfirm) settleConfirm(false);   // only one ask at a time
+
+    confirmChipText.textContent = question;
+    confirmChip.hidden = false;
+    if (button) button.classList.add('is-armed');
+
+    return new Promise((resolve) => {
+        function settle(answer) {
+            window.clearTimeout(timer);
+            confirmChipYes.removeEventListener('click', yes);
+            confirmChipNo.removeEventListener('click', no);
+            document.removeEventListener('keydown', onKey);
+            confirmChip.hidden = true;
+            if (button) button.classList.remove('is-armed');
+            settleConfirm = null;
+            resolve(answer);
+        }
+        const yes = () => settle(true);
+        const no = () => settle(false);
+        const onKey = (event) => { if (event.key === 'Escape') settle(false); };
+        const timer = window.setTimeout(() => settle(false), 6000);
+
+        confirmChipYes.addEventListener('click', yes);
+        confirmChipNo.addEventListener('click', no);
+        document.addEventListener('keydown', onKey);
+        settleConfirm = settle;
+        confirmChipYes.focus();
+    });
+}
+
 async function clearAllClips() {
     const total = recordingList.querySelectorAll('.recording-item').length;
     if (!total) return;
-    if (!window.confirm(`bin all ${total} clip${total === 1 ? '' : 's'}? this can't be undone.`)) return;
+    const sure = await askConfirm(`bin all ${total} clip${total === 1 ? '' : 's'}? no undo`, clearClipsButton);
+    if (!sure) return;
 
     recordingList.querySelectorAll('audio').forEach((player) => {
         player.pause();
@@ -1341,6 +1382,9 @@ async function downloadAllClips() {
         return;
     }
     if (!clips.length) return;
+
+    const sure = await askConfirm(`download ${clips.length} clip${clips.length === 1 ? '' : 's'}? one at a time`, downloadAllButton);
+    if (!sure) return;
 
     downloadAllButton.disabled = true;
     let done = 0;

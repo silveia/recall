@@ -133,6 +133,15 @@
                                         <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
                                     </svg>
                                 </button>
+
+                                <!-- the ask before anything that can't be
+                                     taken back. it sits in the bar rather
+                                     than a popup, and forgets itself. -->
+                                <div class="confirm-chip" id="confirmChip" role="group" aria-label="are you sure" hidden>
+                                    <span id="confirmChipText"></span>
+                                    <button class="chip-button" id="confirmChipYes" type="button">yep</button>
+                                    <button class="chip-button" id="confirmChipNo" type="button">nope</button>
+                                </div>
                             </div>
 
                             <div class="audio-body">
@@ -235,7 +244,7 @@
 
                         <details>
                             <summary>audio</summary>
-                            <p>hit record and pick a chrome tab &mdash; <b>tick "also share tab audio"</b> or you get silence. it watches a small box over the speaker's name and starts a fresh clip whenever that name changes; the counter in the meter tells you how many switches it's caught. clips under 2s are binned. the gear shows the video so you can aim that box, the &darr; saves every clip as mp3 oldest-first, and the bin clears the lot.</p>
+                            <p>hit record and pick a chrome tab &mdash; <b>tick "also share tab audio"</b> or you get silence. it watches a small box over the speaker's name and starts a fresh clip whenever that name changes; the counter in the meter tells you how many switches it's caught. clips under 2s are binned. the gear shows the video so you can aim that box, the &darr; saves every clip as mp3 oldest-first, and the bin clears the lot. both ask first &mdash; a little <b>yep / nope</b> pops into the bar, and it gives up on its own if you ignore it.</p>
                         </details>
 
                         <details>
