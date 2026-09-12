@@ -328,8 +328,13 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	align-items: center;
 	justify-content: center;
 	height: var(--topbar);
-	background: var(--paper);
-	border-bottom: 1px solid var(--line);
+	background-color: var(--paper);
+	/* its edge is a row of round dots, the same ones the right bar
+	   uses — a real border can only do square dashes */
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='2' viewBox='0 0 16 2'%3E%3Ccircle cx='8' cy='1' r='1' fill='%23000'/%3E%3C/svg%3E");
+	background-repeat: repeat-x;
+	background-position: left bottom;
+	background-size: 16px 2px;
 }
 .title-bar h1 { font-size: 1.6rem; line-height: 1; }
 
@@ -470,15 +475,18 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 .section-tabs {
 	contain: layout;   /* the size swap stays inside this row */
 	display: flex;
-	align-items: baseline;
+	align-items: center;   /* the small word rides the big one's middle,
+	                          not its baseline */
 	gap: 1.25rem;
 	height: 2.25rem;   /* whole pixels — see the note on .square-button */
-	margin: 0;
-	/* the words sit on a baseline, so the row is padded rather than
-	   centred: this drops them halfway between the white bar above and
-	   the record / deck bar below. the 1px clears the font's own left
-	   bearing, so the first letter starts on the button edge under it. */
-	padding: 0.65rem 0 0 1px;
+	/* 4px down, 4px back off the bottom: the pair lands halfway
+	   between the white bar and the bar below without moving it */
+	margin: 4px 0 -4px;
+	/* the padding drops the pair halfway between the white bar above
+	   and the record / deck bar below. the 1px clears the font's own
+	   left bearing, so the first letter starts on the button edge
+	   under it. */
+	padding: 1.1rem 0 0 1px;
 }
 
 .section-tab {
@@ -496,6 +504,11 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	   the difference with a transform instead. */
 }
 .section-tab.active { font-size: 2.25rem; cursor: default; }
+/* centring the boxes still leaves the small word low — the letters
+   don't fill their line the same way at the two sizes. this lifts it
+   onto the big word's middle. it's `top`, not a transform, so the
+   swap animation in switchSection() has the property to itself. */
+.section-tab:not(.active) { position: relative; top: -4px; }
 
 /* =========================================================
    8. home — deck bar
@@ -1025,6 +1038,7 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 
 /* the control row, same shape as the deck bar */
 .audio-bar {
+	position: relative;   /* the confirm popup hangs off it */
 	display: flex;
 	align-items: center;
 	gap: var(--tight);
@@ -1032,28 +1046,36 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 .audio-bar .basic-button { height: var(--field); padding: 0 1.4rem; }
 .audio-bar .record-status { flex: 1; margin: 0 0 0 0.5rem; }
 
-/* the ask before something that can't be taken back. a box straight
-   under the bar — nothing is covered and nothing has to be dealt
-   with, it drops itself after a moment. */
+/* the ask before something that can't be taken back. a popup hanging
+   off the button that started it, the same one the deck menus use. it
+   drops itself after a moment if you ignore it. */
 @keyframes confirm-in {
-	from { opacity: 0; transform: translateY(-6px); }
+	from { opacity: 0; transform: translateY(-6px) scale(0.97); }
 	to   { opacity: 1; transform: none; }
 }
-.confirm-box {
+.confirm-pop {
+	position: absolute;
+	top: calc(100% + 0.375rem);
+	right: 0;
+	z-index: 20;
 	display: flex;
-	flex: none;
-	align-items: center;
+	flex-direction: column;
 	gap: var(--tight);
-	min-height: var(--field);
-	padding: var(--tight) var(--tight) var(--tight) 0.9rem;
+	width: 17rem;
+	max-width: 78vw;
+	padding: 0.8rem;
 	background: #fff;
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+	text-align: left;
 	font-size: 0.9rem;
-	animation: confirm-in 0.2s var(--ease);
+	transform-origin: top right;
+	animation: confirm-in 0.22s var(--ease);
 }
-/* the question takes the room, the two answers sit at the right end */
-.confirm-box span { flex: 1; }
+/* the two answers share the width under the question */
+.confirm-answers { display: flex; gap: var(--tight); }
+.confirm-answers .chip-button { flex: 1; }
 .chip-button {
 	padding: 0.25rem 0.85rem;
 	background: #fff;

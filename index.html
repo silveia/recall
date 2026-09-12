@@ -133,15 +133,18 @@
                                         <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
                                     </svg>
                                 </button>
-                            </div>
 
-                            <!-- the ask before anything that can't be taken
-                                 back. a box under the bar rather than a
-                                 popup, and it forgets itself. -->
-                            <div class="confirm-box" id="confirmChip" role="group" aria-label="are you sure" hidden>
-                                <span id="confirmChipText"></span>
-                                <button class="chip-button" id="confirmChipYes" type="button">yep</button>
-                                <button class="chip-button" id="confirmChipNo" type="button">nope</button>
+                                <!-- the ask before anything that can't be
+                                     taken back. a popup hanging off the
+                                     buttons, like the deck ones. it
+                                     forgets itself if you ignore it. -->
+                                <div class="confirm-pop" id="confirmChip" role="group" aria-label="are you sure" hidden>
+                                    <span id="confirmChipText"></span>
+                                    <div class="confirm-answers">
+                                        <button class="chip-button" id="confirmChipYes" type="button">yep</button>
+                                        <button class="chip-button" id="confirmChipNo" type="button">nope</button>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="audio-body">
