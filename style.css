@@ -1032,27 +1032,28 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 .audio-bar .basic-button { height: var(--field); padding: 0 1.4rem; }
 .audio-bar .record-status { flex: 1; margin: 0 0 0 0.5rem; }
 
-/* the ask before something that can't be taken back. it slides into
-   the bar beside the button that started it — nothing is covered and
-   nothing has to be dealt with, it drops itself after a moment. */
-@keyframes chip-in {
-	from { opacity: 0; transform: translateX(10px) scale(0.96); }
+/* the ask before something that can't be taken back. a box straight
+   under the bar — nothing is covered and nothing has to be dealt
+   with, it drops itself after a moment. */
+@keyframes confirm-in {
+	from { opacity: 0; transform: translateY(-6px); }
 	to   { opacity: 1; transform: none; }
 }
-.confirm-chip {
+.confirm-box {
 	display: flex;
 	flex: none;
 	align-items: center;
 	gap: var(--tight);
-	height: var(--field);
-	padding: 0 var(--tight) 0 0.9rem;
+	min-height: var(--field);
+	padding: var(--tight) var(--tight) var(--tight) 0.9rem;
 	background: #fff;
 	border: 1px solid var(--line);
-	border-radius: 999px;
-	white-space: nowrap;
-	font-size: 0.85rem;
-	animation: chip-in 0.24s var(--ease);
+	border-radius: var(--radius);
+	font-size: 0.9rem;
+	animation: confirm-in 0.2s var(--ease);
 }
+/* the question takes the room, the two answers sit at the right end */
+.confirm-box span { flex: 1; }
 .chip-button {
 	padding: 0.25rem 0.85rem;
 	background: #fff;
