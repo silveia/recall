@@ -909,6 +909,11 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 #recordingList { display: flex; flex-direction: column; gap: var(--tight); padding: var(--tight); }
 #recordingList .empty-message { padding: 1.25rem 0; }
 
+/* download-all shows a pause while it's working its way down the list */
+.square-button .icon-pause { display: none; }
+.square-button.is-packing .icon-download { display: none; }
+.square-button.is-packing .icon-pause { display: block; }
+
 /* nothing to act on: a dashed outline rather than a faded one, since
    a faded black is just grey */
 .square-button:disabled {
@@ -1395,20 +1400,18 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	flex-direction: column;
 	justify-content: center;
 	gap: 3px;
-	width: 1.5rem;
-	height: 1.75rem;
-	padding: 0 0.4rem;
+	width: 1.25rem;
+	height: 1.5rem;
+	padding: 0 0.3rem;
 	background: none;
 	border: 0;
-	border-radius: 6px;
 	cursor: grab;
 }
 .clip-handle:active { cursor: grabbing; }
 .clip-handle span {
 	display: block;
-	height: 2px;
+	height: 1px;
 	background: var(--line);
-	border-radius: 1px;
 }
 .recording-item.dragging { opacity: 0.4; }
 /* where it would land: a solid edge on that side of the row it's over */
@@ -1422,18 +1425,18 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	flex: none;
 	width: 1.5rem;
 	height: 1.5rem;
-	padding: 2px 0 0 1px;
+	padding: 0;
 	margin-left: -0.1rem;
 	margin-right: 0.1rem;
 	color: var(--ink);
-	background: #fff;
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	font-size: 0.7rem;
+	background: none;
+	border: 0;
+	font-size: 0.75rem;
 	line-height: 1;
 	cursor: pointer;
 }
-.is-playing .clip-play { color: #fff; background: var(--ink); padding: 2px 0 0 0; }
+/* playing reads off the glyph alone now — there's no ring to fill */
+.is-playing .clip-play { color: var(--ink); }
 
 /* scrubber */
 .clip-track {

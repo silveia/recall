@@ -1406,6 +1406,21 @@ async function storedClipsInOrder() {
     });
 }
 
+/* saving the whole list takes a while, so the button becomes a pause
+   while it runs: hit it again to hold after the clip it's on, and once
+   more to carry on from there. */
+let batchRunning = false;
+let batchPaused = false;
+
+function showBatchState() {
+    const packing = batchRunning && !batchPaused;
+    downloadAllButton.classList.toggle('is-packing', packing);
+    const label = !batchRunning ? 'download every clip'
+        : packing ? 'pause the download' : 'carry on downloading';
+    downloadAllButton.setAttribute('aria-label', label);
+    downloadAllButton.title = label;
+}
+
 async function downloadAllClips() {
     if (downloadAllButton.disabled) return;
     let clips;
@@ -1420,9 +1435,17 @@ async function downloadAllClips() {
     const sure = await askConfirm(`download ${clips.length} clip${clips.length === 1 ? '' : 's'}? one at a time`, downloadAllButton);
     if (!sure) return;
 
-    downloadAllButton.disabled = true;
+    // it stays live — it's the pause button now
+    batchRunning = true;
+    batchPaused = false;
+    showBatchState();
+
     let done = 0;
     for (const record of clips) {
+        while (batchPaused) {
+            setRecordStatus(`held at ${done} of ${clips.length}`);
+            await new Promise((resolve) => window.setTimeout(resolve, 200));
+        }
         setRecordStatus(`packing ${done + 1} of ${clips.length}...`);
         try {
             const mp3 = await blobToMp3(record.blob);
@@ -1439,11 +1462,20 @@ async function downloadAllClips() {
         await new Promise((resolve) => window.setTimeout(resolve, 400));
     }
     setRecordStatus(done === clips.length ? '' : `only ${done} of ${clips.length} worked`, done !== clips.length);
-    downloadAllButton.disabled = false;
+    batchRunning = false;
+    batchPaused = false;
+    showBatchState();
     refreshEmptyMessage();
 }
 
-downloadAllButton.addEventListener('click', downloadAllClips);
+downloadAllButton.addEventListener('click', () => {
+    if (batchRunning) {
+        batchPaused = !batchPaused;
+        showBatchState();
+        return;
+    }
+    downloadAllClips();
+});
 
 /* --- clip storage (survives refresh) --- */
 
