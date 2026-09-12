@@ -1899,13 +1899,14 @@ recordingList.addEventListener('dragover', (event) => {
     if (event.clientY < box.top + edge) recordingList.scrollTop -= 12;
     else if (event.clientY > box.bottom - edge) recordingList.scrollTop += 12;
 
-    // the first row whose middle is below the cursor — the gap goes
-    // above it, or at the end if there isn't one
+    // the gap goes above the first row the cursor hasn't cleared yet.
+    // the mark is a third of the way down, not the middle — a row
+    // gives way as soon as you're properly onto it
     const others = [...recordingList.querySelectorAll('.recording-item')]
         .filter((row) => row !== draggedClip);
     const next = others.find((row) => {
         const rect = row.getBoundingClientRect();
-        return event.clientY < rect.top + rect.height / 2;
+        return event.clientY < rect.top + rect.height * 0.3;
     }) || null;
 
     if (draggedClip.nextElementSibling === next) return;   // already there
