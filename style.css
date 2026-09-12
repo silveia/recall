@@ -1415,6 +1415,11 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	height: 1px;
 	background: var(--line);
 }
+/* while a clip is in hand, nothing else on the page takes the drag —
+   no text selecting itself as the cursor sweeps past */
+.sorting-clips, .sorting-clips * { user-select: none; }
+.sorting-clips { cursor: grabbing; }
+
 /* the row in your hand: it's picked up off the page, so it outlines
    itself. its slot stays behind as the space it would drop into. */
 .recording-item.is-lifted {

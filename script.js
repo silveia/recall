@@ -1913,12 +1913,15 @@ function liftClip(item, handle, event) {
     measureSlots();
 
     item.classList.add('is-lifted');
-    // capture keeps the moves coming even when the cursor runs off the
-    // handle; not every pointer can be captured, and that's fine
-    try { handle.setPointerCapture(event.pointerId); } catch (error) { /* no capture */ }
-    handle.addEventListener('pointermove', trackLift);
-    handle.addEventListener('pointerup', dropClip);
-    handle.addEventListener('pointercancel', dropClip);
+    document.documentElement.classList.add('sorting-clips');
+
+    // the moves are followed on the window, not on the handle. capturing
+    // the pointer looks like the tidier way, but the first swap moves
+    // this row in the dom — and moving an element drops the capture, so
+    // the drag went dead the moment the list first gave way.
+    window.addEventListener('pointermove', trackLift);
+    window.addEventListener('pointerup', dropClip);
+    window.addEventListener('pointercancel', dropClip);
     lift.frame = window.requestAnimationFrame(carryClip);
 }
 
@@ -2021,15 +2024,13 @@ function shuffleForLifted() {
 function dropClip() {
     if (!liftedClip) return;
     const item = liftedClip;
-    const { handle, pointerId, shift, frame } = lift;
+    const { shift, frame } = lift;
 
     window.cancelAnimationFrame(frame);
-    handle.removeEventListener('pointermove', trackLift);
-    handle.removeEventListener('pointerup', dropClip);
-    handle.removeEventListener('pointercancel', dropClip);
-    try {
-        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
-    } catch (error) { /* it was never captured */ }
+    window.removeEventListener('pointermove', trackLift);
+    window.removeEventListener('pointerup', dropClip);
+    window.removeEventListener('pointercancel', dropClip);
+    document.documentElement.classList.remove('sorting-clips');
 
     liftedClip = null;
     lift = null;
