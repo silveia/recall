@@ -1832,6 +1832,8 @@ function addRecording(record, alreadySaved, atEnd) {
 /* --- reordering the clips --- */
 
 let draggedClip = null;
+let lastDragY = 0;       // which way you're heading, so the mark can
+let dragHeading = 1;     // sit on the edge you're arriving at
 
 // the list keeps its own order once you've touched it. it's a list of
 // ids in localStorage rather than a field on each clip — rewriting a
@@ -1900,13 +1902,18 @@ recordingList.addEventListener('dragover', (event) => {
     else if (event.clientY > box.bottom - edge) recordingList.scrollTop += 12;
 
     // the gap goes above the first row the cursor hasn't cleared yet.
-    // the mark is a third of the way down, not the middle — a row
-    // gives way as soon as you're properly onto it
+    // the mark sits near the edge you're coming at, so a row gives way
+    // as soon as you touch it either way up
+    if (event.clientY !== lastDragY) {
+        if (Math.abs(event.clientY - lastDragY) > 1) dragHeading = event.clientY > lastDragY ? 1 : -1;
+        lastDragY = event.clientY;
+    }
+    const mark = dragHeading > 0 ? 0.15 : 0.85;
     const others = [...recordingList.querySelectorAll('.recording-item')]
         .filter((row) => row !== draggedClip);
     const next = others.find((row) => {
         const rect = row.getBoundingClientRect();
-        return event.clientY < rect.top + rect.height * 0.3;
+        return event.clientY < rect.top + rect.height * mark;
     }) || null;
 
     if (draggedClip.nextElementSibling === next) return;   // already there
