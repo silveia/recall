@@ -1806,16 +1806,18 @@ function addRecording(record, alreadySaved, atEnd) {
 
     item.addEventListener('dragstart', (event) => {
         draggedClip = item;
-        item.classList.add('dragging');
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', record.id);
+        // the row itself becomes the space it would drop into. it's
+        // left behind a frame, or the browser grabs an empty row as
+        // the thing that follows the cursor.
+        window.setTimeout(() => item.classList.add('is-gap'), 0);
     });
     item.addEventListener('dragend', () => {
-        item.classList.remove('dragging');
+        item.classList.remove('is-gap');
         item.draggable = false;
         draggedClip = null;
-        recordingList.querySelectorAll('.recording-item')
-            .forEach((row) => row.classList.remove('drop-above', 'drop-below'));
+        rememberClipOrder();
     });
 
     item.append(handle, playButton, track, label, download, discard, player);
@@ -1856,17 +1858,37 @@ function rememberClipOrder() {
     }
 }
 
+// moving a row re-lays the list out in one pass; this then slides every
+// row that shifted from where it was to where it landed, so the gap
+// looks like it travels rather than teleports
+function slideRows(rearrange) {
+    const rows = [...recordingList.querySelectorAll('.recording-item')];
+    const before = new Map(rows.map((row) => [row, row.getBoundingClientRect().top]));
+    rearrange();
+    rows.forEach((row) => {
+        const shift = before.get(row) - row.getBoundingClientRect().top;
+        if (!shift) return;
+        row.animate(
+            [{ transform: `translateY(${shift}px)` }, { transform: 'none' }],
+            { duration: 200, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+        );
+    });
+}
+
 function moveClipRow(item, step) {
     const rows = [...recordingList.querySelectorAll('.recording-item')];
     const to = rows.indexOf(item) + step;
     if (to < 0 || to >= rows.length) return;
-    if (step < 0) recordingList.insertBefore(item, rows[to]);
-    else recordingList.insertBefore(item, rows[to].nextSibling);
+    slideRows(() => {
+        if (step < 0) recordingList.insertBefore(item, rows[to]);
+        else recordingList.insertBefore(item, rows[to].nextSibling);
+    });
     rememberClipOrder();
 }
 
-// a row is dropped above or below whichever one you're over, and the
-// list scrolls itself when you drag near either end of it
+// the gap follows you: the row is moved for real as you pass each one,
+// so the rest shuffle aside and the space is always where it'd land.
+// the list scrolls itself when you drag against either end of it.
 recordingList.addEventListener('dragover', (event) => {
     if (!draggedClip) return;
     event.preventDefault();
@@ -1877,26 +1899,22 @@ recordingList.addEventListener('dragover', (event) => {
     if (event.clientY < box.top + edge) recordingList.scrollTop -= 12;
     else if (event.clientY > box.bottom - edge) recordingList.scrollTop += 12;
 
-    const over = event.target.closest && event.target.closest('.recording-item');
-    recordingList.querySelectorAll('.recording-item')
-        .forEach((row) => row.classList.remove('drop-above', 'drop-below'));
-    if (!over || over === draggedClip) return;
-    const rect = over.getBoundingClientRect();
-    over.classList.add(event.clientY < rect.top + rect.height / 2 ? 'drop-above' : 'drop-below');
+    // the first row whose middle is below the cursor — the gap goes
+    // above it, or at the end if there isn't one
+    const others = [...recordingList.querySelectorAll('.recording-item')]
+        .filter((row) => row !== draggedClip);
+    const next = others.find((row) => {
+        const rect = row.getBoundingClientRect();
+        return event.clientY < rect.top + rect.height / 2;
+    }) || null;
+
+    if (draggedClip.nextElementSibling === next) return;   // already there
+    slideRows(() => recordingList.insertBefore(draggedClip, next));
 });
 
 recordingList.addEventListener('drop', (event) => {
     if (!draggedClip) return;
-    event.preventDefault();
-    const over = event.target.closest && event.target.closest('.recording-item');
-    recordingList.querySelectorAll('.recording-item')
-        .forEach((row) => row.classList.remove('drop-above', 'drop-below'));
-    if (!over || over === draggedClip) return;
-
-    const rect = over.getBoundingClientRect();
-    if (event.clientY < rect.top + rect.height / 2) recordingList.insertBefore(draggedClip, over);
-    else recordingList.insertBefore(draggedClip, over.nextSibling);
-    rememberClipOrder();
+    event.preventDefault();   // the row is already where it belongs
 });
 
 /* --- recording --- */
