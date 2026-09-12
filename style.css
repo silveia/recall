@@ -499,10 +499,9 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	                          not its baseline */
 	gap: 1.25rem;
 	height: 2.25rem;   /* whole pixels — see the note on .square-button */
-	/* up a little, and the same back off the bottom so the bar below
-	   doesn't move. measured even is 2px down; the eye wants it higher
-	   than that, so it sits where it looks right. */
-	margin: -1px 0 1px;
+	/* 4px down, 4px back off the bottom: the row lands where the small
+	   word wants to be, and the bar below doesn't move */
+	margin: 4px 0 -4px;
 	/* the padding drops the pair halfway between the white bar above
 	   and the record / deck bar below. the 1px clears the font's own
 	   left bearing, so the first letter starts on the button edge
@@ -530,6 +529,9 @@ button.boing { animation: button-boing 0.42s var(--ease); }
    onto the big word's middle. it's `top`, not a transform, so the
    swap animation in switchSection() has the property to itself. */
 .section-tab:not(.active) { position: relative; top: -4px; }
+/* the big word carries more ink below its middle, so measured centre
+   reads low. this is its own lift — the small one keeps its place. */
+.section-tab.active { position: relative; top: -5px; }
 
 /* =========================================================
    8. home — deck bar
