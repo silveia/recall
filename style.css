@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&family=VT323&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&family=Bitcount+Prop+Double:wght@400;700&display=swap');
 
 /* =========================================================
    recall — style.css
@@ -53,7 +53,7 @@
 	--slow: 0.4s;      /* things arriving on screen */
 
 	--font: 'Amiko', 'Segoe UI', system-ui, sans-serif;
-	--title-font: 'VT323', 'Courier New', monospace;
+	--title-font: 'Bitcount Prop Double', 'Courier New', monospace;
 }
 
 /* =========================================================
