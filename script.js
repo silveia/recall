@@ -1395,7 +1395,15 @@ async function storedClipsInOrder() {
         request.onsuccess = () => resolve(request.result || []);
         request.onerror = () => reject(request.error);
     });
-    return stored.sort((a, b) => a.number - b.number);
+    // the list's order, top to bottom — it's what you can see
+    const shown = [...recordingList.querySelectorAll('.recording-item')]
+        .map((row) => row.dataset.clipId);
+    return stored.sort((a, b) => {
+        const left = shown.indexOf(a.id);
+        const right = shown.indexOf(b.id);
+        if (left === -1 || right === -1) return a.number - b.number;
+        return left - right;
+    });
 }
 
 async function downloadAllClips() {
@@ -1494,11 +1502,19 @@ async function loadStoredClips() {
             request.onerror = () => reject(request.error);
         });
 
-        stored.sort((a, b) => a.number - b.number);
         stored.forEach((record) => {
             if (record.number > clipCount) clipCount = record.number;
-            addRecording(record, true);
         });
+
+        // whatever you last dragged them into; anything it doesn't know
+        // about is newer, so it goes on top
+        const order = savedClipOrder();
+        const rank = (record) => {
+            const place = order.indexOf(record.id);
+            return place === -1 ? -record.number : place + order.length;
+        };
+        stored.sort((a, b) => rank(a) - rank(b));
+        stored.forEach((record) => addRecording(record, true, true));
     } catch (error) {
         // no stored clips, or storage unavailable
     }
@@ -1542,9 +1558,10 @@ async function blobToMp3(blob) {
 
 /* --- recordings list --- */
 
-function addRecording(record, alreadySaved) {
+function addRecording(record, alreadySaved, atEnd) {
     const item = document.createElement('li');
     item.className = 'recording-item';
+    item.dataset.clipId = record.id;
 
     // the clip is only handed to the audio element on first play, so opening
     // the page with a full list doesn't start a decoder for every row
@@ -1740,12 +1757,115 @@ function addRecording(record, alreadySaved) {
         refreshEmptyMessage();
     });
 
-    item.append(playButton, track, label, download, discard, player);
-    recordingList.prepend(item);
+    // three lines, same grip the decks have
+    const handle = document.createElement('button');
+    handle.className = 'clip-handle';
+    handle.type = 'button';
+    handle.setAttribute('aria-label', `reorder clip ${record.number}, use arrow keys`);
+    handle.innerHTML = '<span></span><span></span><span></span>';
+    handle.addEventListener('mousedown', () => { item.draggable = true; });
+    handle.addEventListener('touchstart', () => { item.draggable = true; }, { passive: true });
+    handle.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        event.preventDefault();
+        moveClipRow(item, event.key === 'ArrowUp' ? -1 : 1);
+        handle.focus();
+    });
+
+    item.addEventListener('dragstart', (event) => {
+        draggedClip = item;
+        item.classList.add('dragging');
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', record.id);
+    });
+    item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        item.draggable = false;
+        draggedClip = null;
+        recordingList.querySelectorAll('.recording-item')
+            .forEach((row) => row.classList.remove('drop-above', 'drop-below'));
+    });
+
+    item.append(handle, playButton, track, label, download, discard, player);
+    if (atEnd) recordingList.append(item);
+    else recordingList.prepend(item);
     refreshEmptyMessage();
 
     if (!alreadySaved) saveClip(record);
+    if (!alreadySaved) rememberClipOrder();
 }
+
+/* --- reordering the clips --- */
+
+let draggedClip = null;
+
+// the list keeps its own order once you've touched it. it's a list of
+// ids in localStorage rather than a field on each clip — rewriting a
+// record means rewriting its blob, and that's a lot of copying to
+// remember one number.
+const CLIP_ORDER_KEY = 'clip-order';
+
+function savedClipOrder() {
+    try {
+        const saved = JSON.parse(window.localStorage.getItem(CLIP_ORDER_KEY));
+        return Array.isArray(saved) ? saved : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function rememberClipOrder() {
+    const ids = [...recordingList.querySelectorAll('.recording-item')]
+        .map((row) => row.dataset.clipId);
+    try {
+        window.localStorage.setItem(CLIP_ORDER_KEY, JSON.stringify(ids));
+    } catch (error) {
+        // out of room — the order just won't survive a refresh
+    }
+}
+
+function moveClipRow(item, step) {
+    const rows = [...recordingList.querySelectorAll('.recording-item')];
+    const to = rows.indexOf(item) + step;
+    if (to < 0 || to >= rows.length) return;
+    if (step < 0) recordingList.insertBefore(item, rows[to]);
+    else recordingList.insertBefore(item, rows[to].nextSibling);
+    rememberClipOrder();
+}
+
+// a row is dropped above or below whichever one you're over, and the
+// list scrolls itself when you drag near either end of it
+recordingList.addEventListener('dragover', (event) => {
+    if (!draggedClip) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+
+    const box = recordingList.getBoundingClientRect();
+    const edge = 44;
+    if (event.clientY < box.top + edge) recordingList.scrollTop -= 12;
+    else if (event.clientY > box.bottom - edge) recordingList.scrollTop += 12;
+
+    const over = event.target.closest && event.target.closest('.recording-item');
+    recordingList.querySelectorAll('.recording-item')
+        .forEach((row) => row.classList.remove('drop-above', 'drop-below'));
+    if (!over || over === draggedClip) return;
+    const rect = over.getBoundingClientRect();
+    over.classList.add(event.clientY < rect.top + rect.height / 2 ? 'drop-above' : 'drop-below');
+});
+
+recordingList.addEventListener('drop', (event) => {
+    if (!draggedClip) return;
+    event.preventDefault();
+    const over = event.target.closest && event.target.closest('.recording-item');
+    recordingList.querySelectorAll('.recording-item')
+        .forEach((row) => row.classList.remove('drop-above', 'drop-below'));
+    if (!over || over === draggedClip) return;
+
+    const rect = over.getBoundingClientRect();
+    if (event.clientY < rect.top + rect.height / 2) recordingList.insertBefore(draggedClip, over);
+    else recordingList.insertBefore(draggedClip, over.nextSibling);
+    rememberClipOrder();
+});
 
 /* --- recording --- */
 

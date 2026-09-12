@@ -1387,6 +1387,34 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 }
 .recording-item audio { display: none; }
 
+/* three lines to grab, the same grip the deck rows have. the list
+   scrolls itself if you drag a clip against either end. */
+.clip-handle {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	justify-content: center;
+	gap: 3px;
+	width: 1.5rem;
+	height: 1.75rem;
+	padding: 0 0.4rem;
+	background: none;
+	border: 0;
+	border-radius: 6px;
+	cursor: grab;
+}
+.clip-handle:active { cursor: grabbing; }
+.clip-handle span {
+	display: block;
+	height: 2px;
+	background: var(--line);
+	border-radius: 1px;
+}
+.recording-item.dragging { opacity: 0.4; }
+/* where it would land: a solid edge on that side of the row it's over */
+.recording-item.drop-above { box-shadow: inset 0 2px 0 var(--ink); }
+.recording-item.drop-below { box-shadow: inset 0 -2px 0 var(--ink); }
+
 /* play / pause */
 .clip-play {
 	display: grid;
