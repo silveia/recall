@@ -1865,7 +1865,7 @@ function slideRows(rearrange) {
         if (!shift) return;
         const slide = row.animate(
             [{ transform: `translateY(${shift}px)` }, { transform: 'none' }],
-            { duration: 260, easing: 'cubic-bezier(0.33, 0, 0, 1)' }
+            { duration: 190, easing: 'cubic-bezier(0.33, 0, 0, 1)' }
         );
         slide.id = 'clip-slide';
     });
@@ -1903,7 +1903,8 @@ function liftClip(item, handle, event) {
         grab: event.clientY - item.getBoundingClientRect().top,   // where you took hold
         shift: 0,                      // how far it's moved from its slot
         pointerY: event.clientY,
-        seenY: null,                   // the last y this worked out a position for
+        seenY: -1,                     // the last y this worked out a position for
+        scroll: recordingList.scrollTop,
         lastY: event.clientY,
         heading: 1,
         frame: 0,
@@ -1930,15 +1931,18 @@ function measureSlots() {
     const box = recordingList.getBoundingClientRect();
     lift.listTop = box.top;
     lift.listBottom = box.bottom;
+    lift.scroll = recordingList.scrollTop;
     lift.rows = [...recordingList.querySelectorAll('.recording-item')];
     lift.tops = lift.rows.map((row) => row.offsetTop);
     lift.heights = lift.rows.map((row) => row.offsetHeight);
 }
 
 // the list is the rows' offset parent, so a slot is its own top plus
-// the list's, less however far the list is scrolled. the 1 is the border.
+// the list's, less however far the list is scrolled. the 1 is the
+// border. the scroll is read once a frame in carryClip and kept — asking
+// the list for it again after a transform is written forces a layout.
 function slotTop(index) {
-    return lift.listTop + 1 - recordingList.scrollTop + lift.tops[index];
+    return lift.listTop + 1 - lift.scroll + lift.tops[index];
 }
 
 function trackLift(event) {
@@ -1952,13 +1956,20 @@ function trackLift(event) {
 function carryClip() {
     if (!liftedClip) return;
 
+    // every read this frame needs happens here, before any write
+    const scroll = recordingList.scrollTop;
+    const room = recordingList.scrollHeight - recordingList.clientHeight;
     const edge = 44;
-    const was = recordingList.scrollTop;
-    if (lift.pointerY < lift.listTop + edge) recordingList.scrollTop -= 8;
-    else if (lift.pointerY > lift.listBottom - edge) recordingList.scrollTop += 8;
 
-    if (lift.pointerY !== lift.seenY || recordingList.scrollTop !== was) {
+    let wanted = scroll;
+    if (lift.pointerY < lift.listTop + edge) wanted = Math.max(0, scroll - 8);
+    else if (lift.pointerY > lift.listBottom - edge) wanted = Math.min(room, scroll + 8);
+
+    const moved = Math.abs(lift.pointerY - lift.seenY) >= 1;
+    if (moved || wanted !== scroll) {
+        lift.scroll = wanted;
         lift.seenY = lift.pointerY;
+        if (wanted !== scroll) recordingList.scrollTop = wanted;
         placeLifted();
         shuffleForLifted();
     }
@@ -1977,7 +1988,7 @@ function placeLifted() {
     wanted = Math.max(lift.listTop + 1, Math.min(wanted, lift.listBottom - height - 1));
 
     lift.shift = wanted - slotTop(index);
-    liftedClip.style.transform = `translateY(${lift.shift}px)`;
+    liftedClip.style.transform = `translate3d(0, ${lift.shift}px, 0)`;
 }
 
 function shuffleForLifted() {
