@@ -1865,15 +1865,24 @@ function rememberClipOrder() {
 // looks like it travels rather than teleports
 function slideRows(rearrange) {
     const rows = [...recordingList.querySelectorAll('.recording-item')];
+    // where each row looks like it is right now — a rect includes
+    // whatever transform is mid-flight, so a swap during a swap picks
+    // up from where the eye left it instead of snapping
     const before = new Map(rows.map((row) => [row, row.getBoundingClientRect().top]));
     rearrange();
     rows.forEach((row) => {
+        // the old slide has to go before the new resting place is read
+        row.getAnimations()
+            .filter((animation) => animation.id === 'clip-slide')
+            .forEach((animation) => animation.cancel());
+
         const shift = before.get(row) - row.getBoundingClientRect().top;
         if (!shift) return;
-        row.animate(
+        const slide = row.animate(
             [{ transform: `translateY(${shift}px)` }, { transform: 'none' }],
-            { duration: 200, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+            { duration: 260, easing: 'cubic-bezier(0.33, 0, 0, 1)' }
         );
+        slide.id = 'clip-slide';
     });
 }
 
