@@ -147,17 +147,26 @@ function loadSection() {
 /* ---------- 4. sections ---------- */
 
 // the swap happens on the click — waiting for the old panels to leave
-// first just read as lag. the new ones fade up instead, so it's smooth
-// without costing anything.
+// first just read as lag. the new ones come in from the side you're
+// heading instead, staggered, so it's smooth without costing anything.
 function switchSection(id) {
     if (id === activeSectionId) return;
 
     const tabs = [...sectionTabs.children];
     const before = tabs.map((tab) => tab.getBoundingClientRect());
 
+    // right along the tab row or left back down it
+    const heading = sections.findIndex((section) => section.id === id)
+        > sections.findIndex((section) => section.id === activeSectionId) ? 1 : -1;
+
     activeSectionId = id;
     window.localStorage.setItem('active-section', activeSectionId);
     renderSections();
+
+    // whatever is on screen now arrives from that side
+    [deckBar, deckListSlot, helpBox, quickPanel, audioPanel].forEach((panel) => {
+        if (panel && !panel.hidden) panel.style.setProperty('--from', `${heading * 30}px`);
+    });
 
     if (!tabs[0] || typeof tabs[0].animate !== 'function') return;
     const after = tabs.map((tab) => tab.getBoundingClientRect());
@@ -522,7 +531,7 @@ function showNextQuestion() {
     waitingForContinue = false;
 
     if (cards.length === 0) {
-        studyQuestion.textContent = 'empty...';
+        studyQuestion.textContent = 'empty ..';
         studyQuestion.classList.add('is-empty');   // quieter than a question
         answerOptions.innerHTML = '';
         studyFeedback.textContent = '';
@@ -1296,16 +1305,22 @@ function refreshEmptyMessage() {
 }
 
 /* the ask before anything that can't be taken back, or that runs for a
-   while. it's a chip in the bar rather than a browser alert — nothing
-   is blocked, and it drops itself if you ignore it. */
+   while. it's a popup off the button rather than a browser alert —
+   nothing is blocked, and anything that isn't a yes closes it: the
+   button again, a click anywhere else, escape, or just ignoring it. */
 const confirmChip = document.getElementById('confirmChip');
 const confirmChipText = document.getElementById('confirmChipText');
 const confirmChipYes = document.getElementById('confirmChipYes');
 const confirmChipNo = document.getElementById('confirmChipNo');
-let settleConfirm = null;
+let openConfirm = null;   // { button, settle } while one is up
 
 function askConfirm(question, button) {
-    if (settleConfirm) settleConfirm(false);   // only one ask at a time
+    // the same button again means "never mind"; a different one swaps
+    if (openConfirm) {
+        const wasAsking = openConfirm.button;
+        openConfirm.settle(false);
+        if (wasAsking === button) return Promise.resolve(false);
+    }
 
     confirmChipText.textContent = question;
     confirmChip.hidden = false;
@@ -1317,20 +1332,29 @@ function askConfirm(question, button) {
             confirmChipYes.removeEventListener('click', yes);
             confirmChipNo.removeEventListener('click', no);
             document.removeEventListener('keydown', onKey);
+            document.removeEventListener('pointerdown', onOutside);
             confirmChip.hidden = true;
             if (button) button.classList.remove('is-armed');
-            settleConfirm = null;
+            openConfirm = null;
             resolve(answer);
         }
         const yes = () => settle(true);
         const no = () => settle(false);
         const onKey = (event) => { if (event.key === 'Escape') settle(false); };
+        // the button that asked is left alone here — its own click
+        // closes the popup on the way through askConfirm
+        const onOutside = (event) => {
+            if (confirmChip.contains(event.target)) return;
+            if (button && button.contains(event.target)) return;
+            settle(false);
+        };
         const timer = window.setTimeout(() => settle(false), 6000);
 
         confirmChipYes.addEventListener('click', yes);
         confirmChipNo.addEventListener('click', no);
         document.addEventListener('keydown', onKey);
-        settleConfirm = settle;
+        document.addEventListener('pointerdown', onOutside);
+        openConfirm = { button, settle };
         confirmChipYes.focus();
     });
 }

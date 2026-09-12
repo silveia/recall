@@ -171,10 +171,30 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 
 /* panels inside a screen */
 .deck-organizer:not([hidden]) { animation: fade-up 0.24s var(--ease) backwards; }
-.deck-list-slot:not([hidden]) { animation: fade-up 0.28s var(--ease) backwards; }
-.recorder-panel:not([hidden]) { animation: fade-up 0.28s var(--ease) backwards; }
-.help-box:not([hidden]) { animation: rise-in 0.34s var(--ease) 0.06s backwards; }
-.quick-panel:not([hidden]) { animation: rise-in 0.34s var(--ease) 0.12s backwards; }
+
+/* a panel arriving when you swap section. --from is set on it by
+   switchSection(), so it comes in from the side you're heading;
+   without it (a plain page load) it just rises. the pieces are
+   staggered so the swap reads as a hand of cards rather than a blink */
+@keyframes panel-in {
+	from { opacity: 0; transform: translate(var(--from, 0px), 8px); }
+	60%  { opacity: 1; }
+	to   { opacity: 1; transform: none; }
+}
+.deck-bar:not([hidden]),
+.deck-list-slot:not([hidden]),
+.recorder-panel:not([hidden]),
+.help-box:not([hidden]),
+.quick-panel:not([hidden]) {
+	animation: panel-in 0.4s var(--ease) backwards;
+}
+.deck-list-slot:not([hidden]) { animation-delay: 0.05s; }
+.help-box:not([hidden]) { animation-delay: 0.08s; }
+.quick-panel:not([hidden]) { animation-delay: 0.14s; }
+
+/* inside the audio panel the bar leads and the clips follow */
+.recorder-panel:not([hidden]) .audio-bar { animation: panel-in 0.4s var(--ease) 0.05s backwards; }
+.recorder-panel:not([hidden]) .audio-body { animation: panel-in 0.4s var(--ease) 0.12s backwards; }
 #studyQuestion { animation: rise-in 0.34s var(--ease) backwards; }
 
 /* the answer buttons deal themselves out one after another */
