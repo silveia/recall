@@ -1876,6 +1876,11 @@ function slideRows(rearrange) {
             .filter((animation) => animation.id === 'clip-slide')
             .forEach((animation) => animation.cancel());
 
+        // the space itself is never animated — it's the thing you're
+        // holding, and sliding it makes it look like it got away from
+        // you. the rows shuffle past it instead.
+        if (row.classList.contains('is-gap')) return;
+
         const shift = before.get(row) - row.getBoundingClientRect().top;
         if (!shift) return;
         const slide = row.animate(
