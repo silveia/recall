@@ -1138,6 +1138,7 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	min-height: 0;
 }
 #recordingList {
+	position: relative;    /* so a row's offsetTop is its slot in here */
 	width: 100%;           /* the whole row until there's a video beside it */
 	flex: none;
 	align-self: stretch;
@@ -1423,6 +1424,8 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	outline: 1px solid var(--line);
 	outline-offset: -1px;
 	cursor: grabbing;
+	will-change: transform;   /* its own layer — the list isn't repainted
+	                             every time it moves a pixel */
 }
 
 /* play / pause */

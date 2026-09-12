@@ -1896,18 +1896,20 @@ function liftClip(item, handle, event) {
     event.preventDefault();
     if (liftedClip) dropClip();
 
-    const rect = item.getBoundingClientRect();
     liftedClip = item;
     lift = {
         handle,
         pointerId: event.pointerId,
-        grab: event.clientY - rect.top,   // where in the row you took hold
-        shift: 0,                         // how far it's moved from its slot
+        grab: event.clientY - item.getBoundingClientRect().top,   // where you took hold
+        shift: 0,                      // how far it's moved from its slot
         pointerY: event.clientY,
+        seenY: null,                   // the last y this worked out a position for
         lastY: event.clientY,
         heading: 1,
-        frame: 0
+        frame: 0,
+        rows: [], tops: [], heights: [], listTop: 0, listBottom: 0
     };
+    measureSlots();
 
     item.classList.add('is-lifted');
     // capture keeps the moves coming even when the cursor runs off the
@@ -1919,43 +1921,69 @@ function liftClip(item, handle, event) {
     lift.frame = window.requestAnimationFrame(carryClip);
 }
 
+/* where the rows sit when nothing is moving. offsetTop and offsetHeight
+   are layout, so a row halfway through a slide still measures at the
+   slot it's heading for — which is what the swap should be judged on.
+   reading them per frame would be the lag, so it's measured once here
+   and again only when the order actually changes. */
+function measureSlots() {
+    const box = recordingList.getBoundingClientRect();
+    lift.listTop = box.top;
+    lift.listBottom = box.bottom;
+    lift.rows = [...recordingList.querySelectorAll('.recording-item')];
+    lift.tops = lift.rows.map((row) => row.offsetTop);
+    lift.heights = lift.rows.map((row) => row.offsetHeight);
+}
+
+// the list is the rows' offset parent, so a slot is its own top plus
+// the list's, less however far the list is scrolled. the 1 is the border.
+function slotTop(index) {
+    return lift.listTop + 1 - recordingList.scrollTop + lift.tops[index];
+}
+
 function trackLift(event) {
     if (!lift || event.pointerId !== lift.pointerId) return;
     lift.pointerY = event.clientY;
 }
 
-// every frame: scroll if it's against an end, put the row under the
-// cursor, and give way if it's far enough onto its neighbour
+// one frame: scroll if it's held against an end, and if anything has
+// actually changed, put the row under the cursor and give way if it's
+// far enough onto its neighbour
 function carryClip() {
     if (!liftedClip) return;
 
-    const box = recordingList.getBoundingClientRect();
     const edge = 44;
-    if (lift.pointerY < box.top + edge) recordingList.scrollTop -= 8;
-    else if (lift.pointerY > box.bottom - edge) recordingList.scrollTop += 8;
+    const was = recordingList.scrollTop;
+    if (lift.pointerY < lift.listTop + edge) recordingList.scrollTop -= 8;
+    else if (lift.pointerY > lift.listBottom - edge) recordingList.scrollTop += 8;
 
-    placeLifted();
-    shuffleForLifted();
+    if (lift.pointerY !== lift.seenY || recordingList.scrollTop !== was) {
+        lift.seenY = lift.pointerY;
+        placeLifted();
+        shuffleForLifted();
+    }
     lift.frame = window.requestAnimationFrame(carryClip);
 }
 
 // the row sits where the cursor holds it, but never past either end of
-// the list — the slot it came from is worked out from where it is now,
-// so this stays right after the list has reordered or scrolled
+// the list. its slot comes from the measurement, so this stays right
+// after the list has reordered or scrolled.
 function placeLifted() {
-    const box = recordingList.getBoundingClientRect();
-    const rect = liftedClip.getBoundingClientRect();
-    const slotTop = rect.top - lift.shift;
+    const index = lift.rows.indexOf(liftedClip);
+    if (index === -1) return;
+    const height = lift.heights[index];
 
     let wanted = lift.pointerY - lift.grab;
-    wanted = Math.max(box.top + 1, Math.min(wanted, box.bottom - rect.height - 1));
+    wanted = Math.max(lift.listTop + 1, Math.min(wanted, lift.listBottom - height - 1));
 
-    lift.shift = wanted - slotTop;
+    lift.shift = wanted - slotTop(index);
     liftedClip.style.transform = `translateY(${lift.shift}px)`;
 }
 
 function shuffleForLifted() {
-    if (Math.abs(lift.pointerY - lift.lastY) > 1) {
+    // which way you're going, with a few pixels of slack so a twitch
+    // doesn't flip it back and forth
+    if (Math.abs(lift.pointerY - lift.lastY) > 3) {
         lift.heading = lift.pointerY > lift.lastY ? 1 : -1;
         lift.lastY = lift.pointerY;
     }
@@ -1963,16 +1991,19 @@ function shuffleForLifted() {
     // the space goes above the first row the cursor hasn't cleared. the
     // mark sits near the edge you're coming at, so a row gives way as
     // soon as you're onto it either way up
-    const mark = lift.heading > 0 ? 0.15 : 0.85;
-    const others = [...recordingList.querySelectorAll('.recording-item')]
-        .filter((row) => row !== liftedClip);
-    const next = others.find((row) => {
-        const rect = row.getBoundingClientRect();
-        return lift.pointerY < rect.top + rect.height * mark;
-    }) || null;
+    const mark = lift.heading > 0 ? 0.2 : 0.8;
+    let next = null;
+    for (let index = 0; index < lift.rows.length; index += 1) {
+        if (lift.rows[index] === liftedClip) continue;
+        if (lift.pointerY < slotTop(index) + lift.heights[index] * mark) {
+            next = lift.rows[index];
+            break;
+        }
+    }
 
     if (liftedClip.nextElementSibling === next) return;   // already there
     slideRows(() => recordingList.insertBefore(liftedClip, next));
+    measureSlots();
     placeLifted();   // its slot moved; keep it under the cursor
 }
 
