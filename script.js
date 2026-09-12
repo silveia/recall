@@ -720,7 +720,7 @@ function undoLastDelete() {
 
 // the press. every button gets the squash-and-spring except the icon
 // squares, the deck entries and the tiles, which have their own.
-const noBoing = '.square-button, .deck-card, .quick-action';
+const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle';
 document.addEventListener('pointerdown', (event) => {
     const button = event.target.closest('button');
     if (!button || button.closest(noBoing)) return;
@@ -1795,29 +1795,12 @@ function addRecording(record, alreadySaved, atEnd) {
     handle.type = 'button';
     handle.setAttribute('aria-label', `reorder clip ${record.number}, use arrow keys`);
     handle.innerHTML = '<span></span><span></span><span></span>';
-    handle.addEventListener('mousedown', () => { item.draggable = true; });
-    handle.addEventListener('touchstart', () => { item.draggable = true; }, { passive: true });
+    handle.addEventListener('pointerdown', (event) => liftClip(item, handle, event));
     handle.addEventListener('keydown', (event) => {
         if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
         event.preventDefault();
         moveClipRow(item, event.key === 'ArrowUp' ? -1 : 1);
         handle.focus();
-    });
-
-    item.addEventListener('dragstart', (event) => {
-        draggedClip = item;
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', record.id);
-        // the row itself becomes the space it would drop into. it's
-        // left behind a frame, or the browser grabs an empty row as
-        // the thing that follows the cursor.
-        window.setTimeout(() => item.classList.add('is-gap'), 0);
-    });
-    item.addEventListener('dragend', () => {
-        item.classList.remove('is-gap');
-        item.draggable = false;
-        draggedClip = null;
-        rememberClipOrder();
     });
 
     item.append(handle, playButton, track, label, download, discard, player);
@@ -1831,9 +1814,8 @@ function addRecording(record, alreadySaved, atEnd) {
 
 /* --- reordering the clips --- */
 
-let draggedClip = null;
-let lastDragY = 0;       // which way you're heading, so the mark can
-let dragHeading = 1;     // sit on the edge you're arriving at
+let liftedClip = null;   // the row in your hand, if any
+let lift = null;         // where it was grabbed and how far it's moved
 
 // the list keeps its own order once you've touched it. it's a list of
 // ids in localStorage rather than a field on each clip — rewriting a
@@ -1876,10 +1858,8 @@ function slideRows(rearrange) {
             .filter((animation) => animation.id === 'clip-slide')
             .forEach((animation) => animation.cancel());
 
-        // the space itself is never animated — it's the thing you're
-        // holding, and sliding it makes it look like it got away from
-        // you. the rows shuffle past it instead.
-        if (row.classList.contains('is-gap')) return;
+        // the row in your hand is placed by the cursor, not by this
+        if (row.classList.contains('is-lifted')) return;
 
         const shift = before.get(row) - row.getBoundingClientRect().top;
         if (!shift) return;
@@ -1902,42 +1882,127 @@ function moveClipRow(item, step) {
     rememberClipOrder();
 }
 
-// the gap follows you: the row is moved for real as you pass each one,
-// so the rest shuffle aside and the space is always where it'd land.
-// the list scrolls itself when you drag against either end of it.
-recordingList.addEventListener('dragover', (event) => {
-    if (!draggedClip) return;
+/* the lift. the row you're holding follows the cursor up and down and
+   nothing else: it can't leave the list, it can't go sideways, and it
+   stays the same row rather than becoming a ghost of one. its own slot
+   in the list is the space, and the other rows shuffle around it.
+
+   it's pointer events rather than html drag and drop because the
+   browser's drag image follows the cursor everywhere on the page, and
+   that's the flying about we don't want. */
+
+function liftClip(item, handle, event) {
+    if (event.button) return;          // left button / a finger only
     event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+    if (liftedClip) dropClip();
+
+    const rect = item.getBoundingClientRect();
+    liftedClip = item;
+    lift = {
+        handle,
+        pointerId: event.pointerId,
+        grab: event.clientY - rect.top,   // where in the row you took hold
+        shift: 0,                         // how far it's moved from its slot
+        pointerY: event.clientY,
+        lastY: event.clientY,
+        heading: 1,
+        frame: 0
+    };
+
+    item.classList.add('is-lifted');
+    // capture keeps the moves coming even when the cursor runs off the
+    // handle; not every pointer can be captured, and that's fine
+    try { handle.setPointerCapture(event.pointerId); } catch (error) { /* no capture */ }
+    handle.addEventListener('pointermove', trackLift);
+    handle.addEventListener('pointerup', dropClip);
+    handle.addEventListener('pointercancel', dropClip);
+    lift.frame = window.requestAnimationFrame(carryClip);
+}
+
+function trackLift(event) {
+    if (!lift || event.pointerId !== lift.pointerId) return;
+    lift.pointerY = event.clientY;
+}
+
+// every frame: scroll if it's against an end, put the row under the
+// cursor, and give way if it's far enough onto its neighbour
+function carryClip() {
+    if (!liftedClip) return;
 
     const box = recordingList.getBoundingClientRect();
     const edge = 44;
-    if (event.clientY < box.top + edge) recordingList.scrollTop -= 12;
-    else if (event.clientY > box.bottom - edge) recordingList.scrollTop += 12;
+    if (lift.pointerY < box.top + edge) recordingList.scrollTop -= 8;
+    else if (lift.pointerY > box.bottom - edge) recordingList.scrollTop += 8;
 
-    // the gap goes above the first row the cursor hasn't cleared yet.
-    // the mark sits near the edge you're coming at, so a row gives way
-    // as soon as you touch it either way up
-    if (event.clientY !== lastDragY) {
-        if (Math.abs(event.clientY - lastDragY) > 1) dragHeading = event.clientY > lastDragY ? 1 : -1;
-        lastDragY = event.clientY;
+    placeLifted();
+    shuffleForLifted();
+    lift.frame = window.requestAnimationFrame(carryClip);
+}
+
+// the row sits where the cursor holds it, but never past either end of
+// the list — the slot it came from is worked out from where it is now,
+// so this stays right after the list has reordered or scrolled
+function placeLifted() {
+    const box = recordingList.getBoundingClientRect();
+    const rect = liftedClip.getBoundingClientRect();
+    const slotTop = rect.top - lift.shift;
+
+    let wanted = lift.pointerY - lift.grab;
+    wanted = Math.max(box.top + 1, Math.min(wanted, box.bottom - rect.height - 1));
+
+    lift.shift = wanted - slotTop;
+    liftedClip.style.transform = `translateY(${lift.shift}px)`;
+}
+
+function shuffleForLifted() {
+    if (Math.abs(lift.pointerY - lift.lastY) > 1) {
+        lift.heading = lift.pointerY > lift.lastY ? 1 : -1;
+        lift.lastY = lift.pointerY;
     }
-    const mark = dragHeading > 0 ? 0.15 : 0.85;
+
+    // the space goes above the first row the cursor hasn't cleared. the
+    // mark sits near the edge you're coming at, so a row gives way as
+    // soon as you're onto it either way up
+    const mark = lift.heading > 0 ? 0.15 : 0.85;
     const others = [...recordingList.querySelectorAll('.recording-item')]
-        .filter((row) => row !== draggedClip);
+        .filter((row) => row !== liftedClip);
     const next = others.find((row) => {
         const rect = row.getBoundingClientRect();
-        return event.clientY < rect.top + rect.height * mark;
+        return lift.pointerY < rect.top + rect.height * mark;
     }) || null;
 
-    if (draggedClip.nextElementSibling === next) return;   // already there
-    slideRows(() => recordingList.insertBefore(draggedClip, next));
-});
+    if (liftedClip.nextElementSibling === next) return;   // already there
+    slideRows(() => recordingList.insertBefore(liftedClip, next));
+    placeLifted();   // its slot moved; keep it under the cursor
+}
 
-recordingList.addEventListener('drop', (event) => {
-    if (!draggedClip) return;
-    event.preventDefault();   // the row is already where it belongs
-});
+function dropClip() {
+    if (!liftedClip) return;
+    const item = liftedClip;
+    const { handle, pointerId, shift, frame } = lift;
+
+    window.cancelAnimationFrame(frame);
+    handle.removeEventListener('pointermove', trackLift);
+    handle.removeEventListener('pointerup', dropClip);
+    handle.removeEventListener('pointercancel', dropClip);
+    try {
+        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+    } catch (error) { /* it was never captured */ }
+
+    liftedClip = null;
+    lift = null;
+    item.classList.remove('is-lifted');
+    item.style.transform = '';
+
+    // it settles into the slot it's over rather than snapping there
+    if (shift) {
+        item.animate(
+            [{ transform: `translateY(${shift}px)` }, { transform: 'none' }],
+            { duration: 200, easing: 'cubic-bezier(0.33, 0, 0, 1)' }
+        );
+    }
+    rememberClipOrder();
+}
 
 /* --- recording --- */
 

@@ -1406,6 +1406,7 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	background: none;
 	border: 0;
 	cursor: grab;
+	touch-action: none;   /* a drag here moves the clip, not the list */
 }
 .clip-handle:active { cursor: grabbing; }
 .clip-handle span {
@@ -1413,10 +1414,16 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	height: 1px;
 	background: var(--line);
 }
-/* the row being dragged is the space it would land in: it keeps its
-   height, empties out, and leaves a dashed outline behind */
-.recording-item.is-gap { outline: 1px dashed var(--ink); outline-offset: -1px; }
-.recording-item.is-gap > * { visibility: hidden; }
+/* the row in your hand: it's picked up off the page, so it outlines
+   itself. its slot stays behind as the space it would drop into. */
+.recording-item.is-lifted {
+	position: relative;
+	z-index: 2;
+	background: #fff;
+	outline: 1px solid var(--line);
+	outline-offset: -1px;
+	cursor: grabbing;
+}
 
 /* play / pause */
 .clip-play {
