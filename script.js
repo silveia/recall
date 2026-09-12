@@ -522,11 +522,13 @@ function showNextQuestion() {
     waitingForContinue = false;
 
     if (cards.length === 0) {
-        studyQuestion.textContent = 'this deck is empty';
+        studyQuestion.textContent = 'empty...';
+        studyQuestion.classList.add('is-empty');   // quieter than a question
         answerOptions.innerHTML = '';
-        studyFeedback.textContent = 'go back and add a few cards first';
+        studyFeedback.textContent = '';
         return;
     }
+    studyQuestion.classList.remove('is-empty');
 
     // don't repeat a question until half the deck has gone by
     const cooldownSize = Math.max(1, Math.floor(cards.length / 2));

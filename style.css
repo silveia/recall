@@ -932,6 +932,12 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	text-align: center;
 	overflow-wrap: anywhere;
 }
+/* nothing to ask — it's a note, not a question, so it drops the
+   heading weight and most of the size */
+#studyQuestion.is-empty {
+	font-size: 1.15rem;
+	font-weight: 400;
+}
 
 /* the four answers fill the rest, so the keyboard quadrants line up
    with where the buttons actually are */
