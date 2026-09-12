@@ -5,22 +5,23 @@
    ---------------------------------------------------------
    1.  tokens
    2.  reset + base
-   3.  app shell — the bars around the page
-   4.  page column — one layout for every screen
-   5.  shared pieces — buttons and the deck dropdown
-   6.  home — section tabs
-   7.  home — deck bar
-   8.  home — deck dropdown rows
-   9.  right bar — help box and the two tiles
-   10. create screen
-   11. practice screen
-   12. right-click menu
-   13. audio — layout
-   14. audio — the live bar
-   15. audio — sensing box and its settings
-   16. audio — saved clips
-   17. audio — the clip being recorded right now
-   18. small screens
+   3.  motion — hovers, presses, and things arriving
+   4.  app shell — the bars around the page
+   5.  page column — one layout for every screen
+   6.  shared pieces — buttons and the deck dropdown
+   7.  home — section tabs
+   8.  home — deck bar
+   9.  home — deck dropdown rows
+   10. right bar — help box and the two tiles
+   11. create screen
+   12. practice screen
+   13. right-click menu
+   14. audio — layout
+   15. audio — the video preview
+   16. audio — sensing box and its settings
+   17. audio — saved clips
+   18. audio — the live row and its pulse
+   19. small screens
    ========================================================= */
 
 /* =========================================================
@@ -39,11 +40,7 @@
 	--radius: 10px;
 	--field: 42px;     /* height of every control in the deck bar */
 
-	--stack: 0.75rem;  /* gap between sibling panels and list rows */
-	/* two steps, and only two. --gap is the layout one: every corner
-	   inset and every gap between separate boxes, on every page.
-	   --tight is for things that belong together — controls sitting
-	   side by side in a bar, rows inside one list. */
+	/* the spacing scale. nothing should use a one-off value. */
 	--gap: 2rem;       /* corners, and between separate blocks */
 	--group: 1rem;     /* a control bar and the list it feeds — every
 	                      section uses this, cards, audio and whatever
@@ -91,7 +88,6 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 	outline: 2px solid var(--ink);
 	outline-offset: 2px;
 }
-.topbar :focus-visible { outline-color: #fff; }
 
 ::selection { color: #fff; background: var(--ink); }
 
@@ -109,7 +105,7 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 .sense-controls::-webkit-scrollbar { width: 0; height: 0; }
 
 /* =========================================================
-   2b. motion — hovers, presses, and things arriving
+   3. motion — hovers, presses, and things arriving
    ========================================================= */
 button, .deck-row, summary {
 	transition:
@@ -118,7 +114,18 @@ button, .deck-row, summary {
 		border-color var(--quick) var(--ease),
 		transform var(--quick) var(--ease);
 }
-button:active { transform: scale(0.97); }
+/* the press: a squash on the way down, a springy overshoot on the way
+   back. it runs off a class, not :active, so the whole thing plays
+   even on a quick tap. added on pointerdown in section 10 of script.js */
+@keyframes button-boing {
+	0%   { transform: scale(1, 1); }
+	16%  { transform: scale(0.88, 0.82); }
+	38%  { transform: scale(1.08, 1.12) translateY(-2px); }
+	58%  { transform: scale(0.97, 0.99); }
+	78%  { transform: scale(1.02, 1.01); }
+	100% { transform: scale(1, 1); }
+}
+button.boing { animation: button-boing 0.42s var(--ease); }
 /* icon buttons keep still — a 2px stroke shimmers when it scales, and
    it only renders crisply if the button lands on a whole pixel, which
    is why the rows above it have whole-pixel heights */
@@ -130,7 +137,7 @@ button:active { transform: scale(0.97); }
 	60%  { opacity: 1; transform: translateY(-3px) scale(1.004); }
 	100% { opacity: 1; transform: none; }
 }
-.screen:not([hidden]) { animation: rise-in var(--slow) var(--ease) both; }
+.screen:not([hidden]) { animation: rise-in var(--slow) var(--ease) backwards; }
 
 /* moving between screens: the new one comes in from the side you're
    heading, overshoots slightly, settles. going back mirrors it. */
@@ -144,37 +151,31 @@ button:active { transform: scale(0.97); }
 	55%  { opacity: 1; transform: translateX(6px) scale(1.004); }
 	100% { opacity: 1; transform: none; }
 }
-.screen.enter-forward:not([hidden]) { animation: screen-forward 0.44s var(--ease) both; }
-.screen.enter-back:not([hidden]) { animation: screen-back 0.44s var(--ease) both; }
+.screen.enter-forward:not([hidden]) { animation: screen-forward 0.44s var(--ease) backwards; }
+.screen.enter-back:not([hidden]) { animation: screen-back 0.44s var(--ease) backwards; }
 
 /* the title changes with the screen, so it swaps rather than cuts */
 @keyframes title-swap {
 	0%   { opacity: 0; transform: translateY(8px); }
 	100% { opacity: 1; transform: none; }
 }
-.topbar h1.swap { animation: title-swap 0.34s var(--ease) both; }
+.title-bar h1.swap { animation: title-swap 0.34s var(--ease) backwards; }
 
 /* and the way back fades in behind it */
-.back-button:not([hidden]) { animation: title-swap 0.34s var(--ease) 0.06s both; }
+.back-button:not([hidden]) { animation: title-swap 0.34s var(--ease) 0.06s backwards; }
 
-/* panels inside a screen follow it in, one behind the other */
-.deck-organizer:not([hidden]) { animation: rise-in 0.3s var(--ease) both; }
-.deck-list-slot:not([hidden]) { animation: rise-in 0.3s var(--ease) 0.06s both; }
-.recorder-panel:not([hidden]) { animation: rise-in 0.3s var(--ease) 0.06s both; }
-.help-box:not([hidden]) { animation: rise-in 0.34s var(--ease) 0.06s both; }
-.quick-panel:not([hidden]) { animation: rise-in 0.34s var(--ease) 0.12s both; }
-#studyQuestion { animation: rise-in 0.34s var(--ease) both; }
-
-/* leaving a section: the panels under the tabs ease out together.
-   the tabs themselves stay put, since they're what you just clicked. */
-.section-swap .deck-bar,
-.section-swap .deck-list-slot,
-.section-swap .recorder-panel {
-	animation: none !important;
-	opacity: 0;
-	transform: translateY(8px);
-	transition: opacity 0.15s var(--ease), transform 0.15s var(--ease);
+@keyframes fade-up {
+	from { opacity: 0; transform: translateY(4px); }
+	to   { opacity: 1; transform: none; }
 }
+
+/* panels inside a screen */
+.deck-organizer:not([hidden]) { animation: fade-up 0.24s var(--ease) backwards; }
+.deck-list-slot:not([hidden]) { animation: fade-up 0.28s var(--ease) backwards; }
+.recorder-panel:not([hidden]) { animation: fade-up 0.28s var(--ease) backwards; }
+.help-box:not([hidden]) { animation: rise-in 0.34s var(--ease) 0.06s backwards; }
+.quick-panel:not([hidden]) { animation: rise-in 0.34s var(--ease) 0.12s backwards; }
+#studyQuestion { animation: rise-in 0.34s var(--ease) backwards; }
 
 /* the answer buttons deal themselves out one after another */
 @keyframes deal-in {
@@ -201,21 +202,18 @@ button:active { transform: scale(0.97); }
 	from { opacity: 0; transform: translateX(-10px); }
 	to   { opacity: 1; transform: none; }
 }
-.deck-card { animation: slide-in 0.3s var(--ease) both; }
+.deck-card:nth-child(-n+6) { animation: slide-in 0.3s var(--ease) backwards; }
 .deck-card:nth-child(1) { animation-delay: 0.02s; }
 .deck-card:nth-child(2) { animation-delay: 0.06s; }
 .deck-card:nth-child(3) { animation-delay: 0.1s; }
 .deck-card:nth-child(4) { animation-delay: 0.14s; }
 .deck-card:nth-child(5) { animation-delay: 0.18s; }
-.deck-card:nth-child(n+6) { animation-delay: 0.22s; }
+.deck-card:nth-child(6) { animation-delay: 0.22s; }
 
-/* a tab springs when it takes over */
-@keyframes tab-pop {
-	0%   { transform: scale(0.92); }
-	55%  { transform: scale(1.04); }
-	100% { transform: none; }
-}
-.section-tab.active { animation: tab-pop 0.4s var(--ease); }
+/* the size change itself is one layout pass; switchSection() then
+   animates each tab's transform from where it was to where it landed,
+   which reads as a smooth grow/shrink and costs no layout per frame */
+.section-tab { transform-origin: left bottom; }
 
 /* a popup unfolding from the button it hangs off */
 @keyframes drop-in {
@@ -223,7 +221,7 @@ button:active { transform: scale(0.97); }
 	to   { opacity: 1; transform: none; }
 }
 .share-panel:not([hidden]), .deck-menu:not([hidden]) {
-	animation: drop-in 0.22s var(--ease) both;
+	animation: drop-in 0.22s var(--ease) backwards;
 }
 .share-panel { transform-origin: top right; }
 .deck-menu { transform-origin: top left; }
@@ -233,17 +231,35 @@ button:active { transform: scale(0.97); }
 	from { opacity: 0; transform: translateY(-4px); }
 	to   { opacity: 1; transform: none; }
 }
-.help-box details[open] p { animation: unroll 0.25s var(--ease) both; }
+.help-box details[open] p { animation: unroll 0.25s var(--ease) backwards; }
 
 /* =========================================================
-   3. app shell — the bars around the page
+   4. app shell — the bars around the page
    ========================================================= */
 /* left bar runs the full height; the top bar starts beside it and
    spans the right bar, which hangs below it. */
 .app-shell {
+	position: relative;
 	display: flex;
 	height: 100vh;
 	overflow: hidden;
+}
+
+/* the scalloped edge is drawn on the shell, not on the bar itself.
+   painting it on the bar forced overflow:visible there, which stopped
+   the bar scrolling and made it paint its whole content height. */
+.app-shell::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: calc(var(--rail) - 13px);
+	z-index: 5;
+	width: 26px;
+	pointer-events: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23fff'/%3E%3Cpath d='M4 0 A 25 25 0 0 1 4 44' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+	background-repeat: repeat-y;
+	background-size: 26px 44px;
 }
 
 .app-right {
@@ -251,33 +267,19 @@ button:active { transform: scale(0.97); }
 	flex: 1;
 	flex-direction: column;
 	min-width: 0;
+
 }
 
 .rail {
+	position: relative;
+	z-index: 2;        /* over the top bar, which passes behind both */
 	flex: 0 0 var(--rail);
 	background: var(--paper);
 	overflow-y: auto;
 }
 
-/* the left bar's edge is a wavy line instead of a straight one.
-   overflow must stay visible or the ::after gets clipped. */
-.rail-left {
-	position: relative;
-	overflow: visible;
-	z-index: 1;
-}
-.rail-left::after {
-	content: '';
-	position: absolute;
-	top: 0;
-	right: -22px;   /* cusps sit on the bar's edge, bumps push 13px out */
-	width: 26px;
-	height: 100%;
-	pointer-events: none;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23fff'/%3E%3Cpath d='M4 0 A 25 25 0 0 1 4 44' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
-	background-repeat: repeat-y;
-	background-size: 26px 44px;
-}
+/* the bar scrolls its own content; its edge is drawn on the shell */
+.rail-left { contain: layout paint; }
 /* the right bar holds the two tiles and is always in. its edge is a
    column of round dots rather than a line — a real border can only
    do square dashes, so it's drawn as a repeating background. */
@@ -294,37 +296,42 @@ button:active { transform: scale(0.97); }
 	/* every inset in here is one value, including the one off the dots */
 	gap: var(--rail-pad);
 	padding: var(--rail-pad);
+	/* starts right under the black bar */
+	padding-top: calc(var(--topbar) + var(--rail-pad));
+
 	overflow: hidden;   /* the help box scrolls, the bar doesn't */
 }
 
-/* TEMPORARY — styles the note sitting in the left bar. safe to
-   delete along with the .rail-note block in index.html. */
-.rail-note {
-	padding: 1.25rem 1.75rem 2rem 1.25rem;
-	font-size: 0.78rem;
-	line-height: 1.45;
-	text-align: left;
-}
-.rail-note h3 {
-	margin: 1.5rem 0 0.4rem;
-	font-family: var(--title-font);
-	font-size: 1rem;
-}
-.rail-note h3:first-child { margin-top: 0; }
-.rail-note ul, .rail-note ol { margin: 0; padding-left: 1.1rem; }
-.rail-note li { margin-bottom: 0.4rem; }
-.rail-note code { font-family: var(--title-font); font-size: 0.95em; }
-
+/* the black strip at the very top, beside the left bar. it runs back
+   under the scallop so the bumps bite into it — otherwise it stopped
+   short of the left bar by the width of a bump. */
 .topbar {
-	position: relative;   /* the back button hangs off this */
+	position: absolute;
+	top: 0;
+	left: calc(var(--rail) - 13px);
+	right: 0;
+	z-index: 4;
+	height: var(--topbar);
+	background: var(--ink);
+}
+
+/* the screen's name, on a white bar directly under the black one. it
+   runs the full window and both side bars pass over its ends, so it
+   only shows across the middle. */
+.title-bar {
+	position: absolute;
+	top: var(--topbar);
+	left: 0;
+	right: 0;
+	z-index: 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	flex: 0 0 var(--topbar);
-	color: #fff;
-	background: var(--ink);
+	height: var(--topbar);
+	background: var(--paper);
+	border-bottom: 1px solid var(--line);
 }
-.topbar h1 { font-size: 1.6rem; line-height: 1; }
+.title-bar h1 { font-size: 1.6rem; line-height: 1; }
 
 .app-body {
 	display: flex;
@@ -337,10 +344,13 @@ button:active { transform: scale(0.97); }
 	flex: 1;
 	min-width: 0;
 	overflow-y: auto;
+	/* clears the black bar and the white one under it; the screen's
+	   own gap then sets how far off the line the tabs sit */
+	padding-top: calc(var(--topbar) * 2);
 }
 
 /* =========================================================
-   4. page column — one layout for every screen
+   5. page column — one layout for every screen
    ========================================================= */
 .screen {
 	position: relative;
@@ -363,6 +373,7 @@ button:active { transform: scale(0.97); }
 	justify-content: flex-start;
 	gap: var(--group);
 	padding: var(--gap);
+	padding-top: var(--group);
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
@@ -376,6 +387,7 @@ button:active { transform: scale(0.97); }
 	justify-content: flex-start;
 	gap: var(--group);
 	padding: var(--gap);
+	padding-top: var(--group);
 	overflow: hidden;
 	text-align: left;
 }
@@ -383,20 +395,28 @@ button:active { transform: scale(0.97); }
 /* sits in the top bar, so the title stays centred in the bar */
 .back-button {
 	position: absolute;
-	top: 50%;
-	left: 1.25rem;
-	padding: 0.25rem 0.4rem;
-	color: #fff;
+	top: 0;
+	bottom: 0;
+	/* the bar runs the full window now, so clear the left rail —
+	   this lands it on the content column's own left edge */
+	left: calc(var(--rail) + var(--gap));
+	display: grid;
+	place-items: center;
+	width: 2rem;
+	height: 2rem;
+	margin: auto 0;        /* centred without a transform — the swap
+	                          animation and :active both use transform */
+	padding: 0;
+	color: var(--ink);
 	background: none;
 	border: 0;
 	font-size: 1.5rem;
 	line-height: 1;
 	cursor: pointer;
-	transform: translateY(-50%);
 }
 
 /* =========================================================
-   5. shared pieces — buttons and the deck dropdown
+   6. shared pieces — buttons and the deck dropdown
    ========================================================= */
 
 /* pill button */
@@ -433,7 +453,7 @@ button:active { transform: scale(0.97); }
 }
 
 /* =========================================================
-   6. home — section tabs
+   7. home — section tabs
    ========================================================= */
 .deck-organizer, .quick-panel, .recorder-panel { width: 100%; }
 .deck-organizer {
@@ -448,10 +468,11 @@ button:active { transform: scale(0.97); }
 /* section tabs — "cards  audio". the active one is big in the
    title font, the others sit small on the same baseline. */
 .section-tabs {
+	contain: layout;   /* the size swap stays inside this row */
 	display: flex;
 	align-items: baseline;
 	gap: 1.25rem;
-	height: 2.75rem;   /* whole pixels — see the note on .square-button */
+	height: 2.25rem;   /* whole pixels — see the note on .square-button */
 	margin: 0;
 }
 
@@ -464,13 +485,15 @@ button:active { transform: scale(0.97); }
 	font-weight: 700;
 	line-height: 1.1;
 	cursor: pointer;
-	transition: font-size 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+	/* no transition here on purpose — the only thing that changes is
+	   font-size, and animating that re-lays out the page on every
+	   frame. the size snaps in one pass, and switchSection() animates
+	   the difference with a transform instead. */
 }
 .section-tab.active { font-size: 2.25rem; cursor: default; }
 
-
 /* =========================================================
-   7. home — deck bar
+   8. home — deck bar
    ========================================================= */
 .deck-bar { display: flex; align-items: center; gap: var(--tight); }
 
@@ -555,6 +578,7 @@ button:active { transform: scale(0.97); }
 /* placeholder box for the deck list — a third of the width,
    filling the blank space under the deck bar */
 .deck-list-slot {
+	contain: layout paint;
 	position: relative;
 	z-index: 1;
 	display: flex;
@@ -610,7 +634,7 @@ button:active { transform: scale(0.97); }
 .deck-card-text small { font-size: 0.78rem; }
 
 /* =========================================================
-   8. home — deck dropdown rows
+   9. home — deck dropdown rows
    ========================================================= */
 .deck-row {
 	display: flex;
@@ -684,7 +708,7 @@ button:active { transform: scale(0.97); }
 }
 
 /* =========================================================
-   9. right bar — help box and the two tiles
+   10. right bar — help box and the two tiles
 
    the tiles are shared by the create/practice pair and the
    record tile, so all three keep the same height and face.
@@ -693,6 +717,7 @@ button:active { transform: scale(0.97); }
 /* fills the blank area above the tiles. it scrolls inside itself, so
    opening a row never moves the tiles. */
 .help-box {
+	contain: layout paint;
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
@@ -777,7 +802,7 @@ button:active { transform: scale(0.97); }
 .quick-action b { display: none; }
 
 /* =========================================================
-   10. create screen
+   11. create screen
    ========================================================= */
 
 .form-note:empty { display: none; }
@@ -816,6 +841,7 @@ button:active { transform: scale(0.97); }
 
 /* the two scrolling lists share their frame and scrollbar */
 #cardList, #recordingList {
+	contain: layout paint;
 	width: 100%;
 	margin: 0;
 	padding: 0 0.25rem 0 0.25rem;
@@ -842,10 +868,11 @@ button:active { transform: scale(0.97); }
 #recordingList { display: flex; flex-direction: column; gap: var(--tight); padding: var(--tight); }
 #recordingList .empty-message { padding: 1.25rem 0; }
 
-/* a disabled icon button stays black and white — just quieter */
+/* nothing to act on: a dashed outline rather than a faded one, since
+   a faded black is just grey */
 .square-button:disabled {
 	cursor: default;
-	opacity: 0.35;
+	border-style: dashed;
 }
 .square-button:disabled:hover { color: var(--ink); background: #fff; }
 
@@ -867,7 +894,7 @@ button:active { transform: scale(0.97); }
 }
 
 /* =========================================================
-   11. practice screen
+   12. practice screen
    ========================================================= */
 .question-box { position: relative; flex: none; width: 100%; }
 
@@ -903,7 +930,7 @@ button:active { transform: scale(0.97); }
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	animation: deal-in 0.3s var(--ease) both;
+	animation: deal-in 0.3s var(--ease) backwards;
 	min-width: 0;
 	min-height: 0;
 	padding: 1rem 1.25rem;
@@ -952,7 +979,7 @@ button:active { transform: scale(0.97); }
 }
 
 /* =========================================================
-   12. right-click menu
+   13. right-click menu
    ========================================================= */
 .context-menu {
 	position: fixed;
@@ -978,7 +1005,7 @@ button:active { transform: scale(0.97); }
 .context-action:disabled { color: var(--ink); opacity: 0.35; cursor: not-allowed; }
 
 /* =========================================================
-   13. audio — layout
+   14. audio — layout
    ========================================================= */
 .recorder-panel {
 	display: flex;
@@ -1014,17 +1041,15 @@ button:active { transform: scale(0.97); }
 	min-height: 0;
 }
 
-/* the stage only exists while you're aiming the sensing box */
-.audio-stage { display: none; }
-.recorder-panel:has(.preview-wrap.showing-video) .audio-stage { display: flex; }
-.recorder-panel:has(.preview-wrap.showing-video) #recordingList { width: 33%; }
+/* the stage only appears while you're aiming the sensing box */
 .audio-stage {
-	display: flex;
+	display: none;
 	flex: 1;
 	flex-direction: column;
-	gap: var(--gap);
+	gap: var(--group);
 	min-width: 0;
 }
+.recorder-panel.is-tuning .audio-stage { display: flex; }
 #recordToggle.recording {
 	color: var(--ink);
 	background: #fff;
@@ -1063,8 +1088,8 @@ button:active { transform: scale(0.97); }
 }
 
 /* whichever of the two fits the moment */
-.recorder-panel:has(#previewWrap:not([hidden])) .meter-idle { display: none; }
-.recorder-panel:has(#previewWrap[hidden]) .live-meter { display: none; }
+.recorder-panel.is-live .meter-idle { display: none; }
+.recorder-panel:not(.is-live) .live-meter { display: none; }
 
 /* the video only shows while you're aiming the sensing box */
 .preview-wrap:not(.showing-video) { display: none; }
@@ -1090,12 +1115,11 @@ button:active { transform: scale(0.97); }
 .record-status:not(:empty) { display: flex; }
 .record-status.is-error { font-weight: 700; }
 
-
 /* =========================================================
-   14. audio — the live bar
+   15. audio — the video preview
 
-   the video sits in the box so pixels can be sampled, but is
-   invisible unless the settings panel is open.
+   the video sits in this box so pixels can be sampled, and is only
+   shown while the settings panel is open.
    ========================================================= */
 .preview-wrap {
 	position: relative;
@@ -1124,16 +1148,8 @@ button:active { transform: scale(0.97); }
 	line-height: 0;
 }
 .preview-wrap.showing-video video { position: static; display: block; opacity: 1; }
-.preview-wrap.showing-video .live-bar { display: none; }
-
-.live-bar #levelCanvas {
-	flex: 1;
-	min-width: 0;
-	height: 10px;
-}
-
 /* =========================================================
-   15. audio — sensing box and its settings
+   16. audio — sensing box and its settings
    ========================================================= */
 .preview-wrap:not(.showing-video) .sense-box { display: none; }
 
@@ -1151,25 +1167,6 @@ button:active { transform: scale(0.97); }
 }
 
 .sense-box.is-triggered { background: rgba(255, 255, 255, 0.5); }
-
-.gear-button {
-	position: static;
-	flex: none;
-	display: grid;
-	place-items: center;
-	width: var(--field);
-	height: var(--field);
-	padding: 0;
-	z-index: 3;
-	color: var(--ink);
-	background: rgba(255, 255, 255, 0.88);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	line-height: 1;
-	font-size: 1.1rem;
-	cursor: pointer;
-}
-.gear-button[aria-expanded="true"] { color: #fff; background: var(--ink); }
 
 .sense-controls {
 	position: absolute;
@@ -1247,8 +1244,8 @@ button:active { transform: scale(0.97); }
 	font-variant-numeric: tabular-nums;
 }
 .preview-wrap.showing-video ~ .sense-readout { display: none; }
-.recorder-panel:has(#senseControls:not([hidden])) #recordingList { display: none; }
-.recorder-panel:has(#senseControls:not([hidden])) .record-status { display: none; }
+.recorder-panel.is-tuning #recordingList { display: none; }
+.recorder-panel.is-tuning .record-status { display: none; }
 
 .text-button {
 	align-self: center;
@@ -1272,7 +1269,7 @@ button:active { transform: scale(0.97); }
 .panel-handle:active { cursor: grabbing; }
 
 /* =========================================================
-   16. audio — saved clips
+   17. audio — saved clips
 
    one row per clip: play, scrubber, label, discard. the
    native audio element is kept in the dom for playback only,
@@ -1378,28 +1375,9 @@ button:active { transform: scale(0.97); }
 .clip-discard { font-size: 1.1rem; margin-top: 1px; }
 
 /* =========================================================
-   17. audio — the clip being recorded right now
+   18. audio — the live row and its pulse
    ========================================================= */
-.live-bar {
-	position: absolute;
-	inset: 0.25rem 0.25rem 0.25rem 0.25rem;
-	width: 100%;
-	display: flex;
-	align-items: center;
-	gap: 0.6rem;
-	padding: 0.35rem 0.5rem;
-	background: var(--ink);
-	border-radius: 6px;
-	line-height: 1.5;
-}
-
-.live-bar .clip-label {
-	flex: none;
-	padding-right: 0.5rem;
-	color: #fff;
-}
-
-.live-bar .clip-track {
+.live-meter .clip-track {
 	background: var(--ink);
 	border-color: #fff;
 }
@@ -1435,7 +1413,7 @@ button:active { transform: scale(0.97); }
 }
 
 /* =========================================================
-   18. small screens
+   19. small screens
    ========================================================= */
 /* no room for a right bar — it becomes a strip under the content,
    so the two tiles stay reachable */
@@ -1448,13 +1426,19 @@ button:active { transform: scale(0.97); }
 		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='2' viewBox='0 0 16 2'%3E%3Ccircle cx='8' cy='1' r='1' fill='%23000'/%3E%3C/svg%3E");
 		margin-left: 0;
 	}
-	.quick-panel { flex-direction: row; }
+	.quick-panel { flex-direction: row; flex: none; }
 	.quick-action { flex: 1; }
-	.help-box { flex: none; overflow-y: visible; }
+	/* the strip takes at most a third, so the page above it still has
+	   room — the help box scrolls inside whatever is left */
+	.rail-right { max-height: 38%; overflow: hidden; padding-top: var(--rail-pad); }
+	.help-box { flex: 1; min-height: 0; overflow-y: auto; }
 }
 
 @media (max-width: 760px) {
 	.rail-left { display: none; }
+	.app-shell::after { display: none; }   /* its edge goes with it */
+	.topbar { left: 0; }                   /* no scallop to reach under */
+	.back-button { left: var(--gap); }     /* no rail to clear */
 }
 
 @media (max-width: 560px) {

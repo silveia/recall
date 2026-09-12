@@ -13,50 +13,21 @@
 
     <div class="app-shell">
 
-        <!-- left bar — full height, runs past the top bar.
-             TEMPORARY: holding a note from claude. delete the
-             .rail-note block when you've read it. -->
-        <aside class="rail rail-left" aria-label="left menu">
-            <div class="rail-note">
-
-                <h3>just did</h3>
-                <ul>
-                    <li><b>no colour anywhere.</b> the red and green were a leftover rule break &mdash; right answers fill in black, wrong ones get struck through, and error text is just bold ink</li>
-                    <li>messages no longer push the page around. the record status <b>covers the meter</b> instead of taking its own line, and the "sent" message is gone entirely</li>
-                    <li>caption under cards / audio removed</li>
-                    <li>four steps, all at the top of style.css: <code>--gap</code> 32 (corners, separate blocks), <code>--group</code> 16 (a bar and its list), <code>--tight</code> 8 (controls side by side), <code>--rail-pad</code> 16 (the narrow side bars)</li>
-                    <li>a bar and the list it feeds sit <b>16</b> apart &mdash; that's <code>--group</code>, and every section gets it, cards, audio and whatever you add next</li>
-                    <li>switching cards &harr; audio cross-fades now &mdash; the old panels ease out, then the new ones come in. the tabs stay put since they're what you clicked</li>
-                    <li><b>create and practice fill the page</b> now, same frame as the other two. create is a bar of fields feeding the card list; practice puts the question across the top and the four answers as real quadrants &mdash; which finally makes the keyboard mapping make sense</li>
-                </ul>
-
-                <h3>ideas &#x0295;&#x2022;&#x1D25;&#x2022;&#x0294;</h3>
-                <ol>
-                    <li><b>practice remembers what you miss</b> and asks it again sooner. biggest actual feature win &mdash; right now every card is equally likely forever</li>
-                    <li><b>a clip becomes a card.</b> record in audio &rarr; attach it as a question. this is the one thing only <i>your</i> site could do</li>
-                    <li><b>dark mode = invert.</b> black page, white ink. your 2-tone rule gives it to you basically free</li>
-                    <li><b>show the quadrant keys</b> on the answer buttons. you built asdf/hjkl mapping and nobody can see it</li>
-                    <li><b>"done today" count</b> somewhere small. cheap, and it makes you come back</li>
-                    <li><b>drag the deck entries</b> to reorder, like the smiley list already does</li>
-                </ol>
-
-                <h3>watch out</h3>
-                <ul>
-                    <li>decks live only in this browser &mdash; <b>copy a code somewhere safe now and then</b>, it doubles as a backup</li>
-                    <li>create + practice screens are still a narrow centred column while home is full width</li>
-                </ul>
-
-            </div>
-        </aside>
+        <!-- left bar — full height, runs past the top bar -->
+        <aside class="rail rail-left" aria-label="left menu"></aside>
 
         <div class="app-right">
 
-            <!-- top bar — starts beside the left bar, spans the right bar.
-                 carries the current screen's name and the way back. -->
-            <header class="topbar" aria-label="top menu">
+            <!-- the black strip, starting beside the left bar -->
+            <header class="topbar" aria-hidden="true"></header>
+
+            <!-- the screen's name, on a white bar that runs the whole
+                 window underneath the black one. both side bars pass
+                 over its ends. -->
+            <div class="title-bar">
                 <button class="back-button" type="button" aria-label="back" title="back" hidden>&larr;</button>
                 <h1 id="topbarTitle">home</h1>
-            </header>
+            </div>
 
             <div class="app-body">
 

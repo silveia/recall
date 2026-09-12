@@ -10,12 +10,12 @@
    7. practice   (study screen)
    8. context menu
    9. keyboard
-   10. wiring
-   11. start
+   10. wiring    (includes deck codes — copy one out, paste one in)
+   11. start     (its body runs at the very bottom of the file)
    12. capture, sensing, recording   (the audio section)
          status · sensing box · change detection
          clip storage · mp3 export · clip rows
-         recording · level line · capture
+         recording · level meter · capture
    ============================================================ */
 
 /* ---------- 1. elements ---------- */
@@ -146,22 +146,34 @@ function loadSection() {
 
 /* ---------- 4. sections ---------- */
 
-let sectionSwapping = false;
-
-// the old panels fade out before the new ones come in, so the two
-// sections cross over instead of one cutting to the other
+// the swap happens on the click — waiting for the old panels to leave
+// first just read as lag. the new ones fade up instead, so it's smooth
+// without costing anything.
 function switchSection(id) {
-    if (id === activeSectionId || sectionSwapping) return;
-    sectionSwapping = true;
-    homeScreen.classList.add('section-swap');
+    if (id === activeSectionId) return;
 
-    window.setTimeout(() => {
-        activeSectionId = id;
-        window.localStorage.setItem('active-section', activeSectionId);
-        renderSections();
-        homeScreen.classList.remove('section-swap');
-        sectionSwapping = false;
-    }, 150);
+    const tabs = [...sectionTabs.children];
+    const before = tabs.map((tab) => tab.getBoundingClientRect());
+
+    activeSectionId = id;
+    window.localStorage.setItem('active-section', activeSectionId);
+    renderSections();
+
+    if (!tabs[0] || typeof tabs[0].animate !== 'function') return;
+    const after = tabs.map((tab) => tab.getBoundingClientRect());
+    tabs.forEach((tab, index) => {
+        const from = before[index];
+        const to = after[index];
+        if (!from.height || !to.height) return;
+        const dx = from.left - to.left;
+        const dy = from.bottom - to.bottom;
+        const scale = from.height / to.height;
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(scale - 1) < 0.01) return;
+        tab.animate(
+            [{ transform: `translate(${dx}px, ${dy}px) scale(${scale})` }, { transform: 'none' }],
+            { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+        );
+    });
 }
 
 function renderSections() {
@@ -695,6 +707,21 @@ function undoLastDelete() {
 
 /* ---------- 10. wiring ---------- */
 
+// the press. every button gets the squash-and-spring except the icon
+// squares, the deck entries and the tiles, which have their own.
+const noBoing = '.square-button, .deck-card, .quick-action';
+document.addEventListener('pointerdown', (event) => {
+    const button = event.target.closest('button');
+    if (!button || button.closest(noBoing)) return;
+    button.classList.remove('boing');
+    void button.offsetWidth;          // restart it on a fast second click
+    button.classList.add('boing');
+});
+document.addEventListener('animationend', (event) => {
+    if (event.animationName === 'button-boing') event.target.classList.remove('boing');
+});
+
+
 // decks
 deckToggle.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -980,6 +1007,7 @@ const senseBox = document.getElementById('senseBox');
 const senseControls = document.getElementById('senseControls');
 const senseReadout = document.getElementById('senseReadout');
 const switchCount = document.getElementById('switchCount');
+const liveLabel = document.getElementById('liveLabel');
 const downloadAllButton = document.getElementById('downloadAll');
 const senseToggle = document.getElementById('senseToggle');
 const senseReset = document.getElementById('senseReset');
@@ -1085,6 +1113,7 @@ senseToggle.addEventListener('click', (event) => {
     senseControls.hidden = !nowOpen;
     senseToggle.setAttribute('aria-expanded', String(nowOpen));
     previewWrap.classList.toggle('showing-video', nowOpen);
+    audioPanel.classList.toggle('is-tuning', nowOpen);
 });
 
 senseReset.addEventListener('click', (event) => {
@@ -1701,8 +1730,7 @@ function startRecording() {
     window.clearInterval(timerInterval);
     timerInterval = window.setInterval(() => {
         const elapsed = formatDuration(Date.now() - recordStartTime);
-        const liveLabel = document.getElementById('liveLabel');
-        if (liveLabel) liveLabel.textContent = `${clipCount + 1} · ${elapsed}`;
+        liveLabel.textContent = `${clipCount + 1} · ${elapsed}`;
     }, 250);
 }
 
@@ -1739,7 +1767,7 @@ function startLevelMeter() {
     if (activeStream.getAudioTracks().length === 0) return;
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     analyser = audioContext.createAnalyser();
-    analyser.fftSize = 1024;
+    analyser.fftSize = 256;   /* enough for a peak — a quarter the work per frame */
     levelData = new Uint8Array(analyser.fftSize);
     audioContext.createMediaStreamSource(activeStream).connect(analyser);
     drawLevel();
@@ -1764,13 +1792,11 @@ function cutClip() {
 /* --- the clip being recorded right now --- */
 
 function showLiveRow() {
-    const liveLabel = document.getElementById('liveLabel');
-    if (liveLabel) liveLabel.textContent = '';
+    liveLabel.textContent = '';
 }
 
 function hideLiveRow() {
-    const liveLabel = document.getElementById('liveLabel');
-    if (liveLabel) liveLabel.textContent = '';
+    liveLabel.textContent = '';
 }
 
 /* --- capture --- */
@@ -1786,11 +1812,13 @@ function stopCapture() {
     senseInterval = null;
     stopLevelMeter();
     previewWrap.classList.remove('showing-video');
+    audioPanel.classList.remove('is-tuning');
     if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
     activeStream = null;
     previewVideo.srcObject = null;
     previousSample = null;
     previewWrap.hidden = true;
+    audioPanel.classList.remove('is-live');
     senseReadout.hidden = true;
     senseReadout.textContent = 'change 0.0';
     senseControls.hidden = true;
@@ -1824,6 +1852,7 @@ async function startCapture() {
     await previewVideo.play().catch(() => {});
 
     previewWrap.hidden = false;
+    audioPanel.classList.add('is-live');
     refreshEmptyMessage();
     senseReadout.hidden = false;
     triggerCount = 0;
