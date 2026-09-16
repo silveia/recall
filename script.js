@@ -22,19 +22,21 @@
 
 // screens
 const homeScreen = document.getElementById('homeScreen');
+const modalVeil = document.getElementById('modalVeil');
 const makerScreen = document.getElementById('makerScreen');
 const studyScreen = document.getElementById('studyScreen');
-const backButton = document.querySelector('.back-button');
-const topbarTitle = document.getElementById('topbarTitle');
 
 // sections
 const sectionTabs = document.getElementById('sectionTabs');
-const quickPanel = document.querySelector('.quick-panel');
 const audioPanel = document.getElementById('audioPanel');
 
 // decks
-const deckBar = document.querySelector('.deck-bar');
 const deckListSlot = document.getElementById('deckListSlot');
+const homePanel = document.getElementById('homePanel');
+const homeBody = document.getElementById('homeBody');
+const paneSplit = document.getElementById('paneSplit');
+const cardSide = document.querySelector('.card-side');
+const deckCardList = document.getElementById('deckCardList');
 const sharePanel = document.getElementById('sharePanel');
 const shareToggle = document.getElementById('shareToggle');
 const shareOut = document.getElementById('shareOut');
@@ -43,8 +45,6 @@ const shareNote = document.getElementById('shareNote');
 const helpBox = document.querySelector('.help-box');
 const deckForm = document.getElementById('deckForm');
 const deckNameInput = document.getElementById('deckNameInput');
-const deckList = document.getElementById('deckList');
-const deckToggle = document.getElementById('deckToggle');
 
 // cards
 const cardForm = document.getElementById('cardForm');
@@ -69,6 +69,7 @@ const levelContext = levelCanvas.getContext('2d');
 /* ---------- 2. state ---------- */
 
 const sections = [
+    { id: 'home', name: 'home' },
     { id: 'cards', name: 'cards' },
     { id: 'audio', name: 'audio' }
 ];
@@ -86,15 +87,18 @@ let decks = [
     }
 ];
 
-let activeSectionId = 'cards';
+let activeSectionId = 'home';
 let activeDeckId = 'starting-deck';
 let recentQuestions = [];
 let currentCard;
 let waitingForContinue = false;
 let editingCardIndex = null;
 let editingDeckId = null;
-let lastDeleted = null;
-let draggedDeckId = null;
+/* every delete since the last page swap, newest last. ctrl+z walks
+   back down it, so a run of deletions comes back one at a time. only a
+   refresh or moving between home/cards/audio empties it — create and
+   practice are screens within a page, not pages of their own. */
+let deletedStack = [];
 let audioContext = null;
 let analyser = null;
 let levelFrame = null;
@@ -144,15 +148,27 @@ function loadSection() {
     if (sections.some((section) => section.id === saved)) activeSectionId = saved;
 }
 
+/* nothing on this site wants the browser guessing at what you meant —
+   no autocomplete list, no autocorrect, no capitalising the first
+   letter of a lowercase site, no red squiggles under a kaomoji. */
+function stopGuessing(field) {
+    field.autocomplete = 'off';
+    field.spellcheck = false;
+    field.setAttribute('autocorrect', 'off');
+    field.setAttribute('autocapitalize', 'off');
+    return field;
+}
+
 /* ---------- 4. sections ---------- */
 
 // the swap happens on the click — waiting for the old panels to leave
 // first just read as lag. the new ones come in from the side you're
 // heading instead, staggered, so it's smooth without costing anything.
 function switchSection(id) {
+    if (isModalOpen()) showScreen(homeScreen);   // tabs work from anywhere
     if (id === activeSectionId) return;
 
-    const tabs = [...sectionTabs.children];
+    const tabs = [...sectionTabs.querySelectorAll('.section-tab')];
     const before = tabs.map((tab) => tab.getBoundingClientRect());
 
     // right along the tab row or left back down it
@@ -160,11 +176,12 @@ function switchSection(id) {
         > sections.findIndex((section) => section.id === activeSectionId) ? 1 : -1;
 
     activeSectionId = id;
+    deletedStack = [];   // a new page starts with nothing to put back
     window.localStorage.setItem('active-section', activeSectionId);
     renderSections();
 
     // whatever is on screen now arrives from that side
-    [deckBar, deckListSlot, helpBox, quickPanel, audioPanel].forEach((panel) => {
+    [homePanel, homeBody, helpBox, audioPanel].forEach((panel) => {
         if (panel && !panel.hidden) panel.style.setProperty('--from', `${heading * 30}px`);
     });
 
@@ -175,7 +192,8 @@ function switchSection(id) {
         const to = after[index];
         if (!from.height || !to.height) return;
         const dx = from.left - to.left;
-        const dy = from.bottom - to.bottom;
+        // centres, not bottoms — the scale pivots on the middle now
+        const dy = (from.top + from.bottom) / 2 - (to.top + to.bottom) / 2;
         const scale = from.height / to.height;
         if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(scale - 1) < 0.01) return;
         tab.animate(
@@ -187,11 +205,11 @@ function switchSection(id) {
 
 function renderSections() {
     // show only the panels belonging to the active section
-    deckBar.hidden = activeSectionId !== 'cards';
-    quickPanel.hidden = activeSectionId !== 'cards';
-    updateDeckToggle();
-    deckListSlot.hidden = activeSectionId !== 'cards';
-    helpBox.hidden = activeSectionId !== 'cards';
+    homePanel.hidden = activeSectionId !== 'home';
+    homeBody.hidden = activeSectionId !== 'cards';
+    helpBox.querySelectorAll('.help-note').forEach((note) => {
+        note.hidden = note.dataset.section !== activeSectionId;
+    });
     if (activeSectionId !== 'cards') closeSharePanel();
     audioPanel.hidden = activeSectionId !== 'audio';
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
@@ -209,7 +227,7 @@ function renderSections() {
             sectionTabs.appendChild(tab);
         });
     }
-    [...sectionTabs.children].forEach((tab) => {
+    sectionTabs.querySelectorAll('.section-tab').forEach((tab) => {
         const active = tab.dataset.section === activeSectionId;
         tab.classList.toggle('active', active);
         tab.setAttribute('aria-current', active ? 'page' : 'false');
@@ -218,41 +236,9 @@ function renderSections() {
 
 /* ---------- 5. decks ---------- */
 
-function openDeckMenu() {
-    deckList.hidden = false;
-    deckToggle.setAttribute('aria-expanded', 'true');
-}
-
-function closeDeckMenu() {
-    deckList.hidden = true;
-    deckToggle.setAttribute('aria-expanded', 'false');
-}
-
-function isDeckMenuOpen() {
-    return !deckList.hidden;
-}
-
-function updateDeckToggle() {
-    const deck = activeDeck();
-    deckToggle.setAttribute('aria-label', `switch deck, currently ${deck.name}`);
-    // the code on show always belongs to the deck on show
+// the code on show always belongs to the deck on show
+function refreshShareForActiveDeck() {
     if (!sharePanel.hidden) refreshShareCode();
-}
-
-function moveDeckToIndex(fromIndex, toIndex) {
-    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
-    const [moved] = decks.splice(fromIndex, 1);
-    decks.splice(toIndex, 0, moved);
-    renderDecks();
-    saveDecks();
-}
-
-function moveDeck(index, direction) {
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= decks.length) return;
-    moveDeckToIndex(index, newIndex);
-    const handles = deckList.querySelectorAll('.deck-handle');
-    if (handles[newIndex]) handles[newIndex].focus();
 }
 
 // a deck's "look" is one of eight outline shapes. it starts off derived
@@ -286,11 +272,16 @@ function lookFor(deck) {
 // the deck entries under the deck bar — same face as the smiley wears,
 // plus the name, the card count and how long the deck is
 let deckCardsShape = '';
+let deckArrivalTimer = 0;
+
+function deckCardsShapeNow() {
+    return decks.map((deck) => `${deck.id}:${deck.name}:${lookFor(deck)}:${deck.cards.length}:${deck.cards[0] ? deck.cards[0].question : ''}`).join('|');
+}
 
 function renderDeckCards() {
     // rebuilding replays every entry's arrival animation, so when only
     // the selection moved, just move the highlight
-    const shape = decks.map((deck) => `${deck.id}:${deck.name}:${lookFor(deck)}:${deck.cards.length}:${deck.cards[0] ? deck.cards[0].question : ''}`).join('|');
+    const shape = deckCardsShapeNow();
     if (shape === deckCardsShape && deckListSlot.children.length === decks.length) {
         [...deckListSlot.children].forEach((entry) => {
             entry.classList.toggle('active-deck', entry.dataset.deckId === activeDeckId);
@@ -299,6 +290,12 @@ function renderDeckCards() {
     }
     deckCardsShape = shape;
     deckListSlot.innerHTML = '';
+    // only a rebuild cascades — a reorder keeps every card on screen
+    deckListSlot.classList.add('is-arriving');
+    window.clearTimeout(deckArrivalTimer);
+    deckArrivalTimer = window.setTimeout(() => {
+        deckListSlot.classList.remove('is-arriving');
+    }, 600);
     decks.forEach((deck) => {
         const entry = document.createElement('button');
         entry.className = `deck-card${deck.id === activeDeckId ? ' active-deck' : ''}`;
@@ -317,13 +314,14 @@ function renderDeckCards() {
 
         const detail = document.createElement('small');
         const total = deck.cards.length;
-        detail.textContent = total === 0
-            ? 'empty · add some cards'
-            : `${total} card${total === 1 ? '' : 's'} · ${deck.cards[0].question}`;
+        const count = `${total} card${total === 1 ? '' : 's'}`;
+        detail.textContent = total === 0 ? count : `${count} · ${deck.cards[0].question}`;
 
         text.append(name, detail);
         entry.append(swatch, text);
+        entry.addEventListener('pointerdown', (event) => armDeckLift(entry, event));
         entry.addEventListener('click', () => {
+            if (deckWasDragged) return;   // that press was a reorder, not a pick
             if (deck.id === activeDeckId) return;
             activeDeckId = deck.id;
             renderDecks();
@@ -334,136 +332,401 @@ function renderDeckCards() {
     });
 }
 
-function renderDecks() {
-    deckList.innerHTML = '';
-    decks.forEach((deck, index) => {
-        const row = document.createElement('div');
-        row.className = `deck-row${deck.id === activeDeckId ? ' active-deck' : ''}`;
-        row.dataset.deckId = deck.id;
+// the picked deck, spelled out card by card. editing happens in
+// place — the row's own two fields — so nothing leaves the page.
+let editingStageIndex = null;
 
-        // drag handle
-        const handle = document.createElement('button');
-        handle.className = 'deck-handle';
-        handle.type = 'button';
-        handle.setAttribute('aria-label', `reorder ${deck.name}, use arrow keys`);
-        handle.innerHTML = '<span></span><span></span><span></span>';
-        handle.addEventListener('mousedown', () => { row.draggable = true; });
-        handle.addEventListener('touchstart', () => { row.draggable = true; }, { passive: true });
-        handle.addEventListener('keydown', (event) => {
-            if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                moveDeck(index, -1);
-            }
-            if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                moveDeck(index, 1);
-            }
-        });
+/* --- trading width between the cards and the decks --- */
 
-        // deck name
-        const selectButton = document.createElement('button');
-        selectButton.className = 'deck-select';
-        selectButton.type = 'button';
-        selectButton.textContent = deck.name;
-        selectButton.addEventListener('click', () => {
-            activeDeckId = deck.id;
-            renderDecks();
-            renderCards();
-            saveDecks();
-            closeDeckMenu();
-            deckToggle.focus();
-        });
+/* the split is stored as a percentage, not pixels, so the two panes
+   keep their proportions when the window changes size. */
+const DECK_COL_KEY = 'deck-column';
+const DECK_COL_MIN = 15;
+const DECK_COL_MAX = 75;
 
-        // card count
-        const count = document.createElement('span');
-        count.className = 'deck-count';
-        count.textContent = deck.cards.length;
-
-        // drag and drop
-        row.addEventListener('dragstart', (event) => {
-            draggedDeckId = deck.id;
-            row.classList.add('dragging');
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', deck.id);
-        });
-        row.addEventListener('dragend', () => {
-            row.classList.remove('dragging');
-            row.draggable = false;
-            draggedDeckId = null;
-            deckList.querySelectorAll('.deck-row').forEach((item) => item.classList.remove('drop-target'));
-        });
-        row.addEventListener('dragover', (event) => {
-            event.preventDefault();
-            if (draggedDeckId && draggedDeckId !== deck.id) row.classList.add('drop-target');
-        });
-        row.addEventListener('dragleave', () => row.classList.remove('drop-target'));
-        row.addEventListener('drop', (event) => {
-            event.preventDefault();
-            row.classList.remove('drop-target');
-            if (!draggedDeckId || draggedDeckId === deck.id) return;
-            const fromIndex = decks.findIndex((item) => item.id === draggedDeckId);
-            moveDeckToIndex(fromIndex, index);
-        });
-
-        row.append(handle, selectButton, count);
-        deckList.appendChild(row);
-    });
-    renderDeckCards();
-    updateDeckToggle();
+/* the ceiling isn't a flat number: the cards side has a floor of its
+   own (the two tiles), and past the point where it hits that, dragging
+   further only pushed the column out under the right bar. so the most
+   the decks can take is whatever leaves the cards exactly their floor. */
+function deckColumnMax() {
+    const box = homeBody.getBoundingClientRect();
+    if (!box.width || !cardSide) return DECK_COL_MAX;
+    const split = paneSplit.getBoundingClientRect().width;
+    const floor = parseFloat(window.getComputedStyle(cardSide).minWidth) || 0;
+    const room = (box.width - split - floor) / box.width * 100;
+    return Math.max(DECK_COL_MIN, Math.min(DECK_COL_MAX, room));
 }
 
-function beginDeckRename(deck) {
-    openDeckMenu();
-    const row = deckList.querySelector(`[data-deck-id="${deck.id}"]`);
-    const selectButton = row && row.querySelector('.deck-select');
-    if (!selectButton) return;
+function setDeckColumn(percent) {
+    const width = Math.min(deckColumnMax(), Math.max(DECK_COL_MIN, percent));
+    homeBody.style.setProperty('--deck-col', `${width}%`);
+    return width;
+}
 
-    const renameInput = document.createElement('input');
-    renameInput.className = 'deck-inline-input';
-    renameInput.type = 'text';
-    renameInput.value = deck.name;
-    renameInput.setAttribute('aria-label', `rename ${deck.name}`);
+function loadDeckColumn() {
+    const saved = Number(window.localStorage.getItem(DECK_COL_KEY));
+    if (saved) setDeckColumn(saved);
+}
+
+// a narrower window can put a stored width past the new ceiling
+window.addEventListener('resize', () => {
+    const now = parseFloat(homeBody.style.getPropertyValue('--deck-col'));
+    if (now) setDeckColumn(now);
+});
+
+paneSplit.addEventListener('pointerdown', (event) => {
+    if (event.button) return;
+    event.preventDefault();
+    paneSplit.classList.add('is-dragging');
+    document.documentElement.classList.add('splitting');
+
+    const drag = (move) => {
+        if (move.pointerId !== event.pointerId) return;
+        const box = homeBody.getBoundingClientRect();
+        if (!box.width) return;
+        // the decks are the left-hand pane now, so their width is
+        // however far the cursor has come from that edge
+        setDeckColumn((move.clientX - box.left) / box.width * 100);
+    };
+    const drop = () => {
+        window.removeEventListener('pointermove', drag);
+        window.removeEventListener('pointerup', drop);
+        window.removeEventListener('pointercancel', drop);
+        paneSplit.classList.remove('is-dragging');
+        document.documentElement.classList.remove('splitting');
+        const width = homeBody.style.getPropertyValue('--deck-col');
+        if (width) window.localStorage.setItem(DECK_COL_KEY, parseFloat(width));
+    };
+    window.addEventListener('pointermove', drag);
+    window.addEventListener('pointerup', drop);
+    window.addEventListener('pointercancel', drop);
+});
+
+// the arrow keys nudge it too, once it has focus
+paneSplit.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const now = parseFloat(homeBody.style.getPropertyValue('--deck-col')) || 33;
+    const width = setDeckColumn(now + (event.key === 'ArrowLeft' ? -2 : 2));
+    window.localStorage.setItem(DECK_COL_KEY, width);
+});
+
+/* --- dragging a deck up or down the list --- */
+
+/* the whole entry is the grip — there's no handle to aim at — so a
+   press only becomes a drag once it's travelled a few pixels. under
+   that it's still a click, and the deck just gets picked. */
+let deckWasDragged = false;
+
+const DECK_LIFT_SLACK = 4;   // px of travel before a press counts as a drag
+
+function deckLiftConfig() {
+    return { list: deckListSlot, selector: '.deck-card', feel: LIFT_FEEL.decks, onSettle: settleDeckOrder };
+}
+
+function armDeckLift(entry, event) {
+    if (event.button) return;
+    deckWasDragged = false;
+    const startY = event.clientY;
+
+    const watch = (move) => {
+        if (move.pointerId !== event.pointerId) return;
+        if (Math.abs(move.clientY - startY) < DECK_LIFT_SLACK) return;
+        stop();
+        deckWasDragged = true;
+        // the lift wants a press, and this is a move — it only reads
+        // the button, the pointer and where the cursor is right now
+        startLift(deckLiftConfig(), entry, {
+            button: 0,
+            pointerId: move.pointerId,
+            clientY: move.clientY,
+            preventDefault: () => move.preventDefault()
+        });
+    };
+    const stop = () => {
+        window.removeEventListener('pointermove', watch);
+        window.removeEventListener('pointerup', stop);
+        window.removeEventListener('pointercancel', stop);
+    };
+
+    window.addEventListener('pointermove', watch);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+}
+
+// the entries are the order now, so the decks array is read back off
+// them. the shape is rewritten too, or the next render would see a
+// different order and rebuild the list you just sorted by hand.
+function settleDeckOrder() {
+    const order = [...deckListSlot.querySelectorAll('.deck-card')]
+        .map((entry) => decks.find((deck) => deck.id === entry.dataset.deckId))
+        .filter(Boolean);
+    if (order.length !== decks.length) return;
+    decks = order;
+    deckCardsShape = deckCardsShapeNow();
+    renderDecks();
+    saveDecks();
+
+    // the click that ends the drag fires after this, so the guard has
+    // to outlive it by a beat
+    window.setTimeout(() => { deckWasDragged = false; }, 0);
+}
+
+function renderStage() {
+    const deck = activeDeck();
+    const total = deck.cards.length;
+
+    deckCardList.innerHTML = '';
+    if (total === 0) {
+        deckCardList.innerHTML = '<li class="empty-message">=ω=</li>';
+        editingStageIndex = null;
+        return;
+    }
+
+    deck.cards.forEach((card, index) => {
+        const item = document.createElement('li');
+        item.className = `stage-card${index === editingStageIndex ? ' editing' : ''}`;
+        item.dataset.cardIndex = index;
+
+        // three lines to drag it by, on every row
+        const handle = document.createElement('button');
+        handle.className = 'card-handle';
+        handle.type = 'button';
+        handle.setAttribute('aria-label', `reorder ${card.question}, use arrow keys`);
+        handle.innerHTML = '<span></span><span></span><span></span>';
+        handle.addEventListener('pointerdown', (event) => startLift(cardLiftConfig(), item, event));
+        handle.addEventListener('keydown', (event) => {
+            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+            event.preventDefault();
+            moveRow(cardLiftConfig(), item, event.key === 'ArrowUp' ? -1 : 1);
+            handle.focus();
+        });
+        item.append(handle);
+
+        if (index === editingStageIndex) {
+            item.append(buildStageEditor(deck, card, index));
+        } else {
+            const text = document.createElement('span');
+            text.className = 'stage-card-text';
+            const question = document.createElement('strong');
+            question.textContent = card.question;
+            const answer = document.createElement('small');
+            answer.textContent = card.answer;
+            text.append(question, answer);
+            text.title = 'click to edit';
+            // a drag renumbers the rows, so the row itself is asked for
+            // its index rather than each handler remembering one
+            text.addEventListener('click', () => beginStageEdit(rowIndex(item)));
+
+            const remove = document.createElement('button');
+            remove.className = 'stage-card-action';
+            remove.type = 'button';
+            remove.textContent = '×';
+            remove.setAttribute('aria-label', `delete ${card.question}`);
+            remove.title = 'delete — ctrl+z brings it back';
+            remove.addEventListener('click', (event) => {
+                event.stopPropagation();
+                deleteStageCard(rowIndex(item), remove);
+            });
+
+            item.append(text, remove);
+        }
+
+        deckCardList.appendChild(item);
+    });
+}
+
+function buildStageEditor(deck, card, index) {
+    const wrap = document.createElement('span');
+    wrap.className = 'stage-card-edit';
+
+    const question = stopGuessing(document.createElement('input'));
+    question.className = 'edit-question';
+    question.type = 'text';
+    question.value = card.question;
+    question.placeholder = 'question';
+    question.setAttribute('aria-label', 'question');
+
+    const answer = stopGuessing(document.createElement('input'));
+    answer.className = 'edit-answer';
+    answer.type = 'text';
+    answer.value = card.answer;
+    answer.placeholder = 'answer';
+    answer.setAttribute('aria-label', 'answer');
+
+    // enter commits, escape backs out, and clicking away commits too —
+    // but only once the focus has actually left both fields
+    const commit = () => {
+        const target = deck.cards[index];
+        if (!target) return;
+        const nextQuestion = question.value.trim();
+        const nextAnswer = answer.value.trim();
+        editingStageIndex = null;
+        if (!nextQuestion || !nextAnswer) {
+            renderStage();
+            return;
+        }
+        target.question = nextQuestion;
+        target.answer = nextAnswer;
+        renderDecks();
+        renderCards();
+        saveDecks();
+    };
+
+    [question, answer].forEach((field) => {
+        field.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                commit();
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                editingStageIndex = null;
+                renderStage();
+            }
+        });
+        field.addEventListener('blur', () => {
+            window.setTimeout(() => {
+                if (editingStageIndex !== index) return;
+                if (wrap.contains(document.activeElement)) return;
+                commit();
+            }, 0);
+        });
+    });
+
+    wrap.append(question, answer);
+    window.setTimeout(() => {
+        question.focus();
+        question.select();
+    }, 0);
+    return wrap;
+}
+
+function rowIndex(item) {
+    return Number(item.dataset.cardIndex);
+}
+
+function cardLiftConfig() {
+    return {
+        list: deckCardList,
+        selector: '.stage-card',
+        feel: LIFT_FEEL.cards,
+        onSettle: settleCardOrder
+    };
+}
+
+/* the rows are the order now, so the deck's cards are read back off
+   them. renderStage() isn't called — the list is already right, and
+   rebuilding it would throw away the row that just settled. */
+function settleCardOrder() {
+    const deck = activeDeck();
+    const rows = [...deckCardList.querySelectorAll('.stage-card')];
+    const order = rows.map((row) => deck.cards[rowIndex(row)]).filter(Boolean);
+    if (order.length !== deck.cards.length) return;
+    deck.cards = order;
+    rows.forEach((row, index) => { row.dataset.cardIndex = index; });
+    // the entry on the right shows the deck's first question, and that
+    // may well be a different card now
+    renderDeckCards();
+    renderCards();
+    saveDecks();
+}
+
+function beginStageEdit(index) {
+    editingStageIndex = index;
+    renderStage();
+}
+
+async function deleteStageCard(index, button) {
+    const deck = activeDeck();
+    const card = deck.cards[index];
+    if (!card) return;
+
+    const sure = await askConfirm(`bin "${card.question}"?`, button);
+    if (!sure) return;
+    // the list can have been rebuilt while the chip was up
+    if (deck.cards[index] !== card) return;
+
+    deletedStack.push({ type: 'card', item: card, index, deckId: deck.id });
+    deck.cards.splice(index, 1);
+    editingStageIndex = null;
+    renderDecks();
+    renderCards();
+    saveDecks();
+}
+
+function renderDecks() {
+    renderDeckCards();
+    renderStage();
+    refreshShareForActiveDeck();
+}
+
+/* renaming happens on the entry itself: the button is swapped for a
+   plain row holding the same face and a field, and put back when you
+   are done. a <button> can't hold an input, which is why the whole
+   element is replaced rather than just its name. */
+function beginDeckRename(deck) {
+    const entry = deckListSlot.querySelector(`[data-deck-id="${deck.id}"]`);
+    if (!entry || entry.classList.contains('is-renaming')) return;
+
+    const row = document.createElement('div');
+    row.className = entry.className + ' is-renaming';
+    row.dataset.deckId = deck.id;
+
+    const swatch = document.createElement('span');
+    swatch.className = 'deck-shape';
+    swatch.innerHTML = shapeFor(deck);
+
+    const field = stopGuessing(document.createElement('input'));
+    field.className = 'deck-inline-input';
+    field.type = 'text';
+    field.value = deck.name;
+    field.setAttribute('aria-label', `rename ${deck.name}`);
 
     let finished = false;
     const finishRename = (save) => {
         if (finished) return;
         finished = true;
-        const newName = renameInput.value.trim();
+        const newName = field.value.trim();
         if (save && newName) deck.name = newName;
+        // an unchanged name leaves the shape identical, and renderDeckCards
+        // skips a rebuild when the shape matches — which would leave this
+        // row in place. clearing it forces the entry back.
+        deckCardsShape = '';
         renderDecks();
         saveDecks();
     };
 
-    renameInput.addEventListener('keydown', (event) => {
+    field.addEventListener('keydown', (event) => {
         event.stopPropagation();
         if (event.key === 'Enter') finishRename(true);
         if (event.key === 'Escape') finishRename(false);
     });
-    renameInput.addEventListener('blur', () => finishRename(true));
+    field.addEventListener('blur', () => finishRename(true));
 
-    selectButton.replaceWith(renameInput);
-    renameInput.focus();
-    renameInput.select();
+    row.append(swatch, field);
+    entry.replaceWith(row);
+    field.focus();
+    field.select();
 }
 
 /* ---------- 6. cards ---------- */
 
-function showScreen(screen) {
-    // home is the top of the stack, so anything else is "forward".
-    // the new screen slides in from whichever side you came from.
-    const goingBack = screen === homeScreen;
-    [homeScreen, makerScreen, studyScreen].forEach((item) => {
-        item.classList.remove('enter-forward', 'enter-back');
-        item.hidden = item !== screen;
-    });
-    screen.classList.add(goingBack ? 'enter-back' : 'enter-forward');
+/* home is always there underneath; create and practice are windows
+   laid over it, so "showing" one is really just raising the veil. */
+function isModalOpen() {
+    return !modalVeil.hidden;
+}
 
-    topbarTitle.textContent = screen.dataset.title;
-    topbarTitle.classList.remove('swap');
-    void topbarTitle.offsetWidth;   // forces the animation to start over
-    topbarTitle.classList.add('swap');
-    backButton.hidden = screen === homeScreen;
-    closeDeckMenu();
+function showScreen(screen) {
+    const onHome = screen === homeScreen;
+    modalVeil.hidden = onHome;
+    makerScreen.hidden = screen !== makerScreen;
+    studyScreen.hidden = screen !== studyScreen;
+    if (onHome) waitingForContinue = false;
+
+    // the tabs are the title on every screen now; create and practice
+    // carry their own name at the top of their own page, under them
 }
 
 function renderCards() {
@@ -607,6 +870,27 @@ function showContextMenu(event, target) {
     contextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 200)}px`;
     contextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - 100)}px`;
 
+    if (target.type === 'page') {
+        // the browser's own moves, in the site's own menu. whether back
+        // or forward lead anywhere isn't knowable from in here, so they
+        // are always offered and simply do nothing at the ends.
+        [
+            ['back', () => window.history.back()],
+            ['forward', () => window.history.forward()],
+            ['reload', () => window.location.reload()]
+        ].forEach(([label, run]) => {
+            const action = document.createElement('button');
+            action.className = 'context-action';
+            action.type = 'button';
+            action.textContent = label;
+            action.addEventListener('click', () => {
+                hideContextMenu();
+                run();
+            });
+            contextMenu.append(action);
+        });
+    }
+
     if (target.type === 'deck') {
         const renameButton = document.createElement('button');
         renameButton.className = 'context-action';
@@ -625,7 +909,7 @@ function showContextMenu(event, target) {
         deleteDeckButton.addEventListener('click', () => {
             if (decks.length === 1) return;
             const deletedIndex = decks.findIndex((deck) => deck.id === target.deck.id);
-            lastDeleted = { type: 'deck', item: target.deck, index: deletedIndex };
+            deletedStack.push({ type: 'deck', item: target.deck, index: deletedIndex });
             decks.splice(deletedIndex, 1);
             if (target.deck.id === activeDeckId) activeDeckId = decks[Math.max(0, deletedIndex - 1)].id;
             renderDecks();
@@ -637,7 +921,7 @@ function showContextMenu(event, target) {
         const lookButton = document.createElement('button');
         lookButton.className = 'context-action';
         lookButton.type = 'button';
-        lookButton.textContent = 'change look';
+        lookButton.textContent = 'new icon';
         lookButton.addEventListener('click', () => {
             target.deck.look = (lookFor(target.deck) + 1) % LOOK_COUNT;
             renderDecks();
@@ -663,12 +947,12 @@ function showContextMenu(event, target) {
         deleteButton.type = 'button';
         deleteButton.textContent = 'delete';
         deleteButton.addEventListener('click', () => {
-            lastDeleted = {
+            deletedStack.push({
                 type: 'card',
                 item: target.deck.cards[target.index],
                 index: target.index,
                 deckId: target.deck.id
-            };
+            });
             target.deck.cards.splice(target.index, 1);
             renderCards();
             renderDecks();
@@ -699,21 +983,21 @@ function quadrantForKey(code) {
 }
 
 function undoLastDelete() {
-    if (!lastDeleted) return;
-    if (lastDeleted.type === 'deck') {
-        decks.splice(lastDeleted.index, 0, lastDeleted.item);
-        activeDeckId = lastDeleted.item.id;
+    const undone = deletedStack.pop();
+    if (!undone) return;
+    if (undone.type === 'deck') {
+        decks.splice(undone.index, 0, undone.item);
+        activeDeckId = undone.item.id;
     } else {
-        const deck = decks.find((item) => item.id === lastDeleted.deckId);
+        const deck = decks.find((item) => item.id === undone.deckId);
         if (deck) {
-            deck.cards.splice(lastDeleted.index, 0, lastDeleted.item);
+            deck.cards.splice(undone.index, 0, undone.item);
             activeDeckId = deck.id;
         }
     }
     renderDecks();
     renderCards();
     saveDecks();
-    lastDeleted = null;
 }
 
 /* ---------- 10. wiring ---------- */
@@ -734,13 +1018,6 @@ document.addEventListener('animationend', (event) => {
 
 
 // decks
-deckToggle.addEventListener('click', (event) => {
-    event.stopPropagation();
-    if (isDeckMenuOpen()) closeDeckMenu();
-    else openDeckMenu();
-});
-deckList.addEventListener('click', (event) => event.stopPropagation());
-
 deckForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const name = deckNameInput.value.trim();
@@ -877,17 +1154,25 @@ document.getElementById('loadCode').addEventListener('click', async () => {
     }
 });
 
-// navigation
-backButton.addEventListener('click', () => {
-    waitingForContinue = false;
-    showScreen(homeScreen);
-});
+// navigation. there's no back arrow — the tile that took you to a
+// screen is the way off it too, so pressing it again lands you home.
 document.getElementById('createCardButton').addEventListener('click', () => {
+    if (isModalOpen() && !makerScreen.hidden) {
+        showScreen(homeScreen);
+        return;
+    }
     resetCardForm();
     renderCards();
     showScreen(makerScreen);
 });
-document.getElementById('randomStudyButton').addEventListener('click', startStudy);
+document.getElementById('randomStudyButton').addEventListener('click', () => {
+    if (isModalOpen() && !studyScreen.hidden) {
+        waitingForContinue = false;
+        showScreen(homeScreen);
+        return;
+    }
+    startStudy();
+});
 
 // card form
 cardForm.addEventListener('submit', (event) => {
@@ -916,8 +1201,8 @@ cardForm.addEventListener('submit', (event) => {
 
 // right click
 document.addEventListener('contextmenu', (event) => {
-    const deckRow = event.target.closest('.deck-row, .deck-card');
-    const cardItem = event.target.closest('.card-item');
+    const deckRow = event.target.closest('.deck-card');
+    const cardItem = event.target.closest('.card-item, .stage-card');
 
     if (deckRow) {
         const deck = decks.find((item) => item.id === deckRow.dataset.deckId);
@@ -932,7 +1217,14 @@ document.addEventListener('contextmenu', (event) => {
         });
         return;
     }
-    hideContextMenu();
+    // anywhere else on the page gets the site's own menu. a text field
+    // is the exception — its native menu is the only way to paste, and
+    // the share panel exists to have codes pasted into it.
+    if (event.target.closest('input, textarea')) {
+        hideContextMenu();
+        return;
+    }
+    showContextMenu(event, { type: 'page' });
 });
 contextMenu.addEventListener('contextmenu', (event) => event.preventDefault());
 contextMenu.addEventListener('click', (event) => event.stopPropagation());
@@ -940,13 +1232,22 @@ contextMenu.addEventListener('click', (event) => event.stopPropagation());
 // clicking anywhere closes the menus
 document.addEventListener('click', () => {
     hideContextMenu();
-    closeDeckMenu();
     closeSharePanel();
+});
+
+// the backdrop is the way out; a click inside a panel is not
+modalVeil.addEventListener('click', (event) => {
+    if (event.target === modalVeil) showScreen(homeScreen);
+});
+document.querySelectorAll('.modal-close').forEach((button) => {
+    button.addEventListener('click', () => showScreen(homeScreen));
 });
 
 // clicking anywhere also advances a wrong answer
 document.addEventListener('click', (event) => {
-    if (!waitingForContinue || event.target.closest('.back-button')) return;
+    if (!waitingForContinue) return;
+    if (event.target.closest('.quick-action, .modal-close')) return;
+    if (event.target === modalVeil) return;
     showNextQuestion();
 });
 
@@ -954,7 +1255,7 @@ document.addEventListener('keydown', (event) => {
     const tag = event.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && lastDeleted) {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && deletedStack.length) {
         event.preventDefault();
         undoLastDelete();
         return;
@@ -964,17 +1265,12 @@ document.addEventListener('keydown', (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
 
     if (event.key === 'Escape') {
-        if (isDeckMenuOpen()) {
-            closeDeckMenu();
-            deckToggle.focus();
-            return;
-        }
         if (!sharePanel.hidden) {
             closeSharePanel();
             shareToggle.focus();
             return;
         }
-        if (homeScreen.hidden) {
+        if (isModalOpen()) {
             waitingForContinue = false;
             showScreen(homeScreen);
             return;
@@ -985,7 +1281,7 @@ document.addEventListener('keydown', (event) => {
         showNextQuestion();
         return;
     }
-    if (studyScreen.hidden) return;
+    if (studyScreen.hidden || !isModalOpen()) return;
 
     const quadrant = quadrantForKey(event.code);
     if (quadrant === undefined) return;
@@ -1001,6 +1297,7 @@ document.addEventListener('keydown', (event) => {
 function start() {
     loadDecks();
     loadSection();
+    loadDeckColumn();
     renderDecks();
     renderCards();
     renderSections();
@@ -1294,7 +1591,7 @@ function refreshEmptyMessage() {
     if (total === 0 && !existing) {
         const placeholder = document.createElement('li');
         placeholder.className = 'empty-message';
-        placeholder.textContent = 'no clips yet T_T';
+        placeholder.textContent = '.❛ ᴗ ❛.';
         recordingList.appendChild(placeholder);
     } else if (total > 0 && existing) {
         existing.remove();
@@ -1314,6 +1611,23 @@ const confirmChipYes = document.getElementById('confirmChipYes');
 const confirmChipNo = document.getElementById('confirmChipNo');
 let openConfirm = null;   // { button, settle } while one is up
 
+/* it's fixed to the window and put under whichever button asked, rather
+   than being absolutely placed inside one bar. that's what lets a card
+   in the scrolling deck list raise one without the list cutting it off. */
+function placeConfirm(button) {
+    if (!button) return;
+    const spot = button.getBoundingClientRect();
+    const box = confirmChip.getBoundingClientRect();
+    const edge = 8;
+    let left = spot.right - box.width;        // right edges line up
+    left = Math.max(edge, Math.min(left, window.innerWidth - box.width - edge));
+    let top = spot.bottom + 6;
+    // flip above the button when there's no room under it
+    if (top + box.height > window.innerHeight - edge) top = spot.top - box.height - 6;
+    confirmChip.style.left = `${Math.round(left)}px`;
+    confirmChip.style.top = `${Math.round(top)}px`;
+}
+
 function askConfirm(question, button) {
     // the same button again means "never mind"; a different one swaps
     if (openConfirm) {
@@ -1324,6 +1638,7 @@ function askConfirm(question, button) {
 
     confirmChipText.textContent = question;
     confirmChip.hidden = false;
+    placeConfirm(button);
     if (button) button.classList.add('is-armed');
 
     return new Promise((resolve) => {
@@ -1452,7 +1767,7 @@ async function downloadAllClips() {
             const href = URL.createObjectURL(mp3);
             const link = document.createElement('a');
             link.href = href;
-            link.download = `${record.name || `clip-${record.number}`}.mp3`;
+            link.download = clipFileName(record);
             link.click();
             window.setTimeout(() => URL.revokeObjectURL(href), 10000);
             done += 1;
@@ -1551,6 +1866,33 @@ async function loadStoredClips() {
         // no stored clips, or storage unavailable
     }
     refreshEmptyMessage();
+}
+
+/* --- clip names into file names --- */
+
+/* chrome throws away a handful of characters on the way to disk — a name
+   like "3/31" lands as "3_31". swapping each one for a unicode twin that
+   looks the same gets the name through intact. */
+const FILE_NAME_TWINS = {
+    '/': '\u2215',   // division slash
+    '\\': '\u29f5',  // reverse solidus operator
+    ':': '\uA789',   // modifier letter colon
+    '*': '\u2217',   // asterisk operator
+    '?': '\uFF1F',   // fullwidth question mark
+    '"': '\u201D',   // right double quote
+    '<': '\u2039',   // single left angle quote
+    '>': '\u203A',   // single right angle quote
+    '|': '\u2223',   // divides
+};
+
+function clipFileName(record) {
+    const raw = record.name || `clip-${record.number}`;
+    const safe = raw
+        .replace(/[/\\:*?"<>|]/g, (char) => FILE_NAME_TWINS[char])
+        .replace(/[\x00-\x1f\x7f]/g, '')
+        .replace(/^\.+/, '')
+        .trim();
+    return `${safe || `clip-${record.number}`}.mp3`;
 }
 
 /* --- webm/opus -> mp3, only when a clip is downloaded --- */
@@ -1763,7 +2105,7 @@ function addRecording(record, alreadySaved, atEnd) {
             const href = URL.createObjectURL(mp3);
             const a = document.createElement('a');
             a.href = href;
-            a.download = `${record.name || `clip-${record.number}`}.mp3`;
+            a.download = clipFileName(record);
             a.click();
             window.setTimeout(() => URL.revokeObjectURL(href), 10000);
         } catch (error) {
@@ -1812,16 +2154,255 @@ function addRecording(record, alreadySaved, atEnd) {
     if (!alreadySaved) rememberClipOrder();
 }
 
-/* --- reordering the clips --- */
+/* --- reordering a list by hand --- */
 
-let liftedClip = null;   // the row in your hand, if any
-let lift = null;         // where it was grabbed and how far it's moved
+/* the lift. the row you're holding follows the cursor up and down and
+   nothing else: it can't leave the list, it can't go sideways, and it
+   stays the same row rather than becoming a ghost of one. its own slot
+   in the list is the space, and the other rows shuffle around it.
+
+   it's pointer events rather than html drag and drop because the
+   browser's drag image follows the cursor everywhere on the page, and
+   that's the flying about we don't want.
+
+   two lists use this — the clips and the decks — so the list, the row
+   selector and what to do once it settles all come in from the caller. */
+
+let liftedRow = null;   // the row in your hand, if any
+let lift = null;        // where it was grabbed and how far it's moved
+
+function liftRows(list, selector) {
+    return [...list.querySelectorAll(selector)];
+}
+
+/* how a list gives way. the clips are quick and snappy because they're
+   short rows you sort in a hurry; the decks are big tiles, so they take
+   longer and swap nearer the middle of a row — an early swap on a tall
+   tile reads as the list twitching. */
+const LIFT_FEEL = {
+    clips: { ms: 190, ease: 'cubic-bezier(0.33, 0, 0, 1)', mark: [0.2, 0.8], grabCursor: true },
+    decks: { ms: 190, ease: 'cubic-bezier(0.33, 0, 0, 1)', mark: [0.2, 0.8], grabCursor: false },
+    cards: { ms: 190, ease: 'cubic-bezier(0.33, 0, 0, 1)', mark: [0.2, 0.8], grabCursor: true }
+};
+
+// moving a row re-lays the list out in one pass; this then slides every
+// row that shifted from where it was to where it landed, so the gap
+// looks like it travels rather than teleports
+function slideRows(list, selector, feel, rearrange) {
+    const rows = liftRows(list, selector);
+    // where each row looks like it is right now — a rect includes
+    // whatever transform is mid-flight, so a swap during a swap picks
+    // up from where the eye left it instead of snapping
+    const before = new Map(rows.map((row) => [row, row.getBoundingClientRect().top]));
+    rearrange();
+    rows.forEach((row) => {
+        // the old slide has to go before the new resting place is read
+        row.getAnimations()
+            .filter((animation) => animation.id === 'row-slide')
+            .forEach((animation) => animation.cancel());
+
+        // the row in your hand is placed by the cursor, not by this
+        if (row.classList.contains('is-lifted')) return;
+
+        const shift = before.get(row) - row.getBoundingClientRect().top;
+        if (!shift) return;
+        const slide = row.animate(
+            [{ transform: `translateY(${shift}px)` }, { transform: 'none' }],
+            { duration: feel.ms, easing: feel.ease }
+        );
+        slide.id = 'row-slide';
+    });
+}
+
+function moveRow(config, item, step) {
+    const rows = liftRows(config.list, config.selector);
+    const to = rows.indexOf(item) + step;
+    if (to < 0 || to >= rows.length) return;
+    slideRows(config.list, config.selector, config.feel, () => {
+        if (step < 0) config.list.insertBefore(item, rows[to]);
+        else config.list.insertBefore(item, rows[to].nextSibling);
+    });
+    config.onSettle();
+}
+
+function startLift(config, item, event) {
+    if (event.button) return;          // left button / a finger only
+    event.preventDefault();
+    if (liftedRow) endLift();
+
+    liftedRow = item;
+    lift = {
+        config,
+        pointerId: event.pointerId,
+        grab: event.clientY - item.getBoundingClientRect().top,   // where you took hold
+        shift: 0,                      // how far it's moved from its slot
+        pointerY: event.clientY,
+        seenY: -1,                     // the last y this worked out a position for
+        scroll: config.list.scrollTop,
+        lastY: event.clientY,
+        heading: 1,
+        frame: 0,
+        rows: [], tops: [], heights: [], listTop: 0, listBottom: 0
+    };
+    measureSlots();
+
+    item.classList.add('is-lifted');
+    config.list.classList.remove('is-arriving');
+    document.documentElement.classList.add('sorting-rows');
+    if (config.feel.grabCursor) document.documentElement.classList.add('sorting-grab');
+
+    // the moves are followed on the window, not on the handle. capturing
+    // the pointer looks like the tidier way, but the first swap moves
+    // this row in the dom — and moving an element drops the capture, so
+    // the drag went dead the moment the list first gave way.
+    window.addEventListener('pointermove', trackLift);
+    window.addEventListener('pointerup', endLift);
+    window.addEventListener('pointercancel', endLift);
+    lift.frame = window.requestAnimationFrame(carryRow);
+}
+
+/* where the rows sit when nothing is moving. offsetTop and offsetHeight
+   are layout, so a row halfway through a slide still measures at the
+   slot it's heading for — which is what the swap should be judged on.
+   reading them per frame would be the lag, so it's measured once here
+   and again only when the order actually changes. */
+function measureSlots() {
+    const list = lift.config.list;
+    const box = list.getBoundingClientRect();
+    lift.listTop = box.top;
+    lift.listBottom = box.bottom;
+    lift.scroll = list.scrollTop;
+    lift.rows = liftRows(list, lift.config.selector);
+    lift.tops = lift.rows.map((row) => row.offsetTop);
+    lift.heights = lift.rows.map((row) => row.offsetHeight);
+    // the top row's own offset is the list's padding — it's how far a
+    // row sits off the wall, and the carried one stops there too
+    lift.pad = lift.tops.length ? lift.tops[0] : 0;
+}
+
+// the list is the rows' offset parent, so a slot is its own top plus
+// the list's, less however far the list is scrolled. the 1 is the
+// border. the scroll is read once a frame in carryRow and kept — asking
+// the list for it again after a transform is written forces a layout.
+function slotTop(index) {
+    return lift.listTop + 1 - lift.scroll + lift.tops[index];
+}
+
+function trackLift(event) {
+    if (!lift || event.pointerId !== lift.pointerId) return;
+    lift.pointerY = event.clientY;
+}
+
+// one frame: scroll if it's held against an end, and if anything has
+// actually changed, put the row under the cursor and give way if it's
+// far enough onto its neighbour
+function carryRow() {
+    if (!liftedRow) return;
+    const list = lift.config.list;
+
+    // every read this frame needs happens here, before any write
+    const scroll = list.scrollTop;
+    const room = list.scrollHeight - list.clientHeight;
+    const edge = 44;
+
+    let wanted = scroll;
+    if (lift.pointerY < lift.listTop + edge) wanted = Math.max(0, scroll - 8);
+    else if (lift.pointerY > lift.listBottom - edge) wanted = Math.min(room, scroll + 8);
+
+    const moved = Math.abs(lift.pointerY - lift.seenY) >= 1;
+    if (moved || wanted !== scroll) {
+        lift.scroll = wanted;
+        lift.seenY = lift.pointerY;
+        if (wanted !== scroll) list.scrollTop = wanted;
+        placeLifted();
+        shuffleForLifted();
+    }
+    lift.frame = window.requestAnimationFrame(carryRow);
+}
+
+// the row sits where the cursor holds it, but never past either end of
+// the list. its slot comes from the measurement, so this stays right
+// after the list has reordered or scrolled.
+function placeLifted() {
+    const index = lift.rows.indexOf(liftedRow);
+    if (index === -1) return;
+    const height = lift.heights[index];
+
+    // it stops where the first and last rows sit, not against the frame
+    const highest = lift.listTop + 1 + lift.pad;
+    const lowest = lift.listBottom - 1 - lift.pad - height;
+    let wanted = lift.pointerY - lift.grab;
+    wanted = Math.max(highest, Math.min(wanted, lowest));
+
+    lift.shift = wanted - slotTop(index);
+    liftedRow.style.transform = `translate3d(0, ${lift.shift}px, 0)`;
+}
+
+function shuffleForLifted() {
+    // which way you're going, with a few pixels of slack so a twitch
+    // doesn't flip it back and forth
+    if (Math.abs(lift.pointerY - lift.lastY) > 3) {
+        lift.heading = lift.pointerY > lift.lastY ? 1 : -1;
+        lift.lastY = lift.pointerY;
+    }
+
+    // the space goes above the first row the cursor hasn't cleared. the
+    // mark sits near the edge you're coming at, so a row gives way as
+    // soon as you're onto it either way up
+    const mark = lift.config.feel.mark[lift.heading > 0 ? 0 : 1];
+    let next = null;
+    for (let index = 0; index < lift.rows.length; index += 1) {
+        if (lift.rows[index] === liftedRow) continue;
+        if (lift.pointerY < slotTop(index) + lift.heights[index] * mark) {
+            next = lift.rows[index];
+            break;
+        }
+    }
+
+    if (liftedRow.nextElementSibling === next) return;   // already there
+    const { list, selector, feel } = lift.config;
+    slideRows(list, selector, feel, () => list.insertBefore(liftedRow, next));
+    measureSlots();
+    placeLifted();   // its slot moved; keep it under the cursor
+}
+
+function endLift() {
+    if (!liftedRow) return;
+    const item = liftedRow;
+    const { shift, frame, config } = lift;
+
+    window.cancelAnimationFrame(frame);
+    window.removeEventListener('pointermove', trackLift);
+    window.removeEventListener('pointerup', endLift);
+    window.removeEventListener('pointercancel', endLift);
+    document.documentElement.classList.remove('sorting-rows', 'sorting-grab');
+
+    liftedRow = null;
+    lift = null;
+    item.classList.remove('is-lifted');
+    item.style.transform = '';
+
+    // it settles into the slot it's over rather than snapping there
+    if (shift) {
+        item.animate(
+            [{ transform: `translateY(${shift}px)` }, { transform: 'none' }],
+            { duration: config.feel.ms, easing: config.feel.ease }
+        );
+    }
+    config.onSettle();
+}
+
+/* --- reordering the clips --- */
 
 // the list keeps its own order once you've touched it. it's a list of
 // ids in localStorage rather than a field on each clip — rewriting a
 // record means rewriting its blob, and that's a lot of copying to
 // remember one number.
 const CLIP_ORDER_KEY = 'clip-order';
+
+function clipLiftConfig() {
+    return { list: recordingList, selector: '.recording-item', feel: LIFT_FEEL.clips, onSettle: rememberClipOrder };
+}
 
 function savedClipOrder() {
     try {
@@ -1842,216 +2423,14 @@ function rememberClipOrder() {
     }
 }
 
-// moving a row re-lays the list out in one pass; this then slides every
-// row that shifted from where it was to where it landed, so the gap
-// looks like it travels rather than teleports
-function slideRows(rearrange) {
-    const rows = [...recordingList.querySelectorAll('.recording-item')];
-    // where each row looks like it is right now — a rect includes
-    // whatever transform is mid-flight, so a swap during a swap picks
-    // up from where the eye left it instead of snapping
-    const before = new Map(rows.map((row) => [row, row.getBoundingClientRect().top]));
-    rearrange();
-    rows.forEach((row) => {
-        // the old slide has to go before the new resting place is read
-        row.getAnimations()
-            .filter((animation) => animation.id === 'clip-slide')
-            .forEach((animation) => animation.cancel());
-
-        // the row in your hand is placed by the cursor, not by this
-        if (row.classList.contains('is-lifted')) return;
-
-        const shift = before.get(row) - row.getBoundingClientRect().top;
-        if (!shift) return;
-        const slide = row.animate(
-            [{ transform: `translateY(${shift}px)` }, { transform: 'none' }],
-            { duration: 190, easing: 'cubic-bezier(0.33, 0, 0, 1)' }
-        );
-        slide.id = 'clip-slide';
-    });
+function liftClip(item, handle, event) {
+    startLift(clipLiftConfig(), item, event);
 }
 
 function moveClipRow(item, step) {
-    const rows = [...recordingList.querySelectorAll('.recording-item')];
-    const to = rows.indexOf(item) + step;
-    if (to < 0 || to >= rows.length) return;
-    slideRows(() => {
-        if (step < 0) recordingList.insertBefore(item, rows[to]);
-        else recordingList.insertBefore(item, rows[to].nextSibling);
-    });
-    rememberClipOrder();
+    moveRow(clipLiftConfig(), item, step);
 }
 
-/* the lift. the row you're holding follows the cursor up and down and
-   nothing else: it can't leave the list, it can't go sideways, and it
-   stays the same row rather than becoming a ghost of one. its own slot
-   in the list is the space, and the other rows shuffle around it.
-
-   it's pointer events rather than html drag and drop because the
-   browser's drag image follows the cursor everywhere on the page, and
-   that's the flying about we don't want. */
-
-function liftClip(item, handle, event) {
-    if (event.button) return;          // left button / a finger only
-    event.preventDefault();
-    if (liftedClip) dropClip();
-
-    liftedClip = item;
-    lift = {
-        handle,
-        pointerId: event.pointerId,
-        grab: event.clientY - item.getBoundingClientRect().top,   // where you took hold
-        shift: 0,                      // how far it's moved from its slot
-        pointerY: event.clientY,
-        seenY: -1,                     // the last y this worked out a position for
-        scroll: recordingList.scrollTop,
-        lastY: event.clientY,
-        heading: 1,
-        frame: 0,
-        rows: [], tops: [], heights: [], listTop: 0, listBottom: 0
-    };
-    measureSlots();
-
-    item.classList.add('is-lifted');
-    document.documentElement.classList.add('sorting-clips');
-
-    // the moves are followed on the window, not on the handle. capturing
-    // the pointer looks like the tidier way, but the first swap moves
-    // this row in the dom — and moving an element drops the capture, so
-    // the drag went dead the moment the list first gave way.
-    window.addEventListener('pointermove', trackLift);
-    window.addEventListener('pointerup', dropClip);
-    window.addEventListener('pointercancel', dropClip);
-    lift.frame = window.requestAnimationFrame(carryClip);
-}
-
-/* where the rows sit when nothing is moving. offsetTop and offsetHeight
-   are layout, so a row halfway through a slide still measures at the
-   slot it's heading for — which is what the swap should be judged on.
-   reading them per frame would be the lag, so it's measured once here
-   and again only when the order actually changes. */
-function measureSlots() {
-    const box = recordingList.getBoundingClientRect();
-    lift.listTop = box.top;
-    lift.listBottom = box.bottom;
-    lift.scroll = recordingList.scrollTop;
-    lift.rows = [...recordingList.querySelectorAll('.recording-item')];
-    lift.tops = lift.rows.map((row) => row.offsetTop);
-    lift.heights = lift.rows.map((row) => row.offsetHeight);
-    // the top row's own offset is the list's padding — it's how far a
-    // clip sits off the wall, and the carried one stops there too
-    lift.pad = lift.tops.length ? lift.tops[0] : 0;
-}
-
-// the list is the rows' offset parent, so a slot is its own top plus
-// the list's, less however far the list is scrolled. the 1 is the
-// border. the scroll is read once a frame in carryClip and kept — asking
-// the list for it again after a transform is written forces a layout.
-function slotTop(index) {
-    return lift.listTop + 1 - lift.scroll + lift.tops[index];
-}
-
-function trackLift(event) {
-    if (!lift || event.pointerId !== lift.pointerId) return;
-    lift.pointerY = event.clientY;
-}
-
-// one frame: scroll if it's held against an end, and if anything has
-// actually changed, put the row under the cursor and give way if it's
-// far enough onto its neighbour
-function carryClip() {
-    if (!liftedClip) return;
-
-    // every read this frame needs happens here, before any write
-    const scroll = recordingList.scrollTop;
-    const room = recordingList.scrollHeight - recordingList.clientHeight;
-    const edge = 44;
-
-    let wanted = scroll;
-    if (lift.pointerY < lift.listTop + edge) wanted = Math.max(0, scroll - 8);
-    else if (lift.pointerY > lift.listBottom - edge) wanted = Math.min(room, scroll + 8);
-
-    const moved = Math.abs(lift.pointerY - lift.seenY) >= 1;
-    if (moved || wanted !== scroll) {
-        lift.scroll = wanted;
-        lift.seenY = lift.pointerY;
-        if (wanted !== scroll) recordingList.scrollTop = wanted;
-        placeLifted();
-        shuffleForLifted();
-    }
-    lift.frame = window.requestAnimationFrame(carryClip);
-}
-
-// the row sits where the cursor holds it, but never past either end of
-// the list. its slot comes from the measurement, so this stays right
-// after the list has reordered or scrolled.
-function placeLifted() {
-    const index = lift.rows.indexOf(liftedClip);
-    if (index === -1) return;
-    const height = lift.heights[index];
-
-    // it stops where the first and last clips sit, not against the frame
-    const highest = lift.listTop + 1 + lift.pad;
-    const lowest = lift.listBottom - 1 - lift.pad - height;
-    let wanted = lift.pointerY - lift.grab;
-    wanted = Math.max(highest, Math.min(wanted, lowest));
-
-    lift.shift = wanted - slotTop(index);
-    liftedClip.style.transform = `translate3d(0, ${lift.shift}px, 0)`;
-}
-
-function shuffleForLifted() {
-    // which way you're going, with a few pixels of slack so a twitch
-    // doesn't flip it back and forth
-    if (Math.abs(lift.pointerY - lift.lastY) > 3) {
-        lift.heading = lift.pointerY > lift.lastY ? 1 : -1;
-        lift.lastY = lift.pointerY;
-    }
-
-    // the space goes above the first row the cursor hasn't cleared. the
-    // mark sits near the edge you're coming at, so a row gives way as
-    // soon as you're onto it either way up
-    const mark = lift.heading > 0 ? 0.2 : 0.8;
-    let next = null;
-    for (let index = 0; index < lift.rows.length; index += 1) {
-        if (lift.rows[index] === liftedClip) continue;
-        if (lift.pointerY < slotTop(index) + lift.heights[index] * mark) {
-            next = lift.rows[index];
-            break;
-        }
-    }
-
-    if (liftedClip.nextElementSibling === next) return;   // already there
-    slideRows(() => recordingList.insertBefore(liftedClip, next));
-    measureSlots();
-    placeLifted();   // its slot moved; keep it under the cursor
-}
-
-function dropClip() {
-    if (!liftedClip) return;
-    const item = liftedClip;
-    const { shift, frame } = lift;
-
-    window.cancelAnimationFrame(frame);
-    window.removeEventListener('pointermove', trackLift);
-    window.removeEventListener('pointerup', dropClip);
-    window.removeEventListener('pointercancel', dropClip);
-    document.documentElement.classList.remove('sorting-clips');
-
-    liftedClip = null;
-    lift = null;
-    item.classList.remove('is-lifted');
-    item.style.transform = '';
-
-    // it settles into the slot it's over rather than snapping there
-    if (shift) {
-        item.animate(
-            [{ transform: `translateY(${shift}px)` }, { transform: 'none' }],
-            { duration: 200, easing: 'cubic-bezier(0.33, 0, 0, 1)' }
-        );
-    }
-    rememberClipOrder();
-}
 
 /* --- recording --- */
 

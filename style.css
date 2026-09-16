@@ -61,6 +61,17 @@
    ========================================================= */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* the shell is exactly the window and scrolls inside itself, so the
+   page behind it must never move — without this, dragging up on empty
+   space rubber-bands the whole document and shows the canvas outside
+   it. `none` also stops a list that has hit its end from handing the
+   leftover scroll to the page. */
+html, body {
+	height: 100%;
+	overflow: hidden;
+	overscroll-behavior: none;
+}
+
 body {
 	margin: 0;
 	color: var(--ink);
@@ -93,21 +104,22 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 
 /* nothing on the page shows a scrollbar — a gray one would break the
    two-tone rule anyway. everything still scrolls. */
-.app-content, .rail, .help-box, .deck-menu, #recordingList, .sense-controls {
+.app-content, .rail, .help-box, #recordingList, .sense-controls,
+.deck-list-slot, #cardList, #deckCardList {
+	overscroll-behavior: contain;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
 }
 .app-content::-webkit-scrollbar,
 .rail::-webkit-scrollbar,
 .help-box::-webkit-scrollbar,
-.deck-menu::-webkit-scrollbar,
 #recordingList::-webkit-scrollbar,
 .sense-controls::-webkit-scrollbar { width: 0; height: 0; }
 
 /* =========================================================
    3. motion — hovers, presses, and things arriving
    ========================================================= */
-button, .deck-row, summary {
+button, summary {
 	transition:
 		color var(--quick) var(--ease),
 		background-color var(--quick) var(--ease),
@@ -131,6 +143,13 @@ button.boing { animation: button-boing 0.42s var(--ease); }
    is why the rows above it have whole-pixel heights */
 .square-button:active, .deck-card:active { transform: none; }
 
+/* a deck card is a button, so it picked up the transform transition
+   above — and dragging one carries it by transform. every position
+   write was being eased, so the card trailed the cursor and lurched
+   towards its new slot on each swap before sliding back. nothing else
+   transforms a deck card, so it just sits that one out. */
+.deck-card { transition-property: color, background-color, border-color; }
+
 /* a screen arriving: rises, overshoots a hair, settles */
 @keyframes rise-in {
 	0%   { opacity: 0; transform: translateY(14px) scale(0.985); }
@@ -141,29 +160,11 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 
 /* moving between screens: the new one comes in from the side you're
    heading, overshoots slightly, settles. going back mirrors it. */
-@keyframes screen-forward {
-	0%   { opacity: 0; transform: translateX(34px) scale(0.985); }
-	55%  { opacity: 1; transform: translateX(-6px) scale(1.004); }
-	100% { opacity: 1; transform: none; }
-}
-@keyframes screen-back {
-	0%   { opacity: 0; transform: translateX(-34px) scale(0.985); }
 	55%  { opacity: 1; transform: translateX(6px) scale(1.004); }
 	100% { opacity: 1; transform: none; }
 }
-.screen.enter-forward:not([hidden]) { animation: screen-forward 0.44s var(--ease) backwards; }
-.screen.enter-back:not([hidden]) { animation: screen-back 0.44s var(--ease) backwards; }
 
 /* the title changes with the screen, so it swaps rather than cuts */
-@keyframes title-swap {
-	0%   { opacity: 0; transform: translateY(8px); }
-	100% { opacity: 1; transform: none; }
-}
-.title-bar h1.swap { animation: title-swap 0.34s var(--ease) backwards; }
-
-/* and the way back fades in behind it */
-.back-button:not([hidden]) { animation: title-swap 0.34s var(--ease) 0.06s backwards; }
-
 @keyframes fade-up {
 	from { opacity: 0; transform: translateY(4px); }
 	to   { opacity: 1; transform: none; }
@@ -182,13 +183,14 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	to   { opacity: 1; transform: none; }
 }
 .deck-bar:not([hidden]),
-.deck-list-slot:not([hidden]),
+.home-body:not([hidden]),
+.home-panel:not([hidden]),
 .recorder-panel:not([hidden]),
 .help-box:not([hidden]),
 .quick-panel:not([hidden]) {
 	animation: panel-in 0.4s var(--ease) backwards;
 }
-.deck-list-slot:not([hidden]) { animation-delay: 0.05s; }
+.home-body:not([hidden]) { animation-delay: 0.05s; }
 .help-box:not([hidden]) { animation-delay: 0.08s; }
 .quick-panel:not([hidden]) { animation-delay: 0.14s; }
 
@@ -222,36 +224,55 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	from { opacity: 0; transform: translateX(-10px); }
 	to   { opacity: 1; transform: none; }
 }
-.deck-card:nth-child(-n+6) { animation: slide-in 0.3s var(--ease) backwards; }
-.deck-card:nth-child(1) { animation-delay: 0.02s; }
-.deck-card:nth-child(2) { animation-delay: 0.06s; }
-.deck-card:nth-child(3) { animation-delay: 0.1s; }
-.deck-card:nth-child(4) { animation-delay: 0.14s; }
-.deck-card:nth-child(5) { animation-delay: 0.18s; }
-.deck-card:nth-child(6) { animation-delay: 0.22s; }
+/* the cascade is keyed to nth-child, and dragging a deck changes every
+   nth-child it passes — which restarted this animation mid-drag and
+   blanked the card, since it fills backwards from opacity 0. so it only
+   runs on a real rebuild: renderDeckCards() puts .is-arriving on the
+   list and takes it off once the cascade has played. */
+.deck-list-slot.is-arriving .deck-card:nth-child(-n+6) { animation: slide-in 0.3s var(--ease) backwards; }
+.deck-list-slot.is-arriving .deck-card:nth-child(1) { animation-delay: 0.02s; }
+.deck-list-slot.is-arriving .deck-card:nth-child(2) { animation-delay: 0.06s; }
+.deck-list-slot.is-arriving .deck-card:nth-child(3) { animation-delay: 0.1s; }
+.deck-list-slot.is-arriving .deck-card:nth-child(4) { animation-delay: 0.14s; }
+.deck-list-slot.is-arriving .deck-card:nth-child(5) { animation-delay: 0.18s; }
+.deck-list-slot.is-arriving .deck-card:nth-child(6) { animation-delay: 0.22s; }
 
 /* the size change itself is one layout pass; switchSection() then
    animates each tab's transform from where it was to where it landed,
    which reads as a smooth grow/shrink and costs no layout per frame */
-.section-tab { transform-origin: left bottom; }
+/* the morph pivots on the word's middle, so a tab growing to the big
+   size opens evenly above and below instead of rising off its baseline.
+   switchSection() matches centres to go with it. */
+.section-tab { transform-origin: left center; }
+
+/* each word owns an equal slot of the row, so growing to the active
+   size changes nothing outside its own slot — the dots and the other
+   words stay where they are. the ends anchor outward and anything in
+   between anchors on its middle, which is also where each one grows
+   from, so the word you clicked is the only thing that moves. */
+.title-bar .section-tab {
+	flex: 1;
+	min-width: 0;
+	text-align: center;
+	transform-origin: center center;
+	/* centring works on the advance width, and this face carries more
+	   air on a word's right than its left, so the ink landed ~1.6px left
+	   of centre at the big size and ~0.8px at the small one. the same
+	   fraction of the font size either way, so the correction is in em
+	   and holds at both. centred text moves by half its indent. */
+	text-indent: 0.09em;
+}
 
 /* a popup unfolding from the button it hangs off */
 @keyframes drop-in {
 	from { opacity: 0; transform: translateY(-6px) scale(0.97); }
 	to   { opacity: 1; transform: none; }
 }
-.share-panel:not([hidden]), .deck-menu:not([hidden]) {
+.share-panel:not([hidden]) {
 	animation: drop-in 0.22s var(--ease) backwards;
 }
 .share-panel { transform-origin: top right; }
-.deck-menu { transform-origin: top left; }
 
-/* help rows unroll instead of snapping open */
-@keyframes unroll {
-	from { opacity: 0; transform: translateY(-4px); }
-	to   { opacity: 1; transform: none; }
-}
-.help-box details[open] p { animation: unroll 0.25s var(--ease) backwards; }
 
 /* =========================================================
    4. app shell — the bars around the page
@@ -343,10 +364,20 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	top: var(--topbar);
 	left: 0;
 	right: 0;
-	z-index: 0;
+	/* above the screens — the way back hangs below this bar, and a
+	   screen is positioned, so at 0 it swallowed the click. still under
+	   the rails at 2, which pass over this bar's ends. */
+	z-index: 1;
 	display: flex;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
+	/* the tabs span exactly the content column, so the first and last
+	   words sit on the same edges as the panels underneath them */
+	padding-left: calc(var(--rail) + var(--gap));
+	/* the right bar reaches 13px back over the content so its scallop
+	   can overhang — the column stops that much earlier on this side,
+	   and the last word has to stop with it */
+	padding-right: calc(var(--rail) + var(--gap) - 13px);
 	height: var(--topbar);
 	background-color: var(--paper);
 	/* its edge is a row of round dots, the same ones the right bar
@@ -356,7 +387,25 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	background-position: left bottom;
 	background-size: 16px 2px;
 }
-.title-bar h1 { font-size: 1.6rem; line-height: 1; }
+/* the row was tuned to sit in the content column; in the bar it drops
+   those offsets and takes a few px down off the top instead */
+.title-bar .section-tabs {
+	position: relative;
+	/* measured off the glyphs, not the boxes: the row's ink sat ~2px
+	   above the bar's middle, so it comes down by that much */
+	top: 6px;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	/* the row owns the full column and shares it out evenly, so the
+	   ends stay pinned and everything between them redistributes on
+	   its own when a section is added or taken away. the gap is only
+	   a floor, for when the words get wide enough to meet. */
+	flex: 1;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
 
 .app-body {
 	display: flex;
@@ -399,46 +448,74 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	gap: var(--group);
 	padding: var(--gap);
 	padding-top: var(--group);
+	/* the same air under the boxes that the function box leaves under
+	   itself in the rail, so every column ends on one line */
+	padding-bottom: var(--rail-pad);
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
 #homeScreen .deck-organizer { flex: none; }
 
 /* create and practice run on the same frame as home */
-#makerScreen, #studyScreen {
-	max-width: none;
-	height: 100%;
-	min-height: 0;
-	justify-content: flex-start;
-	gap: var(--group);
-	padding: var(--gap);
-	padding-top: var(--group);
-	overflow: hidden;
-	text-align: left;
-}
-
-/* sits in the top bar, so the title stays centred in the bar */
-.back-button {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	/* the bar runs the full window now, so clear the left rail —
-	   this lands it on the content column's own left edge */
-	left: calc(var(--rail) + var(--gap));
+/* create and practice float over the page instead of replacing it.
+   the wash is white rather than a dimmed black — nothing on this site
+   is grey, and the panel's own outline is what separates it. */
+.modal-veil {
+	position: fixed;
+	inset: 0;
+	z-index: 50;
 	display: grid;
 	place-items: center;
-	width: 2rem;
-	height: 2rem;
-	margin: auto 0;        /* centred without a transform — the swap
-	                          animation and :active both use transform */
-	padding: 0;
-	color: var(--ink);
+	padding: var(--gap);
+	background: rgba(255, 255, 255, 0.72);
+	animation: veil-in 0.18s var(--ease);
+}
+@keyframes veil-in {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+@keyframes panel-pop {
+	from { opacity: 0; transform: translateY(8px) scale(0.98); }
+	to   { opacity: 1; transform: none; }
+}
+.modal-panel {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var(--group);
+	width: min(34rem, 100%);
+	max-height: 100%;
+	padding: var(--gap);
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+	overflow: hidden;
+	text-align: left;
+	animation: panel-pop 0.24s var(--ease);
+}
+.study-screen { width: min(40rem, 100%); }
+
+/* the way out, in the panel's own corner */
+.modal-close {
+	position: absolute;
+	top: 0.4rem;
+	right: 0.5rem;
+	display: grid;
+	place-items: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	padding-top: 4px;      /* the × rides high in its line box */
+	color: inherit;
 	background: none;
 	border: 0;
-	font-size: 1.5rem;
+	border-radius: 6px;
+	font-size: 1.4rem;
 	line-height: 1;
 	cursor: pointer;
 }
+.modal-close:hover { color: #fff; background: var(--ink); }
+
 
 /* =========================================================
    6. shared pieces — buttons and the deck dropdown
@@ -456,23 +533,16 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	cursor: pointer;
 }
 
-/* floating white panel, used by both dropdowns */
-.deck-menu {
-	position: absolute;
-	top: calc(100% + 0.375rem);
-	z-index: 20;
-	max-height: 13rem;
-	padding: 0.25rem;
-	overflow-y: auto;
-	background: #fff;
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-.deck-menu { left: 0; width: max(100%, 15rem); }
 
+/* an empty state fills whatever box it's in and sits dead centre of
+   it — never tucked up against the top. every list on the site uses
+   this, so they all read the same when there's nothing in them. */
 .empty-message {
-	padding: 0.9rem 0;
+	display: flex;
+	flex: 1;
+	align-items: center;
+	justify-content: center;
+	padding: 0.9rem;
 	color: var(--ink);
 	text-align: center;
 }
@@ -480,7 +550,21 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 /* =========================================================
    7. home — section tabs
    ========================================================= */
-.deck-organizer, .quick-panel, .recorder-panel { width: 100%; }
+.deck-organizer, .quick-panel, .recorder-panel, .home-panel { width: 100%; }
+.quick-panel { flex: none; }
+
+/* home — the first section. empty for now; it's the frame waiting to
+   be filled, on the same grid as the cards and audio panels. */
+.home-panel {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-height: 0;
+	padding: var(--tight);
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
 .deck-organizer {
 	position: relative;
 	z-index: 2;   /* dropdowns hang out of here, so it outranks the slot */
@@ -529,16 +613,16 @@ button.boing { animation: button-boing 0.42s var(--ease); }
    onto the big word's middle. it's `top`, not a transform, so the
    swap animation in switchSection() has the property to itself. */
 .section-tab:not(.active) { position: relative; top: -4px; }
-/* the big word carries more ink below its middle, so measured centre
-   reads low. this is its own lift — the small one keeps its place. */
-.section-tab.active { position: relative; top: -5px; }
+/* the big word needs ~2px less lift than the small ones to land on the
+   same middle — measured on words without descenders, so a descender is
+   free to hang below the line rather than dragging the word up. */
+.section-tab.active { position: relative; top: -3px; }
 
 /* =========================================================
    8. home — deck bar
    ========================================================= */
 .deck-bar { display: flex; align-items: center; gap: var(--tight); }
 
-.deck-picker { position: relative; z-index: 30; flex: none; }
 
 /* square icon button — the deck smiley, import, export */
 .square-button {
@@ -554,13 +638,15 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	line-height: 1;
 	cursor: pointer;
 }
-.square-button:hover, .deck-toggle[aria-expanded="true"] {
+.square-button:hover {
 	color: #fff;
 	background: var(--ink);
 	border-color: var(--ink);
 }
 
-.deck-form { display: flex; flex: 1; gap: var(--tight); }
+/* min-width:0 or the form can't shrink under the text input's own
+   intrinsic width, and the two icons get shoved out of the column */
+.deck-form { display: flex; flex: 1; min-width: 0; gap: var(--tight); }
 .deck-form input {
 	flex: 1;
 	min-width: 0;
@@ -572,6 +658,15 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 }
 .deck-form input::placeholder { color: var(--muted); }
 .deck-form .basic-button { flex: none; height: var(--field); padding: 0 1.1rem; }
+
+/* the deck's create button — the same square the share one is, but
+   filled in, since it's the one that commits something */
+.square-button.is-solid {
+	color: #fff;
+	background: var(--ink);
+	border-color: var(--ink);
+}
+.square-button.is-solid:hover { color: var(--ink); background: #fff; }
 
 /* deck codes — a popup hanging off the share button */
 .share-picker { position: relative; z-index: 30; flex: none; }
@@ -616,8 +711,60 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 
 .share-note { min-height: 1.2rem; margin: 0; font-size: 0.8rem; }
 
-/* placeholder box for the deck list — a third of the width,
-   filling the blank space under the deck bar */
+/* decks on the left, the picked deck's cards on the right */
+.home-body {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
+/* each side is a bar over a list. the divider sizes the whole column,
+   so a bar and the list under it always agree on their width. */
+.deck-side, .card-side {
+	display: flex;
+	flex-direction: column;
+	gap: var(--group);
+	min-height: 0;
+}
+/* decks come first, and take whatever the divider gives them */
+.deck-side {
+	flex: none;
+	width: var(--deck-col, 55%);
+	min-width: 14rem;
+}
+/* the cards take the rest, but never narrower than the two tiles */
+.card-side {
+	flex: 1;
+	min-width: 19rem;
+}
+
+/* the divider is exactly the gap the two panes used to have between
+   them, so nothing moved — the whole gap is just grabbable now. it
+   shows its line on hover rather than sitting there as furniture. */
+.pane-split {
+	position: relative;
+	flex: none;
+	width: var(--group);
+	cursor: col-resize;
+	touch-action: none;
+}
+.pane-split::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 50%;
+	width: 1px;
+	background: var(--line);
+	opacity: 0;
+}
+.pane-split:hover::after,
+.pane-split:focus-visible::after,
+.pane-split.is-dragging::after { opacity: 1; }
+/* while it's being dragged nothing else takes the pointer */
+.splitting, .splitting * { cursor: col-resize !important; user-select: none; }
+
+/* the deck list — a third of the width, the stage takes the rest */
 .deck-list-slot {
 	contain: layout paint;
 	position: relative;
@@ -626,8 +773,8 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	flex: 1;
 	flex-direction: column;
 	gap: var(--tight);
-	width: 33%;
-	min-height: 12rem;
+	width: 100%;
+	min-height: 0;
 	padding: var(--tight);
 	overflow-y: auto;
 	border: 1px solid var(--line);
@@ -658,6 +805,21 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	cursor: default;
 }
 
+/* the whole entry is the grip — drag one to move it up or down. it
+   looks no different in your hand: same colours, same cursor. it's
+   lifted off the page, so all it gains is a z-index and its own layer */
+.deck-card.is-lifted {
+	position: relative;
+	z-index: 2;
+	will-change: transform;
+}
+.deck-card.is-lifted { color: var(--ink); background: #fff; }
+.deck-card.active-deck.is-lifted { color: #fff; background: var(--ink); }
+
+/* the cursor sweeps over every deck on the way, so while one is in
+   hand the rest stop lighting up under it */
+.sorting-rows .deck-card:not(.active-deck):hover { color: var(--ink); background: #fff; }
+
 /* a deck's look — one of eight outline shapes. it takes the row's
    colour, so it flips to white on the active row. */
 .deck-shape {
@@ -674,70 +836,151 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 .deck-card-text strong { font-size: 0.95rem; }
 .deck-card-text small { font-size: 0.78rem; }
 
-/* =========================================================
-   9. home — deck dropdown rows
-   ========================================================= */
-.deck-row {
+/* the stage — whichever deck is picked, spelled out card by card.
+   the heading lives inside the frame so the box runs the full height,
+   the same as the deck list beside it */
+.deck-stage {
 	display: flex;
-	align-items: center;
-	gap: 0.25rem;
-	padding: 0.15rem;
-	border-radius: 6px;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--tight);
+	min-width: 0;
+	min-height: 0;
+	padding: var(--tight);
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
 }
-.deck-row + .deck-row { border-top: 1px solid var(--line); }
-.deck-row:hover { background: var(--hover); }
-.deck-row.active-deck { box-shadow: inset 3px 0 0 var(--ink); }
-.deck-row.dragging { opacity: 0.4; }
-.deck-row.drop-target { outline: 1px dashed var(--ink); }
 
-/* three-line drag handle */
-.deck-handle {
+.stage-head {
+	display: flex;
+	flex: none;
+	align-items: baseline;
+	justify-content: center;
+	gap: 0.75rem;
+	min-width: 0;
+	/* the margin holds the rule off both walls; the padding on top of
+	   it lines the deck name up with the question text on the cards
+	   below, so the column reads as one edge */
+	margin: 0 0.35rem;
+	padding: 0.25rem 0.35rem var(--tight);
+	border-bottom: 1px solid var(--line);
+}
+.stage-head h2 {
+	margin: 0;
+	/* it has to be allowed to shrink, or a flex item stays at its full
+	   text width and the ellipsis never gets a chance to appear */
+	min-width: 0;
+	overflow: hidden;
+	font-size: 1.5rem;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+/* one card — question above, answer below, the two buttons on the end */
+#deckCardList .stage-card {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0.6rem 0.7rem;
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+#deckCardList .stage-card.editing { background: var(--hover); }
+
+.stage-card-text {
+	flex: 1;
+	min-width: 0;
+	cursor: text;
+}
+.stage-card-text strong,
+.stage-card-text small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.stage-card-text strong { font-size: 0.95rem; font-weight: 600; }
+.stage-card-text small { font-size: 0.8rem; }
+
+/* the fields stand exactly where the text stood — no box appears, the
+   words just become typeable. they keep the question's and answer's own
+   sizes so the row doesn't shift by a pixel when you click it. a long
+   line scrolls sideways inside the field, which an input does on its
+   own once it has nowhere left to grow. */
+.stage-card-edit {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+.stage-card-edit input {
+	width: 100%;
+	padding: 0;
+	color: inherit;
+	background: none;
+	border: 0;
+	border-radius: 0;
+	font: inherit;
+	line-height: inherit;
+}
+.stage-card-edit input:focus { outline: none; }
+.stage-card-edit .edit-question { font-size: 0.95rem; font-weight: 600; }
+.stage-card-edit .edit-answer { font-size: 0.8rem; }
+
+/* three lines on the left of a card — the same grip the clips use */
+.card-handle {
 	display: flex;
 	flex: none;
 	flex-direction: column;
 	justify-content: center;
-	gap: 3px;
-	width: 1.75rem;
+	gap: 5px;
+	width: 1.25rem;
 	height: 2rem;
-	padding: 0 0.5rem;
+	padding: 0 0.3rem;
 	background: none;
 	border: 0;
-	border-radius: 6px;
 	cursor: grab;
+	touch-action: none;   /* a drag here moves the card, not the list */
 }
-.deck-handle:active { cursor: grabbing; }
-.deck-handle span {
+.card-handle span {
 	display: block;
-	height: 2px;
+	height: 1px;
 	background: var(--line);
-	border-radius: 1px;
 }
-.active-deck .deck-handle span { background: var(--ink); }
+.stage-card.is-lifted {
+	position: relative;
+	z-index: 2;
+	background: #fff;
+	outline: 1px solid var(--line);
+	outline-offset: -1px;
+	will-change: transform;
+}
 
-.deck-select {
-	flex: 1;
-	min-width: 0;
-	padding: 0.5rem 0.4rem;
-	overflow: hidden;
+/* the bin on the end of a row. no box around it at rest — it's just
+   the mark, bigger than it was; the box only shows up under the cursor. */
+.stage-card-action {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	padding: 0;
+	color: inherit;
 	background: none;
 	border: 0;
 	border-radius: 6px;
-	text-align: left;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	font-weight: 600;
+	padding-top: 4px;      /* the × rides high in its line box */
+	font-size: 1.4rem;
+	line-height: 1;
 	cursor: pointer;
 }
+.stage-card-action:hover,
+.stage-card-action.is-armed { color: #fff; background: var(--ink); }
 
-.deck-count {
-	flex: none;
-	padding: 0 0.6rem;
-	color: var(--ink);
-	font-size: 0.85rem;
-	font-variant-numeric: tabular-nums;
-}
-.active-deck .deck-count { color: var(--ink); }
-
+/* =========================================================
+   9. home — renaming a deck in place
+   ========================================================= */
+/* the entry turns into this while you retype its name */
+.deck-card.is-renaming { cursor: default; }
 .deck-inline-input {
 	flex: 1;
 	min-width: 0;
@@ -747,7 +990,6 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	border-radius: 6px;
 	font-weight: 600;
 }
-
 /* =========================================================
    10. right bar — help box and the two tiles
 
@@ -765,48 +1007,67 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	padding: var(--tight);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
-	font-size: 0.78rem;
-	line-height: 1.45;
+	font-size: 0.9rem;
+	line-height: 2;        /* double spaced */
 	text-align: left;
 }
 .help-box h2 {
-	margin: 0 0 0.4rem;
-	font-family: var(--title-font);
-	font-size: 1rem;
-}
-.help-box details { border-top: 1px solid var(--line); }
-.help-box summary {
+	/* the word sits in the middle of the band above the rule, both
+	   ways — the band gets a height of its own so there is a middle
+	   to sit in. it's the control height the deck bar uses. */
 	display: flex;
-	justify-content: space-between;
-	gap: 0.5rem;
-	padding: 0.4rem 0;
+	align-items: center;
+	justify-content: center;
+	/* the band is a --tight taller than the control height, and gives
+	   that back as bottom padding — so the content box is unchanged and
+	   the word doesn't move, but the rule under it drops by that much.
+	   that puts the word midway between the box's top edge and the rule
+	   rather than sitting low against it. */
+	height: calc(var(--field) + var(--tight));
+	margin: 0;
+	/* measured off the glyphs: the word's ink sat 2px high in the band,
+	   so 4px off the top drops the centred content by half that */
+	padding: 4px 0 var(--tight);
+	line-height: 1;
+	/* the body face, not the title one — it names the panel rather than
+	   competing with the tabs. bigger and heavier than the text under
+	   it so the two read as label and body. */
+	font-family: var(--font);
+	font-size: 1.05rem;
 	font-weight: 700;
-	list-style: none;
-	cursor: pointer;
+	/* a rule under the word, the same move the deck heading makes */
+	border-bottom: 1px solid var(--line);
 }
-.help-box summary::-webkit-details-marker { display: none; }
-.help-box summary::after { content: '+'; }
-.help-box details[open] summary::after { content: '\2212'; }
-.help-box summary:hover { text-decoration: underline; }
-.help-box p { margin: 0 0 0.6rem; }
-/* stacked at the bottom of the right bar. the bar supplies the
-   edge inset, so this only has to match it between the tiles. */
+/* one paragraph, belonging to whichever page you're on. it sits well
+   clear of the rule, off both walls, and centred like the word above. */
+.help-box .help-note {
+	margin: var(--group) 0 0;
+	padding: 0 var(--tight);
+	text-align: center;
+}
+/* a pair of tiles sitting over the organizer, sharing its width */
 .quick-panel {
 	display: flex;
 	flex: none;
-	flex-direction: column;
-	gap: var(--rail-pad);
+	gap: var(--group);
 }
 
 .quick-action {
 	display: flex;
-	flex: none;
+	/* the pair spans the card column exactly, so the two of them line
+	   up with the organizer underneath */
+	flex: 1;
+	min-width: 9rem;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 0.3rem;
-	min-height: 10.5rem;
-	padding: 1.5rem 0.75rem;
+	gap: 0.2rem;
+	min-height: 0;
+	/* the icon is a 7px mark — it measures as content but doesn't read
+	   as any, so a tile centred on all three parts looks top-heavy. the
+	   extra bottom padding centres the face and word instead, which is
+	   where all the weight is. it is doubled because centring splits it. */
+	padding: 0.5rem 1rem calc(0.5rem + 16px);
 	background: #fff;
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
@@ -821,21 +1082,35 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 .quick-action small { transition: transform 0.25s var(--ease); }
 .quick-action:hover small { animation: face-wiggle 0.5s var(--ease); }
 
+/* the old swing was -6deg then +5deg from an off-centre lift, so it
+   leaned one way. this is the same angle each side, decaying evenly,
+   and about a third smaller overall. */
 @keyframes face-wiggle {
-	0%   { transform: none; }
-	25%  { transform: translateY(-3px) rotate(-6deg); }
-	55%  { transform: translateY(0) rotate(5deg); }
-	80%  { transform: translateY(-1px) rotate(-2deg); }
-	100% { transform: none; }
+	0%   { transform: rotate(0deg); }
+	25%  { transform: rotate(-4deg); }
+	50%  { transform: rotate(4deg); }
+	75%  { transform: rotate(-2deg); }
+	100% { transform: rotate(0deg); }
 }
+.quick-action small { transform-origin: center center; }
 
 .quick-action .action-icon { color: var(--ink); font-size: 0.85rem; }
 .quick-action.primary .action-icon { color: #fff; }
 
+/* the face rides above the word. it's `order`, not the markup order,
+   because the label should still be read out first — and for that to
+   work the span holding the pair has to be a flex column, which is the
+   one thing it never was. */
+.quick-action .action-text {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.3rem;
+}
 .quick-action strong, .quick-action small { display: block; }
 .quick-action small {
 	order: -1;
-	margin-bottom: 0.3rem;
+	margin: 0;
 	font-size: 1.15rem;
 	line-height: 1.2;
 }
@@ -895,7 +1170,19 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	scrollbar-width: none;
 }
 #cardList::-webkit-scrollbar,
-#recordingList::-webkit-scrollbar { display: none; }
+#recordingList::-webkit-scrollbar,
+#deckCardList::-webkit-scrollbar { display: none; }
+
+/* it sits inside .deck-stage, so it brings no frame of its own */
+#deckCardList {
+	width: 100%;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	list-style: none;
+	text-align: left;
+	scrollbar-width: none;
+}
 
 #cardList {
 	display: flex;
@@ -905,9 +1192,16 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	min-height: 0;
 	padding: var(--tight);
 }
-#cardList .empty-message { padding: 1.25rem 0; }
+#deckCardList {
+	position: relative;   /* so a row's offsetTop is its slot in here */
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--tight);
+	min-height: 0;
+}
+
 #recordingList { display: flex; flex-direction: column; gap: var(--tight); padding: var(--tight); }
-#recordingList .empty-message { padding: 1.25rem 0; }
 
 /* download-all shows a pause while it's working its way down the list */
 .square-button .icon-pause { display: none; }
@@ -1065,9 +1359,6 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	flex-direction: column;
 	gap: var(--group);
 	min-height: 0;
-	/* makes up whatever the screen gap above already supplied, so the
-	   tabs always clear this panel by a full --gap */
-	margin-top: calc(var(--gap) - var(--group));
 }
 
 /* the control row, same shape as the deck bar */
@@ -1088,10 +1379,11 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	to   { opacity: 1; transform: none; }
 }
 .confirm-pop {
-	position: absolute;
-	top: calc(100% + 0.375rem);
-	right: 0;
-	z-index: 20;
+	/* fixed and placed by placeConfirm(), so it hangs off the button
+	   that asked wherever that button is — including a row inside the
+	   scrolling deck list, which would otherwise clip it */
+	position: fixed;
+	z-index: 40;
 	display: flex;
 	flex-direction: column;
 	gap: var(--tight);
@@ -1415,10 +1707,10 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	height: 1px;
 	background: var(--line);
 }
-/* while a clip is in hand, nothing else on the page takes the drag —
+/* while a row is in hand, nothing else on the page takes the drag —
    no text selecting itself as the cursor sweeps past */
-.sorting-clips, .sorting-clips * { user-select: none; }
-.sorting-clips { cursor: grabbing; }
+.sorting-rows, .sorting-rows * { user-select: none; }
+.sorting-grab { cursor: grabbing; }
 
 /* the row in your hand: it's picked up off the page, so it outlines
    itself. its slot stays behind as the space it would drop into. */
@@ -1570,8 +1862,6 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='2' viewBox='0 0 16 2'%3E%3Ccircle cx='8' cy='1' r='1' fill='%23000'/%3E%3C/svg%3E");
 		margin-left: 0;
 	}
-	.quick-panel { flex-direction: row; flex: none; }
-	.quick-action { flex: 1; }
 	/* the strip takes at most a third, so the page above it still has
 	   room — the help box scrolls inside whatever is left */
 	.rail-right { max-height: 38%; overflow: hidden; padding-top: var(--rail-pad); }
@@ -1582,14 +1872,12 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	.rail-left { display: none; }
 	.app-shell::after { display: none; }   /* its edge goes with it */
 	.topbar { left: 0; }                   /* no scallop to reach under */
-	.back-button { left: var(--gap); }     /* no rail to clear */
 }
 
 @media (max-width: 560px) {
 	.screen { gap: 1.25rem; padding: 2.5rem 1rem 2.5rem; }
 	h1 { font-size: 1.6rem; }
 	.deck-bar { flex-direction: column; }
-	.deck-picker { align-self: flex-start; }
 	.deck-form { width: 100%; }
 	.answer-options { gap: 0.5rem; }
 	.answer-button {
@@ -1603,7 +1891,7 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 @media (max-width: 380px) {
 	.screen { padding: 2rem 0.75rem 2rem; }
 	.answer-button { min-height: 3rem; font-size: 0.85rem; }
-	.quick-action { min-height: 8rem; }
+	.quick-action { min-height: 4.5rem; }
 	.quick-action small { font-size: 1.25rem; }
 }
 

@@ -11,6 +11,17 @@
     <!-- right-click menu, shared by every screen -->
     <div class="context-menu" id="contextMenu" hidden></div>
 
+    <!-- "are you sure" chip, shared by every screen. it lives out here
+         because it is placed against whichever button asked, and its old
+         home in the audio bar is display:none on the other pages. -->
+    <div class="confirm-pop" id="confirmChip" role="group" aria-label="are you sure" hidden>
+        <span id="confirmChipText"></span>
+        <div class="confirm-answers">
+            <button class="chip-button" id="confirmChipYes" type="button">yep</button>
+            <button class="chip-button" id="confirmChipNo" type="button">nope</button>
+        </div>
+    </div>
+
     <div class="app-shell">
 
         <!-- left bar — full height, runs past the top bar -->
@@ -25,8 +36,10 @@
                  window underneath the black one. both side bars pass
                  over its ends. -->
             <div class="title-bar">
-                <button class="back-button" type="button" aria-label="back" title="back" hidden>&larr;</button>
-                <h1 id="topbarTitle">home</h1>
+                <!-- section tabs — the active one is big, the rest small.
+                     these are the title while you're on home. -->
+                <nav class="section-tabs" id="sectionTabs" aria-label="sections"></nav>
+
             </div>
 
             <div class="app-body">
@@ -36,62 +49,87 @@
                     <!-- ============ home ============ -->
                     <section class="screen" id="homeScreen" data-title="home" aria-label="home">
 
-                        <section class="deck-organizer">
+                        <!-- home — the first section. blank for now. -->
+                        <section class="home-panel" id="homePanel" hidden></section>
 
-                            <!-- section tabs — the active one is big, the rest small -->
-                            <nav class="section-tabs" id="sectionTabs" aria-label="sections"></nav>
+                        <!-- decks on the left, the open deck's cards on
+                             the right. each side is a bar over a list, and
+                             the divider between them sizes both rows. -->
+                        <div class="home-body" id="homeBody">
 
-                            <!-- deck picker, new deck form, decks in and out -->
-                            <div class="deck-bar">
-                                <div class="deck-picker">
-                                    <button class="square-button deck-toggle" id="deckToggle" type="button" aria-expanded="false" aria-haspopup="true" aria-label="switch deck" title="switch deck">
-                                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                                            <circle cx="12" cy="12" r="9"/>
-                                            <path d="M8.5 14.5a4.5 4.5 0 0 0 7 0"/>
-                                            <circle cx="9" cy="9.5" r="1" fill="currentColor" stroke="none"/>
-                                            <circle cx="15" cy="9.5" r="1" fill="currentColor" stroke="none"/>
-                                        </svg>
-                                    </button>
-                                    <div class="deck-menu" id="deckList" hidden></div>
-                                </div>
-                                <form id="deckForm" class="deck-form" novalidate>
-                                    <input id="deckNameInput" type="text" placeholder="new deck name">
-                                    <button class="basic-button" type="submit">create</button>
-                                </form>
-                                <div class="share-picker">
-                                    <button class="square-button" id="shareToggle" type="button" aria-expanded="false" aria-controls="sharePanel" aria-label="share this deck" title="share this deck">
+                            <div class="deck-side">
+                                <!-- deck picker, new deck form, decks in and out -->
+                                <div class="deck-bar">
+                                    <form id="deckForm" class="deck-form" novalidate>
+                                        <input id="deckNameInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="new deck">
+                                        <button class="square-button is-solid" type="submit" aria-label="create this deck" title="create this deck">
                                         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                            <rect x="9" y="9" width="11" height="11" rx="2"/>
-                                            <path d="M5 15V5a2 2 0 0 1 2-2h8"/>
+                                            <path d="M5 12.5l4.5 4.5L19 7.5"/>
                                         </svg>
                                     </button>
+                                    </form>
+                                    <div class="share-picker">
+                                        <button class="square-button" id="shareToggle" type="button" aria-expanded="false" aria-controls="sharePanel" aria-label="share this deck" title="share this deck">
+                                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <rect x="9" y="9" width="11" height="11" rx="2"/>
+                                                <path d="M5 15V5a2 2 0 0 1 2-2h8"/>
+                                            </svg>
+                                        </button>
 
-                                    <!-- deck codes — a popup, anchored to the button -->
-                                    <div class="share-panel" id="sharePanel" hidden>
+                                        <!-- deck codes — a popup, anchored to the button -->
+                                        <div class="share-panel" id="sharePanel" hidden>
 
-                                        <label for="shareIn">paste someone's code</label>
-                                        <div class="share-row">
-                                            <textarea id="shareIn" rows="2" spellcheck="false" placeholder="rc2...."></textarea>
-                                            <button class="basic-button" id="loadCode" type="button">load</button>
+                                            <label for="shareIn">paste someone's code</label>
+                                            <div class="share-row">
+                                                <textarea id="shareIn" rows="2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="rc2...."></textarea>
+                                                <button class="basic-button" id="loadCode" type="button">load</button>
+                                            </div>
+
+                                            <label for="shareOut">this deck's code</label>
+                                            <div class="share-row">
+                                                <textarea id="shareOut" rows="2" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                                                <button class="basic-button" id="copyCode" type="button">copy</button>
+                                            </div>
+
+                                            <p class="share-note" id="shareNote" aria-live="polite"></p>
                                         </div>
-
-                                        <label for="shareOut">this deck's code</label>
-                                        <div class="share-row">
-                                            <textarea id="shareOut" rows="2" readonly spellcheck="false"></textarea>
-                                            <button class="basic-button" id="copyCode" type="button">copy</button>
-                                        </div>
-
-                                        <p class="share-note" id="shareNote" aria-live="polite"></p>
                                     </div>
                                 </div>
+
+                                <div class="deck-list-slot" id="deckListSlot"></div>
+
                             </div>
 
-                        </section>
+                            <!-- drag this to trade width between the two -->
+                            <div class="pane-split" id="paneSplit" role="separator"
+                                 aria-orientation="vertical" aria-label="resize the deck list"
+                                 tabindex="0"></div>
 
-                        <!-- placeholder — the deck list is going here.
-                             the smiley stays either way, it'll hold
-                             something else. -->
-                        <div class="deck-list-slot" id="deckListSlot"></div>
+                            <div class="card-side">
+                                <!-- the two tiles, side by side over the organizer -->
+                                <section class="quick-panel" aria-label="card actions">
+                                    <button class="quick-action primary" id="createCardButton" type="button">
+                                        <span class="action-icon">+</span>
+                                        <span class="action-text"><strong>create</strong><small>ʕ•ᴥ•ʔ</small></span>
+                                        <b>&rarr;</b>
+                                    </button>
+                                    <button class="quick-action" id="randomStudyButton" type="button">
+                                        <span class="action-icon play">▶</span>
+                                        <span class="action-text"><strong>practice</strong><small>ʕ-ᴥ-ʔ</small></span>
+                                        <b>&rarr;</b>
+                                    </button>
+                                </section>
+
+                                <div class="deck-stage">
+                                    <div class="stage-head">
+                                        <h2 id="stageDeckName">flashcards</h2>
+                                    </div>
+                                    <ol id="deckCardList"></ol>
+                                </div>
+
+                            </div>
+
+                        </div>
 
                         <!-- audio section — laid out like the cards page:
                              a control bar, then a list beside a stage -->
@@ -139,17 +177,6 @@
                                     </svg>
                                 </button>
 
-                                <!-- the ask before anything that can't be
-                                     taken back. a popup hanging off the
-                                     buttons, like the deck ones. it
-                                     forgets itself if you ignore it. -->
-                                <div class="confirm-pop" id="confirmChip" role="group" aria-label="are you sure" hidden>
-                                    <span id="confirmChipText"></span>
-                                    <div class="confirm-answers">
-                                        <button class="chip-button" id="confirmChipYes" type="button">yep</button>
-                                        <button class="chip-button" id="confirmChipNo" type="button">nope</button>
-                                    </div>
-                                </div>
                             </div>
 
                             <div class="audio-body">
@@ -180,104 +207,68 @@
                         </section>
                     </section>
 
-                    <!-- ============ create ============ -->
-                    <section class="screen maker-screen" id="makerScreen" data-title="create" hidden>
+                    <!-- create and practice are little windows over the
+                         page rather than pages of their own: click the
+                         backdrop, the ×, or press escape to drop them. -->
+                    <div class="modal-veil" id="modalVeil" hidden>
 
-                        <!-- a bar that feeds a list, same shape as the other pages -->
-                        <form id="cardForm" class="maker-bar" novalidate>
-                            <label class="maker-field">
-                                <span>question</span>
-                                <textarea id="questionInput" placeholder="question goes here"></textarea>
-                            </label>
-                            <label class="maker-field">
-                                <span>answer</span>
-                                <textarea id="answerInput" placeholder="hiihi"></textarea>
-                            </label>
-                            <button class="basic-button" id="cardSubmitButton" type="submit">add card</button>
-                            <p class="form-note" id="cardFormNote" aria-live="polite"></p>
-                        </form>
+                            <!-- ============ create ============ -->
+                            <section class="modal-panel maker-screen" id="makerScreen" data-title="create" hidden>
 
-                        <ol id="cardList"><li class="empty-message">no cards yet</li></ol>
+                            <button class="modal-close" type="button" aria-label="close" title="close">×</button>
 
-                    </section>
+                                <!-- a bar that feeds a list, same shape as the other pages -->
+                                <form id="cardForm" class="maker-bar" novalidate>
+                                    <label class="maker-field">
+                                        <span>question</span>
+                                        <textarea id="questionInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="question goes here"></textarea>
+                                    </label>
+                                    <label class="maker-field">
+                                        <span>answer</span>
+                                        <textarea id="answerInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="hiihi"></textarea>
+                                    </label>
+                                    <button class="basic-button" id="cardSubmitButton" type="submit">add card</button>
+                                    <p class="form-note" id="cardFormNote" aria-live="polite"></p>
+                                </form>
 
-                    <!-- ============ practice ============ -->
-                    <section class="screen study-screen" id="studyScreen" data-title="practice" hidden>
+                                <ol id="cardList"><li class="empty-message">no cards yet</li></ol>
 
-                        <!-- question across the top, the four answers
-                             filling the rest as real quadrants -->
-                        <div class="question-box">
-                            <h2 id="studyQuestion"></h2>
-                            <p id="studyFeedback" aria-live="polite"></p>
-                        </div>
+                            </section>
 
-                        <div class="answer-options" id="answerOptions"></div>
+                            <!-- ============ practice ============ -->
+                            <section class="modal-panel study-screen" id="studyScreen" data-title="practice" hidden>
 
-                    </section>
+                            <button class="modal-close" type="button" aria-label="close" title="close">×</button>
+
+                                <!-- question across the top, the four answers
+                                     filling the rest as real quadrants -->
+                                <div class="question-box">
+                                    <h2 id="studyQuestion"></h2>
+                                    <p id="studyFeedback" aria-live="polite"></p>
+                                </div>
+
+                                <div class="answer-options" id="answerOptions"></div>
+
+                            </section>
+
+                    </div>
 
                 </main>
 
                 <!-- right bar — always in, sits under the top bar -->
                 <aside class="rail rail-right" aria-label="right menu">
 
-                    <!-- help — keep this current whenever something new
-                         lands on the site -->
-                    <section class="help-box" aria-label="help">
-                        <h2>help</h2>
+                    <!-- what the page you're on actually does. one
+                         paragraph per section — keep this current
+                         whenever something new lands on the site. -->
+                    <section class="help-box" aria-label="what this page does">
+                        <h2>function</h2>
 
-                        <details>
-                            <summary>what is this</summary>
-                            <p>two things in one. <b>cards</b> is flashcards, <b>audio</b> records a chrome tab. swap with the big words at the top left.</p>
-                        </details>
+                        <p class="help-note" data-section="home" hidden>welcome to my house</p>
 
-                        <details>
-                            <summary>make a deck</summary>
-                            <p>type a name in the bar, hit <b>create</b>. each deck shows up in the list below it with its own face.</p>
-                        </details>
+                        <p class="help-note" data-section="cards" hidden>you make flashcards. decks are on the right and you can create and practice your own custom made flashcards. </p>
 
-                        <details>
-                            <summary>your decks</summary>
-                            <p>click one to switch to it &mdash; the black one is the deck you're on. <b>right-click</b> any of them to rename, delete, or <b>change look</b> (eight shapes, and the one you pick travels with the deck's code). <b>ctrl+z</b> puts back whatever you just deleted. the smiley opens the same list as a dropdown, where you can drag to reorder.</p>
-                        </details>
-
-                        <details>
-                            <summary>add cards</summary>
-                            <p>the <b>create</b> tile takes you to a question / answer form. cards land in whichever deck is open.</p>
-                        </details>
-
-                        <details>
-                            <summary>practice</summary>
-                            <p>the four answers fill the page as quadrants, and the keyboard matches where they sit: <b>qwert</b> top-left, <b>yuiop</b> top-right, <b>asdf/zxcv</b> bottom-left, <b>hjkl/nm</b> bottom-right. wrong answer &rarr; click or press anything to move on.</p>
-                        </details>
-
-                        <details>
-                            <summary>audio</summary>
-                            <p>hit record and pick a chrome tab &mdash; <b>tick "also share tab audio"</b> or you get silence. it watches a small box over the speaker's name and starts a fresh clip whenever that name changes; the counter in the meter tells you how many switches it's caught. clips under 2s are binned. the gear shows the video so you can aim that box, the &darr; saves every clip as mp3 top-to-bottom &mdash; while it's going it turns into a pause, hit it again to hold and once more to carry on &mdash; and the bin clears the lot. drag a clip by its three lines to move it up or down the list &mdash; the order sticks, and the arrow keys work on the handle too. both ask first &mdash; a little <b>yep / nope</b> pops into the bar, and it gives up on its own if you ignore it.</p>
-                        </details>
-
-                        <details>
-                            <summary>share a deck</summary>
-                            <p>the square button next to <b>create</b> opens deck codes. <b>copy</b> gives you a code for the deck you're on &mdash; send it to anyone. paste one in and hit <b>load</b> to get their deck.</p>
-                        </details>
-
-                        <details>
-                            <summary>don't lose your stuff</summary>
-                            <p>everything lives in this browser only, so clearing site data wipes it. a code is also a backup &mdash; copy one somewhere safe.</p>
-                        </details>
-                    </section>
-
-                    <!-- the two tiles, stacked -->
-                    <section class="quick-panel" aria-label="card actions">
-                        <button class="quick-action primary" id="createCardButton" type="button">
-                            <span class="action-icon">+</span>
-                            <span><strong>create</strong><small>&#x0295;&#x2022;&#x1D25;&#x2022;&#x0294;</small></span>
-                            <b>&rarr;</b>
-                        </button>
-                        <button class="quick-action" id="randomStudyButton" type="button">
-                            <span class="action-icon play">&#x25B6;</span>
-                            <span><strong>practice</strong><small>&#x0295;-&#x1D25;-&#x0294;</small></span>
-                            <b>&rarr;</b>
-                        </button>
+                        <p class="help-note" data-section="audio" hidden>audio recorder that records audio clips that auto-cut when a change is detected in a selected area. only websites on the same browser can be recorded. each clip saves as an mp3 file. </p>
                     </section>
 
                 </aside>
