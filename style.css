@@ -72,6 +72,12 @@ html, body {
 	overscroll-behavior: none;
 }
 
+/* a page this plain reads a mis-drag as damage, so the words don't
+   take a highlight. the fields you actually type in keep theirs —
+   losing it there would mean losing select-all and copy. */
+body { -webkit-user-select: none; user-select: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
+
 body {
 	margin: 0;
 	color: var(--ink);
@@ -468,15 +474,34 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	place-items: center;
 	padding: var(--gap);
 	background: rgba(255, 255, 255, 0.72);
-	animation: veil-in 0.18s var(--ease);
+	animation: veil-in 0.26s var(--ease);
 }
 @keyframes veil-in {
 	from { opacity: 0; }
 	to   { opacity: 1; }
 }
 @keyframes panel-pop {
-	from { opacity: 0; transform: translateY(8px) scale(0.98); }
+	from { opacity: 0; transform: translateY(12px) scale(0.96); }
 	to   { opacity: 1; transform: none; }
+}
+
+/* closing used to be a straight cut — the veil was hidden outright, so
+   there was nothing to animate. it now leaves under its own steam and
+   is only hidden once the way out has played. */
+@keyframes veil-out {
+	from { opacity: 1; }
+	to   { opacity: 0; }
+}
+@keyframes panel-drop {
+	from { opacity: 1; transform: none; }
+	to   { opacity: 0; transform: translateY(10px) scale(0.97); }
+}
+.modal-veil.is-leaving {
+	pointer-events: none;   /* it's on its way out; clicks go through */
+	animation: veil-out 0.2s var(--ease) forwards;
+}
+.modal-veil.is-leaving .modal-panel {
+	animation: panel-drop 0.2s var(--ease) forwards;
 }
 .modal-panel {
 	position: relative;
@@ -492,7 +517,7 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 	overflow: hidden;
 	text-align: left;
-	animation: panel-pop 0.24s var(--ease);
+	animation: panel-pop 0.32s cubic-bezier(0.22, 1, 0.3, 1);
 }
 .study-screen { width: min(40rem, 100%); }
 
@@ -670,11 +695,12 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 
 /* deck codes — a popup hanging off the share button */
 .share-picker { position: relative; z-index: 30; flex: none; }
+/* fixed and placed by placeSharePanel(), for the same reason the
+   confirm chip is: anchored inside the column it gets cut off by the
+   screen's own overflow as soon as the deck side is narrow. */
 .share-panel {
-	position: absolute;
-	top: calc(100% + 0.375rem);
-	right: 0;
-	z-index: 20;
+	position: fixed;
+	z-index: 40;
 	display: flex;
 	flex-direction: column;
 	gap: 0.35rem;
@@ -889,7 +915,6 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
-#deckCardList .stage-card.editing { background: var(--hover); }
 
 .stage-card-text {
 	flex: 1;
@@ -955,9 +980,30 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	will-change: transform;
 }
 
-/* the bin on the end of a row. no box around it at rest — it's just
-   the mark, bigger than it was; the box only shows up under the cursor. */
+/* the bin on the end of a row, and the cancel that appears beside it.
+   the cancel is taken out of the flow so the row doesn't jump when it
+   arrives — it hangs off the left of the pair. */
+.stage-card-actions {
+	position: relative;
+	display: flex;
+	flex: none;
+	align-items: center;
+	transition:
+		opacity 0.2s var(--ease),
+		transform 0.26s var(--ease);
+}
+/* typing in a row is not the moment to offer to delete it */
+.stage-card.editing .stage-card-actions {
+	opacity: 0;
+	transform: scale(0.55);
+	pointer-events: none;
+}
+
+/* nothing changes colour here: it swells under the cursor, and turns
+   itself over when you arm it. a full turn rather than a half one, so
+   both marks land upright without a counter-spin. */
 .stage-card-action {
+	position: relative;
 	display: grid;
 	flex: none;
 	place-items: center;
@@ -967,14 +1013,87 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	color: inherit;
 	background: none;
 	border: 0;
-	border-radius: 6px;
-	padding-top: 4px;      /* the × rides high in its line box */
 	font-size: 1.4rem;
 	line-height: 1;
 	cursor: pointer;
+	transition: transform 0.2s var(--ease);
 }
-.stage-card-action:hover,
-.stage-card-action.is-armed { color: #fff; background: var(--ink); }
+.stage-card-action:hover { transform: scale(1.18); }
+
+.stage-card-action .mark-bin,
+.stage-card-action .mark-yes {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	/* each mark carries its own turn: the × winds away and shrinks out
+	   while the tick unwinds in and grows to meet you. nothing rides a
+	   full revolution back to where it began. */
+	transition:
+		opacity 0.26s var(--ease),
+		transform 0.42s cubic-bezier(0.34, 1.3, 0.5, 1);
+}
+.stage-card-action .mark-bin {
+	padding-top: 4px;      /* the × rides high in its line box */
+	transform: rotate(0deg) scale(1);
+}
+.stage-card-action .mark-yes {
+	opacity: 0;
+	transform: rotate(-135deg) scale(0.3);
+}
+.stage-card.is-arming .mark-bin {
+	opacity: 0;
+	transform: rotate(135deg) scale(0.3);
+}
+.stage-card.is-arming .mark-yes {
+	opacity: 1;
+	transform: rotate(0deg) scale(1);
+}
+
+/* the tick is two edges of a box turned 45° — a backwards L — rather
+   than a glyph, so it sits square with the × instead of beside it */
+.stage-card-action .mark-yes::before {
+	content: '';
+	display: block;
+	width: 0.32em;
+	height: 0.575em;
+	margin-top: -0.135em;
+	border-right: 0.09em solid currentColor;
+	border-bottom: 0.09em solid currentColor;
+	transform: rotate(45deg);
+}
+
+
+.stage-card-cancel {
+	position: absolute;
+	top: 50%;
+	right: 100%;
+	display: grid;
+	place-items: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	margin-right: 0.1rem;
+	padding: 0;
+	padding-top: 4px;
+	color: inherit;
+	background: none;
+	border: 0;
+	font-size: 1.4rem;
+	line-height: 1;
+	cursor: pointer;
+	opacity: 0;
+	transform: translate(0.45rem, -50%) scale(0.6);
+	pointer-events: none;
+	transition: opacity 0.28s var(--ease), transform 0.28s var(--ease);
+}
+.stage-card.is-arming .stage-card-cancel {
+	opacity: 1;
+	transform: translate(0, -50%) scale(1);
+	pointer-events: auto;
+}
+.stage-card.is-arming .stage-card-cancel:hover {
+	transform: translate(0, -50%) scale(1.18);
+}
 
 /* =========================================================
    9. home — renaming a deck in place
@@ -1063,11 +1182,12 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	justify-content: center;
 	gap: 0.2rem;
 	min-height: 0;
-	/* the icon is a 7px mark — it measures as content but doesn't read
-	   as any, so a tile centred on all three parts looks top-heavy. the
-	   extra bottom padding centres the face and word instead, which is
-	   where all the weight is. it is doubled because centring splits it. */
-	padding: 0.5rem 1rem calc(0.5rem + 16px);
+	/* nothing but the face and the word in here now, so it centres on
+	   its own — there is no lone icon up top pulling the balance about */
+	/* measured off the ink: 'create' has no descender, so its line box
+	   leaves slack underneath and the pair read 2.7px high. five off the
+	   top drops the centred content by half that. */
+	padding: calc(0.7rem + 5px) 1rem 0.7rem;
 	background: #fff;
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
@@ -1093,9 +1213,6 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	100% { transform: rotate(0deg); }
 }
 .quick-action small { transform-origin: center center; }
-
-.quick-action .action-icon { color: var(--ink); font-size: 0.85rem; }
-.quick-action.primary .action-icon { color: #fff; }
 
 /* the face rides above the word. it's `order`, not the markup order,
    because the label should still be read out first — and for that to
@@ -1692,9 +1809,9 @@ button.boing { animation: button-boing 0.42s var(--ease); }
 	flex: none;
 	flex-direction: column;
 	justify-content: center;
-	gap: 3px;
+	gap: 5px;
 	width: 1.25rem;
-	height: 1.5rem;
+	height: 2rem;
 	padding: 0 0.3rem;
 	background: none;
 	border: 0;

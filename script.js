@@ -34,6 +34,7 @@ const audioPanel = document.getElementById('audioPanel');
 const deckListSlot = document.getElementById('deckListSlot');
 const homePanel = document.getElementById('homePanel');
 const homeBody = document.getElementById('homeBody');
+const appContent = document.querySelector('.app-content');
 const paneSplit = document.getElementById('paneSplit');
 const cardSide = document.querySelector('.card-side');
 const deckCardList = document.getElementById('deckCardList');
@@ -372,6 +373,7 @@ function loadDeckColumn() {
 window.addEventListener('resize', () => {
     const now = parseFloat(homeBody.style.getPropertyValue('--deck-col'));
     if (now) setDeckColumn(now);
+    if (!sharePanel.hidden) placeSharePanel();
 });
 
 paneSplit.addEventListener('pointerdown', (event) => {
@@ -387,6 +389,7 @@ paneSplit.addEventListener('pointerdown', (event) => {
         // the decks are the left-hand pane now, so their width is
         // however far the cursor has come from that edge
         setDeckColumn((move.clientX - box.left) / box.width * 100);
+        if (!sharePanel.hidden) placeSharePanel();   // its button just moved
     };
     const drop = () => {
         window.removeEventListener('pointermove', drag);
@@ -476,6 +479,7 @@ function renderStage() {
     const deck = activeDeck();
     const total = deck.cards.length;
 
+    armedDeleteRow = null;   // the rows it pointed at are about to go
     deckCardList.innerHTML = '';
     if (total === 0) {
         deckCardList.innerHTML = '<li class="empty-message">=ω=</li>';
@@ -503,9 +507,7 @@ function renderStage() {
         });
         item.append(handle);
 
-        if (index === editingStageIndex) {
-            item.append(buildStageEditor(deck, card, index));
-        } else {
+        {
             const text = document.createElement('span');
             text.className = 'stage-card-text';
             const question = document.createElement('strong');
@@ -518,18 +520,44 @@ function renderStage() {
             // its index rather than each handler remembering one
             text.addEventListener('click', () => beginStageEdit(rowIndex(item)));
 
+            /* the bin asks on the spot rather than raising a popup: the
+               × turns itself into a tick, and a cancel × appears beside
+               it. the two marks live inside the button so the spin can
+               carry one out and the other in. */
+            const actions = document.createElement('span');
+            actions.className = 'stage-card-actions';
+
+            const cancel = document.createElement('button');
+            cancel.className = 'stage-card-cancel';
+            cancel.type = 'button';
+            cancel.textContent = '×';
+            cancel.tabIndex = -1;
+            cancel.setAttribute('aria-label', `keep ${card.question}`);
+            cancel.title = 'keep it';
+            cancel.addEventListener('click', (event) => {
+                event.stopPropagation();
+                disarmStageDelete();
+            });
+
             const remove = document.createElement('button');
             remove.className = 'stage-card-action';
             remove.type = 'button';
-            remove.textContent = '×';
+            remove.innerHTML = '<span class="mark-bin">×</span><span class="mark-yes"></span>';
             remove.setAttribute('aria-label', `delete ${card.question}`);
             remove.title = 'delete — ctrl+z brings it back';
             remove.addEventListener('click', (event) => {
                 event.stopPropagation();
-                deleteStageCard(rowIndex(item), remove);
+                if (armedDeleteRow === item) {
+                    deleteStageCard(rowIndex(item));
+                    return;
+                }
+                armStageDelete(item);
             });
 
-            item.append(text, remove);
+            actions.append(cancel, remove);
+            item.append(index === editingStageIndex
+                ? buildStageEditor(deck, card, index)
+                : text, actions);
         }
 
         deckCardList.appendChild(item);
@@ -597,7 +625,10 @@ function buildStageEditor(deck, card, index) {
     wrap.append(question, answer);
     window.setTimeout(() => {
         question.focus();
-        question.select();
+        // caret at the end, not the whole line selected — clicking a
+        // card is to fix a word, not usually to replace the lot
+        const end = question.value.length;
+        question.setSelectionRange(end, end);
     }, 0);
     return wrap;
 }
@@ -633,19 +664,52 @@ function settleCardOrder() {
 }
 
 function beginStageEdit(index) {
-    editingStageIndex = index;
-    renderStage();
-}
-
-async function deleteStageCard(index, button) {
+    if (editingStageIndex === index) return;
     const deck = activeDeck();
     const card = deck.cards[index];
     if (!card) return;
 
-    const sure = await askConfirm(`bin "${card.question}"?`, button);
-    if (!sure) return;
-    // the list can have been rebuilt while the chip was up
-    if (deck.cards[index] !== card) return;
+    // close whatever else was open the slow way, then take this row apart
+    // by hand so its marks stay put long enough to bow out
+    if (editingStageIndex !== null) {
+        editingStageIndex = null;
+        renderStage();
+    }
+    const item = deckCardList.querySelector(`.stage-card[data-card-index="${index}"]`);
+    const text = item && item.querySelector('.stage-card-text');
+    if (!text) {
+        editingStageIndex = index;
+        renderStage();
+        return;
+    }
+
+    disarmStageDelete();
+    editingStageIndex = index;
+    item.classList.add('editing');
+    text.replaceWith(buildStageEditor(deck, card, index));
+}
+
+/* the row waiting on a yes, if any. only ever one — arming another
+   puts the first one back. */
+let armedDeleteRow = null;
+
+function armStageDelete(item) {
+    disarmStageDelete();
+    armedDeleteRow = item;
+    item.classList.add('is-arming');
+}
+
+function disarmStageDelete() {
+    if (!armedDeleteRow) return;
+    armedDeleteRow.classList.remove('is-arming');
+    armedDeleteRow = null;
+}
+
+function deleteStageCard(index) {
+    const deck = activeDeck();
+    const card = deck.cards[index];
+    if (!card) return;
+    disarmStageDelete();
 
     deletedStack.push({ type: 'card', item: card, index, deckId: deck.id });
     deck.cards.splice(index, 1);
@@ -715,18 +779,40 @@ function beginDeckRename(deck) {
 /* home is always there underneath; create and practice are windows
    laid over it, so "showing" one is really just raising the veil. */
 function isModalOpen() {
-    return !modalVeil.hidden;
+    // one on its way out doesn't count as open — pressing the tile
+    // again mid-exit should bring it back, not toggle it shut twice
+    return !modalVeil.hidden && !modalVeil.classList.contains('is-leaving');
+}
+
+const MODAL_EXIT_MS = 200;   // matches veil-out / panel-drop
+let modalExitTimer = 0;
+
+function closeModal() {
+    if (modalVeil.hidden || modalVeil.classList.contains('is-leaving')) return;
+    modalVeil.classList.add('is-leaving');
+    window.clearTimeout(modalExitTimer);
+    modalExitTimer = window.setTimeout(() => {
+        modalVeil.hidden = true;
+        modalVeil.classList.remove('is-leaving');
+        makerScreen.hidden = true;
+        studyScreen.hidden = true;
+    }, MODAL_EXIT_MS);
 }
 
 function showScreen(screen) {
-    const onHome = screen === homeScreen;
-    modalVeil.hidden = onHome;
+    if (screen === homeScreen) {
+        waitingForContinue = false;
+        closeModal();
+        return;
+    }
+
+    // catch one that was mid-exit, so a quick tap out and back in picks
+    // straight up rather than waiting for the old one to finish leaving
+    window.clearTimeout(modalExitTimer);
+    modalVeil.classList.remove('is-leaving');
+    modalVeil.hidden = false;
     makerScreen.hidden = screen !== makerScreen;
     studyScreen.hidden = screen !== studyScreen;
-    if (onHome) waitingForContinue = false;
-
-    // the tabs are the title on every screen now; create and practice
-    // carry their own name at the top of their own page, under them
 }
 
 function renderCards() {
@@ -1108,10 +1194,30 @@ function closeSharePanel() {
     shareToggle.setAttribute('aria-expanded', 'false');
 }
 
+/* under the button, right edges lined up, but never off the window.
+   the panel is wider than the deck column ever gets, so on a narrow
+   column it simply slides right rather than being cut in half. */
+function placeSharePanel() {
+    const spot = shareToggle.getBoundingClientRect();
+    const box = sharePanel.getBoundingClientRect();
+    const edge = 8;
+    // held inside the content column, not merely inside the window —
+    // the side bars are solid, and a panel lying over one reads as a
+    // mistake even though nothing is actually clipping it
+    const field = appContent.getBoundingClientRect();
+    let left = spot.right - box.width;
+    left = Math.max(field.left, Math.min(left, field.right - box.width - edge));
+    let top = spot.bottom + 6;
+    if (top + box.height > window.innerHeight - edge) top = spot.top - box.height - 6;
+    sharePanel.style.left = `${Math.round(left)}px`;
+    sharePanel.style.top = `${Math.round(Math.max(edge, top))}px`;
+}
+
 async function openSharePanel() {
     sharePanel.hidden = false;
     shareToggle.setAttribute('aria-expanded', 'true');
     shareNote.textContent = '';
+    placeSharePanel();
     await refreshShareCode();
 }
 
@@ -1233,6 +1339,7 @@ contextMenu.addEventListener('click', (event) => event.stopPropagation());
 document.addEventListener('click', () => {
     hideContextMenu();
     closeSharePanel();
+    disarmStageDelete();
 });
 
 // the backdrop is the way out; a click inside a panel is not
@@ -1265,6 +1372,10 @@ document.addEventListener('keydown', (event) => {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
 
     if (event.key === 'Escape') {
+        if (armedDeleteRow) {
+            disarmStageDelete();
+            return;
+        }
         if (!sharePanel.hidden) {
             closeSharePanel();
             shareToggle.focus();
