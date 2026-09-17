@@ -1674,35 +1674,51 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 }
 .answer-button.correct:not(.is-right) { animation: pop 0.35s var(--ease); }
 
-/* getting it right: a tick draws itself across the filled tile, left
-   to right, the way a hand would put it there, and the tile swells a
-   little under it. a mark that is written on reads as an answer; the
-   ring this replaced was only a movement, and a movement reads much
-   the same whichever way the answer went. */
+/* the mark sits over the word rather than beside it: the word slides
+   down to make the room and the mark comes in above it, so the pair
+   reads as one thing and nothing is squeezed sideways. only the tile
+   you pressed is ever marked — a tick and a cross say which way it
+   went, and the answer itself is shown by being filled in. */
+.answer-word {
+	display: block;
+	transition: transform 0.3s var(--ease);
+}
+.answer-button.is-marked .answer-word { transform: translateY(14px); }
+
 .answer-mark {
 	position: absolute;
 	top: 50%;
-	left: 0.85rem;
+	left: 50%;
 	display: grid;
 	place-items: center;
-	width: 1.5rem;
-	height: 1.5rem;
-	transform: translateY(-50%);
+	width: 1.35rem;
+	height: 1.35rem;
 	pointer-events: none;
+	animation: mark-in 0.3s var(--ease) backwards;
 }
+@keyframes mark-in {
+	from { opacity: 0; transform: translate(-50%, calc(-50% - 8px)) scale(0.8); }
+	to   { opacity: 1; transform: translate(-50%, calc(-50% - 13px)) scale(1); }
+}
+.answer-mark { transform: translate(-50%, calc(-50% - 13px)); }
 .answer-mark svg { display: block; width: 100%; height: 100%; }
-.answer-mark path {
+
+/* the tick is written on, one stroke, left to right */
+.answer-mark.is-tick path {
 	stroke-dasharray: 25;
 	stroke-dashoffset: 25;
-	animation: tick-draw 0.34s cubic-bezier(0.4, 0, 0.2, 1) 0.06s forwards;
+	animation: mark-draw 0.32s cubic-bezier(0.4, 0, 0.2, 1) 0.06s forwards;
 }
-@keyframes tick-draw {
+/* the cross is struck on, one bar then the other */
+.answer-mark.is-cross path {
+	stroke-dasharray: 18;
+	stroke-dashoffset: 18;
+	animation: mark-draw 0.16s cubic-bezier(0.4, 0, 0.2, 1) 0.04s forwards;
+}
+.answer-mark.is-cross path:last-child { animation-delay: 0.16s; }
+@keyframes mark-draw {
 	to { stroke-dashoffset: 0; }
 }
-/* the tick gets its own room at the left, and the same is left clear
-   on the right so the words stay where they were — a padding on one
-   side only would shove the answer sideways as it was marked */
-.answer-button.correct { padding-left: 2.9rem; padding-right: 2.9rem; }
 
 .answer-button.is-right { animation: right-swell 0.45s cubic-bezier(0.3, 1.4, 0.5, 1); }
 @keyframes right-swell {

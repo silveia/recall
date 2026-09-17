@@ -1150,7 +1150,12 @@ function showNextQuestion() {
         button.className = `answer-button${index === wideIndex ? ' is-wide' : ''}`;
         button.type = 'button';
         button.dataset.answer = option;
-        button.textContent = option;
+        // the word is its own element so it can slide down and leave
+        // room for the mark above it
+        const word = document.createElement('span');
+        word.className = 'answer-word';
+        word.textContent = option;
+        button.append(word);
         button.addEventListener('click', (event) => {
             event.stopPropagation();
             if (waitingForContinue) showNextQuestion();
@@ -1165,24 +1170,34 @@ function showNextQuestion() {
    stamp and a ring off the tile you pressed; wrong is a knock — the
    tile flashes over and settles back a size, with the black one beside
    it saying what it should have been. */
+/* the mark that goes over a word: a tick when you were right, a cross
+   when you weren't. only ever on the tile you pressed — the right
+   answer is shown by being filled in, and a tick on a tile you didn't
+   press only muddles which of the two things just happened. */
+function markAnswer(button, right) {
+    const mark = document.createElement('span');
+    mark.className = `answer-mark ${right ? 'is-tick' : 'is-cross'}`;
+    mark.innerHTML = right
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true">'
+            + '<path d="M4 12.6 L9.6 18.2 L20 6.6" fill="none" stroke="currentColor"'
+            + ' stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true">'
+            + '<path d="M6 6 L18 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'
+            + '<path d="M18 6 L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+    button.prepend(mark);
+    button.classList.add('is-marked');
+}
+
 function checkAnswer(selectedButton, selectedAnswer) {
     document.querySelectorAll('.answer-button').forEach((button) => {
-        if (button.dataset.answer !== currentCard.answer) return;
-        button.classList.add('correct');
-        // a tick that draws itself across the filled tile — whichever
-        // tile you pressed, this is the one that was right
-        const mark = document.createElement('span');
-        mark.className = 'answer-mark';
-        mark.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">'
-            + '<path d="M4 12.6 L9.6 18.2 L20 6.6" fill="none" stroke="currentColor"'
-            + ' stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        button.prepend(mark);
+        if (button.dataset.answer === currentCard.answer) button.classList.add('correct');
     });
     answerOptions.classList.add('is-answered');
     studyFeedback.textContent = '';
 
     if (selectedAnswer === currentCard.answer) {
         selectedButton.classList.add('is-right');
+        markAnswer(selectedButton, true);
         document.querySelectorAll('.answer-button').forEach((button) => {
             button.disabled = true;
         });
@@ -1190,6 +1205,7 @@ function checkAnswer(selectedButton, selectedAnswer) {
         setTimeout(showNextQuestion, 620);
     } else {
         selectedButton.classList.add('incorrect');
+        markAnswer(selectedButton, false);
         waitingForContinue = true;
     }
 }
