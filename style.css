@@ -851,8 +851,10 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 }
 /* decks come first, and take whatever the divider gives them */
 .deck-side {
-	flex: none;
-	width: var(--deck-col, 55%);
+	/* the width you dragged it to, but it gives way when the window
+	   can't hold both columns — as a fixed width it simply pushed the
+	   card side off the right edge of the page */
+	flex: 0 1 var(--deck-col, 55%);
 	min-width: 14rem;
 }
 /* the cards take the rest, but never narrower than the two tiles */
@@ -2281,10 +2283,38 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 	.help-box { flex: 1; min-height: 0; overflow-y: auto; }
 }
 
+/* narrower than both columns can hold, they stop being columns: the
+   list sits over the thing it feeds, and the divider has nothing left
+   to size. the cards page and the player both take this shape. */
+@media (max-width: 900px) {
+	.home-body, .player-body { flex-direction: column; gap: var(--group); }
+	.deck-side, .card-side, .queue-side, .stage-side {
+		flex: 1;
+		width: auto;
+		min-width: 0;
+		min-height: 0;
+	}
+	.pane-split { display: none; }
+}
+
 @media (max-width: 760px) {
 	.rail-left { display: none; }
 	.app-shell::after { display: none; }   /* its edge goes with it */
 	.topbar { left: 0; }                   /* no scallop to reach under */
+}
+
+/* the strip only has room for four words, and each holds a quarter of
+   it: the big one comes down to size rather than being cut off by its
+   own quarter */
+@media (max-width: 900px) {
+	.section-tab { font-size: 1rem; }
+	.section-tab.active { font-size: 1.8rem; }
+}
+
+@media (max-width: 700px) {
+	.section-tab { font-size: 0.95rem; }
+	.section-tab.active { font-size: 1.35rem; }
+	.topbar .section-tabs { gap: 0.5rem; }
 }
 
 @media (max-width: 560px) {
@@ -2336,8 +2366,9 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 	min-height: 0;
 }
 .queue-side {
-	flex: none;
-	width: var(--queue-col, 42%);
+	/* the width you dragged it to, but it gives way rather than push
+	   the player off the right of the page — see .deck-side */
+	flex: 0 1 var(--queue-col, 42%);
 	min-width: 16rem;
 }
 .stage-side {
