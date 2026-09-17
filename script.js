@@ -3625,8 +3625,9 @@ loadStoredTracks();
    number changing in the corner is a distraction. */
 function paintClock() {
     const now = new Date();
-    // the am/pm is set apart from the digits, in the body face
-    const told = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    // the am/pm is set apart from the digits, in the body face. the hour
+    // is padded so the digits never change width on the turn of an hour
+    const told = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
     const half = told.match(/\s*([ap]m)$/);
     clockTime.textContent = half ? told.slice(0, half.index) : told;
     clockSuffix.textContent = half ? half[1] : '';

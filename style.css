@@ -320,7 +320,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	z-index: 5;
 	width: 26px;
 	pointer-events: none;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M4 0 A 25 25 0 0 1 4 44' fill='none' stroke='%23fff' stroke-width='2.2'/%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M4 0 A 25 25 0 0 1 4 44' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: 26px 44px;
 }
@@ -397,9 +397,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    those offsets and takes a few px down off the top instead */
 .topbar .section-tabs {
 	position: relative;
-	/* measured off the glyphs, not the boxes: the row's ink sat ~2px
-	   above the bar's middle, so it comes down by that much */
-	top: 6px;
+	/* measured off the glyphs, not the boxes: the line box sits high in
+	   the bar, so the row comes down until the x-height band — not the
+	   box, and not the descenders — straddles the bar's middle */
+	top: 4px;
 	height: auto;
 	margin: 0;
 	padding: 0;
@@ -1152,7 +1153,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: 0 1 auto;
 	min-height: 0;
 	overflow-y: auto;
+	/* double-spaced text carries half a line of air above its first
+	   word, so an even padding reads tight under the last one. the
+	   bottom takes the next step up the scale to make that back. */
 	padding: var(--tight);
+	padding-bottom: var(--group);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-size: 0.9rem;
@@ -2618,6 +2623,10 @@ html.inverted { filter: invert(1); }
 	justify-content: space-between;
 	gap: var(--tight);
 	font-size: 0.78rem;
+	/* the row is one line of small type: the default leading put ~3px
+	   of air over the words, which read as sitting low in the box
+	   against the even padding. the line box is the words themselves. */
+	line-height: 1;
 }
 .store-head span:first-child { font-weight: 700; }
 .store-bar {
