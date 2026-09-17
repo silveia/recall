@@ -17,6 +17,8 @@
          clip storage · mp3 export · clip rows
          recording · level meter · capture
    13. player    (songs off your own disk, and the bar's short copy)
+   14. the bar's own three   (clock · storage · recently binned)
+   15. home widgets   (the home page, yours to arrange)
    ============================================================ */
 
 /* ---------- 1. elements ---------- */
@@ -141,6 +143,7 @@ function activeDeck() {
 /* ---------- 3. storage ---------- */
 
 function saveDecks() {
+    paintWidgets();
     window.localStorage.setItem('flashcard-decks', JSON.stringify(decks));
     window.localStorage.setItem('flashcard-active-deck', activeDeckId);
 }
@@ -869,6 +872,12 @@ function showScreen(screen) {
     modalVeil.hidden = false;
     makerScreen.hidden = screen !== makerScreen;
     studyScreen.hidden = screen !== studyScreen;
+
+    // the tile you pressed still holds the focus, so a space would
+    // press it a second time and shut the window again. the window
+    // takes the focus off it.
+    const held = document.activeElement;
+    if (held && held !== document.body && !screen.contains(held)) held.blur();
 }
 
 function renderCards() {
@@ -1045,9 +1054,18 @@ function showNextQuestion() {
     }
     const options = shuffle([currentCard.answer, ...wrongAnswers]);
 
-    options.forEach((option) => {
+    /* a small deck can't always find three wrong answers, so the grid
+       takes the shape of however many it has: four fill the quarters,
+       three leave one to run the whole bottom, two are a pair of wide
+       rows, and one takes the lot. which of the three gets the wide
+       slot is drawn fresh each time, so the answer isn't given away by
+       where it sits. */
+    answerOptions.dataset.count = String(options.length);
+    const wideIndex = options.length === 3 ? Math.floor(Math.random() * 3) : -1;
+
+    options.forEach((option, index) => {
         const button = document.createElement('button');
-        button.className = 'answer-button';
+        button.className = `answer-button${index === wideIndex ? ' is-wide' : ''}`;
         button.type = 'button';
         button.dataset.answer = option;
         button.textContent = option;
@@ -1184,6 +1202,18 @@ function showContextMenu(event, target) {
 
         contextMenu.append(editButton, deleteButton);
     }
+
+    if (target.type === 'widget') {
+        const removeButton = document.createElement('button');
+        removeButton.className = 'context-action';
+        removeButton.type = 'button';
+        removeButton.textContent = 'take it off';
+        removeButton.addEventListener('click', () => {
+            removeWidget(target.id);
+            hideContextMenu();
+        });
+        contextMenu.append(removeButton);
+    }
 }
 
 /* ---------- 9. keyboard ---------- */
@@ -1202,6 +1232,22 @@ const KEY_QUADRANTS = {
 
 function quadrantForKey(code) {
     return Object.keys(KEY_QUADRANTS).find((index) => KEY_QUADRANTS[index].includes(code));
+}
+
+/* the keys are quarters of the keyboard, so they have to point at
+   whatever is actually in that quarter of the screen — which is not
+   the dom order once the grid changes shape. */
+function buttonForQuadrant(quadrant) {
+    const buttons = [...answerOptions.querySelectorAll('.answer-button')];
+    if (!buttons.length) return null;
+    if (buttons.length === 1) return buttons[0];
+    if (buttons.length === 2) return buttons[quadrant < 2 ? 0 : 1];
+    if (buttons.length === 3) {
+        const wide = buttons.find((button) => button.classList.contains('is-wide'));
+        if (quadrant > 1) return wide;
+        return buttons.filter((button) => button !== wide)[quadrant];
+    }
+    return buttons[quadrant];
 }
 
 /* everything that goes without asking first comes back the same way:
@@ -1642,6 +1688,7 @@ document.addEventListener('click', () => {
     closeSharePanel();
     disarmStageDelete();
     closeOptionPops();
+    closeWidgetPicks();
 });
 
 // the backdrop is the way out; a click inside a panel is not
@@ -1662,7 +1709,9 @@ document.addEventListener('click', (event) => {
 
 document.addEventListener('keydown', (event) => {
     const tag = event.target.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    // typing owns every key but escape, which still closes the window
+    // — otherwise a field you are in traps you in the create screen
+    if ((tag === 'INPUT' || tag === 'TEXTAREA') && event.key !== 'Escape') return;
 
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && deletedStack.length) {
         event.preventDefault();
@@ -1680,6 +1729,11 @@ document.addEventListener('keydown', (event) => {
         }
         if (!optionsPanel.hidden) {
             closeOptionPops();
+            return;
+        }
+        if (!widgetPicks.hidden) {
+            closeWidgetPicks();
+            widgetAdd.focus();
             return;
         }
         if (!sharePanel.hidden) {
@@ -1703,7 +1757,7 @@ document.addEventListener('keydown', (event) => {
     const quadrant = quadrantForKey(event.code);
     if (quadrant === undefined) return;
     event.preventDefault();
-    const optionButton = answerOptions.querySelectorAll('.answer-button')[Number(quadrant)];
+    const optionButton = buttonForQuadrant(Number(quadrant));
     if (optionButton) optionButton.click();
 });
 
@@ -3634,6 +3688,7 @@ function paintClock() {
     clockDate.textContent = now
         .toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
         .toLowerCase();
+    paintWidgets();
 }
 
 function startClock() {
@@ -3670,6 +3725,7 @@ async function paintStorage() {
         const share = quota ? Math.min(100, (usage / quota) * 100) : 0;
         // a sliver so the bar reads as "something" rather than empty
         storeFill.style.width = usage && share < 0.5 ? '2px' : `${share}%`;
+        paintWidgets();
     } catch (error) {
         storeAmount.textContent = 'not measurable';
     }
@@ -3696,6 +3752,285 @@ themeSwap.addEventListener('click', () => {
 });
 setInverted(window.localStorage.getItem(THEME_KEY) === 'yes');
 
+
+/* ---------- 15. home widgets ---------- */
+
+/* the home page is the one screen that is yours to arrange. every
+   widget is optional: pick the ones you want, drag them by the grip
+   into whatever order suits, right-click one to take it off again.
+   which ones are on, and in what order, is remembered. */
+
+const widgetList = document.getElementById('widgetList');
+const widgetAdd = document.getElementById('widgetAdd');
+const widgetPicks = document.getElementById('widgetPicks');
+const widgetPickList = document.getElementById('widgetPickList');
+
+const WIDGET_KEY = 'home-widgets';
+
+/* each one says what it's called, the face it wears, and how to fill
+   its body. fill() is handed the body and writes into it — it is
+   called again whenever anything it shows changes, so it always
+   rebuilds rather than patching. */
+const WIDGETS = [
+    {
+        id: 'clock',
+        name: 'the time',
+        face: '(-ω-)zz',
+        fill(body) {
+            const now = new Date();
+            const told = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+            const half = told.match(/\s*([ap]m)$/);
+            body.innerHTML = '';
+            const big = document.createElement('p');
+            big.className = 'widget-big';
+            big.textContent = half ? told.slice(0, half.index) : told;
+            const suffix = document.createElement('span');
+            suffix.className = 'widget-unit';
+            suffix.textContent = half ? half[1] : '';
+            big.append(suffix);
+            const under = document.createElement('p');
+            under.className = 'widget-line';
+            under.textContent = now
+                .toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })
+                .toLowerCase();
+            body.append(big, under);
+        }
+    },
+    {
+        id: 'decks',
+        name: 'your decks',
+        face: '(・∀・)',
+        fill(body) {
+            const cards = decks.reduce((total, deck) => total + deck.cards.length, 0);
+            body.innerHTML = '';
+            body.append(
+                widgetTally(decks.length, decks.length === 1 ? 'deck' : 'decks'),
+                widgetTally(cards, cards === 1 ? 'card' : 'cards'),
+                widgetTally(activeDeck().cards.length, 'in ' + activeDeck().name)
+            );
+        }
+    },
+    {
+        id: 'jump',
+        name: 'jump back in',
+        face: '(ﾉ･ω･)ﾉ',
+        fill(body) {
+            body.innerHTML = '';
+            const empty = decks.every((deck) => deck.cards.length === 0);
+            if (empty) {
+                body.innerHTML = '<p class="widget-line">no cards to practice yet</p>';
+                return;
+            }
+            decks.filter((deck) => deck.cards.length).slice(0, 4).forEach((deck) => {
+                const jump = document.createElement('button');
+                jump.className = 'widget-jump';
+                jump.type = 'button';
+                jump.innerHTML = `<span class="deck-shape">${shapeFor(deck)}</span>`;
+                const text = document.createElement('span');
+                text.className = 'widget-jump-text';
+                const name = document.createElement('strong');
+                name.textContent = deck.name;
+                const count = document.createElement('small');
+                count.textContent = `${deck.cards.length} cards`;
+                text.append(name, count);
+                jump.append(text);
+                // straight into practice on that deck, wherever you were
+                jump.addEventListener('click', () => {
+                    activeDeckId = deck.id;
+                    saveDecks();
+                    renderDecks();
+                    renderCards();
+                    switchSection('cards');
+                    startStudy();
+                });
+                body.append(jump);
+            });
+        }
+    },
+    {
+        id: 'kept',
+        name: "what you've kept",
+        face: '(๑•̀ᴗ•́)',
+        fill(body) {
+            const clips = recordingList.querySelectorAll('.recording-item').length;
+            body.innerHTML = '';
+            body.append(
+                widgetTally(clips, clips === 1 ? 'clip' : 'clips'),
+                widgetTally(tracks.length, tracks.length === 1 ? 'song' : 'songs'),
+                widgetTally(binnedList.querySelectorAll('button').length, 'in the bin')
+            );
+        }
+    }
+];
+
+// one number over one word, the shape all three tallies share
+function widgetTally(number, word) {
+    const cell = document.createElement('span');
+    cell.className = 'widget-tally';
+    const big = document.createElement('strong');
+    big.textContent = String(number);
+    const small = document.createElement('small');
+    small.textContent = word;
+    cell.append(big, small);
+    return cell;
+}
+
+function widgetById(id) {
+    return WIDGETS.find((widget) => widget.id === id);
+}
+
+// the clock and the decks to begin with — enough to show what the
+// page is for without deciding the whole thing for you
+let homeWidgets = ['clock', 'decks'];
+
+function loadWidgets() {
+    try {
+        const saved = JSON.parse(window.localStorage.getItem(WIDGET_KEY));
+        if (Array.isArray(saved)) homeWidgets = saved.filter(widgetById);
+    } catch (error) {
+        // the defaults stand
+    }
+}
+
+function saveWidgets() {
+    try {
+        window.localStorage.setItem(WIDGET_KEY, JSON.stringify(homeWidgets));
+    } catch (error) {
+        // it just won't be remembered
+    }
+}
+
+function widgetLiftConfig() {
+    return { list: widgetList, selector: '.widget-card', feel: LIFT_FEEL.decks, onSettle: settleWidgetOrder };
+}
+
+// the dom is the order once a drag lands; this reads it back
+function settleWidgetOrder() {
+    homeWidgets = [...widgetList.querySelectorAll('.widget-card')].map((card) => card.dataset.widgetId);
+    saveWidgets();
+}
+
+function renderWidgets() {
+    widgetList.innerHTML = '';
+    if (!homeWidgets.length) {
+        widgetList.innerHTML =
+            '<p class="empty-message">'
+            + '<span class="empty-words">'
+            +   '<span class="empty-say"><b>nothing here yet</b></span>'
+            +   '<span class="empty-hint">add a widget and it lands here</span>'
+            + '</span>'
+            + '<span class="empty-face">=ω=</span>'
+            + '</p>';
+    }
+
+    homeWidgets.forEach((id) => {
+        const widget = widgetById(id);
+        if (!widget) return;
+
+        const card = document.createElement('section');
+        card.className = 'widget-card';
+        card.dataset.widgetId = id;
+
+        const head = document.createElement('div');
+        head.className = 'widget-head';
+
+        // three lines to drag it by, the same grip the card rows use
+        const grip = document.createElement('button');
+        grip.className = 'card-handle';
+        grip.type = 'button';
+        grip.setAttribute('aria-label', `reorder ${widget.name}, use arrow keys`);
+        grip.innerHTML = '<span></span><span></span><span></span>';
+        grip.addEventListener('pointerdown', (event) => startLift(widgetLiftConfig(), card, event));
+        grip.addEventListener('keydown', (event) => {
+            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+            event.preventDefault();
+            moveRow(widgetLiftConfig(), card, event.key === 'ArrowUp' ? -1 : 1);
+            grip.focus();
+        });
+
+        const name = document.createElement('h3');
+        name.textContent = widget.name;
+        const face = document.createElement('span');
+        face.className = 'widget-face';
+        face.textContent = widget.face;
+        head.append(grip, name, face);
+
+        const body = document.createElement('div');
+        body.className = 'widget-body';
+        widget.fill(body);
+
+        card.append(head, body);
+        card.addEventListener('contextmenu', (event) => {
+            event.stopPropagation();
+            showContextMenu(event, { type: 'widget', id });
+        });
+        widgetList.append(card);
+    });
+
+    widgetAdd.hidden = homeWidgets.length === WIDGETS.length;
+}
+
+/* only the bodies, for the things that change under you — the clock on
+   the minute, the tallies after anything is kept or binned. rebuilding
+   the rows instead would drop a widget mid-drag. */
+function paintWidgets() {
+    if (!widgetList) return;
+    widgetList.querySelectorAll('.widget-card').forEach((card) => {
+        const widget = widgetById(card.dataset.widgetId);
+        if (widget) widget.fill(card.querySelector('.widget-body'));
+    });
+}
+
+function addWidget(id) {
+    if (homeWidgets.includes(id)) return;
+    homeWidgets.push(id);
+    saveWidgets();
+    renderWidgets();
+}
+
+function removeWidget(id) {
+    homeWidgets = homeWidgets.filter((widget) => widget !== id);
+    saveWidgets();
+    renderWidgets();
+}
+
+function closeWidgetPicks() {
+    widgetPicks.hidden = true;
+    widgetAdd.setAttribute('aria-expanded', 'false');
+}
+
+function renderWidgetPicks() {
+    widgetPickList.innerHTML = '';
+    WIDGETS.filter((widget) => !homeWidgets.includes(widget.id)).forEach((widget) => {
+        const pick = document.createElement('button');
+        pick.className = 'option-pick widget-pick';
+        pick.type = 'button';
+        const text = document.createElement('span');
+        text.textContent = `${widget.name}  ${widget.face}`;
+        pick.append(text);
+        pick.addEventListener('click', () => {
+            addWidget(widget.id);
+            closeWidgetPicks();
+        });
+        widgetPickList.append(pick);
+    });
+}
+
+widgetAdd.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const wasOpen = !widgetPicks.hidden;
+    closeWidgetPicks();
+    if (wasOpen) return;
+    renderWidgetPicks();
+    widgetPicks.hidden = false;
+    widgetAdd.setAttribute('aria-expanded', 'true');
+    placeUnder(widgetPicks, widgetAdd);
+});
+widgetPicks.addEventListener('click', (event) => event.stopPropagation());
+
+/* everything the page does on load, in one place at the very bottom —
+   the widgets read the decks and the clips, so nothing may run until
+   every section above has declared what it owns. */
 startClock();
 paintStorage();
 binnedEmpty.addEventListener('click', (event) => {
@@ -3706,3 +4041,7 @@ binnedEmpty.addEventListener('click', (event) => {
 loadBinned();
 
 start();
+
+// last of all: the widgets read the decks, so the decks load first
+loadWidgets();
+renderWidgets();

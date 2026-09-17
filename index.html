@@ -25,6 +25,13 @@
         <div class="pick-list" id="optionsPicks"></div>
     </div>
 
+    <!-- the widgets not on the home page yet. hangs off the add button
+         the same way, and lists whatever is missing. -->
+    <div class="pop-panel pop-picks" id="widgetPicks" hidden>
+        <p class="pop-say">what else would you like on your home page?</p>
+        <div class="pick-list" id="widgetPickList"></div>
+    </div>
+
     <div class="confirm-pop" id="confirmChip" role="group" aria-label="are you sure" hidden>
         <span id="confirmChipText"></span>
         <div class="confirm-answers">
@@ -56,7 +63,12 @@
                     <section class="screen" id="homeScreen" data-title="home" aria-label="home">
 
                         <!-- home — the first section. blank for now. -->
-                        <section class="home-panel" id="homePanel" hidden></section>
+                        <!-- home is yours to arrange: pick the widgets you
+                             want and drag them into whatever order suits. -->
+                        <section class="home-panel" id="homePanel" hidden>
+                            <div class="widget-list" id="widgetList"></div>
+                            <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks"><span>+ add a widget</span></button>
+                        </section>
 
                         <!-- decks on the left, the open deck's cards on
                              the right. each side is a bar over a list, and
@@ -112,14 +124,16 @@
                                  tabindex="0"></div>
 
                             <div class="card-side">
-                                <!-- the two tiles, side by side over the organizer -->
+                                <!-- the two tiles, side by side over the organizer.
+                                     practice leads, so it takes the black tile —
+                                     the colours belong to the places, not the words. -->
                                 <section class="quick-panel" aria-label="card actions">
-                                    <button class="quick-action primary" id="createCardButton" type="button">
-                                        <span class="action-text"><strong>create</strong><small>ʕ•ᴥ•ʔ</small></span>
+                                    <button class="quick-action primary" id="randomStudyButton" type="button">
+                                        <span class="action-text"><strong>practice</strong><small>ʕ-ᴥ-ʔ</small></span>
                                         <b>&rarr;</b>
                                     </button>
-                                    <button class="quick-action" id="randomStudyButton" type="button">
-                                        <span class="action-text"><strong>practice</strong><small>ʕ-ᴥ-ʔ</small></span>
+                                    <button class="quick-action" id="createCardButton" type="button">
+                                        <span class="action-text"><strong>create</strong><small>ʕ•ᴥ•ʔ</small></span>
                                         <b>&rarr;</b>
                                     </button>
                                 </section>
@@ -387,7 +401,7 @@
                     <section class="help-box" aria-label="what this page does">
                         <h2>function</h2>
 
-                        <p class="help-note" data-section="home" hidden>welcome to my house</p>
+                        <p class="help-note" data-section="home" hidden>welcome to my house. home is yours to arrange &mdash; add the widgets you want, drag them by their grip to reorder, and right-click one to take it off.</p>
 
                         <p class="help-note" data-section="cards" hidden>you make flashcards. you can organize it and create/practice. decks can be shared with a deck code located next to the deck creator.</p>
 

@@ -24,6 +24,8 @@
    19. small screens
    20. player — songs off your own disk
    21. create — which answers a card may be mixed up with
+   22. the bar's own three — clock, storage, recently binned
+   23. home — the widgets you arrange yourself
    ========================================================= */
 
 /* =========================================================
@@ -103,9 +105,12 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 
 [hidden] { display: none !important; }
 
+/* nothing wears a focus box. the ring the browser draws round a field
+   or a button you've tabbed to reads as a stray second outline on a
+   page where the outline already means something. */
+:focus,
 :focus-visible {
-	outline: 2px solid var(--ink);
-	outline-offset: 2px;
+	outline: none;
 }
 
 ::selection { color: #fff; background: var(--ink); }
@@ -397,10 +402,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    those offsets and takes a few px down off the top instead */
 .topbar .section-tabs {
 	position: relative;
-	/* measured off the glyphs, not the boxes: the line box sits high in
-	   the bar, so the row comes down until the x-height band — not the
-	   box, and not the descenders — straddles the bar's middle */
-	top: 4px;
+	/* nudged by eye, not by measurement: the glyphs already measure
+	   high of the bar's middle at 2px, but the row reads low until it
+	   comes up to here */
+	top: 2px;
 	height: auto;
 	margin: 0;
 	padding: 0;
@@ -453,11 +458,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-height: 0;
 	justify-content: flex-start;
 	gap: var(--group);
+	/* one inset on all four sides: the boxes used to sit with half as
+	   much air over and under them as beside them, which read as the
+	   page being wider than it is tall rather than as a margin */
 	padding: var(--gap);
-	padding-top: var(--group);
-	/* the same air under the boxes that the function box leaves under
-	   itself in the rail, so every column ends on one line */
-	padding-bottom: var(--rail-pad);
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
@@ -1128,6 +1132,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    ========================================================= */
 /* the entry turns into this while you retype its name */
 .deck-card.is-renaming { cursor: default; }
+/* a row being renamed is live, so it inverts like everything else here
+   — otherwise the white field sat inside a white row and the whole
+   thing was one thin outline inside another, easy to miss */
+.deck-card.is-renaming {
+	color: #fff;
+	background: var(--ink);
+	border-color: var(--ink);
+}
 .deck-inline-input {
 	flex: 1;
 	min-width: 0;
@@ -1404,10 +1416,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 #cardList {
 	display: flex;
-	flex: 1;
+	/* as tall as its cards up to the cap, then it scrolls inside itself
+	   — the window used to stretch to the full screen as you added, so
+	   the fields kept moving up and the last card sat off the bottom */
+	flex: 0 1 auto;
 	flex-direction: column;
 	gap: var(--tight);
 	min-height: 0;
+	max-height: 20rem;
 	padding: var(--tight);
 }
 #deckCardList {
@@ -1489,6 +1505,23 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-height: 0;
 	margin: 0;
 }
+/* a small deck can't always find three wrong answers. rather than
+   leaving holes in the quarters, the grid takes the shape of however
+   many answers there are — the options always fill the area. */
+.answer-options[data-count="1"] {
+	grid-template-columns: 1fr;
+	grid-template-rows: 1fr;
+}
+.answer-options[data-count="2"] {
+	grid-template-columns: 1fr;
+	grid-template-rows: 1fr 1fr;
+}
+/* one of the three runs the whole bottom row; the other two share the
+   top. which one is drawn fresh each question, in script.js. */
+.answer-options[data-count="3"] .answer-button.is-wide {
+	grid-row: 2;
+	grid-column: 1 / -1;
+}
 .answer-button {
 	display: flex;
 	align-items: center;
@@ -1546,7 +1579,9 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    ========================================================= */
 .context-menu {
 	position: fixed;
-	z-index: 30;
+	/* over the create and practice windows (50), since a card is
+	   right-clicked from inside one */
+	z-index: 60;
 	width: 11rem;
 	padding: 0.3rem;
 	background: #fff;
@@ -2501,7 +2536,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	text-overflow: ellipsis;
 }
 .option-pick.is-picked { color: #fff; background: var(--ink); border-color: var(--ink); }
-.option-pick input:focus-visible + span { outline: 1px solid currentColor; outline-offset: 3px; }
+
 
 
 /* the short version in the right bar: what's on, how far through, and
@@ -2704,3 +2739,124 @@ html.inverted { filter: invert(1); }
 	cursor: pointer;
 }
 .binned-item:hover { color: #fff; background: var(--ink); }
+
+
+/* =========================================================
+   23. home — the widgets you arrange yourself
+   ========================================================= */
+
+/* the panel is a column of widgets over the button that adds one. it
+   scrolls inside itself, so adding a fourth never pushes the button
+   off the page. */
+.home-panel {
+	gap: var(--group);
+	padding: var(--rail-pad);
+}
+.widget-list {
+	display: flex;
+	flex: 0 1 auto;
+	flex-direction: column;
+	gap: var(--group);
+	min-height: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+}
+.widget-list::-webkit-scrollbar { display: none; }
+
+/* one widget: a head with the grip, the name and its face, and a body
+   underneath that each widget fills its own way */
+.widget-card {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	gap: var(--tight);
+	padding: var(--rail-pad);
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	text-align: left;
+}
+.widget-card.is-lifted {
+	position: relative;
+	z-index: 2;
+	will-change: transform;
+}
+.widget-head {
+	display: flex;
+	align-items: center;
+	gap: var(--tight);
+	padding-bottom: var(--tight);
+	border-bottom: 1px solid var(--line);
+}
+/* the grip is the row's own, so it takes the head's height rather
+   than the two rems a card row gives it */
+.widget-head .card-handle { height: 1.4rem; }
+.widget-head h3 {
+	flex: 1;
+	margin: 0;
+	font-family: var(--font);
+	font-size: 1rem;
+	font-weight: 700;
+}
+.widget-face { font-size: 0.85rem; }
+
+.widget-body {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--group);
+	align-items: center;
+}
+
+/* a number over the word for what it counts, the shape every tally
+   in here shares */
+.widget-tally {
+	display: flex;
+	flex-direction: column;
+	line-height: 1.1;
+}
+.widget-tally strong {
+	font-family: var(--title-font);
+	font-size: 1.6rem;
+}
+.widget-tally small { font-size: 0.78rem; }
+
+/* the clock widget: the digits in the title face, am/pm beside them
+   in the body face, the date under */
+.widget-big {
+	display: flex;
+	align-items: baseline;
+	gap: 0.4rem;
+	margin: 0;
+	font-family: var(--title-font);
+	font-size: 2.4rem;
+	line-height: 1;
+}
+.widget-unit { font-family: var(--font); font-size: 0.9rem; }
+.widget-line { margin: 0; font-size: 0.85rem; }
+
+/* a deck you can drop straight into practice */
+.widget-jump {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	padding: 0.5rem 0.7rem;
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	text-align: left;
+	cursor: pointer;
+}
+.widget-jump:hover { color: #fff; background: var(--ink); }
+.widget-jump-text { display: flex; flex-direction: column; min-width: 0; }
+.widget-jump-text strong { font-size: 0.9rem; }
+.widget-jump-text small { font-size: 0.75rem; }
+
+/* the button under the list. it takes itself off the page once every
+   widget is on it — there is nothing left for it to offer. */
+.widget-add {
+	flex: none;
+	align-self: flex-start;
+}
+.widget-pick { cursor: pointer; }
+.widget-pick:hover { color: #fff; background: var(--ink); border-color: var(--ink); }
