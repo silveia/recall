@@ -199,18 +199,9 @@ function switchSection(id) {
     const tabs = [...sectionTabs.querySelectorAll('.section-tab')];
     const before = tabs.map((tab) => tab.getBoundingClientRect());
 
-    // right along the tab row or left back down it
-    const heading = sections.findIndex((section) => section.id === id)
-        > sections.findIndex((section) => section.id === activeSectionId) ? 1 : -1;
-
     activeSectionId = id;
     window.localStorage.setItem('active-section', activeSectionId);
     renderSections();
-
-    // whatever is on screen now arrives from that side
-    [homePanel, homeBody, helpBox, audioPanel, playerPanel].forEach((panel) => {
-        if (panel && !panel.hidden) panel.style.setProperty('--from', `${heading * 30}px`);
-    });
 
     if (!tabs[0] || typeof tabs[0].animate !== 'function') return;
     const after = tabs.map((tab) => tab.getBoundingClientRect());
@@ -218,14 +209,13 @@ function switchSection(id) {
         const from = before[index];
         const to = after[index];
         if (!from.height || !to.height) return;
-        const dx = from.left - to.left;
-        // centres, not bottoms — the scale pivots on the middle now
-        const dy = (from.top + from.bottom) / 2 - (to.top + to.bottom) / 2;
+        // only the size, and only in place: each tab holds its quarter
+        // of the strip, so the word grows and shrinks where it stands
         const scale = from.height / to.height;
-        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5 && Math.abs(scale - 1) < 0.01) return;
+        if (Math.abs(scale - 1) < 0.01) return;
         tab.animate(
-            [{ transform: `translate(${dx}px, ${dy}px) scale(${scale})` }, { transform: 'none' }],
-            { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+            [{ transform: `scale(${scale})` }, { transform: 'none' }],
+            { duration: 320, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
         );
     });
 }
@@ -363,6 +353,7 @@ function renderDeckCards() {
 // the picked deck, spelled out card by card. editing happens in
 // place — the row's own two fields — so nothing leaves the page.
 let editingStageIndex = null;
+let editingStageField = 'question';   // which line of it took the caret
 
 /* --- a draggable divider between two panes --- */
 
@@ -567,17 +558,7 @@ function renderStage() {
         item.append(handle);
 
         {
-            const text = document.createElement('span');
-            text.className = 'stage-card-text';
-            const question = document.createElement('strong');
-            question.textContent = card.question;
-            const answer = document.createElement('small');
-            answer.textContent = card.answer;
-            text.append(question, answer);
-            text.title = 'click to edit';
-            // a drag renumbers the rows, so the row itself is asked for
-            // its index rather than each handler remembering one
-            text.addEventListener('click', () => beginStageEdit(rowIndex(item)));
+            const text = stageWords(item, card);
 
             /* the bin asks on the spot rather than raising a popup: the
                × turns itself into a tick, and a cancel × appears beside
@@ -604,18 +585,39 @@ function renderStage() {
             remove.innerHTML = '<span class="mark-bin">×</span><span class="mark-yes"></span>';
             remove.setAttribute('aria-label', `delete ${card.question}`);
             remove.title = 'delete — ctrl+z brings it back';
-            remove.addEventListener('click', (event) => {
-                event.stopPropagation();
+            /* the same press-not-click reason as the words above: with a
+               field open, a click on here landed after the blur had
+               already put the row back, so the first press did nothing
+               visible. the click is kept for the keyboard, and guarded
+               so a mouse press doesn't run it twice. */
+            let pressed = 0;
+            const act = () => {
                 if (armedDeleteRow === item) {
                     deleteStageCard(rowIndex(item));
                     return;
                 }
                 armStageDelete(item);
+            };
+            remove.addEventListener('pointerdown', (event) => {
+                if (event.button) return;
+                event.stopPropagation();
+                // the press is taken here rather than let through, so the
+                // field keeps its caret until we say otherwise — and then
+                // the open row is put away by hand, in one press
+                event.preventDefault();
+                if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+                pressed = Date.now();
+                act();
+            });
+            remove.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (Date.now() - pressed < 600) return;
+                act();
             });
 
             actions.append(cancel, remove);
             item.append(index === editingStageIndex
-                ? buildStageEditor(deck, card, index)
+                ? buildStageEditor(deck, card, index, editingStageField)
                 : text, actions);
         }
 
@@ -623,7 +625,48 @@ function renderStage() {
     });
 }
 
-function buildStageEditor(deck, card, index) {
+/* a card's two lines, and what pressing one of them does */
+function stageWords(item, card) {
+    const text = document.createElement('span');
+    text.className = 'stage-card-text';
+    // each line is tagged the way the create window tags its fields, so
+    // which of the two you're reading is never a guess — and each line
+    // is its own target
+    text.append(
+        stageLine('Q', 'strong', card.question),
+        stageLine('A', 'small', card.answer)
+    );
+    text.title = 'click a line to edit it';
+    /* on the press, not the click: a click lands after the field you
+       were in has taken its blur and put the row back, so the press
+       would be spent closing the last one instead of opening this one.
+       a drag renumbers the rows, so the row itself is asked for its
+       index. */
+    text.addEventListener('pointerdown', (event) => {
+        if (event.button) return;
+        const line = event.target.closest('.stage-line');
+        beginStageEdit(rowIndex(item), line && line.dataset.field === 'answer' ? 'answer' : 'question');
+    });
+    return text;
+}
+
+/* one line of a card: its tag, then the words. the tag is the same
+   mark the create window puts beside its fields. */
+function stageLine(tag, kind, words) {
+    const line = document.createElement('span');
+    line.className = 'stage-line';
+    line.dataset.field = tag === 'Q' ? 'question' : 'answer';
+    const mark = document.createElement('b');
+    mark.className = 'line-tag';
+    mark.textContent = tag;
+    mark.setAttribute('aria-hidden', 'true');
+    const said = document.createElement(kind);
+    said.textContent = words;
+    line.append(mark, said);
+    return line;
+}
+
+function buildStageEditor(deck, card, index, field) {
     const wrap = document.createElement('span');
     wrap.className = 'stage-card-edit';
 
@@ -641,6 +684,21 @@ function buildStageEditor(deck, card, index) {
     answer.placeholder = 'answer';
     answer.setAttribute('aria-label', 'answer');
 
+    // the tags stay while you type, so the row doesn't change shape
+    const questionLine = document.createElement('span');
+    questionLine.className = 'stage-line';
+    const answerLine = document.createElement('span');
+    answerLine.className = 'stage-line';
+    ['Q', 'A'].forEach((tag, index2) => {
+        const mark = document.createElement('b');
+        mark.className = 'line-tag';
+        mark.textContent = tag;
+        mark.setAttribute('aria-hidden', 'true');
+        (index2 ? answerLine : questionLine).append(mark);
+    });
+    questionLine.append(question);
+    answerLine.append(answer);
+
     // enter commits, escape backs out, and clicking away commits too —
     // but only once the focus has actually left both fields
     const commit = () => {
@@ -655,7 +713,19 @@ function buildStageEditor(deck, card, index) {
         }
         target.question = nextQuestion;
         target.answer = nextAnswer;
-        renderDecks();
+        /* the row is put back by hand rather than by rebuilding the
+           list: a rebuild drops the × and paints a new one, so it
+           blinked out and in. swapping the editor for the words leaves
+           the button where it is, and its own transition carries it. */
+        const item = wrap.closest('.stage-card');
+        if (item) {
+            wrap.replaceWith(stageWords(item, target));
+            item.classList.remove('editing');
+        } else {
+            renderStage();
+        }
+        renderDeckCards();
+        refreshShareForActiveDeck();
         renderCards();
         saveDecks();
     };
@@ -681,13 +751,16 @@ function buildStageEditor(deck, card, index) {
         });
     });
 
-    wrap.append(question, answer);
+    wrap.append(questionLine, answerLine);
+    // the line you pressed takes the caret — pressing the answer used
+    // to open the question, because the row only knew it was pressed
+    const taking = field === 'answer' ? answer : question;
     window.setTimeout(() => {
-        question.focus();
+        taking.focus();
         // caret at the end, not the whole line selected — clicking a
         // card is to fix a word, not usually to replace the lot
-        const end = question.value.length;
-        question.setSelectionRange(end, end);
+        const end = taking.value.length;
+        taking.setSelectionRange(end, end);
     }, 0);
     return wrap;
 }
@@ -722,7 +795,7 @@ function settleCardOrder() {
     saveDecks();
 }
 
-function beginStageEdit(index) {
+function beginStageEdit(index, field) {
     if (editingStageIndex === index) return;
     const deck = activeDeck();
     const card = deck.cards[index];
@@ -738,14 +811,16 @@ function beginStageEdit(index) {
     const text = item && item.querySelector('.stage-card-text');
     if (!text) {
         editingStageIndex = index;
+        editingStageField = field;
         renderStage();
         return;
     }
 
     disarmStageDelete();
     editingStageIndex = index;
+    editingStageField = field === 'answer' ? 'answer' : 'question';
     item.classList.add('editing');
-    text.replaceWith(buildStageEditor(deck, card, index));
+    text.replaceWith(buildStageEditor(deck, card, index, field));
 }
 
 /* the row waiting on a yes, if any. only ever one — arming another
@@ -1033,6 +1108,7 @@ function showNextQuestion() {
 
     studyQuestion.textContent = currentCard.question;
     studyFeedback.textContent = '';
+    answerOptions.classList.remove('is-answered');
     answerOptions.innerHTML = '';
 
     // three wrong answers borrowed from other cards in the deck — or,
@@ -1084,20 +1160,27 @@ function showNextQuestion() {
     });
 }
 
+/* the answer speaks for itself: the right one fills in black either
+   way, so there is nothing left for a line of text to add. right is a
+   stamp and a ring off the tile you pressed; wrong is a knock — the
+   tile flashes over and settles back a size, with the black one beside
+   it saying what it should have been. */
 function checkAnswer(selectedButton, selectedAnswer) {
     document.querySelectorAll('.answer-button').forEach((button) => {
         if (button.dataset.answer === currentCard.answer) button.classList.add('correct');
     });
+    answerOptions.classList.add('is-answered');
+    studyFeedback.textContent = '';
 
     if (selectedAnswer === currentCard.answer) {
-        studyFeedback.textContent = 'yes';
+        selectedButton.classList.add('is-right');
         document.querySelectorAll('.answer-button').forEach((button) => {
             button.disabled = true;
         });
-        setTimeout(showNextQuestion, 450);
+        // long enough for the stamp to land and the ring to go out
+        setTimeout(showNextQuestion, 620);
     } else {
         selectedButton.classList.add('incorrect');
-        studyFeedback.textContent = `answer: ${currentCard.answer}`;
         waitingForContinue = true;
     }
 }
@@ -1549,7 +1632,14 @@ function placeSharePanel() {
     // held inside the content column, not merely inside the window —
     // the side bars are solid, and a panel lying over one reads as a
     // mistake even though nothing is actually clipping it
-    placeUnder(sharePanel, shareToggle, appContent.getBoundingClientRect());
+    // the column's own gutter, so the panel stops where the page's
+    // boxes stop rather than running up against the scalloped bar
+    const column = appContent.getBoundingClientRect();
+    const gutter = 16;
+    placeUnder(sharePanel, shareToggle, {
+        left: column.left + gutter,
+        right: column.right - gutter
+    });
 }
 
 async function openSharePanel() {
@@ -3750,10 +3840,39 @@ async function paintStorage() {
    twice. the choice is remembered. */
 const THEME_KEY = 'page-inverted';
 
+let themingTimer = 0;
+let themeReady = false;   // true once the page has settled on load
+
 function setInverted(on) {
-    document.documentElement.classList.toggle('inverted', on);
+    const root = document.documentElement;
+    // nothing is animated unless the page is actually changing sides —
+    // the call on load would otherwise spin the moon at every refresh
+    const moved = root.classList.contains('inverted') !== on && themeReady;
+    // the transition is only on while the swap is happening — see the
+    // note beside .theming in the stylesheet
+    if (moved) {
+        root.classList.add('theming');
+        window.clearTimeout(themingTimer);
+        themingTimer = window.setTimeout(() => root.classList.remove('theming'), 450);
+    }
+    root.classList.toggle('inverted', on);
     themeSwap.setAttribute('aria-pressed', String(on));
-    themeSwap.title = on ? 'put it back' : 'invert the page';
+    /* the moon turns over as the page does: a half turn the way you're
+       heading, with a dip through the middle so it reads as being
+       flipped rather than spun. it starts and ends exactly where the
+       stylesheet rests it, so nothing jumps when it hands back. on a
+       page load there is nothing to play — the moon is simply already
+       the way round it was left. */
+    const moon = themeSwap.querySelector('svg');
+    if (moved && moon && typeof moon.animate === 'function') {
+        moon.animate([
+            { transform: `rotate(${on ? 0 : 180}deg) scale(1)` },
+            { transform: 'rotate(90deg) scale(0.76)', offset: 0.45 },
+            { transform: `rotate(${on ? 180 : 0}deg) scale(1)` }
+        ], { duration: 520, easing: 'cubic-bezier(0.34, 1.2, 0.45, 1)' });
+    }
+    themeSwap.title = on ? 'back to the light' : 'turn the lights off';
+    themeSwap.setAttribute('aria-label', on ? 'back to the light' : 'turn the lights off');
     try {
         window.localStorage.setItem(THEME_KEY, on ? 'yes' : 'no');
     } catch (error) {
@@ -3765,77 +3884,113 @@ themeSwap.addEventListener('click', () => {
     setInverted(!document.documentElement.classList.contains('inverted'));
 });
 setInverted(window.localStorage.getItem(THEME_KEY) === 'yes');
-
+themeReady = true;
 
 /* ---------- 15. home widgets ---------- */
 
-/* the home page is the one screen that is yours to arrange. every
-   widget is optional: pick the ones you want, drag them by the grip
-   into whatever order suits, right-click one to take it off again.
-   which ones are on, and in what order, is remembered. */
+/* home is a board rather than a list. every widget takes one of three
+   sizes on a four-column grid — a square, a wide one, or a big one
+   two rows deep — and each writes itself differently at each size, so
+   a small one is a single number and a large one is the whole story.
+
+   nothing is draggable until you turn on edit, in the corner. that's
+   the only mode with handles in it: out of edit the board is just the
+   board, and a widget's own buttons work normally. */
 
 const widgetList = document.getElementById('widgetList');
 const widgetAdd = document.getElementById('widgetAdd');
 const widgetPicks = document.getElementById('widgetPicks');
 const widgetPickList = document.getElementById('widgetPickList');
+const widgetEdit = document.getElementById('widgetEdit');
+const homePanel2 = document.getElementById('homePanel');
 
 const WIDGET_KEY = 'home-widgets';
 
-/* each one says what it's called, the face it wears, and how to fill
-   its body. fill() is handed the body and writes into it — it is
-   called again whenever anything it shows changes, so it always
-   rebuilds rather than patching. */
+// the three shapes, in the order the size chip walks through them
+const WIDGET_SIZES = ['small', 'wide', 'large'];
+const SIZE_MARK = { small: '1×1', wide: '2×1', large: '2×2' };
+
+/* each widget says what it's called, the face it wears, and how to
+   fill its body at a given size. fill() is called again whenever
+   anything it shows changes, so it always rebuilds rather than
+   patching. */
 const WIDGETS = [
     {
         id: 'clock',
         name: 'the time',
         face: '(-ω-)zz',
-        fill(body) {
+        fill(body, size) {
             const now = new Date();
             const told = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
             const half = told.match(/\s*([ap]m)$/);
+            const digits = half ? told.slice(0, half.index) : told;
+
             body.innerHTML = '';
-            const big = document.createElement('p');
-            big.className = 'widget-big';
-            big.textContent = half ? told.slice(0, half.index) : told;
-            const suffix = document.createElement('span');
-            suffix.className = 'widget-unit';
-            suffix.textContent = half ? half[1] : '';
-            big.append(suffix);
-            const under = document.createElement('p');
-            under.className = 'widget-line';
-            under.textContent = now
-                .toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })
-                .toLowerCase();
-            body.append(big, under);
+            body.append(bigReading(digits, half ? half[1] : ''));
+            if (size === 'small') return;
+            body.append(oneLine(now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' }).toLowerCase()));
+            if (size !== 'large') return;
+            // the large one says how far through the day it is
+            const through = Math.round(((now.getHours() * 60) + now.getMinutes()) / 14.4);
+            body.append(meterBar(through), oneLine(`${through}% through the day`));
         }
     },
     {
         id: 'decks',
         name: 'your decks',
         face: '(・∀・)',
-        fill(body) {
+        fill(body, size) {
             const cards = decks.reduce((total, deck) => total + deck.cards.length, 0);
             body.innerHTML = '';
-            body.append(
-                widgetTally(decks.length, decks.length === 1 ? 'deck' : 'decks'),
-                widgetTally(cards, cards === 1 ? 'card' : 'cards'),
-                widgetTally(activeDeck().cards.length, 'in ' + activeDeck().name)
-            );
+
+            if (size === 'small') {
+                body.append(bigReading(String(cards), cards === 1 ? 'card' : 'cards'));
+                return;
+            }
+
+            body.append(tallyRow([
+                [decks.length, decks.length === 1 ? 'deck' : 'decks'],
+                [cards, cards === 1 ? 'card' : 'cards'],
+                [activeDeck().cards.length, 'open now']
+            ]));
+            if (size !== 'large') return;
+
+            // every deck, longest first, each with a bar for its share
+            const most = Math.max(1, ...decks.map((deck) => deck.cards.length));
+            const rows = document.createElement('div');
+            rows.className = 'widget-rows';
+            [...decks]
+                .sort((one, two) => two.cards.length - one.cards.length)
+                .slice(0, 4)
+                .forEach((deck) => {
+                    const row = document.createElement('div');
+                    row.className = 'widget-row';
+                    const name = document.createElement('span');
+                    name.className = 'widget-row-name';
+                    name.textContent = deck.name;
+                    const count = document.createElement('small');
+                    count.textContent = String(deck.cards.length);
+                    row.append(name, meterBar((deck.cards.length / most) * 100), count);
+                    rows.append(row);
+                });
+            body.append(rows);
         }
     },
     {
         id: 'jump',
         name: 'jump back in',
         face: '(ﾉ･ω･)ﾉ',
-        fill(body) {
+        fill(body, size) {
             body.innerHTML = '';
-            const empty = decks.every((deck) => deck.cards.length === 0);
-            if (empty) {
-                body.innerHTML = '<p class="widget-line">no cards to practice yet</p>';
+            const ready = decks.filter((deck) => deck.cards.length);
+            if (!ready.length) {
+                body.append(oneLine('no cards to practice yet'));
                 return;
             }
-            decks.filter((deck) => deck.cards.length).slice(0, 4).forEach((deck) => {
+            const room = size === 'small' ? 1 : size === 'wide' ? 2 : 4;
+            const lane = document.createElement('div');
+            lane.className = 'widget-jumps';
+            ready.slice(0, room).forEach((deck) => {
                 const jump = document.createElement('button');
                 jump.className = 'widget-jump';
                 jump.type = 'button';
@@ -3850,6 +4005,7 @@ const WIDGETS = [
                 jump.append(text);
                 // straight into practice on that deck, wherever you were
                 jump.addEventListener('click', () => {
+                    if (editingHome) return;   // in edit mode it's a tile, not a button
                     activeDeckId = deck.id;
                     saveDecks();
                     renderDecks();
@@ -3857,50 +4013,103 @@ const WIDGETS = [
                     switchSection('cards');
                     startStudy();
                 });
-                body.append(jump);
+                lane.append(jump);
             });
+            body.append(lane);
         }
     },
     {
         id: 'kept',
         name: "what you've kept",
         face: '(๑•̀ᴗ•́)',
-        fill(body) {
+        fill(body, size) {
             const clips = recordingList.querySelectorAll('.recording-item').length;
+            const binned = binnedList.querySelectorAll('button').length;
             body.innerHTML = '';
-            body.append(
-                widgetTally(clips, clips === 1 ? 'clip' : 'clips'),
-                widgetTally(tracks.length, tracks.length === 1 ? 'song' : 'songs'),
-                widgetTally(binnedList.querySelectorAll('button').length, 'in the bin')
-            );
+
+            if (size === 'small') {
+                body.append(bigReading(String(clips + tracks.length), 'kept'));
+                return;
+            }
+            body.append(tallyRow([
+                [clips, clips === 1 ? 'clip' : 'clips'],
+                [tracks.length, tracks.length === 1 ? 'song' : 'songs'],
+                [binned, 'in the bin']
+            ]));
+            if (size !== 'large') return;
+            body.append(oneLine(storeAmount.textContent), meterBar(parseFloat(storeFill.style.width) || 0));
         }
     }
 ];
 
-// one number over one word, the shape all three tallies share
-function widgetTally(number, word) {
-    const cell = document.createElement('span');
-    cell.className = 'widget-tally';
-    const big = document.createElement('strong');
-    big.textContent = String(number);
-    const small = document.createElement('small');
-    small.textContent = word;
-    cell.append(big, small);
-    return cell;
+/* the pieces every widget builds out of, so a number means the same
+   thing wherever it turns up */
+
+// one reading in the title face, with its word beside it
+function bigReading(number, word) {
+    const line = document.createElement('p');
+    line.className = 'widget-big';
+    line.textContent = number;
+    if (word) {
+        const unit = document.createElement('span');
+        unit.className = 'widget-unit';
+        unit.textContent = word;
+        line.append(unit);
+    }
+    return line;
+}
+
+function oneLine(words) {
+    const line = document.createElement('p');
+    line.className = 'widget-line';
+    line.textContent = words;
+    return line;
+}
+
+// three readings sharing the width, each number over its word
+function tallyRow(pairs) {
+    const row = document.createElement('div');
+    row.className = 'widget-tallies';
+    pairs.forEach(([number, word]) => {
+        const cell = document.createElement('span');
+        cell.className = 'widget-tally';
+        const big = document.createElement('strong');
+        big.textContent = String(number);
+        const small = document.createElement('small');
+        small.textContent = word;
+        cell.append(big, small);
+        row.append(cell);
+    });
+    return row;
+}
+
+// the same outlined bar the storage box uses, at whatever percent
+function meterBar(percent) {
+    const bar = document.createElement('span');
+    bar.className = 'widget-meter';
+    const fill = document.createElement('span');
+    fill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    bar.append(fill);
+    return bar;
 }
 
 function widgetById(id) {
     return WIDGETS.find((widget) => widget.id === id);
 }
 
-// the clock and the decks to begin with — enough to show what the
-// page is for without deciding the whole thing for you
-let homeWidgets = ['clock', 'decks'];
+// the clock and the decks to begin with, one square and one wide
+let homeWidgets = [{ id: 'clock', size: 'small' }, { id: 'decks', size: 'wide' }];
+let editingHome = false;
 
 function loadWidgets() {
     try {
         const saved = JSON.parse(window.localStorage.getItem(WIDGET_KEY));
-        if (Array.isArray(saved)) homeWidgets = saved.filter(widgetById);
+        if (!Array.isArray(saved)) return;
+        // the first version of this kept a plain list of names
+        homeWidgets = saved
+            .map((entry) => (typeof entry === 'string' ? { id: entry, size: 'wide' } : entry))
+            .filter((entry) => entry && widgetById(entry.id))
+            .map((entry) => ({ id: entry.id, size: WIDGET_SIZES.includes(entry.size) ? entry.size : 'wide' }));
     } catch (error) {
         // the defaults stand
     }
@@ -3914,69 +4123,68 @@ function saveWidgets() {
     }
 }
 
-function widgetLiftConfig() {
-    return { list: widgetList, selector: '.widget-card', feel: LIFT_FEEL.decks, onSettle: settleWidgetOrder };
-}
-
-// the dom is the order once a drag lands; this reads it back
-function settleWidgetOrder() {
-    homeWidgets = [...widgetList.querySelectorAll('.widget-card')].map((card) => card.dataset.widgetId);
-    saveWidgets();
-}
-
 function renderWidgets() {
     widgetList.innerHTML = '';
     if (!homeWidgets.length) {
         widgetList.innerHTML =
             '<p class="empty-message">'
             + '<span class="empty-words">'
-            +   '<span class="empty-say"><b>nothing here yet</b></span>'
-            +   '<span class="empty-hint">add a widget and it lands here</span>'
+            +   '<span class="empty-say"><b>an empty board</b></span>'
+            +   '<span class="empty-hint">press edit and add something to it</span>'
             + '</span>'
             + '<span class="empty-face">=ω=</span>'
             + '</p>';
     }
 
-    homeWidgets.forEach((id) => {
-        const widget = widgetById(id);
+    homeWidgets.forEach((entry) => {
+        const widget = widgetById(entry.id);
         if (!widget) return;
 
         const card = document.createElement('section');
         card.className = 'widget-card';
-        card.dataset.widgetId = id;
+        card.dataset.widgetId = entry.id;
+        card.dataset.size = entry.size;
 
         const head = document.createElement('div');
         head.className = 'widget-head';
-
-        // three lines to drag it by, the same grip the card rows use
-        const grip = document.createElement('button');
-        grip.className = 'card-handle';
-        grip.type = 'button';
-        grip.setAttribute('aria-label', `reorder ${widget.name}, use arrow keys`);
-        grip.innerHTML = '<span></span><span></span><span></span>';
-        grip.addEventListener('pointerdown', (event) => startLift(widgetLiftConfig(), card, event));
-        grip.addEventListener('keydown', (event) => {
-            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-            event.preventDefault();
-            moveRow(widgetLiftConfig(), card, event.key === 'ArrowUp' ? -1 : 1);
-            grip.focus();
-        });
-
         const name = document.createElement('h3');
         name.textContent = widget.name;
         const face = document.createElement('span');
         face.className = 'widget-face';
         face.textContent = widget.face;
-        head.append(grip, name, face);
+        head.append(name, face);
 
         const body = document.createElement('div');
         body.className = 'widget-body';
-        widget.fill(body);
+        widget.fill(body, entry.size);
 
-        card.append(head, body);
+        // the two edit handles. they're built either way and hidden by
+        // the board, so turning edit on doesn't rebuild anything.
+        const drop = document.createElement('button');
+        drop.className = 'widget-off';
+        drop.type = 'button';
+        drop.setAttribute('aria-label', `take ${widget.name} off the board`);
+        drop.textContent = '×';
+        drop.addEventListener('click', (event) => {
+            event.stopPropagation();
+            removeWidget(entry.id);
+        });
+
+        const resize = document.createElement('button');
+        resize.className = 'widget-size';
+        resize.type = 'button';
+        resize.setAttribute('aria-label', `resize ${widget.name}`);
+        resize.textContent = SIZE_MARK[entry.size];
+        resize.addEventListener('click', (event) => {
+            event.stopPropagation();
+            cycleWidgetSize(entry.id);
+        });
+
+        card.append(head, body, drop, resize);
+        card.addEventListener('pointerdown', (event) => startWidgetDrag(card, event));
         card.addEventListener('contextmenu', (event) => {
             event.stopPropagation();
-            showContextMenu(event, { type: 'widget', id });
+            showContextMenu(event, { type: 'widget', id: entry.id });
         });
         widgetList.append(card);
     });
@@ -3986,26 +4194,170 @@ function renderWidgets() {
 
 /* only the bodies, for the things that change under you — the clock on
    the minute, the tallies after anything is kept or binned. rebuilding
-   the rows instead would drop a widget mid-drag. */
+   the cards instead would drop one mid-drag. */
 function paintWidgets() {
     if (!widgetList) return;
     widgetList.querySelectorAll('.widget-card').forEach((card) => {
         const widget = widgetById(card.dataset.widgetId);
-        if (widget) widget.fill(card.querySelector('.widget-body'));
+        if (widget) widget.fill(card.querySelector('.widget-body'), card.dataset.size);
     });
 }
 
 function addWidget(id) {
-    if (homeWidgets.includes(id)) return;
-    homeWidgets.push(id);
+    if (homeWidgets.some((entry) => entry.id === id)) return;
+    homeWidgets.push({ id, size: 'wide' });
     saveWidgets();
     renderWidgets();
 }
 
 function removeWidget(id) {
-    homeWidgets = homeWidgets.filter((widget) => widget !== id);
+    homeWidgets = homeWidgets.filter((entry) => entry.id !== id);
     saveWidgets();
     renderWidgets();
+}
+
+// the chip walks a widget round the three shapes, and the board slides
+// everything that moved out of its way
+function cycleWidgetSize(id) {
+    const entry = homeWidgets.find((item) => item.id === id);
+    if (!entry) return;
+    entry.size = WIDGET_SIZES[(WIDGET_SIZES.indexOf(entry.size) + 1) % WIDGET_SIZES.length];
+    saveWidgets();
+    slideBoard(() => renderWidgets());
+}
+
+function setHomeEditing(on) {
+    editingHome = on;
+    homePanel2.classList.toggle('is-editing', on);
+    // the button holds two marks and the stylesheet shows one of them
+    widgetEdit.setAttribute('aria-pressed', String(on));
+    widgetEdit.title = on ? 'done arranging' : 'arrange the board';
+    widgetEdit.setAttribute('aria-label', widgetEdit.title);
+    if (!on) closeWidgetPicks();
+}
+
+/* a move on the board: everything is measured, the order changes, and
+   whatever ended up somewhere else is slid from where it was. the same
+   idea as the lists, but the board moves things sideways too. */
+function slideBoard(rearrange) {
+    const cards = [...widgetList.querySelectorAll('.widget-card')];
+    const before = new Map(cards.map((card) => [card.dataset.widgetId, card.getBoundingClientRect()]));
+    rearrange();
+    widgetList.querySelectorAll('.widget-card').forEach((card) => {
+        const was = before.get(card.dataset.widgetId);
+        if (!was || card.classList.contains('is-dragging')) return;
+        const now = card.getBoundingClientRect();
+        const shiftX = was.left - now.left;
+        const shiftY = was.top - now.top;
+        if (!shiftX && !shiftY) return;
+        card.animate(
+            [{ transform: `translate(${shiftX}px, ${shiftY}px)` }, { transform: 'none' }],
+            { duration: 220, easing: 'cubic-bezier(0.33, 0, 0, 1)' }
+        );
+    });
+}
+
+/* dragging one tile about the board. the tile follows the pointer on a
+   frame loop, the way the lists carry a row: a pointermove only writes
+   down where the cursor is, and the frame does the work. the slots are
+   measured once when the drag starts and again only when the order
+   actually changes — measuring every tile on every move was what made
+   this crawl. */
+let boardDrag = null;
+
+function startWidgetDrag(card, event) {
+    if (!editingHome || event.button) return;
+    if (event.target.closest('.widget-off, .widget-size')) return;
+    event.preventDefault();
+    if (boardDrag) endWidgetDrag();
+
+    const spot = card.getBoundingClientRect();
+    boardDrag = {
+        card,
+        pointerId: event.pointerId,
+        grabX: event.clientX - spot.left,
+        grabY: event.clientY - spot.top,
+        baseX: spot.left,
+        baseY: spot.top,
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+        slots: [],
+        frame: 0
+    };
+    measureBoard();
+
+    card.classList.add('is-dragging');
+    document.documentElement.classList.add('sorting-rows', 'sorting-grab');
+    window.addEventListener('pointermove', trackWidgetDrag);
+    window.addEventListener('pointerup', endWidgetDrag);
+    window.addEventListener('pointercancel', endWidgetDrag);
+    boardDrag.frame = window.requestAnimationFrame(carryWidget);
+}
+
+/* where every other tile sits while nothing is moving. a tile halfway
+   through a slide still measures at the slot it is heading for, which
+   is what a swap should be judged on. */
+function measureBoard() {
+    boardDrag.slots = [...widgetList.querySelectorAll('.widget-card')]
+        .filter((card) => card !== boardDrag.card)
+        .map((card) => {
+            const box = card.getBoundingClientRect();
+            return { card, left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+        });
+    boardDrag.card.style.transform = 'none';
+    const spot = boardDrag.card.getBoundingClientRect();
+    boardDrag.baseX = spot.left;
+    boardDrag.baseY = spot.top;
+}
+
+function trackWidgetDrag(event) {
+    if (!boardDrag || event.pointerId !== boardDrag.pointerId) return;
+    boardDrag.pointerX = event.clientX;
+    boardDrag.pointerY = event.clientY;
+}
+
+function carryWidget() {
+    if (!boardDrag) return;
+    const { card, pointerX, pointerY } = boardDrag;
+
+    const over = boardDrag.slots.find((slot) => pointerX >= slot.left && pointerX <= slot.right
+        && pointerY >= slot.top && pointerY <= slot.bottom);
+
+    if (over) {
+        const cards = [...widgetList.querySelectorAll('.widget-card')];
+        const after = cards.indexOf(over.card) > cards.indexOf(card);
+        slideBoard(() => {
+            widgetList.insertBefore(card, after ? over.card.nextSibling : over.card);
+        });
+        settleWidgetOrder();
+        measureBoard();
+    }
+
+    card.style.transform =
+        `translate(${pointerX - boardDrag.baseX - boardDrag.grabX}px, `
+        + `${pointerY - boardDrag.baseY - boardDrag.grabY}px)`;
+    boardDrag.frame = window.requestAnimationFrame(carryWidget);
+}
+
+function endWidgetDrag() {
+    if (!boardDrag) return;
+    const { card } = boardDrag;
+    window.cancelAnimationFrame(boardDrag.frame);
+    card.classList.remove('is-dragging');
+    card.style.transform = '';
+    document.documentElement.classList.remove('sorting-rows', 'sorting-grab');
+    window.removeEventListener('pointermove', trackWidgetDrag);
+    window.removeEventListener('pointerup', endWidgetDrag);
+    window.removeEventListener('pointercancel', endWidgetDrag);
+    boardDrag = null;
+}
+
+// the board is the order once a drag lands; this reads it back
+function settleWidgetOrder() {
+    const sizes = new Map(homeWidgets.map((entry) => [entry.id, entry.size]));
+    homeWidgets = [...widgetList.querySelectorAll('.widget-card')]
+        .map((card) => ({ id: card.dataset.widgetId, size: sizes.get(card.dataset.widgetId) }));
+    saveWidgets();
 }
 
 function closeWidgetPicks() {
@@ -4015,7 +4367,7 @@ function closeWidgetPicks() {
 
 function renderWidgetPicks() {
     widgetPickList.innerHTML = '';
-    WIDGETS.filter((widget) => !homeWidgets.includes(widget.id)).forEach((widget) => {
+    WIDGETS.filter((widget) => !homeWidgets.some((entry) => entry.id === widget.id)).forEach((widget) => {
         const pick = document.createElement('button');
         pick.className = 'option-pick widget-pick';
         pick.type = 'button';
@@ -4029,6 +4381,11 @@ function renderWidgetPicks() {
         widgetPickList.append(pick);
     });
 }
+
+widgetEdit.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setHomeEditing(!editingHome);
+});
 
 widgetAdd.addEventListener('click', (event) => {
     event.stopPropagation();

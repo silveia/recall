@@ -66,8 +66,21 @@
                         <!-- home is yours to arrange: pick the widgets you
                              want and drag them into whatever order suits. -->
                         <section class="home-panel" id="homePanel" hidden>
+                            <!-- the corner switch. out of edit the board is
+                                 just the board; in edit every tile wobbles,
+                                 takes a drag, and shows its two handles. -->
                             <div class="widget-list" id="widgetList"></div>
-                            <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks"><span>+ add a widget</span></button>
+                            <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks" aria-label="add a widget" title="add a widget">
+                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                    <path d="M12 5 V19 M5 12 H19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                            <button class="widget-edit" id="widgetEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
+                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                    <path class="mark-pen" d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                                    <path class="mark-done" d="M5 12.6 L10 17.5 L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                                </svg>
+                            </button>
                         </section>
 
                         <!-- decks on the left, the open deck's cards on
@@ -381,10 +394,17 @@
                     <!-- the time, above everything -->
                     <section class="rail-clock" aria-label="the time">
                         <div class="clock-top">
-                            <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="invert the page" title="invert the page">
+                            <!-- a crescent, cut out of a full disc: the lit side
+                                 is the page's own colour, so the moon reads
+                                 right on either theme -->
+                            <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="turn the lights off" title="turn the lights off">
                                 <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                                    <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/>
-                                    <path d="M12 3.5 A 8.5 8.5 0 0 1 12 20.5 Z" fill="currentColor"/>
+                                    <!-- a disc with a bite taken straight out of its
+                                         side: both circles sit on the same line, so
+                                         the crescent opens left to right and its
+                                         horns are blunt rather than sharp -->
+                                    <path fill="currentColor"
+                                          d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
                                 </svg>
                             </button>
                             <span class="clock-suffix" id="clockSuffix"></span>
@@ -399,7 +419,7 @@
                     <section class="help-box" aria-label="what this page does">
                         <h2>function</h2>
 
-                        <p class="help-note" data-section="home" hidden>welcome to my house. home is yours to arrange &mdash; add the widgets you want, drag them by their grip to reorder, and right-click one to take it off.</p>
+                        <p class="help-note" data-section="home" hidden>welcome to my house</p>
 
                         <p class="help-note" data-section="cards" hidden>you make flashcards. you can organize it and create/practice. decks can be shared with a deck code located next to the deck creator.</p>
 

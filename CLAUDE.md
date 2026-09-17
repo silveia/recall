@@ -30,7 +30,11 @@ refuses to load `mp3-worker.js` at all ("cannot be accessed from origin
   states, placeholders, or shadows. Use black, white, or an outline.
 - Everything is white with a 1px black outline. Active and live states invert
   to solid black.
-- Fonts: Amiko for body text, Bitcount Prop Double for headings and the `h1`.
+- Fonts: Amiko for body text, Bitcount Prop Double for the `h1`, the section
+  tabs and any big number, Matrix Sans Print for every heading over a panel.
+  Bitcount is never set bold — its letters are dots, and the bold weight fills
+  the gaps between them. Matrix Sans is capitals only; lowercase copy comes out
+  as capitals, which is the point.
 - Copy is playful and lowercase. Tiles carry kaomoji faces.
 
 The no-gray rule is why the clip players are hand-built instead of native
@@ -84,6 +88,10 @@ person's turn.
 - `mp3-worker.js` — mp3 encoding, kept off the main thread
 - `lame.min.js` — the mp3 encoder itself (lamejs 1.2.1), vendored rather than
   loaded from a CDN so downloads work offline. Only the worker loads it.
+- `matrix-sans-print.woff2` — the heading face (Matrix Sans Print by Brad Neil),
+  vendored for the same reason. `style.css` loads it with `@font-face`.
+- `matrix-sans-OFL.txt` — that font's licence. It travels with the font.
 
-All five need to be uploaded to GitHub Pages. Missing `mp3-worker.js` or
-`lame.min.js` breaks downloads with a worker error that looks like a code bug.
+All seven need to be uploaded to GitHub Pages. Missing `mp3-worker.js` or
+`lame.min.js` breaks downloads with a worker error that looks like a code bug;
+missing the woff2 quietly drops every heading back to a monospace fallback.

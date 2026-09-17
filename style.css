@@ -1,5 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&family=Bitcount+Prop+Double:wght@400;700&display=swap');
 
+/* matrix sans print, by brad neil — a 5×7 dot matrix of separate round
+   dots, the look of a dot-matrix printer or a motorway sign. it is
+   capitals only: lowercase comes out as capitals, which is what the
+   headings want. vendored beside the page rather than loaded from a
+   cdn, the same as the mp3 encoder; the licence sits next to it in
+   matrix-sans-OFL.txt. */
+@font-face {
+	font-family: 'Matrix Sans Print';
+	src: url('matrix-sans-print.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+
 /* =========================================================
    recall — style.css
    ---------------------------------------------------------
@@ -37,6 +51,15 @@
 	--muted: #8a8a8a;   /* placeholder text only */
 	--hover: #f1f1f1;   /* tinted hover surface */
 	--line: #000;
+	/* the wash the windows lay over the page — the page's own colour,
+	   not a grey, so it reads as the page dimmed rather than a sheet */
+	--veil: rgba(255, 255, 255, 0.72);
+	/* the menu bars keep their fill on both sides of the swap: black in
+	   the light, still black in the dark. in the dark they'd otherwise
+	   flip to a slab of white, so instead an outline separates them
+	   from the page. */
+	--bar: #000;
+	--bar-ink: #ffffff;
 
 	--col: 34rem;      /* max width of the content column */
 	--rail: 19rem;     /* width of both side bars */
@@ -44,6 +67,7 @@
 	--radius: 10px;
 	--field: 42px;     /* height of every control in the deck bar */
 	--card-row: 2.6rem;/* height of one row in the create window's list */
+	--answer-row: 3.7rem;   /* height of one row of practice answers */
 
 	/* the spacing scale. nothing should use a one-off value. */
 	--gap: 2rem;       /* corners, and between separate blocks */
@@ -59,6 +83,20 @@
 
 	--font: 'Amiko', 'Segoe UI', system-ui, sans-serif;
 	--title-font: 'Bitcount Prop Double', 'Courier New', monospace;
+	/* the face every heading over a panel is set in */
+	--head-font: 'Matrix Sans Print', 'Courier New', monospace;
+}
+
+/* the dark side: paper and ink change places, and that's the whole of
+   it — every surface and every word on the page is written in those
+   two, so nothing needs styling twice. the bars keep their own fill
+   and gain an outline, below. */
+html.inverted {
+	--paper: #000;
+	--ink: #ffffff;
+	--line: #ffffff;
+	--hover: #151515;
+	--veil: rgba(0, 0, 0, 0.72);
 }
 
 /* =========================================================
@@ -95,11 +133,15 @@ body {
 
 button, input, textarea { font: inherit; color: inherit; }
 
-h1, h2 { font-weight: 700; }
+h2 { font-weight: 700; }
+/* the title face is never set bold: its letters are built out of dots,
+   and the bold weight fills the gaps between them until the shapes
+   run together. every use of it on the page is the plain weight. */
 h1 {
 	margin: 0;
 	font-family: var(--title-font);
 	font-size: 2rem;
+	font-weight: 400;
 	letter-spacing: 0;
 }
 h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
@@ -114,7 +156,7 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
 	outline: none;
 }
 
-::selection { color: #fff; background: var(--ink); }
+::selection { color: var(--paper); background: var(--ink); }
 
 /* nothing on the page shows a scrollbar — a gray one would break the
    two-tone rule anyway. everything still scrolls. */
@@ -174,12 +216,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	to   { opacity: 1; transform: none; }
 }
 
-/* a panel arriving when you swap section. --from is set on it by
-   switchSection(), so it comes in from the side you're heading;
-   without it (a plain page load) it just rises. the pieces are
-   staggered so the swap reads as a hand of cards rather than a blink */
+/* a panel arriving when you swap section. it stays where it is and
+   simply comes up — the panels used to fly in from whichever side you
+   were heading, which made a swap read as the whole page moving. the
+   pieces are still staggered, so it arrives rather than blinks. */
 @keyframes panel-in {
-	from { opacity: 0; transform: translate(var(--from, 0px), 8px); }
+	from { opacity: 0; transform: scale(0.994); }
 	60%  { opacity: 1; }
 	to   { opacity: 1; transform: none; }
 }
@@ -310,6 +352,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background-repeat: repeat-y;
 	background-size: 26px 44px;
 }
+/* the tile carves the bar's straight edge into the wave by painting
+   the page's own colour over it, so the dark page needs its own */
+html.inverted .app-shell::after {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Crect width='26' height='44' fill='%23000'/%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
+}
 
 /* a white rim just outside the wave. the page behind the bar is already
    white, so this only shows where the bar runs under the black top strip
@@ -354,7 +401,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    it's simply there on load — no entrance. */
 .rail-left {
 	contain: layout paint;
-	background: var(--ink);
+	color: var(--bar-ink);
+	background: var(--bar);
 }
 /* the right bar is always in. its edge is a column of round dots — a
    real border can only do square dashes, so it's a repeating background. */
@@ -392,9 +440,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   far edge of the page, rather than stopping at the content column */
 	padding-left: calc(var(--gap) + 13px);
 	padding-right: var(--gap);
-	color: #fff;
-	background: var(--ink);
+	color: var(--bar-ink);
+	background: var(--bar);
 }
+/* in the dark the strip is the same black as the page behind it, so a
+   line along its underside is what says where it ends */
+html.inverted .topbar { border-bottom: 1px solid var(--line); }
 
 /* the screen's name, on a white bar directly under the black one. it
    runs the full window and both side bars pass over its ends, so it
@@ -403,10 +454,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    those offsets and takes a few px down off the top instead */
 .topbar .section-tabs {
 	position: relative;
-	/* measured off the glyphs, not the boxes: at this the ink of the
-	   row straddles the middle of the bar. the line box does not —
-	   it sits high in the strip, which is why this isn't zero. */
-	top: 6px;
+	/* measured off the glyphs, not the boxes: at this the x-height band
+	   of all four words — the body of the lowercase, which is what the
+	   eye reads as the line — sits on the middle of the bar, big tab
+	   and small alike. what still differs between them is ascenders
+	   and descenders, and no single offset can even those out. */
+	top: 4px;
 	height: auto;
 	margin: 0;
 	padding: 0;
@@ -417,6 +470,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: 1;
 	justify-content: space-between;
 	gap: 1rem;
+}
+/* every tab holds a quarter of the row whatever size its word is, so
+   the one you pressed grows where it stands instead of shoving the
+   others along the strip */
+.topbar .section-tab {
+	flex: 1 1 0;
+	min-width: 0;
+	text-align: center;
 }
 
 
@@ -478,7 +539,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	display: grid;
 	place-items: center;
 	padding: var(--gap);
-	background: rgba(255, 255, 255, 0.72);
+	background: var(--veil);
 	animation: veil-in 0.26s var(--ease);
 }
 @keyframes veil-in {
@@ -514,11 +575,13 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .modal-title {
 	flex: none;
 	margin: 0;
-	padding-bottom: var(--tight);
+	/* the same air under the word as the panel leaves over it, so it
+	   sits in the middle of the band rather than down against the rule */
+	padding-bottom: var(--group);
 	border-bottom: 1px solid var(--line);
-	font-family: var(--font);
-	font-size: 1.15rem;
-	font-weight: 700;
+	font-family: var(--head-font);
+	font-size: 1.35rem;
+	font-weight: 400;
 	text-align: center;
 }
 
@@ -532,7 +595,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	/* less off the top than the sides: the title's own rule sits close
 	   under it, and a full --gap above left the word looking low */
 	padding: var(--group) var(--gap) var(--gap);
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -560,7 +623,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	line-height: 1;
 	cursor: pointer;
 }
-.modal-close:hover { color: #fff; background: var(--ink); }
+.modal-close:hover { color: var(--paper); background: var(--ink); }
 
 
 /* =========================================================
@@ -571,7 +634,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .basic-button {
 	align-self: center;
 	padding: 0.65rem 1.5rem;
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border: 1px solid var(--ink);
 	border-radius: 999px;
@@ -627,7 +690,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex-direction: column;
 	min-height: 0;
 	padding: var(--tight);
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -658,7 +721,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 0;
 	font-family: var(--title-font);
 	font-size: 1.1rem;
-	font-weight: 700;
+	font-weight: 400;
 	line-height: 1.1;
 	cursor: pointer;
 	/* no transition here on purpose — the only thing that changes is
@@ -691,14 +754,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: var(--field);
 	height: var(--field);
 	padding: 0;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	line-height: 1;
 	cursor: pointer;
 }
 .square-button:hover {
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
@@ -711,7 +774,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-width: 0;
 	height: var(--field);
 	padding: 0 0.75rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -721,11 +784,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 /* the deck's create button — the same square the share one is, but
    filled in, since it's the one that commits something */
 .square-button.is-solid {
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
-.square-button.is-solid:hover { color: var(--ink); background: #fff; }
+.square-button.is-solid:hover { color: var(--ink); background: var(--paper); }
 
 /* deck codes — a popup hanging off the share button */
 .share-picker { position: relative; z-index: 30; flex: none; }
@@ -741,7 +804,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 28rem;
 	max-width: 78vw;
 	padding: var(--tight);
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -758,7 +821,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   showing at the bottom — the rest scrolls */
 	height: calc(2 * 1.4em + 1rem + 2px);
 	padding: 0.5rem 0.7rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-size: 0.8rem;
@@ -851,15 +914,15 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: 0.7rem;
 	width: 100%;
 	padding: 0.6rem 0.7rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	text-align: left;
 	cursor: pointer;
 }
-.deck-card:hover { color: #fff; background: var(--ink); }
+.deck-card:hover { color: var(--paper); background: var(--ink); }
 .deck-card.active-deck {
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 	cursor: default;
@@ -873,12 +936,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	z-index: 2;
 	will-change: transform;
 }
-.deck-card.is-lifted { color: var(--ink); background: #fff; }
-.deck-card.active-deck.is-lifted { color: #fff; background: var(--ink); }
+.deck-card.is-lifted { color: var(--ink); background: var(--paper); }
+.deck-card.active-deck.is-lifted { color: var(--paper); background: var(--ink); }
 
 /* the cursor sweeps over every deck on the way, so while one is in
    hand the rest stop lighting up under it */
-.sorting-rows .deck-card:not(.active-deck):hover { color: var(--ink); background: #fff; }
+.sorting-rows .deck-card:not(.active-deck):hover { color: var(--ink); background: var(--paper); }
 
 /* a deck's look — one of eight outline shapes. it takes the row's
    colour, so it flips to white on the active row. */
@@ -907,7 +970,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-width: 0;
 	min-height: 0;
 	padding: var(--tight);
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -923,11 +986,17 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   it lines the deck name up with the question text on the cards
 	   below, so the column reads as one edge */
 	margin: 0 0.35rem;
-	padding: 0.25rem 0.35rem var(--tight);
+	/* measured off the glyphs, then lifted a touch past even: the word
+	   is capitals with nothing hanging below the line, and a heading
+	   set dead centre by measurement reads low when there are no
+	   descenders under it */
+	padding: 0 0.35rem calc(var(--tight) + 3px);
 	border-bottom: 1px solid var(--line);
 }
 .stage-head h2 {
 	margin: 0;
+	font-family: var(--head-font);
+	font-weight: 400;
 	/* it has to be allowed to shrink, or a flex item stays at its full
 	   text width and the ellipsis never gets a chance to appear */
 	min-width: 0;
@@ -945,7 +1014,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: 0.75rem;
 	margin: 0;
 	padding: 0.6rem 0.7rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -955,8 +1024,25 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-width: 0;
 	cursor: text;
 }
+/* a card is two tagged lines, question over answer. each line is the
+   full width of the row, so pressing beside the answer's last word
+   opens the answer — the words used to be the whole target, and the
+   question's line, being the longer one, caught everything. */
+.stage-line {
+	display: flex;
+	align-items: baseline;
+	gap: 0.4rem;
+	min-width: 0;
+}
+.line-tag {
+	flex: none;
+	width: 0.8rem;
+	font-size: 0.72rem;
+	font-weight: 700;
+	text-align: center;
+}
 .stage-card-text strong,
-.stage-card-text small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.stage-card-text small { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .stage-card-text strong { font-size: 0.95rem; font-weight: 600; }
 .stage-card-text small { font-size: 0.8rem; }
 
@@ -971,6 +1057,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex-direction: column;
 	min-width: 0;
 }
+.stage-card-edit .stage-line { width: 100%; }
+.stage-card-edit .stage-line input { flex: 1; min-width: 0; }
 .stage-card-edit input {
 	width: 100%;
 	padding: 0;
@@ -1008,7 +1096,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .stage-card.is-lifted {
 	position: relative;
 	z-index: 2;
-	background: #fff;
+	background: var(--paper);
 	outline: 1px solid var(--line);
 	outline-offset: -1px;
 	will-change: transform;
@@ -1138,7 +1226,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    — otherwise the white field sat inside a white row and the whole
    thing was one thin outline inside another, easy to miss */
 .deck-card.is-renaming {
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
@@ -1146,7 +1234,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: 1;
 	min-width: 0;
 	padding: 0.5rem 0.4rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--ink);
 	border-radius: 6px;
 	font-weight: 600;
@@ -1192,16 +1280,17 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   rather than sitting low against it. */
 	height: calc(var(--field) + var(--tight));
 	margin: 0;
-	/* measured off the glyphs: the word's ink sat 2px high in the band,
-	   so 4px off the top drops the centred content by half that */
-	padding: 4px 0 var(--tight);
+	/* measured off the glyphs: with the heading face the word sat 1.5px
+	   low in the band, so the nudge that used to drop it is down to
+	   almost nothing */
+	padding: 1px 0 var(--tight);
 	line-height: 1;
-	/* the body face, not the title one — it names the panel rather than
-	   competing with the tabs. bigger and heavier than the text under
-	   it so the two read as label and body. */
-	font-family: var(--font);
+	/* the heading face, not the title one — it names the panel rather
+	   than competing with the tabs. bigger than the text under it so
+	   the two read as label and body. */
+	font-family: var(--head-font);
 	font-size: 1.05rem;
-	font-weight: 700;
+	font-weight: 400;
 	/* a rule under the word, the same move the deck heading makes */
 	border-bottom: 1px solid var(--line);
 }
@@ -1236,12 +1325,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   leaves slack underneath and the pair read 2.7px high. five off the
 	   top drops the centred content by half that. */
 	padding: calc(0.7rem + 5px) 1rem 0.7rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	cursor: pointer;
 }
-.quick-action.primary { color: #fff; background: var(--ink); border-color: var(--ink); }
+.quick-action.primary { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
 /* hover lifts the tile and wakes its face up — the colours stay put */
 .quick-action { transition: transform var(--quick) var(--ease); }
@@ -1330,17 +1419,29 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	align-items: center;
 	justify-content: center;
 }
-/* the word turns, not the button — the button's own transform is
-   spoken for by the press animation */
+/* the word runs down the button a letter at a time, each one standing
+   up — not the word laid on its side. the only capitals on the site,
+   because three stacked lowercase letters with an ascender in them
+   read as a stack of shapes rather than a word. */
 .add-upright span {
 	display: block;
 	writing-mode: vertical-rl;
-	letter-spacing: 0.02em;
-	/* turned on its side, the word's ascenders leave more air on one
-	   flank than the other — measured 16.8px against 13.0px — so it
-	   comes back across by half the difference */
+	text-orientation: upright;
+	text-transform: uppercase;
+	/* the title face is a dot matrix: at body size the letters thin out
+	   to specks, so it takes a size or two up to read */
+	font-family: var(--title-font);
+	font-size: 1.45rem;
+	font-weight: 400;
+	/* the face carries a lot of air over and under each letter, so the
+	   tracking has to come a long way in before the three read as one
+	   word */
+	letter-spacing: -0.25em;
+	/* the tracking is taken off the back of the last letter too, so the
+	   box ends short of the ink and centring the box left the word a
+	   pixel low. measured, this puts it back on the middle. */
 	position: relative;
-	left: -1.9px;
+	top: -1px;
 }
 
 /* one line each, the letter sitting inside the box at the left rather
@@ -1353,7 +1454,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 100%;
 	height: var(--field);
 	padding: 0 0.8rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -1394,7 +1495,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	margin: 0;
 	padding: 0 0.25rem 0 0.25rem;
 	overflow-y: auto;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	list-style: none;
@@ -1448,7 +1549,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    simply stops answering — no dashes, and no fade, since a faded black
    is just grey */
 .square-button:disabled { cursor: default; }
-.square-button:disabled:hover { color: var(--ink); background: #fff; }
+.square-button:disabled:hover { color: var(--ink); background: var(--paper); }
 .square-button:disabled:active { transform: none; }
 
 #cardList .card-item {
@@ -1484,7 +1585,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	margin: 0;
 	padding: 1.5rem 1.25rem;
 	overflow-y: auto;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-size: clamp(1.3rem, 4vw, 2.1rem);
@@ -1507,27 +1608,29 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	grid-template-columns: 1fr 1fr;
 	grid-template-rows: 1fr 1fr;
 	gap: var(--tight);
-	min-height: 0;
+	/* two rows' worth whatever it holds, so a card with one answer and
+	   a card with four leave the window exactly the same size — it used
+	   to shrink to its rows and the whole window changed height */
+	min-height: calc((2 * var(--answer-row)) + var(--tight));
 	margin: 0;
 }
-/* a small deck can't always find three wrong answers. rather than
-   leaving holes in the quarters, the grid takes the shape of however
-   many answers there are — the options always fill the area. */
-.answer-options[data-count="1"] {
-	grid-template-columns: 1fr;
-	grid-template-rows: 1fr;
+/* a small deck can't always find three wrong answers. the area is the
+   same four quarters whatever it finds — the answers grow into it
+   rather than leaving holes: one takes all four, two take a column
+   each, and the third of three runs the whole bottom row. */
+.answer-options[data-count="1"] .answer-button {
+	grid-column: 1 / -1;
+	grid-row: 1 / -1;
 }
-.answer-options[data-count="2"] {
-	grid-template-columns: 1fr 1fr;
-	grid-template-rows: 1fr;
+.answer-options[data-count="2"] .answer-button {
+	grid-row: 1 / -1;
 }
-/* one of the three runs the whole bottom row; the other two share the
-   top. which one is drawn fresh each question, in script.js. */
 .answer-options[data-count="3"] .answer-button.is-wide {
 	grid-row: 2;
 	grid-column: 1 / -1;
 }
 .answer-button {
+	position: relative;   /* the ring on a right answer hangs off it */
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1537,7 +1640,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	padding: 1rem 1.25rem;
 	font-size: 1.05rem;
 	text-align: center;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-weight: 600;
@@ -1549,23 +1652,69 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .answer-button:nth-child(2) { animation-delay: 0.07s; }
 .answer-button:nth-child(3) { animation-delay: 0.12s; }
 .answer-button:nth-child(4) { animation-delay: 0.17s; }
-.answer-button:hover { color: #fff; background: var(--ink); }
+.answer-button:hover { color: var(--paper); background: var(--ink); }
 .answer-button.correct:hover, .answer-button.incorrect:hover { color: inherit; background: inherit; }
 
-.answer-button.correct { animation: pop 0.35s var(--ease); }
-.answer-button.incorrect { animation: shake 0.4s ease-in-out; }
-
-/* right fills in, wrong gets struck through — no colour needed */
+/* the right answer fills in black whichever tile you pressed, so the
+   answer is always shown without a word being written */
 .answer-button.correct {
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
+.answer-button.correct:not(.is-right) { animation: pop 0.35s var(--ease); }
+
+/* getting it right: the tile takes a press and springs back past its
+   size before settling, and a ring goes out from its edge and thins
+   away to nothing. no colour in it — the ring is the same one black,
+   it just gets finer as it grows rather than fading, which would put
+   grey on the page. */
+.answer-button.is-right {
+	animation: right-stamp 0.5s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+@keyframes right-stamp {
+	0%   { transform: scale(1); }
+	22%  { transform: scale(0.93); }
+	55%  { transform: scale(1.06); }
+	100% { transform: scale(1); }
+}
+.answer-button.is-right::after {
+	content: '';
+	position: absolute;
+	inset: -1px;
+	border: 2px solid var(--ink);
+	border-radius: inherit;
+	pointer-events: none;
+	animation: right-ring 0.6s cubic-bezier(0.3, 0.55, 0.25, 1) forwards;
+}
+@keyframes right-ring {
+	0%   { transform: scale(1); border-width: 2px; }
+	100% { transform: scale(1.16); border-width: 0; }
+}
+
+/* getting it wrong: a knock rather than a line through it — the tile
+   turns over for a beat, shakes it off and settles back a size, which
+   leaves the black one beside it as the only filled tile on screen */
 .answer-button.incorrect {
 	color: var(--ink);
-	background: #fff;
+	background: var(--paper);
 	border-color: var(--ink);
-	text-decoration: line-through;
+	animation: wrong-knock 0.5s ease-in-out forwards;
+}
+@keyframes wrong-knock {
+	0%   { transform: none; color: var(--paper); background: var(--ink); }
+	14%  { transform: translateX(-5px); color: var(--paper); background: var(--ink); }
+	30%  { transform: translateX(4px); color: var(--ink); background: var(--paper); }
+	46%  { transform: translateX(-3px); }
+	62%  { transform: translateX(2px); }
+	100% { transform: scale(0.97); }
+}
+
+/* once one has been pressed the rest step back a hair, so the tile
+   that answered is the only thing at full size */
+.answer-options.is-answered .answer-button:not(.correct):not(.incorrect) {
+	transform: scale(0.985);
+	transition: transform 0.3s var(--ease);
 }
 
 /* sits over the question's corner — the grid below never moves */
@@ -1589,7 +1738,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	z-index: 60;
 	width: 11rem;
 	padding: 0.3rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
@@ -1647,7 +1796,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 17rem;
 	max-width: 78vw;
 	padding: 0.8rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -1661,20 +1810,20 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .confirm-answers .chip-button { flex: 1; }
 .chip-button {
 	padding: 0.25rem 0.85rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font-size: 0.85rem;
 	font-weight: 700;
 	cursor: pointer;
 }
-.chip-button:hover { color: #fff; background: var(--ink); }
-#confirmChipYes { color: #fff; background: var(--ink); }
-#confirmChipYes:hover { color: var(--ink); background: #fff; }
+.chip-button:hover { color: var(--paper); background: var(--ink); }
+#confirmChipYes { color: var(--paper); background: var(--ink); }
+#confirmChipYes:hover { color: var(--ink); background: var(--paper); }
 
 /* the button that asked stays lit while the chip is up */
 .square-button.is-armed {
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
@@ -1705,7 +1854,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .recorder-panel.is-tuning .audio-stage { display: flex; }
 #recordToggle.recording {
 	color: var(--ink);
-	background: #fff;
+	background: var(--paper);
 	border-color: var(--line);
 }
 
@@ -1725,15 +1874,15 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border-radius: var(--radius);
 	font-size: 0.85rem;
 }
-.meter-idle { justify-content: center; background: #fff; }
-.live-meter { color: #fff; background: var(--ink); }
+.meter-idle { justify-content: center; background: var(--paper); }
+.live-meter { color: var(--paper); background: var(--ink); }
 .live-meter #levelCanvas { flex: 1; min-width: 0; height: 10px; }
 .live-meter .clip-label { flex: none; font-size: 0.78rem; }
 .live-meter .switch-count {
 	flex: none;
 	padding: 0.1rem 0.5rem;
 	color: var(--ink);
-	background: #fff;
+	background: var(--paper);
 	border-radius: 999px;
 	font-size: 0.72rem;
 	font-weight: 700;
@@ -1758,7 +1907,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	justify-content: center;
 	gap: 0.4rem;
 	padding: 0 0.75rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	margin: 0;
@@ -1813,7 +1962,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	touch-action: none;
 	/* sits over arbitrary video, so it's a white frame with a black
 	   outline either side — readable on any footage */
-	border: 2px solid #fff;
+	border: 2px solid var(--paper);
 	box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px var(--ink);
 	background: rgba(255, 255, 255, 0.16);
 	border-radius: 3px;
@@ -1831,7 +1980,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: 0.35rem;
 	width: min(20rem, calc(100% - 1rem));
 	padding: 0.6rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
@@ -1864,7 +2013,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .sense-controls input[type="range"],
 .now-volume input[type="range"]::-webkit-slider-runnable-track {
 	height: 6px;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 }
@@ -1882,7 +2031,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .sense-controls input[type="range"],
 .now-volume input[type="range"]::-moz-range-track {
 	height: 6px;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 }
@@ -1981,7 +2130,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .recording-item.is-lifted {
 	position: relative;
 	z-index: 2;
-	background: #fff;
+	background: var(--paper);
 	outline: 1px solid var(--line);
 	outline-offset: -1px;
 	cursor: grabbing;
@@ -2015,7 +2164,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: 1;
 	min-width: 0;
 	height: 15px;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	overflow: hidden;
@@ -2034,7 +2183,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, calc(-50% + 0.5px));
-	color: #fff;
+	color: var(--paper);
 	mix-blend-mode: difference;
 	font-size: 9px;
 	line-height: 1;
@@ -2079,7 +2228,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    ========================================================= */
 .live-meter .clip-track {
 	background: var(--ink);
-	border-color: #fff;
+	border-color: var(--paper);
 }
 
 /* the blinking dot standing in for the play button */
@@ -2087,8 +2236,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: none;
 	width: 1.5rem;
 	height: 1.5rem;
-	background: radial-gradient(circle at center, #fff 0 26%, transparent 27%);
-	border: 1px solid #fff;
+	background: radial-gradient(circle at center, var(--paper) 0 26%, transparent 27%);
+	border: 1px solid var(--paper);
 	border-radius: 999px;
 	animation: clip-pulse 1.2s ease-in-out infinite;
 }
@@ -2102,7 +2251,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 100%;
 	background: repeating-linear-gradient(
 		90deg,
-		#fff 0 6px,
+		var(--paper) 0 6px,
 		var(--ink) 6px 12px
 	);
 	animation: clip-sweep 0.9s linear infinite;
@@ -2224,7 +2373,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-width: 0;
 	min-height: 0;
 	padding: var(--tight);
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -2254,7 +2403,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	place-items: center;
 	width: clamp(6rem, 46%, 13rem);
 	aspect-ratio: 1;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 50%;
 }
@@ -2282,7 +2431,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	display: block;
 	width: 22%;
 	height: 22%;
-	background: #fff;
+	background: var(--paper);
 	border-radius: 50%;
 }
 @keyframes disc-turn {
@@ -2364,7 +2513,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	padding: var(--tight);
 	overflow-y: auto;
 	overscroll-behavior: contain;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	list-style: none;
@@ -2380,18 +2529,18 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: 0.75rem;
 	margin: 0;
 	padding: 0.5rem 0.7rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
 /* the song that's on wears the black, the way an open deck does */
 #trackList .track-item.is-playing {
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
-.track-item.is-playing .clip-play { color: #fff; }
-.track-item.is-playing .track-handle span { background: #fff; }
+.track-item.is-playing .clip-play { color: var(--paper); }
+.track-item.is-playing .track-handle span { background: var(--paper); }
 .track-item.is-lifted {
 	position: relative;
 	z-index: 2;
@@ -2431,7 +2580,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 /* shuffle and repeat stay lit while they're on */
 .square-button.is-on {
-	color: #fff;
+	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
@@ -2447,8 +2596,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .field-add {
 	position: relative;
 	flex: none;
-	width: 1.6rem;
-	height: 1.6rem;
+	width: 1.4rem;
+	height: 1.4rem;
 	/* the field's own right padding left more air beside it than over
 	   and under it; this takes back the difference so it sits the same
 	   distance from all three edges */
@@ -2470,16 +2619,16 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background: currentColor;
 	transform: translate(-50%, -50%);
 }
-.field-add::before { width: 15px; height: 2px; }
-.field-add::after { width: 2px; height: 15px; }
+.field-add::before { width: 12px; height: 1.5px; }
+.field-add::after { width: 1.5px; height: 12px; }
 .field-add:hover { transform: scale(1.15); }
 /* open: it turns a quarter and reads as a close */
 .field-add[aria-expanded="true"] { transform: rotate(45deg); }
 .field-add[aria-expanded="true"]:hover { transform: rotate(45deg) scale(1.15); }
-/* something picked: the bars thicken a touch, no colour change */
-.field-add.is-on::before { height: 3px; }
-.field-add.is-on::after { width: 3px; }
-.field-add.is-on { color: #fff; background: var(--ink); }
+/* something picked: the bars thicken a touch. it used to fill in solid
+   black, which read as a button stuck on rather than a mark. */
+.field-add.is-on::before { height: 2.5px; }
+.field-add.is-on::after { width: 2.5px; }
 
 /* both hang off the button that opened them, on the same white frame
    the confirm chip and the deck codes use */
@@ -2489,7 +2638,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 20rem;
 	max-width: calc(100vw - 2rem);
 	padding: 0.8rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -2526,7 +2675,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	align-items: center;
 	max-width: 100%;
 	padding: 0.3rem 0.7rem;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font-size: 0.85rem;
@@ -2544,7 +2693,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
-.option-pick.is-picked { color: #fff; background: var(--ink); border-color: var(--ink); }
+.option-pick.is-picked { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
 
 
@@ -2557,15 +2706,16 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex-direction: column;
 	gap: var(--tight);
 	padding: var(--rail-pad);
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
 .rail-title {
 	margin: 0;
 	overflow: hidden;
+	font-family: var(--head-font);
 	font-size: 0.85rem;
-	font-weight: 700;
+	font-weight: 400;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	text-align: center;
@@ -2593,8 +2743,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	align-items: center;
 	gap: 0.1rem;
 	padding: 0.7rem var(--rail-pad) 0.8rem;
-	color: #fff;
-	background: var(--ink);
+	color: var(--bar-ink);
+	background: var(--bar);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -2605,6 +2755,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: 0.5rem;
 }
 .clock-suffix {
+	/* measured off the glyphs: the ink of the two letters sits high in
+	   their line box, which left them riding above the moon beside
+	   them. at this the pair straddle the middle of the row evenly —
+	   half a pixel each way is as close as the rasteriser gets. */
+	position: relative;
+	top: 1px;
 	font-size: 1.05rem;
 	font-weight: 700;
 	line-height: 1;
@@ -2613,7 +2769,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	margin: 0;
 	font-family: var(--title-font);
 	font-size: 2.6rem;
-	font-weight: 700;
+	font-weight: 400;
 	line-height: 1;
 	letter-spacing: 0.02em;
 }
@@ -2637,17 +2793,29 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.5, 1);
 }
 .theme-swap:hover { transform: scale(1.12); }
-.inverted .theme-swap { transform: rotate(180deg); }
-.inverted .theme-swap:hover { transform: rotate(180deg) scale(1.12); }
-
-/* every black becomes white and every white black, in one move. the
-   filter sits on the root so nothing has to be styled twice. */
-html {
-	transition: filter 0.45s var(--ease);
+/* the turn is on the moon, not on the button: the button's transform
+   is spoken for by the hover, and the two fought each other — the
+   moon would finish its turn and then jump as the hover took back
+   over. they're on separate elements now, so they compose. */
+/* only while the page is actually changing sides. left on all the
+   time, the resting angle set during a page load counted as a change
+   and the moon span itself round on every refresh. */
+html.theming .theme-swap svg {
+	transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.45, 1);
 }
-html.inverted { filter: invert(1); }
+html.inverted .theme-swap svg { transform: rotate(180deg); }
+
+/* the swap used to be one filter on the root, which inverted the page
+   as a picture: the black bars came out as slabs of white. now the two
+   colour tokens change places and every surface follows. the move is
+   carried by a transition that is only switched on while it happens,
+   so nothing else on the page is paying for it the rest of the time. */
+html.theming, html.theming * {
+	transition: background-color 0.4s var(--ease), color 0.4s var(--ease),
+		border-color 0.4s var(--ease), fill 0.4s var(--ease) !important;
+}
 @media (prefers-reduced-motion: reduce) {
-	html { transition: none; }
+	html.theming, html.theming * { transition: none !important; }
 	.theme-swap { transition: none; }
 }
 
@@ -2658,12 +2826,15 @@ html.inverted { filter: invert(1); }
 	flex-direction: column;
 	gap: 0.35rem;
 	padding: var(--rail-pad);
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
 .store-head {
 	display: flex;
+	/* the label and the amount are set in different faces, so their
+	   line boxes don't line up — the two sit on one baseline instead */
+	align-items: baseline;
 	justify-content: space-between;
 	gap: var(--tight);
 	font-size: 0.78rem;
@@ -2672,11 +2843,11 @@ html.inverted { filter: invert(1); }
 	   against the even padding. the line box is the words themselves. */
 	line-height: 1;
 }
-.store-head span:first-child { font-weight: 700; }
+.store-head span:first-child { font-family: var(--head-font); font-weight: 400; }
 .store-bar {
 	width: 100%;
 	height: 10px;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	overflow: hidden;
@@ -2695,7 +2866,7 @@ html.inverted { filter: invert(1); }
 	flex-direction: column;
 	gap: var(--tight);
 	padding: var(--rail-pad);
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -2705,8 +2876,9 @@ html.inverted { filter: invert(1); }
 	justify-content: space-between;
 	gap: var(--tight);
 	margin: 0;
+	font-family: var(--head-font);
 	font-size: 0.78rem;
-	font-weight: 700;
+	font-weight: 400;
 }
 .binned-count::before { content: ' · '; }
 .binned-count:empty { display: none; }
@@ -2714,7 +2886,7 @@ html.inverted { filter: invert(1); }
 	flex: none;
 	padding: 0.1rem 0.5rem;
 	color: inherit;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font: inherit;
@@ -2722,7 +2894,7 @@ html.inverted { filter: invert(1); }
 	font-weight: 700;
 	cursor: pointer;
 }
-.binned-empty:hover { color: #fff; background: var(--ink); }
+.binned-empty:hover { color: var(--paper); background: var(--ink); }
 .binned-list {
 	display: flex;
 	flex-direction: column;
@@ -2737,7 +2909,7 @@ html.inverted { filter: invert(1); }
 	padding: 0.3rem 0.5rem;
 	overflow: hidden;
 	color: inherit;
-	background: #fff;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font: inherit;
@@ -2747,24 +2919,30 @@ html.inverted { filter: invert(1); }
 	text-overflow: ellipsis;
 	cursor: pointer;
 }
-.binned-item:hover { color: #fff; background: var(--ink); }
+.binned-item:hover { color: var(--paper); background: var(--ink); }
 
 
 /* =========================================================
-   23. home — the widgets you arrange yourself
+   23. home — the board you arrange yourself
    ========================================================= */
 
-/* the panel is a column of widgets over the button that adds one. it
-   scrolls inside itself, so adding a fourth never pushes the button
-   off the page. */
+/* home is a board, not a list: four columns of square slots, and every
+   widget takes one of three shapes across them. the tiles sit straight
+   on the page — there is no frame round them, so the only spacing in
+   here is the one step the rest of the site uses. */
 .home-panel {
+	position: relative;
 	gap: var(--group);
-	padding: var(--rail-pad);
+	padding: 0;
+	background: none;
+	border: 0;
+	border-radius: 0;
 }
 .widget-list {
-	display: flex;
+	display: grid;
 	flex: 0 1 auto;
-	flex-direction: column;
+	grid-template-columns: repeat(4, 1fr);
+	grid-auto-rows: 8.5rem;
 	gap: var(--group);
 	min-height: 0;
 	overflow-y: auto;
@@ -2773,99 +2951,283 @@ html.inverted { filter: invert(1); }
 }
 .widget-list::-webkit-scrollbar { display: none; }
 
-/* one widget: a head with the grip, the name and its face, and a body
-   underneath that each widget fills its own way */
+/* the three shapes. a square says one number, a wide one says three,
+   and the big one has room for the whole story — which is why every
+   widget writes itself differently at each. */
+.widget-card[data-size="small"] { grid-column: span 1; grid-row: span 1; }
+.widget-card[data-size="wide"]  { grid-column: span 2; grid-row: span 1; }
+.widget-card[data-size="large"] { grid-column: span 2; grid-row: span 2; }
+
 .widget-card {
+	position: relative;
 	display: flex;
-	flex: none;
 	flex-direction: column;
 	gap: var(--tight);
-	padding: var(--rail-pad);
-	background: #fff;
+	min-width: 0;
+	padding: 0.8rem;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
+	overflow: hidden;
 	text-align: left;
-}
-.widget-card.is-lifted {
-	position: relative;
-	z-index: 2;
-	will-change: transform;
 }
 .widget-head {
 	display: flex;
 	align-items: center;
 	gap: var(--tight);
-	padding-bottom: var(--tight);
-	border-bottom: 1px solid var(--line);
+	flex: none;
 }
-/* the grip is the row's own, so it takes the head's height rather
-   than the two rems a card row gives it */
-.widget-head .card-handle { height: 1.4rem; }
 .widget-head h3 {
 	flex: 1;
+	min-width: 0;
 	margin: 0;
-	font-family: var(--font);
-	font-size: 1rem;
-	font-weight: 700;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-family: var(--head-font);
+	font-size: 0.82rem;
+	font-weight: 400;
 }
-.widget-face { font-size: 0.85rem; }
+.widget-face { flex: none; font-size: 0.75rem; }
+/* a square has no room for both the name and its face */
+.widget-card[data-size="small"] .widget-face { display: none; }
 
 .widget-body {
 	display: flex;
-	flex-wrap: wrap;
-	gap: var(--group);
-	align-items: center;
-}
-
-/* a number over the word for what it counts, the shape every tally
-   in here shares */
-.widget-tally {
-	display: flex;
+	flex: 1;
 	flex-direction: column;
-	line-height: 1.1;
+	justify-content: center;
+	gap: var(--tight);
+	min-height: 0;
+	overflow: hidden;
 }
-.widget-tally strong {
-	font-family: var(--title-font);
-	font-size: 1.6rem;
-}
-.widget-tally small { font-size: 0.78rem; }
 
-/* the clock widget: the digits in the title face, am/pm beside them
-   in the body face, the date under */
+/* one reading, in the title face, with its word set small beside it */
 .widget-big {
 	display: flex;
 	align-items: baseline;
-	gap: 0.4rem;
+	gap: 0.35rem;
 	margin: 0;
 	font-family: var(--title-font);
-	font-size: 2.4rem;
+	font-size: 2rem;
+	font-weight: 400;
+	line-height: 1;
+	overflow-wrap: anywhere;
+}
+.widget-card[data-size="large"] .widget-big { font-size: 2.6rem; }
+.widget-unit {
+	font-family: var(--font);
+	font-size: 0.8rem;
+	font-weight: 600;
+}
+.widget-line {
+	margin: 0;
+	font-size: 0.8rem;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+/* three readings sharing the width — they sit on their own thirds so
+   the numbers line up down the board rather than bunching at the left */
+.widget-tallies {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: var(--tight);
+	flex: none;
+}
+.widget-tally {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	gap: 0.1rem;
 	line-height: 1;
 }
-.widget-unit { font-family: var(--font); font-size: 0.9rem; }
-.widget-line { margin: 0; font-size: 0.85rem; }
+.widget-tally strong {
+	font-family: var(--title-font);
+	font-size: 1.5rem;
+	font-weight: 400;   /* a <strong> would come out bold on its own */
+}
+.widget-tally small {
+	font-size: 0.7rem;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
 
-/* a deck you can drop straight into practice */
+/* the same outlined bar the storage box uses */
+.widget-meter {
+	display: block;
+	flex: none;
+	width: 100%;
+	height: 8px;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	overflow: hidden;
+}
+.widget-meter span {
+	display: block;
+	height: 100%;
+	background: var(--ink);
+}
+
+/* a deck per line, with a bar for how much of the pile it is */
+.widget-rows {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	justify-content: center;
+	gap: 0.45rem;
+	min-height: 0;
+	overflow: hidden;
+}
+.widget-row {
+	display: grid;
+	grid-template-columns: minmax(0, 7rem) 1fr auto;
+	align-items: center;
+	gap: var(--tight);
+	font-size: 0.78rem;
+}
+.widget-row-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* the decks you can drop straight into practice */
+.widget-jumps {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	justify-content: center;
+	gap: var(--tight);
+	min-height: 0;
+	overflow: hidden;
+}
 .widget-jump {
 	display: flex;
 	align-items: center;
-	gap: 0.7rem;
-	padding: 0.5rem 0.7rem;
-	background: #fff;
+	flex: none;
+	gap: 0.6rem;
+	min-width: 0;
+	padding: 0.4rem 0.55rem;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	text-align: left;
 	cursor: pointer;
 }
-.widget-jump:hover { color: #fff; background: var(--ink); }
+.widget-jump:hover { color: var(--paper); background: var(--ink); }
+.widget-jump .deck-shape { width: 20px; height: 20px; }
 .widget-jump-text { display: flex; flex-direction: column; min-width: 0; }
-.widget-jump-text strong { font-size: 0.9rem; }
-.widget-jump-text small { font-size: 0.75rem; }
+.widget-jump-text strong,
+.widget-jump-text small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.widget-jump-text strong { font-size: 0.82rem; }
+.widget-jump-text small { font-size: 0.7rem; }
 
-/* the button under the list. it takes itself off the page once every
-   widget is on it — there is nothing left for it to offer. */
+/* ---------- edit mode ---------- */
+
+/* the corner switch: a circle standing off the bottom right of the
+   page, where the board rarely reaches. it used to be a word on a row
+   of its own, which cost the board a whole line of height. */
+.widget-edit {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	z-index: 3;
+	display: grid;
+	place-items: center;
+	width: 2.2rem;
+	height: 2.2rem;
+	padding: 0;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	cursor: pointer;
+}
+/* the add button becomes a circle beside it while edit is on */
+.home-panel.is-editing .widget-add {
+	position: absolute;
+	right: 2.7rem;
+	bottom: 0;
+	z-index: 3;
+	display: grid;
+	place-items: center;
+	width: 2.2rem;
+	height: 2.2rem;
+	padding: 0;
+	border-radius: 999px;
+}
+.widget-edit svg, .widget-add svg { display: block; }
+/* the pen while the board is settled, a tick while you're arranging */
+.widget-edit .mark-done { display: none; }
+.home-panel.is-editing .widget-edit .mark-pen { display: none; }
+.home-panel.is-editing .widget-edit .mark-done { display: block; }
+.widget-edit:hover, .home-panel.is-editing .widget-edit {
+	color: var(--paper);
+	background: var(--ink);
+	border-color: var(--ink);
+}
+
+
+/* the two handles live on every tile and only show in edit */
+.widget-off,
+.widget-size {
+	position: absolute;
+	z-index: 2;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	cursor: pointer;
+}
+/* the × takes the top left, out of the way of the name and its face */
+.widget-off {
+	top: 0.35rem;
+	left: 0.35rem;
+	width: 1.3rem;
+	height: 1.3rem;
+	border-radius: 999px;
+	font-size: 0.9rem;
+	line-height: 1;
+}
+.widget-size {
+	right: 0.35rem;
+	bottom: 0.35rem;
+	padding: 0.1rem 0.45rem;
+	border-radius: 999px;
+	font-size: 0.68rem;
+	font-weight: 700;
+}
+.widget-off:hover, .widget-size:hover { color: var(--paper); background: var(--ink); }
+
+.home-panel.is-editing .widget-off,
+.home-panel.is-editing .widget-size { display: flex; }
+/* the handles take a corner each, so the tile's own content steps out
+   of both: the head moves off the ×, and the body off the chip */
+.home-panel.is-editing .widget-head { padding-left: 1.6rem; }
+.home-panel.is-editing .widget-face { display: none; }
+.home-panel.is-editing .widget-body { padding-bottom: 1.2rem; }
+/* in edit a tile is something you move, so nothing inside it answers */
+.home-panel.is-editing .widget-card {
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+}
+.home-panel.is-editing .widget-body { pointer-events: none; }
+
+/* nothing shakes. edit shows itself by the handles appearing and the
+   tiles taking a grab cursor — a board of jiggling tiles is a lot of
+   movement to sit and read. */
+.home-panel.is-editing .widget-card.is-dragging {
+	z-index: 4;
+	cursor: grabbing;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+/* the add button only means anything while you're arranging */
 .widget-add {
 	flex: none;
 	align-self: flex-start;
 }
+.home-panel:not(.is-editing) .widget-add { display: none; }
 .widget-pick { cursor: pointer; }
-.widget-pick:hover { color: #fff; background: var(--ink); border-color: var(--ink); }
+.widget-pick:hover { color: var(--paper); background: var(--ink); border-color: var(--ink); }
