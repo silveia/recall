@@ -14,6 +14,17 @@
     <!-- "are you sure" chip, shared by every screen. it lives out here
          because it is placed against whichever button asked, and its old
          home in the audio bar is display:none on the other pages. -->
+    <!-- what "customize options" is for, and the answers themselves.
+         both hang off their buttons rather than sitting in the form. -->
+
+    <div class="pop-panel pop-picks" id="optionsPanel" hidden>
+
+        <!-- edit this line freely; the picker leaves it alone -->
+        <p class="pop-say">practice puts three other answers beside this one. pick the ones it may use &mdash; choose as many as you like, and it draws three of them each time.</p>
+
+        <div class="pick-list" id="optionsPicks"></div>
+    </div>
+
     <div class="confirm-pop" id="confirmChip" role="group" aria-label="are you sure" hidden>
         <span id="confirmChipText"></span>
         <div class="confirm-answers">
@@ -30,17 +41,12 @@
         <div class="app-right">
 
             <!-- the black strip, starting beside the left bar -->
-            <header class="topbar" aria-hidden="true"></header>
-
-            <!-- the screen's name, on a white bar that runs the whole
-                 window underneath the black one. both side bars pass
-                 over its ends. -->
-            <div class="title-bar">
+            <!-- the black strip: it carries the page names -->
+            <header class="topbar">
                 <!-- section tabs — the active one is big, the rest small.
-                     these are the title while you're on home. -->
+                these are the title while you're on home. -->
                 <nav class="section-tabs" id="sectionTabs" aria-label="sections"></nav>
-
-            </div>
+            </header>
 
             <div class="app-body">
 
@@ -203,6 +209,97 @@
                                 </div>
                             </div>
                         </section>
+
+                        <!-- player — songs off your own disk, kept in this
+                             browser. nothing here is uploaded anywhere. -->
+                        <section class="player-panel" id="playerPanel" hidden>
+
+                            <div class="player-body" id="playerBody">
+
+                                <!-- the queue: what you've got, and how to add to it -->
+                                <div class="queue-side">
+
+                                    <div class="queue-bar">
+                                        <button class="basic-button" id="addTracks" type="button">add songs</button>
+                                        <input id="trackInput" type="file" accept="audio/*" multiple hidden>
+                                        <button class="basic-button" id="linkClips" type="button" title="pull in everything recorded on the audio page">link clips</button>
+                                        <button class="square-button" id="clearTracks" type="button" aria-label="bin every song" title="bin every song">
+                                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M4.5 6.5h15"/>
+                                                <path d="M10 6.5V4.5h4v2"/>
+                                                <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
+                                                <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <ol id="trackList"></ol>
+
+                                </div>
+
+                                <!-- drag this to trade width between the two -->
+                                <div class="pane-split" id="playerSplit" role="separator"
+                                     aria-orientation="vertical" aria-label="resize the song list"
+                                     tabindex="0"></div>
+
+                                <div class="stage-side">
+                                    <section class="player-stage" aria-label="web player">
+
+                                        <div class="stage-head">
+                                            <h2>web player</h2>
+                                        </div>
+
+                                        <div class="now-body">
+                                            <div class="now-disc" id="nowDisc" aria-hidden="true">
+                                                <span class="disc-hub"></span>
+                                            </div>
+                                            <p class="now-title" id="nowTitle"></p>
+
+                                            <div class="clip-track" id="playerTrack">
+                                                <div class="clip-fill" id="playerFill"></div>
+                                            </div>
+                                            <div class="now-times">
+                                                <span id="nowElapsed">0:00</span>
+                                                <span id="nowTotal">0:00</span>
+                                            </div>
+
+                                            <div class="now-controls">
+                                                <button class="square-button" id="shuffleToggle" type="button" aria-pressed="false" aria-label="shuffle" title="shuffle">
+                                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <path d="M3 7h3.5l4 10H14"/>
+                                                        <path d="M3 17h3.5l4-10H14"/>
+                                                        <path d="M17 4.5 20.5 7 17 9.5"/>
+                                                        <path d="M17 14.5 20.5 17 17 19.5"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="square-button" id="playPrev" type="button" aria-label="previous song" title="previous">&#x23ee;</button>
+                                                <button class="square-button is-big" id="playToggle" type="button" aria-label="play" title="play">&#x25b6;</button>
+                                                <button class="square-button" id="playNext" type="button" aria-label="next song" title="next">&#x23ed;</button>
+                                                <button class="square-button" id="repeatToggle" type="button" aria-pressed="false" aria-label="repeat" title="repeat">
+                                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                        <path d="M4 12V9a2 2 0 0 1 2-2h12"/>
+                                                        <path d="M15.5 4.5 18.5 7l-3 2.5"/>
+                                                        <path d="M20 12v3a2 2 0 0 1-2 2H6"/>
+                                                        <path d="M8.5 19.5 5.5 17l3-2.5"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+
+                                            <label class="now-volume">
+                                                <span>volume</span>
+                                                <input id="playerVolume" type="range" min="0" max="100" value="100">
+                                            </label>
+
+                                            <p class="now-note" id="playerNote" aria-live="polite"></p>
+                                        </div>
+                                    </section>
+                                </div>
+
+
+                            </div>
+
+                        </section>
+
                     </section>
 
                     <!-- create and practice are little windows over the
@@ -215,17 +312,28 @@
 
                             <button class="modal-close" type="button" aria-label="close" title="close">×</button>
 
+                                <h2 class="modal-title">create</h2>
+
                                 <!-- a bar that feeds a list, same shape as the other pages -->
                                 <form id="cardForm" class="maker-bar" novalidate>
-                                    <label class="maker-field">
-                                        <span>question</span>
-                                        <textarea id="questionInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="question goes here"></textarea>
-                                    </label>
-                                    <label class="maker-field">
-                                        <span>answer</span>
-                                        <textarea id="answerInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="hiihi"></textarea>
-                                    </label>
-                                    <button class="basic-button" id="cardSubmitButton" type="submit">add card</button>
+
+                                    <!-- the two fields, with the one button
+                                         that acts on them standing beside -->
+                                    <div class="maker-entry">
+                                        <div class="maker-fields">
+                                            <label class="maker-field">
+                                                <span class="field-tag" aria-hidden="true">Q</span>
+                                                <input id="questionInput" type="text" aria-label="question" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="why did the chicken cross the road">
+                                            </label>
+                                            <label class="maker-field">
+                                                <span class="field-tag" aria-hidden="true">A</span>
+                                                <input id="answerInput" type="text" aria-label="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="to get to the other side">
+                                                <button class="field-add" id="optionsToggle" type="button" aria-expanded="false" aria-controls="optionsPanel" aria-label="choose which answers this can be mixed up with" title="which answers can sit beside this one">+</button>
+                                            </label>
+                                        </div>
+                                        <button class="basic-button add-upright" id="cardSubmitButton" type="submit"><span>add</span></button>
+                                    </div>
+
                                     <p class="form-note" id="cardFormNote" aria-live="polite"></p>
                                 </form>
 
@@ -237,6 +345,8 @@
                             <section class="modal-panel study-screen" id="studyScreen" data-title="practice" hidden>
 
                             <button class="modal-close" type="button" aria-label="close" title="close">×</button>
+
+                                <h2 class="modal-title">practice</h2>
 
                                 <!-- question across the top, the four answers
                                      filling the rest as real quadrants -->
@@ -256,6 +366,21 @@
                 <!-- right bar — always in, sits under the top bar -->
                 <aside class="rail rail-right" aria-label="right menu">
 
+                    <!-- the time, above everything -->
+                    <section class="rail-clock" aria-label="the time">
+                        <div class="clock-top">
+                            <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="invert the page" title="invert the page">
+                                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M12 3.5 A 8.5 8.5 0 0 1 12 20.5 Z" fill="currentColor"/>
+                                </svg>
+                            </button>
+                            <span class="clock-suffix" id="clockSuffix"></span>
+                        </div>
+                        <p class="clock-time" id="clockTime">--:--</p>
+                        <p class="clock-date" id="clockDate"></p>
+                    </section>
+
                     <!-- what the page you're on actually does. one
                          paragraph per section — keep this current
                          whenever something new lands on the site. -->
@@ -266,7 +391,46 @@
 
                         <p class="help-note" data-section="cards" hidden>you make flashcards. you can organize it and create/practice. decks can be shared with a deck code located next to the deck creator.</p>
 
-                        <p class="help-note" data-section="audio" hidden>audio recorder that records audio clips that auto-cut when a change is detected in a selected area. only websites on the same browser can be recorded. each clip saves as an mp3 file. </p>
+                        <p class="help-note" data-section="audio" hidden>an audio recorder that records audio clips that auto-cut when a change is detected in a selected area</p>
+
+                        <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface</p>
+                    </section>
+
+
+
+
+                    <!-- how much room everything you've kept is using -->
+                    <section class="rail-store" aria-label="storage">
+                        <div class="store-head">
+                            <span>storage</span>
+                            <span id="storeAmount">—</span>
+                        </div>
+                        <div class="store-bar"><div class="store-fill" id="storeFill"></div></div>
+                    </section>
+
+                    <!-- what's on, in short. the full player lives on the
+                         player page; this is here so it follows you. -->
+                    <section class="rail-now" aria-label="web player">
+                        <p class="rail-title" id="railTitle"></p>
+                        <div class="clip-track" id="railTrack">
+                            <div class="clip-fill" id="railFill"></div>
+                        </div>
+                        <div class="rail-controls">
+                            <button class="clip-play" id="railPrev" type="button" aria-label="previous song" title="previous">&#x23ee;</button>
+                            <button class="clip-play" id="railToggle" type="button" aria-label="play" title="play">&#x25b6;</button>
+                            <button class="clip-play" id="railNext" type="button" aria-label="next song" title="next">&#x23ed;</button>
+                        </div>
+                    </section>
+
+
+                    <!-- the last few things you binned, newest first.
+                         press one to put it back; ctrl+z does the top. -->
+                    <section class="rail-binned" id="railBinned" aria-label="recently binned" hidden>
+                        <div class="binned-head">
+                            <span>recently binned<span class="binned-count" id="binnedCount"></span></span>
+                            <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+                        </div>
+                        <ol class="binned-list" id="binnedList"></ol>
                     </section>
 
                 </aside>

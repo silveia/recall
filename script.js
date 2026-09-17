@@ -4,10 +4,10 @@
    1. elements
    2. state
    3. storage
-   4. sections   (the cards / audio tabs)
-   5. decks      (the smiley menu)
-   6. cards      (create screen)
-   7. practice   (study screen)
+   4. sections   (the home / cards / audio / player tabs)
+   5. decks      (the list, and the split beside it)
+   6. cards      (the create window)
+   7. practice   (the practice window)
    8. context menu
    9. keyboard
    10. wiring    (includes deck codes — copy one out, paste one in)
@@ -16,6 +16,7 @@
          status · sensing box · change detection
          clip storage · mp3 export · clip rows
          recording · level meter · capture
+   13. player    (songs off your own disk, and the bar's short copy)
    ============================================================ */
 
 /* ---------- 1. elements ---------- */
@@ -44,6 +45,16 @@ const shareOut = document.getElementById('shareOut');
 const shareIn = document.getElementById('shareIn');
 const shareNote = document.getElementById('shareNote');
 const helpBox = document.querySelector('.help-box');
+const clockTime = document.getElementById('clockTime');
+const clockSuffix = document.getElementById('clockSuffix');
+const themeSwap = document.getElementById('themeSwap');
+const clockDate = document.getElementById('clockDate');
+const storeAmount = document.getElementById('storeAmount');
+const storeFill = document.getElementById('storeFill');
+const railBinned = document.getElementById('railBinned');
+const binnedList = document.getElementById('binnedList');
+const binnedCount = document.getElementById('binnedCount');
+const binnedEmpty = document.getElementById('binnedEmpty');
 const deckForm = document.getElementById('deckForm');
 const deckNameInput = document.getElementById('deckNameInput');
 
@@ -54,6 +65,9 @@ const answerInput = document.getElementById('answerInput');
 const cardFormNote = document.getElementById('cardFormNote');
 const cardList = document.getElementById('cardList');
 const cardSubmitButton = document.getElementById('cardSubmitButton');
+const optionsToggle = document.getElementById('optionsToggle');
+const optionsPanel = document.getElementById('optionsPanel');
+const optionsPicks = document.getElementById('optionsPicks');
 
 // practice
 const studyQuestion = document.getElementById('studyQuestion');
@@ -72,7 +86,8 @@ const levelContext = levelCanvas.getContext('2d');
 const sections = [
     { id: 'home', name: 'home' },
     { id: 'cards', name: 'cards' },
-    { id: 'audio', name: 'audio' }
+    { id: 'audio', name: 'audio' },
+    { id: 'player', name: 'player' }
 ];
 
 let decks = [
@@ -94,12 +109,21 @@ let recentQuestions = [];
 let currentCard;
 let waitingForContinue = false;
 let editingCardIndex = null;
+/* the answers this card is allowed to be mixed up with, while it's
+   being written. empty means "anything in the deck". */
+let pendingOptions = new Set();
 let editingDeckId = null;
-/* every delete since the last page swap, newest last. ctrl+z walks
-   back down it, so a run of deletions comes back one at a time. only a
-   refresh or moving between home/cards/audio empties it — create and
-   practice are screens within a page, not pages of their own. */
+/* everything binned in the last week, oldest first. ctrl+z walks back
+   down it, and the bar lists the newest few. it is a real bin, held in
+   its own database: a clip or a song keeps its audio in here, which is
+   the only way one can come back after a refresh. nothing leaves until
+   it is a week old, put back, or the bin is emptied by hand. */
 let deletedStack = [];
+const BIN_DB = 'recall-bin';
+const BIN_STORE = 'binned';
+const BIN_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+let binDbPromise = null;
+
 let audioContext = null;
 let analyser = null;
 let levelFrame = null;
@@ -177,12 +201,11 @@ function switchSection(id) {
         > sections.findIndex((section) => section.id === activeSectionId) ? 1 : -1;
 
     activeSectionId = id;
-    deletedStack = [];   // a new page starts with nothing to put back
     window.localStorage.setItem('active-section', activeSectionId);
     renderSections();
 
     // whatever is on screen now arrives from that side
-    [homePanel, homeBody, helpBox, audioPanel].forEach((panel) => {
+    [homePanel, homeBody, helpBox, audioPanel, playerPanel].forEach((panel) => {
         if (panel && !panel.hidden) panel.style.setProperty('--from', `${heading * 30}px`);
     });
 
@@ -213,6 +236,7 @@ function renderSections() {
     });
     if (activeSectionId !== 'cards') closeSharePanel();
     audioPanel.hidden = activeSectionId !== 'audio';
+    playerPanel.hidden = activeSectionId !== 'player';
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
 
     // one tab per section; whichever is active grows, the rest shrink.
@@ -337,81 +361,104 @@ function renderDeckCards() {
 // place — the row's own two fields — so nothing leaves the page.
 let editingStageIndex = null;
 
-/* --- trading width between the cards and the decks --- */
+/* --- a draggable divider between two panes --- */
 
-/* the split is stored as a percentage, not pixels, so the two panes
-   keep their proportions when the window changes size. */
-const DECK_COL_KEY = 'deck-column';
-const DECK_COL_MIN = 15;
-const DECK_COL_MAX = 75;
+/* both the cards page and the player page are a pair of columns with a
+   grip between them. the width is kept as a percentage rather than
+   pixels, so the two keep their proportions when the window changes.
+   whatever the grip is told to size, the other side's own min-width is
+   the floor it can never push past — without that, dragging kept going
+   and shoved the far column out under the side bar. */
+function wireSplit({ split, body, other, variable, key, min = 15, max = 75, fallback = 50, onDrag }) {
+    if (!split || !body || !other) return null;
 
-/* the ceiling isn't a flat number: the cards side has a floor of its
-   own (the two tiles), and past the point where it hits that, dragging
-   further only pushed the column out under the right bar. so the most
-   the decks can take is whatever leaves the cards exactly their floor. */
-function deckColumnMax() {
-    const box = homeBody.getBoundingClientRect();
-    if (!box.width || !cardSide) return DECK_COL_MAX;
-    const split = paneSplit.getBoundingClientRect().width;
-    const floor = parseFloat(window.getComputedStyle(cardSide).minWidth) || 0;
-    const room = (box.width - split - floor) / box.width * 100;
-    return Math.max(DECK_COL_MIN, Math.min(DECK_COL_MAX, room));
+    const ceiling = () => {
+        const box = body.getBoundingClientRect();
+        if (!box.width) return max;
+        const grip = split.getBoundingClientRect().width;
+        const floor = parseFloat(window.getComputedStyle(other).minWidth) || 0;
+        return Math.max(min, Math.min(max, (box.width - grip - floor) / box.width * 100));
+    };
+
+    const set = (percent) => {
+        const width = Math.min(ceiling(), Math.max(min, percent));
+        body.style.setProperty(variable, `${width}%`);
+        return width;
+    };
+
+    const now = () => parseFloat(body.style.getPropertyValue(variable)) || fallback;
+    const remember = (width) => {
+        try {
+            window.localStorage.setItem(key, width);
+        } catch (error) {
+            // out of room; the split just won't survive a refresh
+        }
+    };
+
+    split.addEventListener('pointerdown', (event) => {
+        if (event.button) return;
+        event.preventDefault();
+        split.classList.add('is-dragging');
+        document.documentElement.classList.add('splitting');
+
+        const drag = (move) => {
+            if (move.pointerId !== event.pointerId) return;
+            const box = body.getBoundingClientRect();
+            if (!box.width) return;
+            // the left pane is the one being sized, so its width is
+            // however far the cursor has come from that edge
+            set((move.clientX - box.left) / box.width * 100);
+            if (onDrag) onDrag();
+        };
+        const drop = () => {
+            window.removeEventListener('pointermove', drag);
+            window.removeEventListener('pointerup', drop);
+            window.removeEventListener('pointercancel', drop);
+            split.classList.remove('is-dragging');
+            document.documentElement.classList.remove('splitting');
+            remember(now());
+        };
+        window.addEventListener('pointermove', drag);
+        window.addEventListener('pointerup', drop);
+        window.addEventListener('pointercancel', drop);
+    });
+
+    // the arrow keys nudge it too, once it has focus
+    split.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        remember(set(now() + (event.key === 'ArrowLeft' ? -2 : 2)));
+    });
+
+    return {
+        set,
+        // a narrower window can put a stored width past the new ceiling
+        reclamp: () => set(now()),
+        load: () => {
+            const saved = Number(window.localStorage.getItem(key));
+            if (saved) set(saved);
+        }
+    };
 }
 
-function setDeckColumn(percent) {
-    const width = Math.min(deckColumnMax(), Math.max(DECK_COL_MIN, percent));
-    homeBody.style.setProperty('--deck-col', `${width}%`);
-    return width;
-}
+const deckSplit = wireSplit({
+    split: paneSplit,
+    body: homeBody,
+    other: cardSide,
+    variable: '--deck-col',
+    key: 'deck-column',
+    fallback: 55,
+    onDrag: () => { if (!sharePanel.hidden) placeSharePanel(); }
+});
 
 function loadDeckColumn() {
-    const saved = Number(window.localStorage.getItem(DECK_COL_KEY));
-    if (saved) setDeckColumn(saved);
+    if (deckSplit) deckSplit.load();
 }
 
-// a narrower window can put a stored width past the new ceiling
 window.addEventListener('resize', () => {
-    const now = parseFloat(homeBody.style.getPropertyValue('--deck-col'));
-    if (now) setDeckColumn(now);
+    if (deckSplit) deckSplit.reclamp();
+    if (typeof playerSplitter !== 'undefined' && playerSplitter) playerSplitter.reclamp();
     if (!sharePanel.hidden) placeSharePanel();
-});
-
-paneSplit.addEventListener('pointerdown', (event) => {
-    if (event.button) return;
-    event.preventDefault();
-    paneSplit.classList.add('is-dragging');
-    document.documentElement.classList.add('splitting');
-
-    const drag = (move) => {
-        if (move.pointerId !== event.pointerId) return;
-        const box = homeBody.getBoundingClientRect();
-        if (!box.width) return;
-        // the decks are the left-hand pane now, so their width is
-        // however far the cursor has come from that edge
-        setDeckColumn((move.clientX - box.left) / box.width * 100);
-        if (!sharePanel.hidden) placeSharePanel();   // its button just moved
-    };
-    const drop = () => {
-        window.removeEventListener('pointermove', drag);
-        window.removeEventListener('pointerup', drop);
-        window.removeEventListener('pointercancel', drop);
-        paneSplit.classList.remove('is-dragging');
-        document.documentElement.classList.remove('splitting');
-        const width = homeBody.style.getPropertyValue('--deck-col');
-        if (width) window.localStorage.setItem(DECK_COL_KEY, parseFloat(width));
-    };
-    window.addEventListener('pointermove', drag);
-    window.addEventListener('pointerup', drop);
-    window.addEventListener('pointercancel', drop);
-});
-
-// the arrow keys nudge it too, once it has focus
-paneSplit.addEventListener('keydown', (event) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    const now = parseFloat(homeBody.style.getPropertyValue('--deck-col')) || 33;
-    const width = setDeckColumn(now + (event.key === 'ArrowLeft' ? -2 : 2));
-    window.localStorage.setItem(DECK_COL_KEY, width);
 });
 
 /* --- dragging a deck up or down the list --- */
@@ -482,7 +529,16 @@ function renderStage() {
     armedDeleteRow = null;   // the rows it pointed at are about to go
     deckCardList.innerHTML = '';
     if (total === 0) {
-        deckCardList.innerHTML = '<li class="empty-message">=ω=</li>';
+        // a line of context over the face, so an empty deck says what
+        // to do about it rather than just sitting there
+        deckCardList.innerHTML =
+            '<li class="empty-message">'
+            + '<span class="empty-words">'
+            +   '<span class="empty-say"><b>nofing T_T</b></span>'
+            +   '<span class="empty-hint">this deck is empty</span>'
+            + '</span>'
+            + '<span class="empty-face">=ω=</span>'
+            + '</li>';
         editingStageIndex = null;
         return;
     }
@@ -711,7 +767,7 @@ function deleteStageCard(index) {
     if (!card) return;
     disarmStageDelete();
 
-    deletedStack.push({ type: 'card', item: card, index, deckId: deck.id });
+    rememberDeleted({ type: 'card', item: card, index, deckId: deck.id });
     deck.cards.splice(index, 1);
     editingStageIndex = null;
     renderDecks();
@@ -784,7 +840,7 @@ function isModalOpen() {
     return !modalVeil.hidden && !modalVeil.classList.contains('is-leaving');
 }
 
-const MODAL_EXIT_MS = 200;   // matches veil-out / panel-drop
+const MODAL_EXIT_MS = 320;   // matches panel-drop, the arrival reversed
 let modalExitTimer = 0;
 
 function closeModal() {
@@ -844,10 +900,73 @@ function editCard(index) {
     editingDeckId = activeDeckId;
     questionInput.value = card.question;
     answerInput.value = card.answer;
-    cardSubmitButton.textContent = 'save changes';
+    pendingOptions = new Set(Array.isArray(card.options) ? card.options : []);
+    closeOptionPicker();
+    updateOptionCount();
+    cardSubmitButton.querySelector('span').textContent = 'save';
     cardFormNote.textContent = '';
     showScreen(makerScreen);
     questionInput.focus();
+}
+
+/* every other answer in the deck, each a switch. the card being edited
+   can't be mixed up with itself, so it isn't offered. */
+function renderOptionPicker() {
+    const deck = decks.find((item) => item.id === editingDeckId) || activeDeck();
+    const own = editingCardIndex === null ? null : deck.cards[editingCardIndex];
+    const answers = [...new Set(deck.cards.map((card) => card.answer))]
+        .filter((answer) => answer && answer !== (own ? own.answer : answerInput.value.trim()));
+
+    // only the pills are rebuilt — the line above them is written in
+    // index.html so it can be reworded without coming in here
+    optionsPicks.innerHTML = '';
+    if (!answers.length) {
+        optionsPicks.innerHTML = '<p class="empty-message">no other answers in this deck yet</p>';
+        updateOptionCount();
+        return;
+    }
+
+    answers.forEach((answer) => {
+        const row = document.createElement('label');
+        row.className = 'option-pick';
+
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = pendingOptions.has(answer);
+        box.addEventListener('change', () => {
+            if (box.checked) pendingOptions.add(answer);
+            else pendingOptions.delete(answer);
+            row.classList.toggle('is-picked', box.checked);
+            updateOptionCount();
+        });
+
+        const text = document.createElement('span');
+        text.textContent = answer;
+
+        row.classList.toggle('is-picked', box.checked);
+        row.append(box, text);
+        optionsPicks.append(row);
+    });
+    updateOptionCount();
+}
+
+/* the + is the whole control now, so it carries the state itself: it
+   fills in once anything is picked, and says how many on hover */
+function updateOptionCount() {
+    const total = pendingOptions.size;
+    optionsToggle.classList.toggle('is-on', total > 0);
+    optionsToggle.title = total
+        ? `${total} answer${total === 1 ? '' : 's'} chosen`
+        : 'which answers can sit beside this one';
+}
+
+function closeOptionPicker() {
+    optionsPanel.hidden = true;
+    optionsToggle.setAttribute('aria-expanded', 'false');
+}
+
+function closeOptionPops() {
+    closeOptionPicker();
 }
 
 function resetCardForm() {
@@ -855,7 +974,10 @@ function resetCardForm() {
     editingDeckId = null;
     cardForm.reset();
     cardFormNote.textContent = '';
-    cardSubmitButton.textContent = 'add card';
+    cardSubmitButton.querySelector('span').textContent = 'add';
+    pendingOptions = new Set();
+    closeOptionPops();
+    updateOptionCount();
 }
 
 /* ---------- 7. practice ---------- */
@@ -904,10 +1026,24 @@ function showNextQuestion() {
     studyFeedback.textContent = '';
     answerOptions.innerHTML = '';
 
-    // three wrong answers borrowed from other cards in the deck
-    const wrongAnswers = [...new Set(cards.map((card) => card.answer))]
+    // three wrong answers borrowed from other cards in the deck — or,
+    // if this card names the ones it wants to be confused with, from
+    // that list instead. a pick can be any size; three are drawn from
+    // it each time. answers that have since been edited away are
+    // dropped, and the rest of the deck tops the three up.
+    const deckAnswers = [...new Set(cards.map((card) => card.answer))]
         .filter((answer) => answer !== currentCard.answer);
-    const options = shuffle([currentCard.answer, ...shuffle(wrongAnswers).slice(0, 3)]);
+    const picked = Array.isArray(currentCard.options)
+        ? currentCard.options.filter((answer) => deckAnswers.includes(answer))
+        : [];
+    const wrongAnswers = picked.length ? shuffle(picked).slice(0, 3) : [];
+    if (wrongAnswers.length < 3) {
+        shuffle(deckAnswers)
+            .filter((answer) => !wrongAnswers.includes(answer))
+            .slice(0, 3 - wrongAnswers.length)
+            .forEach((answer) => wrongAnswers.push(answer));
+    }
+    const options = shuffle([currentCard.answer, ...wrongAnswers]);
 
     options.forEach((option) => {
         const button = document.createElement('button');
@@ -995,7 +1131,7 @@ function showContextMenu(event, target) {
         deleteDeckButton.addEventListener('click', () => {
             if (decks.length === 1) return;
             const deletedIndex = decks.findIndex((deck) => deck.id === target.deck.id);
-            deletedStack.push({ type: 'deck', item: target.deck, index: deletedIndex });
+            rememberDeleted({ type: 'deck', item: target.deck, index: deletedIndex });
             decks.splice(deletedIndex, 1);
             if (target.deck.id === activeDeckId) activeDeckId = decks[Math.max(0, deletedIndex - 1)].id;
             renderDecks();
@@ -1033,7 +1169,7 @@ function showContextMenu(event, target) {
         deleteButton.type = 'button';
         deleteButton.textContent = 'delete';
         deleteButton.addEventListener('click', () => {
-            deletedStack.push({
+            rememberDeleted({
                 type: 'card',
                 item: target.deck.cards[target.index],
                 index: target.index,
@@ -1068,11 +1204,168 @@ function quadrantForKey(code) {
     return Object.keys(KEY_QUADRANTS).find((index) => KEY_QUADRANTS[index].includes(code));
 }
 
+/* everything that goes without asking first comes back the same way:
+   put the record back where it was, in the page and in storage. */
+function openBinDb() {
+    if (binDbPromise) return binDbPromise;
+    binDbPromise = new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(BIN_DB, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(BIN_STORE)) {
+                db.createObjectStore(BIN_STORE, { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+    return binDbPromise;
+}
+
+async function keepBinned(entry) {
+    try {
+        const db = await openBinDb();
+        db.transaction(BIN_STORE, 'readwrite').objectStore(BIN_STORE).put(entry);
+    } catch (error) {
+        // it stays in the session's own list either way
+    }
+}
+
+async function forgetBinned(id) {
+    try {
+        const db = await openBinDb();
+        db.transaction(BIN_STORE, 'readwrite').objectStore(BIN_STORE).delete(id);
+    } catch (error) {
+        // nothing to do; it has already gone from the page
+    }
+}
+
+/* one entry goes in the bin and the bar redraws. everything that bins
+   something without asking first comes through here. */
+function rememberDeleted(entry) {
+    entry.id = `bin-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    entry.when = Date.now();
+    deletedStack.push(entry);
+    keepBinned(entry);
+    renderBinned();
+    paintStorage();
+}
+
+/* on the way in, anything already a week old is thrown out for real */
+async function loadBinned() {
+    let kept = [];
+    try {
+        const db = await openBinDb();
+        kept = await new Promise((resolve, reject) => {
+            const request = db.transaction(BIN_STORE, 'readonly').objectStore(BIN_STORE).getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (error) {
+        kept = [];
+    }
+    const cutoff = Date.now() - BIN_KEEP_MS;
+    kept.filter((entry) => (entry.when || 0) < cutoff).forEach((entry) => forgetBinned(entry.id));
+    deletedStack = kept
+        .filter((entry) => (entry.when || 0) >= cutoff)
+        .sort((a, b) => (a.when || 0) - (b.when || 0));
+    renderBinned();
+}
+
+async function emptyBin() {
+    const sure = await askConfirm(`empty the bin? ${deletedStack.length} thing${deletedStack.length === 1 ? '' : 's'}, no undo`, binnedEmpty);
+    if (!sure) return;
+    try {
+        const db = await openBinDb();
+        db.transaction(BIN_STORE, 'readwrite').objectStore(BIN_STORE).clear();
+    } catch (error) {
+        // the list still clears; the store will age out on its own
+    }
+    deletedStack = [];
+    renderBinned();
+    paintStorage();
+}
+
 function undoLastDelete() {
     const undone = deletedStack.pop();
     if (!undone) return;
+    restoreDeleted(undone);
+    renderBinned();
+    paintStorage();
+}
+
+/* a short name for a thing, for the list in the bar */
+function binnedLabel(entry) {
+    if (entry.type === 'deck') return `deck · ${entry.item.name}`;
+    if (entry.type === 'card') return `card · ${entry.item.question}`;
+    if (entry.type === 'clip') return `clip · ${entry.item.name || entry.item.number}`;
+    return `song · ${entry.item.name}`;
+}
+
+/* newest first, and pressing one puts back that one rather than
+   walking the whole stack back to it */
+/* how long ago, in the roughest terms that are still useful */
+function sinceWhen(when) {
+    if (!when) return 'a while ago';
+    const mins = Math.floor((Date.now() - when) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return days === 1 ? 'yesterday' : `${days} days ago`;
+}
+
+function renderBinned() {
+    railBinned.hidden = deletedStack.length === 0;
+    binnedCount.textContent = deletedStack.length > 5 ? `${deletedStack.length}` : '';
+    binnedList.innerHTML = '';
+    [...deletedStack].reverse().slice(0, 5).forEach((entry) => {
+        const row = document.createElement('li');
+        const button = document.createElement('button');
+        button.className = 'binned-item';
+        button.type = 'button';
+        button.textContent = binnedLabel(entry);
+        button.title = 'put this back';
+        button.addEventListener('click', () => {
+            const at = deletedStack.indexOf(entry);
+            if (at === -1) return;
+            deletedStack.splice(at, 1);
+            restoreDeleted(entry);
+            renderBinned();
+        });
+        button.title = `binned ${sinceWhen(entry.when)} — press to put it back`;
+        row.append(button);
+        binnedList.append(row);
+    });
+}
+
+function restoreDeleted(undone) {
+    if (undone.id) forgetBinned(undone.id);
+
+    if (undone.type === 'clip') {
+        saveClip(undone.item);
+        addRecording(undone.item, true, true);
+        // it was appended at the end; walk it back to where it came from
+        const rows = [...recordingList.querySelectorAll('.recording-item')];
+        const row = rows[rows.length - 1];
+        const before = rows[undone.index];
+        if (row && before && before !== row) recordingList.insertBefore(row, before);
+        rememberClipOrder();
+        refreshEmptyMessage();
+        return;
+    }
+
+    if (undone.type === 'track') {
+        tracks.splice(Math.min(undone.index, tracks.length), 0, undone.item);
+        saveTrack(undone.item).catch(() => {});
+        renderTrackRows();
+        rememberTrackOrder();
+        return;
+    }
+
     if (undone.type === 'deck') {
-        decks.splice(undone.index, 0, undone.item);
+        decks.splice(Math.min(undone.index, decks.length), 0, undone.item);
         activeDeckId = undone.item.id;
     } else {
         const deck = decks.find((item) => item.id === undone.deckId);
@@ -1090,7 +1383,7 @@ function undoLastDelete() {
 
 // the press. every button gets the squash-and-spring except the icon
 // squares, the deck entries and the tiles, which have their own.
-const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle';
+const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle, .hint-button';
 document.addEventListener('pointerdown', (event) => {
     const button = event.target.closest('button');
     if (!button || button.closest(noBoing)) return;
@@ -1198,19 +1491,10 @@ function closeSharePanel() {
    the panel is wider than the deck column ever gets, so on a narrow
    column it simply slides right rather than being cut in half. */
 function placeSharePanel() {
-    const spot = shareToggle.getBoundingClientRect();
-    const box = sharePanel.getBoundingClientRect();
-    const edge = 8;
     // held inside the content column, not merely inside the window —
     // the side bars are solid, and a panel lying over one reads as a
     // mistake even though nothing is actually clipping it
-    const field = appContent.getBoundingClientRect();
-    let left = spot.right - box.width;
-    left = Math.max(field.left, Math.min(left, field.right - box.width - edge));
-    let top = spot.bottom + 6;
-    if (top + box.height > window.innerHeight - edge) top = spot.top - box.height - 6;
-    sharePanel.style.left = `${Math.round(left)}px`;
-    sharePanel.style.top = `${Math.round(Math.max(edge, top))}px`;
+    placeUnder(sharePanel, shareToggle, appContent.getBoundingClientRect());
 }
 
 async function openSharePanel() {
@@ -1280,17 +1564,34 @@ document.getElementById('randomStudyButton').addEventListener('click', () => {
     startStudy();
 });
 
+// the answers this card may be mixed up with
+optionsToggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const wasOpen = !optionsPanel.hidden;
+    closeOptionPicker();
+    if (wasOpen) return;
+    renderOptionPicker();
+    optionsPanel.hidden = false;
+    optionsToggle.setAttribute('aria-expanded', 'true');
+    placeUnder(optionsPanel, optionsToggle);
+});
+optionsPanel.addEventListener('click', (event) => event.stopPropagation());
+
 // card form
 cardForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const question = questionInput.value.trim();
     const answer = answerInput.value.trim();
+    // nothing to say about it — the empty field just takes the caret
     if (!question || !answer) {
-        cardFormNote.textContent = 'fill in both the question and the answer';
         (question ? answerInput : questionInput).focus();
         return;
     }
     const card = { question, answer };
+    // only carried when there is one; a card without it behaves as it
+    // always has, drawing from the whole deck
+    const chosen = [...pendingOptions].filter((option) => option !== answer);
+    if (chosen.length) card.options = chosen;
     if (editingCardIndex === null) {
         activeDeck().cards.push(card);
     } else {
@@ -1340,6 +1641,7 @@ document.addEventListener('click', () => {
     hideContextMenu();
     closeSharePanel();
     disarmStageDelete();
+    closeOptionPops();
 });
 
 // the backdrop is the way out; a click inside a panel is not
@@ -1374,6 +1676,10 @@ document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
         if (armedDeleteRow) {
             disarmStageDelete();
+            return;
+        }
+        if (!optionsPanel.hidden) {
+            closeOptionPops();
             return;
         }
         if (!sharePanel.hidden) {
@@ -1725,18 +2031,27 @@ let openConfirm = null;   // { button, settle } while one is up
 /* it's fixed to the window and put under whichever button asked, rather
    than being absolutely placed inside one bar. that's what lets a card
    in the scrolling deck list raise one without the list cutting it off. */
-function placeConfirm(button) {
-    if (!button) return;
+/* every popup on the site is fixed to the window and put under the
+   button that opened it, rather than absolutely placed inside some bar.
+   that's what lets one open from a row in a scrolling list, or from
+   inside a modal, without either of them cutting it off. */
+function placeUnder(panel, button, bounds) {
+    if (!panel || !button) return;
     const spot = button.getBoundingClientRect();
-    const box = confirmChip.getBoundingClientRect();
+    const box = panel.getBoundingClientRect();
     const edge = 8;
+    const field = bounds || { left: edge, right: window.innerWidth - edge };
     let left = spot.right - box.width;        // right edges line up
-    left = Math.max(edge, Math.min(left, window.innerWidth - box.width - edge));
+    left = Math.max(field.left, Math.min(left, field.right - box.width));
     let top = spot.bottom + 6;
     // flip above the button when there's no room under it
     if (top + box.height > window.innerHeight - edge) top = spot.top - box.height - 6;
-    confirmChip.style.left = `${Math.round(left)}px`;
-    confirmChip.style.top = `${Math.round(top)}px`;
+    panel.style.left = `${Math.round(left)}px`;
+    panel.style.top = `${Math.round(Math.max(edge, top))}px`;
+}
+
+function placeConfirm(button) {
+    placeUnder(confirmChip, button);
 }
 
 function askConfirm(question, button) {
@@ -2237,9 +2552,13 @@ function addRecording(record, alreadySaved, atEnd) {
         player.pause();
         player.src = '';
         if (url) URL.revokeObjectURL(url);
+        // nothing asked before this one, so it has to be undoable
+        const rows = [...recordingList.querySelectorAll('.recording-item')];
+        rememberDeleted({ type: 'clip', item: record, index: rows.indexOf(item) });
         item.remove();
         deleteClip(record.id);
         refreshEmptyMessage();
+        rememberClipOrder();
     });
 
     // three lines, same grip the decks have
@@ -2263,6 +2582,7 @@ function addRecording(record, alreadySaved, atEnd) {
 
     if (!alreadySaved) saveClip(record);
     if (!alreadySaved) rememberClipOrder();
+    paintStorage();
 }
 
 /* --- reordering a list by hand --- */
@@ -2751,5 +3071,637 @@ applySenseSettings();
 recorderReady = true;
 loadStoredClips();
 senseToggle.hidden = true;
+
+/* ---------- 13. player   (songs off your own disk) ---------- */
+
+const playerPanel = document.getElementById('playerPanel');
+const trackList = document.getElementById('trackList');
+const trackInput = document.getElementById('trackInput');
+const addTracksButton = document.getElementById('addTracks');
+const clearTracksButton = document.getElementById('clearTracks');
+const playerBody = document.getElementById('playerBody');
+const playerSplit = document.getElementById('playerSplit');
+const stageSide = document.querySelector('.stage-side');
+const railNow = document.querySelector('.rail-now');
+const railTitle = document.getElementById('railTitle');
+const railTrack = document.getElementById('railTrack');
+const railFill = document.getElementById('railFill');
+const railToggle = document.getElementById('railToggle');
+const railPrev = document.getElementById('railPrev');
+const railNext = document.getElementById('railNext');
+const linkClipsButton = document.getElementById('linkClips');
+const nowDisc = document.getElementById('nowDisc');
+const nowTitle = document.getElementById('nowTitle');
+const nowElapsed = document.getElementById('nowElapsed');
+const nowTotal = document.getElementById('nowTotal');
+const playerVolume = document.getElementById('playerVolume');
+const playerNote = document.getElementById('playerNote');
+const playToggle = document.getElementById('playToggle');
+const playPrev = document.getElementById('playPrev');
+const playNext = document.getElementById('playNext');
+const playerTrack = document.getElementById('playerTrack');
+const playerFill = document.getElementById('playerFill');
+const shuffleToggle = document.getElementById('shuffleToggle');
+const repeatToggle = document.getElementById('repeatToggle');
+
+/* one audio element for the lot — swapping its source is far cheaper
+   than holding one per song, and only one can play at a time anyway. */
+const songPlayer = new Audio();
+songPlayer.preload = 'metadata';
+
+let tracks = [];            // { id, name, blob, duration }
+let playingId = null;
+let playingUrl = '';
+let shuffleOn = false;
+let repeatOn = false;
+
+const TRACK_DB = 'recall-tracks';
+const TRACK_STORE = 'tracks';
+const TRACK_ORDER_KEY = 'track-order';
+let trackDbPromise = null;
+
+/* its own database rather than a second store in the clips one: adding
+   a store means a version bump, and a bad migration would take the
+   recordings with it. */
+function openTrackDb() {
+    if (trackDbPromise) return trackDbPromise;
+    trackDbPromise = new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(TRACK_DB, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(TRACK_STORE)) {
+                db.createObjectStore(TRACK_STORE, { keyPath: 'id' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+    return trackDbPromise;
+}
+
+async function saveTrack(record) {
+    const db = await openTrackDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(TRACK_STORE, 'readwrite');
+        tx.objectStore(TRACK_STORE).put(record);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+async function forgetTrack(id) {
+    try {
+        const db = await openTrackDb();
+        db.transaction(TRACK_STORE, 'readwrite').objectStore(TRACK_STORE).delete(id);
+    } catch (error) {
+        // the row has already gone from the page; nothing else to do
+    }
+}
+
+function savedTrackOrder() {
+    try {
+        const saved = JSON.parse(window.localStorage.getItem(TRACK_ORDER_KEY));
+        return Array.isArray(saved) ? saved : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function rememberTrackOrder() {
+    tracks = [...trackList.querySelectorAll('.track-item')]
+        .map((row) => tracks.find((item) => item.id === row.dataset.trackId))
+        .filter(Boolean);
+    try {
+        window.localStorage.setItem(TRACK_ORDER_KEY, JSON.stringify(tracks.map((t) => t.id)));
+    } catch (error) {
+        // out of room — the order just won't survive a refresh
+    }
+}
+
+/* --- adding songs --- */
+
+function clockFace(seconds) {
+    if (!Number.isFinite(seconds)) return '0:00';
+    const whole = Math.max(0, Math.floor(seconds));
+    return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+}
+
+/* a file gives up its length only once something has tried to read it,
+   so each one is loaded into a throwaway element first. a file that
+   won't decode is dropped rather than added as a row that can't play. */
+function readDuration(blob) {
+    return new Promise((resolve) => {
+        const probe = new Audio();
+        const url = URL.createObjectURL(blob);
+        const done = (value) => {
+            probe.src = '';
+            URL.revokeObjectURL(url);
+            resolve(value);
+        };
+        probe.addEventListener('loadedmetadata', () => done(probe.duration), { once: true });
+        probe.addEventListener('error', () => done(null), { once: true });
+        probe.src = url;
+    });
+}
+
+async function addTrackFiles(files) {
+    const picked = [...files].filter((file) => file.type.startsWith('audio/'));
+    if (!picked.length) return;
+
+    // a library worth keeping shouldn't be thrown away the first time
+    // the disk gets tight, and the browser only promises that if asked
+    if (navigator.storage && navigator.storage.persist) {
+        try { await navigator.storage.persist(); } catch (error) { /* not fatal */ }
+    }
+
+    let added = 0;
+    for (const file of picked) {
+        setPlayerStatus(`reading ${file.name}...`);
+        const duration = await readDuration(file);
+        if (duration === null) continue;
+        const record = {
+            id: `track-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            name: file.name.replace(/\.[^.]+$/, ''),
+            blob: file,
+            duration
+        };
+        try {
+            await saveTrack(record);
+        } catch (error) {
+            setPlayerStatus('out of room — that one was not kept', true);
+            continue;
+        }
+        tracks.push(record);
+        addTrackRow(record);
+        added += 1;
+    }
+    rememberTrackOrder();
+    refreshPlayerState();
+    setPlayerStatus(added ? '' : "none of those would play");
+    paintStorage();
+}
+
+function setPlayerStatus(text) {
+    playerNote.textContent = text || '';
+}
+
+
+/* --- the list --- */
+
+function trackLiftConfig() {
+    return {
+        list: trackList,
+        selector: '.track-item',
+        feel: LIFT_FEEL.clips,
+        onSettle: rememberTrackOrder
+    };
+}
+
+function addTrackRow(record) {
+    const item = document.createElement('li');
+    item.className = 'track-item';
+    item.dataset.trackId = record.id;
+
+    const handle = document.createElement('button');
+    handle.className = 'clip-handle track-handle';
+    handle.type = 'button';
+    handle.setAttribute('aria-label', `reorder ${record.name}, use arrow keys`);
+    handle.innerHTML = '<span></span><span></span><span></span>';
+    handle.addEventListener('pointerdown', (event) => startLift(trackLiftConfig(), item, event));
+    handle.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        event.preventDefault();
+        moveRow(trackLiftConfig(), item, event.key === 'ArrowUp' ? -1 : 1);
+        handle.focus();
+    });
+
+    const play = document.createElement('button');
+    play.className = 'clip-play';
+    play.type = 'button';
+    play.setAttribute('aria-label', `play ${record.name}`);
+    play.textContent = '▶';
+    play.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (playingId === record.id) togglePlayback();
+        else playTrack(record.id);
+    });
+
+    const name = document.createElement('span');
+    name.className = 'track-name';
+    name.textContent = record.name;
+    name.title = record.name;
+
+    // a linked row says so, so a recording that has since been binned
+    // isn't a mystery when it won't play
+    let mark = null;
+    if (record.clipId) {
+        mark = document.createElement('span');
+        mark.className = 'track-mark';
+        mark.textContent = 'clip';
+        mark.title = 'linked to a recording on the audio page';
+    }
+
+    const length = document.createElement('span');
+    length.className = 'clip-label';
+    length.textContent = clockFace(record.duration);
+
+    const remove = document.createElement('button');
+    remove.className = 'track-drop';
+    remove.type = 'button';
+    remove.textContent = '×';
+    remove.setAttribute('aria-label', `bin ${record.name}`);
+    remove.title = 'bin this song';
+    remove.addEventListener('click', (event) => {
+        event.stopPropagation();
+        dropTrack(record.id);
+    });
+
+    item.append(handle, play, name, ...(mark ? [mark] : []), length, remove);
+    item.addEventListener('dblclick', () => playTrack(record.id));
+    trackList.append(item);
+}
+
+function renderTrackRows() {
+    trackList.innerHTML = '';
+    tracks.forEach(addTrackRow);
+    refreshPlayerState();
+}
+
+function dropTrack(id) {
+    if (playingId === id) stopPlayback();
+    const record = tracks.find((item) => item.id === id);
+    const at = tracks.findIndex((item) => item.id === id);
+    if (record) rememberDeleted({ type: 'track', item: record, index: at });
+    const row = trackList.querySelector(`[data-track-id="${id}"]`);
+    if (row) row.remove();
+    tracks = tracks.filter((item) => item.id !== id);
+    forgetTrack(id);
+    rememberTrackOrder();
+    refreshPlayerState();
+}
+
+/* --- playing --- */
+
+/* a linked clip keeps no audio of its own — it points at the recording
+   on the audio page, and the sound is fetched when you press play. two
+   copies of the same minutes would be a waste of the disk quota, and
+   binning the clip should take its entry with it. */
+async function trackAudio(record) {
+    if (record.blob) return record.blob;
+    if (!record.clipId) return null;
+    try {
+        const db = await openClipDb();
+        const clip = await new Promise((resolve, reject) => {
+            const request = db.transaction(CLIP_STORE, 'readonly')
+                .objectStore(CLIP_STORE).get(record.clipId);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        return clip ? clip.blob : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+async function playTrack(id) {
+    const record = tracks.find((item) => item.id === id);
+    if (!record) return;
+    const sound = await trackAudio(record);
+    if (!sound) {
+        setPlayerStatus(`"${record.name}" is a link to a clip that's gone`);
+        return;
+    }
+    if (playingUrl) URL.revokeObjectURL(playingUrl);
+    playingUrl = URL.createObjectURL(sound);
+    playingId = id;
+    songPlayer.src = playingUrl;
+    songPlayer.play().catch(() => setPlayerStatus('that one would not play'));
+    refreshPlayerState();
+}
+
+function togglePlayback() {
+    if (!playingId) {
+        if (tracks.length) playTrack(tracks[0].id);
+        return;
+    }
+    if (songPlayer.paused) songPlayer.play().catch(() => {});
+    else songPlayer.pause();
+    refreshPlayerState();
+}
+
+function stopPlayback() {
+    songPlayer.pause();
+    songPlayer.removeAttribute('src');
+    songPlayer.load();
+    if (playingUrl) URL.revokeObjectURL(playingUrl);
+    playingUrl = '';
+    playingId = null;
+    refreshPlayerState();
+}
+
+function stepTrack(step) {
+    if (!tracks.length) return;
+    if (shuffleOn && tracks.length > 1) {
+        let next;
+        do {
+            next = tracks[Math.floor(Math.random() * tracks.length)];
+        } while (next.id === playingId);
+        playTrack(next.id);
+        return;
+    }
+    const at = tracks.findIndex((item) => item.id === playingId);
+    const to = (at + step + tracks.length) % tracks.length;
+    playTrack(tracks[to].id);
+}
+
+/* the row that's on wears the black, the way an open deck does */
+function refreshPlayerState() {
+    const playing = Boolean(playingId) && !songPlayer.paused;
+    playToggle.textContent = playing ? '⏸' : '▶';
+    playToggle.setAttribute('aria-label', playing ? 'pause' : 'play');
+    playToggle.title = playing ? 'pause' : 'play';
+
+    trackList.querySelectorAll('.track-item').forEach((row) => {
+        const on = row.dataset.trackId === playingId;
+        row.classList.toggle('is-playing', on);
+        const mark = row.querySelector('.clip-play');
+        if (mark) mark.textContent = on && playing ? '⏸' : '▶';
+    });
+
+    const current = tracks.find((item) => item.id === playingId);
+    nowTitle.textContent = current ? current.name : '';
+    nowTitle.title = current ? current.name : '';
+    // the record turns only while something is actually running
+    nowDisc.classList.toggle('is-spinning', playing);
+
+    // the bar carries the same state in shorter form, and isn't there
+    // at all when there's nothing to say
+    railNow.hidden = !current;
+    railTitle.textContent = current ? current.name : '';
+    railTitle.title = current ? current.name : '';
+    railToggle.textContent = playing ? '\u23f8' : '\u25b6';
+    railToggle.setAttribute('aria-label', playing ? 'pause' : 'play');
+    railToggle.title = playing ? 'pause' : 'play';
+
+    clearTracksButton.disabled = tracks.length === 0;
+    [playToggle, playPrev, playNext, railToggle, railPrev, railNext].forEach((button) => {
+        button.disabled = tracks.length === 0;
+    });
+    if (!playingId) {
+        playerFill.style.width = '0%';
+        railFill.style.width = '0%';
+        nowElapsed.textContent = '0:00';
+        nowTotal.textContent = '0:00';
+    } else if (Number.isFinite(songPlayer.duration)) {
+        nowElapsed.textContent = clockFace(songPlayer.currentTime);
+        nowTotal.textContent = clockFace(songPlayer.duration);
+    }
+    refreshTrackEmpty();
+}
+
+function refreshTrackEmpty() {
+    const existing = trackList.querySelector('.empty-message');
+    if (!tracks.length && !existing) {
+        const note = document.createElement('li');
+        note.className = 'empty-message';
+        note.textContent = 'no songs yet ʕ•ᴥ•ʔ';
+        trackList.append(note);
+    } else if (tracks.length && existing) {
+        existing.remove();
+    }
+}
+
+songPlayer.addEventListener('timeupdate', () => {
+    if (!songPlayer.duration || !Number.isFinite(songPlayer.duration)) return;
+    const through = `${(songPlayer.currentTime / songPlayer.duration) * 100}%`;
+    playerFill.style.width = through;
+    railFill.style.width = through;
+    nowElapsed.textContent = clockFace(songPlayer.currentTime);
+    nowTotal.textContent = clockFace(songPlayer.duration);
+});
+songPlayer.addEventListener('play', refreshPlayerState);
+songPlayer.addEventListener('pause', refreshPlayerState);
+songPlayer.addEventListener('ended', () => {
+    if (repeatOn) {
+        songPlayer.currentTime = 0;
+        songPlayer.play().catch(() => {});
+        return;
+    }
+    stepTrack(1);
+});
+
+
+/* --- wiring --- */
+
+addTracksButton.addEventListener('click', () => trackInput.click());
+trackInput.addEventListener('change', () => {
+    addTrackFiles(trackInput.files);
+    trackInput.value = '';   // the same file can be picked again
+});
+[playToggle, railToggle].forEach((b) => b.addEventListener('click', togglePlayback));
+[playPrev, railPrev].forEach((b) => b.addEventListener('click', () => stepTrack(-1)));
+[playNext, railNext].forEach((b) => b.addEventListener('click', () => stepTrack(1)));
+
+// both scrubbers seek
+[playerTrack, railTrack].forEach((bar) => {
+    bar.addEventListener('click', (event) => {
+        if (!playingId || !Number.isFinite(songPlayer.duration)) return;
+        const box = bar.getBoundingClientRect();
+        const at = (event.clientX - box.left) / box.width;
+        songPlayer.currentTime = Math.max(0, Math.min(1, at)) * songPlayer.duration;
+    });
+});
+
+shuffleToggle.addEventListener('click', () => {
+    shuffleOn = !shuffleOn;
+    shuffleToggle.classList.toggle('is-on', shuffleOn);
+    shuffleToggle.setAttribute('aria-pressed', String(shuffleOn));
+});
+repeatToggle.addEventListener('click', () => {
+    repeatOn = !repeatOn;
+    repeatToggle.classList.toggle('is-on', repeatOn);
+    repeatToggle.setAttribute('aria-pressed', String(repeatOn));
+});
+
+/* everything on the audio page that isn't already in the list. it
+   links rather than copies, so this is safe to press twice. */
+linkClipsButton.addEventListener('click', async () => {
+    let clips = [];
+    try {
+        const db = await openClipDb();
+        clips = await new Promise((resolve, reject) => {
+            const request = db.transaction(CLIP_STORE, 'readonly').objectStore(CLIP_STORE).getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (error) {
+        setPlayerStatus('could not read the clips');
+        return;
+    }
+
+    const linked = new Set(tracks.map((item) => item.clipId).filter(Boolean));
+    const fresh = clips.filter((clip) => !linked.has(clip.id));
+    if (!fresh.length) {
+        setPlayerStatus(clips.length ? 'every clip is already here' : 'no clips recorded yet');
+        return;
+    }
+
+    for (const clip of fresh) {
+        const record = {
+            id: `track-${clip.id}`,
+            name: clip.name || `clip ${clip.number}`,
+            clipId: clip.id,
+            duration: await readDuration(clip.blob)
+        };
+        try {
+            await saveTrack(record);
+        } catch (error) {
+            continue;
+        }
+        tracks.push(record);
+        addTrackRow(record);
+    }
+    rememberTrackOrder();
+    refreshPlayerState();
+    setPlayerStatus(`linked ${fresh.length} clip${fresh.length === 1 ? '' : 's'}`);
+});
+
+playerVolume.addEventListener('input', () => {
+    songPlayer.volume = Number(playerVolume.value) / 100;
+});
+
+
+const playerSplitter = wireSplit({
+    split: playerSplit,
+    body: playerBody,
+    other: stageSide,
+    variable: '--queue-col',
+    key: 'player-column',
+    min: 18,
+    fallback: 42
+});
+
+clearTracksButton.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    if (clearTracksButton.disabled) return;
+    const total = tracks.length;
+    const sure = await askConfirm(`bin all ${total} song${total === 1 ? '' : 's'}? no undo`, clearTracksButton);
+    if (!sure) return;
+    stopPlayback();
+    tracks.forEach((item) => forgetTrack(item.id));
+    tracks = [];
+    renderTrackRows();
+    rememberTrackOrder();
+});
+
+// songs the browser is already holding, back in the order you left them
+async function loadStoredTracks() {
+    try {
+        const db = await openTrackDb();
+        const stored = await new Promise((resolve, reject) => {
+            const request = db.transaction(TRACK_STORE, 'readonly').objectStore(TRACK_STORE).getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+        });
+        const order = savedTrackOrder();
+        stored.sort((a, b) => {
+            const ai = order.indexOf(a.id), bi = order.indexOf(b.id);
+            return (ai === -1 ? order.length : ai) - (bi === -1 ? order.length : bi);
+        });
+        tracks = stored;
+    } catch (error) {
+        tracks = [];
+    }
+    renderTrackRows();
+}
+
+if (playerSplitter) playerSplitter.load();
+loadStoredTracks();
+
+/* ---------- 14. the bar's own three  (clock · storage · binned) ---------- */
+
+/* lowercase, like everything else here. it ticks on the minute rather
+   than every second — nothing on this page needs the seconds, and a
+   number changing in the corner is a distraction. */
+function paintClock() {
+    const now = new Date();
+    // the am/pm is set apart from the digits, in the body face
+    const told = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    const half = told.match(/\s*([ap]m)$/);
+    clockTime.textContent = half ? told.slice(0, half.index) : told;
+    clockSuffix.textContent = half ? half[1] : '';
+    clockDate.textContent = now
+        .toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
+        .toLowerCase();
+}
+
+function startClock() {
+    paintClock();
+    // line the first tick up with the turn of the minute, then keep to it
+    const toTheMinute = (60 - new Date().getSeconds()) * 1000;
+    window.setTimeout(() => {
+        paintClock();
+        window.setInterval(paintClock, 60000);
+    }, toTheMinute);
+}
+
+/* what the clips and the songs are actually costing. the browser gives
+   a quota rather than the disk's own size, and it only updates once a
+   write has settled, so this is refreshed after anything is kept. */
+function roundSize(bytes) {
+    if (!bytes) return '0 mb';
+    const mb = bytes / 1048576;
+    if (mb < 1) return 'under 1 mb';
+    if (mb < 1024) return `${Math.round(mb)} mb`;
+    return `${(mb / 1024).toFixed(1)} gb`;
+}
+
+async function paintStorage() {
+    if (!navigator.storage || !navigator.storage.estimate) {
+        storeAmount.textContent = 'not measurable';
+        return;
+    }
+    try {
+        const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+        storeAmount.textContent = quota
+            ? `${roundSize(usage)} of ${roundSize(quota)}`
+            : roundSize(usage);
+        const share = quota ? Math.min(100, (usage / quota) * 100) : 0;
+        // a sliver so the bar reads as "something" rather than empty
+        storeFill.style.width = usage && share < 0.5 ? '2px' : `${share}%`;
+    } catch (error) {
+        storeAmount.textContent = 'not measurable';
+    }
+}
+
+/* the whole page turns over: one filter on the root, so every black
+   becomes white and every white black, and nothing has to be restyled
+   twice. the choice is remembered. */
+const THEME_KEY = 'page-inverted';
+
+function setInverted(on) {
+    document.documentElement.classList.toggle('inverted', on);
+    themeSwap.setAttribute('aria-pressed', String(on));
+    themeSwap.title = on ? 'put it back' : 'invert the page';
+    try {
+        window.localStorage.setItem(THEME_KEY, on ? 'yes' : 'no');
+    } catch (error) {
+        // it just won't be remembered
+    }
+}
+
+themeSwap.addEventListener('click', () => {
+    setInverted(!document.documentElement.classList.contains('inverted'));
+});
+setInverted(window.localStorage.getItem(THEME_KEY) === 'yes');
+
+startClock();
+paintStorage();
+binnedEmpty.addEventListener('click', (event) => {
+    event.stopPropagation();
+    emptyBin();
+});
+
+loadBinned();
 
 start();
