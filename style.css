@@ -460,8 +460,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
-#homeScreen 
-/* create and practice run on the same frame as home */
+
 /* create and practice float over the page instead of replacing it.
    the wash is white rather than a dimmed black — nothing on this site
    is grey, and the panel's own outline is what separates it. */
