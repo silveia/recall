@@ -1167,7 +1167,16 @@ function showNextQuestion() {
    it saying what it should have been. */
 function checkAnswer(selectedButton, selectedAnswer) {
     document.querySelectorAll('.answer-button').forEach((button) => {
-        if (button.dataset.answer === currentCard.answer) button.classList.add('correct');
+        if (button.dataset.answer !== currentCard.answer) return;
+        button.classList.add('correct');
+        // a tick that draws itself across the filled tile — whichever
+        // tile you pressed, this is the one that was right
+        const mark = document.createElement('span');
+        mark.className = 'answer-mark';
+        mark.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">'
+            + '<path d="M4 12.6 L9.6 18.2 L20 6.6" fill="none" stroke="currentColor"'
+            + ' stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        button.prepend(mark);
     });
     answerOptions.classList.add('is-answered');
     studyFeedback.textContent = '';
@@ -1521,7 +1530,7 @@ function restoreDeleted(undone) {
 /* .field-add turns from a plus into a cross on a transform of its own,
    and the press animation is a transform too — it won the cascade, so
    the turn only happened once the squash had finished playing */
-const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle, .hint-button, .field-add';
+const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle, .hint-button, .field-add, .answer-button';
 document.addEventListener('pointerdown', (event) => {
     const button = event.target.closest('button');
     if (!button || button.closest(noBoing)) return;

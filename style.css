@@ -1655,6 +1655,14 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 .answer-button:nth-child(3) { animation-delay: 0.12s; }
 .answer-button:nth-child(4) { animation-delay: 0.17s; }
 .answer-button:hover { color: var(--paper); background: var(--ink); }
+/* held down: the tile fills, and that is all it does. it used to squash
+   and spring back under the finger, which read as having answered —
+   the answer isn't taken until you let go of it. */
+.answer-button:active:not(.correct):not(.incorrect) {
+	color: var(--paper);
+	background: var(--ink);
+	transform: none;
+}
 .answer-button.correct:hover, .answer-button.incorrect:hover { color: inherit; background: inherit; }
 
 /* the right answer fills in black whichever tile you pressed, so the
@@ -1666,32 +1674,41 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 }
 .answer-button.correct:not(.is-right) { animation: pop 0.35s var(--ease); }
 
-/* getting it right: the tile takes a press and springs back past its
-   size before settling, and a ring goes out from its edge and thins
-   away to nothing. no colour in it — the ring is the same one black,
-   it just gets finer as it grows rather than fading, which would put
-   grey on the page. */
-.answer-button.is-right {
-	animation: right-stamp 0.5s cubic-bezier(0.3, 1.5, 0.5, 1);
-}
-@keyframes right-stamp {
-	0%   { transform: scale(1); }
-	22%  { transform: scale(0.93); }
-	55%  { transform: scale(1.06); }
-	100% { transform: scale(1); }
-}
-.answer-button.is-right::after {
-	content: '';
+/* getting it right: a tick draws itself across the filled tile, left
+   to right, the way a hand would put it there, and the tile swells a
+   little under it. a mark that is written on reads as an answer; the
+   ring this replaced was only a movement, and a movement reads much
+   the same whichever way the answer went. */
+.answer-mark {
 	position: absolute;
-	inset: -1px;
-	border: 2px solid var(--ink);
-	border-radius: inherit;
+	top: 50%;
+	left: 0.85rem;
+	display: grid;
+	place-items: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	transform: translateY(-50%);
 	pointer-events: none;
-	animation: right-ring 0.6s cubic-bezier(0.3, 0.55, 0.25, 1) forwards;
 }
-@keyframes right-ring {
-	0%   { transform: scale(1); border-width: 2px; }
-	100% { transform: scale(1.16); border-width: 0; }
+.answer-mark svg { display: block; width: 100%; height: 100%; }
+.answer-mark path {
+	stroke-dasharray: 25;
+	stroke-dashoffset: 25;
+	animation: tick-draw 0.34s cubic-bezier(0.4, 0, 0.2, 1) 0.06s forwards;
+}
+@keyframes tick-draw {
+	to { stroke-dashoffset: 0; }
+}
+/* the tick gets its own room at the left, and the same is left clear
+   on the right so the words stay where they were — a padding on one
+   side only would shove the answer sideways as it was marked */
+.answer-button.correct { padding-left: 2.9rem; padding-right: 2.9rem; }
+
+.answer-button.is-right { animation: right-swell 0.45s cubic-bezier(0.3, 1.4, 0.5, 1); }
+@keyframes right-swell {
+	0%   { transform: scale(1); }
+	45%  { transform: scale(1.05); }
+	100% { transform: scale(1); }
 }
 
 /* getting it wrong: a knock rather than a line through it — the tile
