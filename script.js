@@ -1052,16 +1052,22 @@ function showNextQuestion() {
             .slice(0, 3 - wrongAnswers.length)
             .forEach((answer) => wrongAnswers.push(answer));
     }
-    const options = shuffle([currentCard.answer, ...wrongAnswers]);
+    /* a deck with four answers or fewer offers the same four every
+       time, so shuffling them only moves them about under you with
+       nothing being hidden. they sort instead, backwards down the
+       alphabet, and the order holds until you write another answer.
+       past four there is something to hide, so they're drawn. */
+    const all = [currentCard.answer, ...wrongAnswers];
+    const options = deckAnswers.length + 1 > 4
+        ? shuffle(all)
+        : all.sort((one, two) => two.localeCompare(one));
 
     /* a small deck can't always find three wrong answers, so the grid
        takes the shape of however many it has: four fill the quarters,
-       three leave one to run the whole bottom, two are a pair of wide
-       rows, and one takes the lot. which of the three gets the wide
-       slot is drawn fresh each time, so the answer isn't given away by
-       where it sits. */
+       three leave the last to run the whole bottom, two sit side by
+       side, and one takes the lot. */
     answerOptions.dataset.count = String(options.length);
-    const wideIndex = options.length === 3 ? Math.floor(Math.random() * 3) : -1;
+    const wideIndex = options.length === 3 ? 2 : -1;
 
     options.forEach((option, index) => {
         const button = document.createElement('button');
@@ -1429,7 +1435,10 @@ function restoreDeleted(undone) {
 
 // the press. every button gets the squash-and-spring except the icon
 // squares, the deck entries and the tiles, which have their own.
-const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle, .hint-button';
+/* .field-add turns from a plus into a cross on a transform of its own,
+   and the press animation is a transform too — it won the cascade, so
+   the turn only happened once the squash had finished playing */
+const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle, .hint-button, .field-add';
 document.addEventListener('pointerdown', (event) => {
     const button = event.target.closest('button');
     if (!button || button.closest(noBoing)) return;
@@ -1645,10 +1654,15 @@ cardForm.addEventListener('submit', (event) => {
         deck.cards[editingCardIndex] = card;
     }
 
+    const landed = editingCardIndex === null ? activeDeck().cards.length - 1 : editingCardIndex;
     resetCardForm();
     renderCards();
     renderDecks();
     saveDecks();
+    // the list only shows four rows, so a fifth card would land out of
+    // sight. it slides down to whatever you just wrote instead.
+    const row = cardList.querySelector(`[data-card-index="${landed}"]`);
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     questionInput.focus();
 });
 

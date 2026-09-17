@@ -43,6 +43,7 @@
 	--topbar: 3.25rem; /* height of the top bar */
 	--radius: 10px;
 	--field: 42px;     /* height of every control in the deck bar */
+	--card-row: 2.6rem;/* height of one row in the create window's list */
 
 	/* the spacing scale. nothing should use a one-off value. */
 	--gap: 2rem;       /* corners, and between separate blocks */
@@ -402,10 +403,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    those offsets and takes a few px down off the top instead */
 .topbar .section-tabs {
 	position: relative;
-	/* nudged by eye, not by measurement: the glyphs already measure
-	   high of the bar's middle at 2px, but the row reads low until it
-	   comes up to here */
-	top: 2px;
+	/* measured off the glyphs, not the boxes: at this the ink of the
+	   row straddles the middle of the bar. the line box does not —
+	   it sits high in the strip, which is why this isn't zero. */
+	top: 6px;
 	height: auto;
 	margin: 0;
 	padding: 0;
@@ -458,10 +459,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-height: 0;
 	justify-content: flex-start;
 	gap: var(--group);
-	/* one inset on all four sides: the boxes used to sit with half as
-	   much air over and under them as beside them, which read as the
-	   page being wider than it is tall rather than as a margin */
-	padding: var(--gap);
+	/* one inset on all four sides. it's the narrower step, not the
+	   wider one — the sides used to be twice the top and bottom, and
+	   evening them up by growing the top and bottom cost the boxes
+	   height they needed more than the page needed margin. */
+	padding: var(--group);
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
@@ -1416,14 +1418,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 #cardList {
 	display: flex;
-	/* as tall as its cards up to the cap, then it scrolls inside itself
-	   — the window used to stretch to the full screen as you added, so
-	   the fields kept moving up and the last card sat off the bottom */
-	flex: 0 1 auto;
+	/* four rows, always — the window used to stretch to the full screen
+	   as you added, and a box that grows with the deck moves the fields
+	   under your hands. an empty deck keeps the same four rows of room
+	   rather than collapsing and springing open on the first card. */
+	flex: none;
 	flex-direction: column;
 	gap: var(--tight);
-	min-height: 0;
-	max-height: 20rem;
+	height: calc((4 * var(--card-row)) + (5 * var(--tight)) + 2px);
 	padding: var(--tight);
 }
 #deckCardList {
@@ -1451,9 +1453,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 #cardList .card-item {
 	display: flex;
+	align-items: center;
+	flex: none;
 	gap: 0.75rem;
+	height: var(--card-row);
 	margin: 0;
-	padding: 0.55rem 0.6rem;
+	padding: 0 0.6rem;
 	border-radius: 6px;
 	cursor: context-menu;
 }
@@ -1513,8 +1518,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	grid-template-rows: 1fr;
 }
 .answer-options[data-count="2"] {
-	grid-template-columns: 1fr;
-	grid-template-rows: 1fr 1fr;
+	grid-template-columns: 1fr 1fr;
+	grid-template-rows: 1fr;
 }
 /* one of the three runs the whole bottom row; the other two share the
    top. which one is drawn fresh each question, in script.js. */
@@ -2444,6 +2449,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: none;
 	width: 1.6rem;
 	height: 1.6rem;
+	/* the field's own right padding left more air beside it than over
+	   and under it; this takes back the difference so it sits the same
+	   distance from all three edges */
+	margin-right: -0.35rem;
 	padding: 0;
 	color: var(--ink);
 	background: none;
