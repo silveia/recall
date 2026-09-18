@@ -40,6 +40,7 @@
    21. create — which answers a card may be mixed up with
    22. the bar's own three — clock, storage, recently binned
    23. home — the widgets you arrange yourself
+   24. the left bar — notes in, cards out
    ========================================================= */
 
 /* =========================================================
@@ -348,14 +349,15 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   black over it, so the strip carves the bar's straight edge into
 	   the wave rather than only adding bumps to it — otherwise the
 	   rectangle shows through wherever the wave curves back in */
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Crect width='26' height='44' fill='%23fff'/%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
+	/* the carve is the page's own colour, and it is a colour rather than
+	   part of the picture: a second picture for the dark side had to be
+	   swapped in whole, which flashed a rectangle of the old one over
+	   the bar while everything else was still fading. only the bump is
+	   drawn, on nothing, so one picture serves both sides. */
+	background-color: var(--paper);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: 26px 44px;
-}
-/* the tile carves the bar's straight edge into the wave by painting
-   the page's own colour over it, so the dark page needs its own */
-html.inverted .app-shell::after {
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Crect width='26' height='44' fill='%23000'/%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
 }
 
 /* a white rim just outside the wave. the page behind the bar is already
@@ -409,11 +411,7 @@ html.inverted .app-shell::after {
 .rail-right {
 	display: flex;
 	flex-direction: column;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='16' viewBox='0 0 2 16'%3E%3Ccircle cx='1' cy='8' r='1' fill='%23000'/%3E%3C/svg%3E");
-	background-repeat: repeat-y;
-	background-position: left top;
-	background-size: 2px 16px;
-	background-clip: border-box;
+	position: relative;   /* the dotted edge hangs off it */
 	/* every inset in here is one value, including the one off the dots */
 	gap: var(--rail-pad);
 	padding: var(--rail-pad);
@@ -421,6 +419,26 @@ html.inverted .app-shell::after {
 	padding-top: calc(var(--topbar) + var(--rail-pad));
 
 	overflow: hidden;   /* the help box scrolls, the bar doesn't */
+}
+
+/* the column of round dots down its edge. the dots are a colour behind
+   a mask rather than a picture of dots: a picture carries its own black
+   and has to be swapped whole for the dark side, which flashes. */
+.rail-right::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 2px;
+	background: var(--ink);
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='16' viewBox='0 0 2 16'%3E%3Ccircle cx='1' cy='8' r='1' fill='%23000'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='16' viewBox='0 0 2 16'%3E%3Ccircle cx='1' cy='8' r='1' fill='%23000'/%3E%3C/svg%3E");
+	-webkit-mask-repeat: repeat-y;
+	mask-repeat: repeat-y;
+	-webkit-mask-size: 2px 16px;
+	mask-size: 2px 16px;
+	pointer-events: none;
 }
 
 /* the black strip at the very top, beside the left bar. it runs back
@@ -442,10 +460,15 @@ html.inverted .app-shell::after {
 	padding-right: var(--gap);
 	color: var(--bar-ink);
 	background: var(--bar);
+	/* in the dark the strip is the same black as the page behind it, so
+	   a line along its underside says where it ends. it's a shadow, not
+	   a border: a border is drawn inside the strip, which read as a
+	   hairline laid on the black rather than the edge of it. and it is
+	   white on both sides of the swap — on a white page there is
+	   nothing to see, so it never appears or disappears, and there is
+	   no colour of its own to fade at its own pace. */
+	box-shadow: 0 1px 0 var(--bar-ink);
 }
-/* in the dark the strip is the same black as the page behind it, so a
-   line along its underside is what says where it ends */
-html.inverted .topbar { border-bottom: 1px solid var(--line); }
 
 /* the screen's name, on a white bar directly under the black one. it
    runs the full window and both side bars pass over its ends, so it
@@ -1268,6 +1291,33 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 	line-height: 2;        /* double spaced */
 	text-align: left;
 }
+/* the heading is a button now, so the band it sits in belongs to that
+   and the words below it live in their own drawer */
+.help-head {
+	display: block;
+	width: 100%;
+	padding: 0;
+	background: none;
+	border: 0;
+	/* the rule under the word belongs to the words below it: shut,
+	   there is nothing for it to divide, so it goes */
+	border-bottom: 1px solid transparent;
+	color: inherit;
+	cursor: pointer;
+	transition: border-color 0.3s var(--ease);
+}
+.help-box.is-open .help-head { border-bottom-color: var(--line); }
+.help-head h2 { border-bottom: 0; }
+/* the drawer. the rows go from nothing to their own height, which is
+   the one way a height animates without a number being guessed. */
+.help-body {
+	display: grid;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows 0.32s var(--ease);
+}
+.help-box.is-open .help-body { grid-template-rows: 1fr; }
+.help-body-inner { overflow: hidden; min-height: 0; }
+
 .help-box h2 {
 	/* the word sits in the middle of the band above the rule, both
 	   ways — the band gets a height of its own so there is a middle
@@ -1280,6 +1330,7 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 	   the word doesn't move, but the rule under it drops by that much.
 	   that puts the word midway between the box's top edge and the rule
 	   rather than sitting low against it. */
+	position: relative;   /* the caret hangs off the band */
 	height: calc(var(--field) + var(--tight));
 	margin: 0;
 	/* measured off the glyphs: with the heading face the word sat 1.5px
@@ -1996,8 +2047,10 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 	cursor: move;
 	touch-action: none;
 	/* sits over arbitrary video, so it's a white frame with a black
-	   outline either side — readable on any footage */
-	border: 2px solid var(--paper);
+	   outline either side — readable on any footage. thin, because it
+	   is a mark on the picture rather than a thing in its own right,
+	   and the edges are what you grab. */
+	border: 1px solid var(--paper);
 	box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px var(--ink);
 	background: rgba(255, 255, 255, 0.16);
 	border-radius: 3px;
@@ -2035,6 +2088,11 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 }
 /* the sliders — the sensing box's and the player's volume, which
    wear the same black-and-white face rather than the browser's blue */
+/* the sliders. each pair below has to name the pseudo-element on both
+   halves: written as `.a input, .b input::-webkit-slider-thumb` the
+   first half matches the whole input, so the thumb's size and fill
+   landed on the field itself — a 16px black square with no track and
+   nothing to take hold of. that is why these could not be dragged. */
 .sense-controls input[type="range"],
 .now-volume input[type="range"] {
 	width: 100%;
@@ -2045,37 +2103,39 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 	appearance: none;
 	cursor: pointer;
 }
-.sense-controls input[type="range"],
+/* a hairline to run along, and a white bead to take hold of */
+.sense-controls input[type="range"]::-webkit-slider-runnable-track,
 .now-volume input[type="range"]::-webkit-slider-runnable-track {
-	height: 6px;
-	background: var(--paper);
-	border: 1px solid var(--line);
+	height: 2px;
+	background: var(--ink);
+	border: 0;
 	border-radius: 999px;
 }
-.sense-controls input[type="range"],
+.sense-controls input[type="range"]::-webkit-slider-thumb,
 .now-volume input[type="range"]::-webkit-slider-thumb {
 	-webkit-appearance: none;
 	appearance: none;
-	width: 1rem;
-	height: 1rem;
-	margin-top: -6px;
-	background: var(--ink);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-}
-.sense-controls input[type="range"],
-.now-volume input[type="range"]::-moz-range-track {
-	height: 6px;
+	width: 0.85rem;
+	height: 0.85rem;
+	/* half the bead, less half the track, so it rides on the line */
+	margin-top: -0.365rem;
 	background: var(--paper);
-	border: 1px solid var(--line);
+	border: 1px solid var(--ink);
 	border-radius: 999px;
 }
-.sense-controls input[type="range"],
-.now-volume input[type="range"]::-moz-range-thumb {
-	width: 1rem;
-	height: 1rem;
+.sense-controls input[type="range"]::-moz-range-track,
+.now-volume input[type="range"]::-moz-range-track {
+	height: 2px;
 	background: var(--ink);
-	border: 1px solid var(--line);
+	border: 0;
+	border-radius: 999px;
+}
+.sense-controls input[type="range"]::-moz-range-thumb,
+.now-volume input[type="range"]::-moz-range-thumb {
+	width: 0.85rem;
+	height: 0.85rem;
+	background: var(--paper);
+	border: 1px solid var(--ink);
 	border-radius: 999px;
 }
 
@@ -2205,9 +2265,14 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 	overflow: hidden;
 	cursor: pointer;
 }
+/* the fill is placed as well as sized: a cropped clip starts its fill
+   at the first mark rather than at the left end of the bar */
 .clip-fill {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
 	width: 0;
-	height: 100%;
 	background: var(--ink);
 }
 
@@ -2258,6 +2323,94 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
 .clip-download { font-size: 0.9rem; margin-top: 3px; }
 .clip-discard { font-size: 1.1rem; margin-top: 1px; }
 
+/* while a clip is being packed the arrow is swapped for a mark that
+   waits. it's drawn rather than typed: the dot glyph that used to stand
+   in here sat wherever its own line box put it, which was nowhere near
+   the middle of the button. */
+.clip-download { position: relative; }
+/* the 3px above is a nudge for the arrow's own glyph; the mark is drawn
+   in the middle of the button, so while it waits the button sits where
+   the row puts it */
+.clip-download.is-working { color: transparent; margin-top: 0; }
+.clip-download.is-working::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 5px;
+	height: 5px;
+	margin: -2.5px 0 0 -2.5px;
+	background: var(--ink);
+	border-radius: 999px;
+	animation: clip-waiting 0.9s ease-in-out infinite;
+}
+@keyframes clip-waiting {
+	0%, 100% { transform: scale(0.6); }
+	50%      { transform: scale(1); }
+}
+
+/* crop: two marks on the bar you drag to say where the clip starts and
+   stops. nothing is cut — the recording keeps its whole self, and
+   dragging the marks back to the ends undoes it. */
+.clip-crop {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 1rem;
+	height: 1rem;
+	padding: 0;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	cursor: pointer;
+}
+.clip-crop svg { display: block; width: 0.85rem; height: 0.85rem; }
+.recording-item.is-cropping .clip-crop,
+.recording-item.is-trimmed .clip-crop { color: var(--ink); }
+.recording-item.is-cropping .clip-crop { transform: scale(1.1); }
+
+/* the marks and the stretch outside them only show while you're at it,
+   or while a crop is in place */
+.crop-handle, .crop-shade { display: none; }
+.recording-item.is-cropping .crop-handle,
+.recording-item.is-cropping .crop-shade,
+.recording-item.is-trimmed .crop-shade { display: block; }
+
+.crop-shade {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	/* hatched rather than filled: the stretch is still there, it just
+	   isn't played — and a flat black would read as the fill */
+	background-image: repeating-linear-gradient(
+		-45deg,
+		var(--ink) 0 1px,
+		var(--paper) 1px 4px
+	);
+	pointer-events: none;
+}
+.crop-shade.is-left { left: 0; }
+
+.clip-track-wrap {
+	position: relative;
+	flex: 1;
+	min-width: 0;
+}
+.clip-track-wrap .clip-track { flex: none; width: 100%; }
+
+.crop-handle {
+	position: absolute;
+	top: -2px;
+	bottom: -2px;
+	width: 9px;
+	margin-left: -4.5px;
+	background: var(--ink);
+	border-radius: 2px;
+	cursor: ew-resize;
+	touch-action: none;
+}
+.recording-item.is-cropping-now .clip-track { cursor: ew-resize; }
+
 /* =========================================================
    18. audio — the live row and its pulse
    ========================================================= */
@@ -2303,12 +2456,20 @@ html.inverted .topbar { border-bottom: 1px solid var(--line); }
    so the two tiles stay reachable */
 @media (max-width: 1000px) {
 	.app-body { flex-direction: column; }
-	.rail-right {
-		flex: none;
-		background-repeat: repeat-x;
-		background-position: left top;
-		background-size: 16px 2px;   /* the dots run along its top here */
-		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='2' viewBox='0 0 16 2'%3E%3Ccircle cx='8' cy='1' r='1' fill='%23000'/%3E%3C/svg%3E");
+	.rail-right { flex: none; }
+	/* the strip sits under the page here, so its dots lie down with it */
+	.rail-right::before {
+		top: 0;
+		right: 0;
+		bottom: auto;
+		width: auto;
+		height: 2px;
+		-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='2' viewBox='0 0 16 2'%3E%3Ccircle cx='8' cy='1' r='1' fill='%23000'/%3E%3C/svg%3E");
+		mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='2' viewBox='0 0 16 2'%3E%3Ccircle cx='8' cy='1' r='1' fill='%23000'/%3E%3C/svg%3E");
+		-webkit-mask-repeat: repeat-x;
+		mask-repeat: repeat-x;
+		-webkit-mask-size: 16px 2px;
+		mask-size: 16px 2px;
 	}
 	/* the strip takes at most a third, so the page above it still has
 	   room — the help box scrolls inside whatever is left */
@@ -2874,12 +3035,18 @@ html.inverted .theme-swap svg { transform: rotate(180deg); }
    colour tokens change places and every surface follows. the move is
    carried by a transition that is only switched on while it happens,
    so nothing else on the page is paying for it the rest of the time. */
-html.theming, html.theming * {
+/* the pseudo-elements have to be named: a star matches elements, not
+   the things drawn before and after them. left out, the scalloped edge
+   and the dotted one changed colour on the spot while the page was
+   still fading — a rectangle of the new colour appearing over the old
+   page, which is exactly what it looked like. */
+html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	transition: background-color 0.4s var(--ease), color 0.4s var(--ease),
 		border-color 0.4s var(--ease), fill 0.4s var(--ease) !important;
 }
 @media (prefers-reduced-motion: reduce) {
-	html.theming, html.theming * { transition: none !important; }
+	html.theming, html.theming *,
+	html.theming *::before, html.theming *::after { transition: none !important; }
 	.theme-swap { transition: none; }
 }
 
@@ -3034,6 +3201,9 @@ html.theming, html.theming * {
 	border-radius: var(--radius);
 	overflow: hidden;
 	text-align: left;
+	/* translate, not transform: dragging and the slide both write transform,
+	   and the lift must not tread on either of them */
+	transition: translate 0.18s ease, box-shadow 0.18s ease;
 }
 .widget-head {
 	display: flex;
@@ -3220,10 +3390,25 @@ html.theming, html.theming * {
 	border-radius: 999px;
 }
 .widget-edit svg, .widget-add svg { display: block; }
-/* the pen while the board is settled, a tick while you're arranging */
-.widget-edit .mark-done { display: none; }
-.home-panel.is-editing .widget-edit .mark-pen { display: none; }
-.home-panel.is-editing .widget-edit .mark-done { display: block; }
+.widget-edit, .widget-add {
+	transition:
+		color 0.28s var(--ease),
+		background-color 0.28s var(--ease),
+		border-color 0.28s var(--ease),
+		transform 0.28s var(--ease);
+}
+/* the pen while the board is settled, a tick while you're arranging.
+   they sit on top of each other and change places by turning, rather
+   than one being switched off and the other on. */
+.widget-edit svg { position: relative; }
+.widget-edit .mark-pen, .widget-edit .mark-done {
+	transform-box: fill-box;
+	transform-origin: center;
+	transition: opacity 0.24s var(--ease), transform 0.32s var(--ease);
+}
+.widget-edit .mark-done { opacity: 0; transform: rotate(-90deg) scale(0.6); }
+.home-panel.is-editing .widget-edit .mark-pen { opacity: 0; transform: rotate(90deg) scale(0.6); }
+.home-panel.is-editing .widget-edit .mark-done { opacity: 1; transform: none; }
 .widget-edit:hover, .home-panel.is-editing .widget-edit {
 	color: var(--paper);
 	background: var(--ink);
@@ -3271,16 +3456,24 @@ html.theming, html.theming * {
 .home-panel.is-editing .widget-face { display: none; }
 .home-panel.is-editing .widget-body { padding-bottom: 1.2rem; }
 /* in edit a tile is something you move, so nothing inside it answers */
+/* turning edit on lifts the board off the page and turning it off sets it
+   back down, so the mode arrives and leaves rather than snapping */
 .home-panel.is-editing .widget-card {
 	cursor: grab;
 	touch-action: none;
 	user-select: none;
+	translate: 0 -4px;
+	box-shadow: 3px 3px 0 var(--ink);
 }
 .home-panel.is-editing .widget-body { pointer-events: none; }
 
 /* nothing shakes. edit shows itself by the handles appearing and the
    tiles taking a grab cursor — a board of jiggling tiles is a lot of
    movement to sit and read. */
+@media (prefers-reduced-motion: reduce) {
+	.widget-card { transition: none; }
+}
+
 .home-panel.is-editing .widget-card.is-dragging {
 	z-index: 4;
 	cursor: grabbing;
@@ -3292,6 +3485,293 @@ html.theming, html.theming * {
 	flex: none;
 	align-self: flex-start;
 }
-.home-panel:not(.is-editing) .widget-add { display: none; }
+.home-panel:not(.is-editing):not(.is-empty) .widget-add { display: none; }
 .widget-pick { cursor: pointer; }
 .widget-pick:hover { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+
+
+/* =========================================================
+   24. the left bar — notes in, cards out
+   ========================================================= */
+
+/* the bar is solid black on both sides of the swap, so everything in
+   here is written in the bar's own two colours rather than the page's:
+   white on black, and the one button that matters filled white. */
+.notes-panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+	min-height: 0;
+	padding: var(--rail-pad);
+	padding-top: calc(var(--topbar) + var(--rail-pad));
+	color: var(--bar-ink);
+}
+.notes-title {
+	margin: 0;
+	padding-bottom: var(--tight);
+	border-bottom: 1px solid var(--bar-ink);
+	font-family: var(--head-font);
+	font-size: 1rem;
+	font-weight: 400;
+	text-align: center;
+}
+
+.notes-input {
+	width: 100%;
+	padding: 0.5rem 0.6rem;
+	color: var(--bar-ink);
+	background: none;
+	border: 1px solid var(--bar-ink);
+	border-radius: var(--radius);
+	font-size: 0.82rem;
+	line-height: 1.5;
+	resize: vertical;
+}
+.notes-input.is-one-line { resize: none; }
+.notes-input::placeholder { color: var(--bar-ink); opacity: 0.55; }
+
+.notes-actions { display: flex; flex: none; gap: var(--tight); }
+/* the stretch is for buttons sharing a row. left on the loose, a button
+   is a child of a column and grows to whatever height is going — which
+   is how the make button came to be five hundred pixels tall. */
+.notes-actions .notes-button { flex: 1; }
+.notes-button {
+	flex: none;
+	padding: 0.35rem 0.6rem;
+	color: var(--bar-ink);
+	background: none;
+	border: 1px solid var(--bar-ink);
+	border-radius: 999px;
+	font-size: 0.8rem;
+	cursor: pointer;
+}
+.notes-button:hover { color: var(--bar); background: var(--bar-ink); }
+/* the one that acts on the deck is filled in, the way a live state is
+   everywhere else — inverted here, because the bar is already black */
+.notes-button.is-solid { color: var(--bar); background: var(--bar-ink); font-weight: 700; }
+.notes-button:disabled { cursor: default; opacity: 1; }
+.notes-button:disabled:hover { color: var(--bar-ink); background: none; }
+
+.notes-note {
+	margin: 0;
+	font-size: 0.72rem;
+	line-height: 1.5;
+}
+
+/* what it found, before you keep any of it */
+.notes-found {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	max-height: 40vh;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+	list-style: none;
+}
+.notes-found::-webkit-scrollbar { display: none; }
+.notes-found:empty { display: none; }
+.notes-card {
+	display: flex;
+	align-items: center;
+	gap: var(--tight);
+	padding: 0.35rem 0.5rem;
+	border: 1px solid var(--bar-ink);
+	border-radius: var(--radius);
+}
+.notes-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.notes-card-text strong,
+.notes-card-text small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.notes-card-text strong { font-size: 0.8rem; }
+.notes-card-text small { font-size: 0.72rem; }
+.notes-card-drop {
+	flex: none;
+	width: 1.1rem;
+	height: 1.1rem;
+	padding: 0;
+	color: var(--bar-ink);
+	background: none;
+	border: 0;
+	font-size: 1rem;
+	line-height: 1;
+	cursor: pointer;
+}
+
+/* the key lives behind its own switch: it is a thing you set once and
+   never look at again, and it shouldn't sit in the way meanwhile */
+.notes-key-toggle {
+	align-self: flex-start;
+	padding: 0;
+	color: var(--bar-ink);
+	background: none;
+	border: 0;
+	border-bottom: 1px solid var(--bar-ink);
+	font-size: 0.72rem;
+	cursor: pointer;
+}
+.notes-key { display: flex; flex-direction: column; gap: var(--tight); }
+
+/* the head row: the name, and the button that opens it wide */
+.notes-head {
+	display: flex;
+	align-items: center;
+	gap: var(--tight);
+	padding-bottom: var(--tight);
+	border-bottom: 1px solid var(--bar-ink);
+}
+.notes-head .notes-title {
+	flex: 1;
+	padding-bottom: 0;
+	border-bottom: 0;
+}
+.notes-wide {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 1.2rem;
+	height: 1.2rem;
+	padding: 0;
+	color: inherit;
+	background: none;
+	border: 0;
+	cursor: pointer;
+}
+.notes-wide svg { display: block; width: 100%; height: 100%; }
+
+/* what's attached, waiting to be read */
+.notes-bits { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.notes-bits[hidden] { display: none; }
+.notes-bit {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 3rem;
+	height: 3rem;
+	overflow: hidden;
+	border: 1px solid var(--bar-ink);
+	border-radius: var(--radius);
+}
+.notes-bit img { width: 100%; height: 100%; object-fit: cover; }
+.notes-bit-mark { font-size: 0.7rem; font-weight: 700; }
+.notes-bit-drop {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 1.1rem;
+	height: 1.1rem;
+	padding: 0;
+	color: var(--bar);
+	background: var(--bar-ink);
+	border: 0;
+	border-radius: 0 0 0 var(--radius);
+	font-size: 0.85rem;
+	line-height: 1;
+	cursor: pointer;
+}
+/* something being dragged over the panel */
+.notes-panel.is-catching { outline: 2px dashed var(--bar-ink); outline-offset: -6px; }
+
+/* opened wide: the same panel, in a window with room to type in. it
+   keeps the bar's colours — it is the bar's panel, just moved. */
+.notes-screen {
+	width: min(46rem, 100%);
+	padding: var(--group) var(--gap) var(--gap);
+}
+.notes-slot {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	margin: 0 calc(var(--gap) * -1) calc(var(--gap) * -1);
+	border-radius: 0 0 var(--radius) var(--radius);
+	overflow: hidden;
+	background: var(--bar);
+}
+.notes-slot .notes-panel {
+	flex: 1;
+	min-width: 0;
+	padding: var(--gap);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+}
+.notes-slot .notes-panel::-webkit-scrollbar { display: none; }
+/* in the window the head is already named by the window's own title */
+.notes-slot .notes-head { display: none; }
+.notes-slot .notes-input { min-height: 14rem; font-size: 0.95rem; }
+.notes-slot .notes-found { max-height: none; }
+.notes-slot .notes-bit { width: 4.5rem; height: 4.5rem; }
+
+/* the bar's own copy: a box worth typing in, and the panel scrolls
+   rather than the words running past the bottom of the bar */
+.rail-left .notes-panel {
+	height: 100%;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+}
+.rail-left .notes-panel::-webkit-scrollbar { display: none; }
+.rail-left .notes-input { min-height: 9rem; }
+
+/* the box you type in is the drop target too: one thing to aim at
+   rather than a panel of boxes, and the picture button lives in its
+   corner instead of taking a row to itself */
+.notes-box { position: relative; display: flex; }
+.notes-box .notes-input { padding-bottom: 2.2rem; }
+.notes-clip {
+	position: absolute;
+	right: 0.45rem;
+	bottom: 0.45rem;
+	display: grid;
+	place-items: center;
+	width: 1.7rem;
+	height: 1.7rem;
+	padding: 0;
+	color: var(--bar-ink);
+	background: var(--bar);
+	border: 1px solid var(--bar-ink);
+	border-radius: 999px;
+	cursor: pointer;
+}
+.notes-clip svg { display: block; width: 0.95rem; height: 0.95rem; }
+.notes-clip:hover { color: var(--bar); background: var(--bar-ink); }
+
+/* while something is being dragged over, the box says so itself */
+.notes-panel.is-catching .notes-box::after {
+	content: 'let go and it reads it';
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	color: var(--bar);
+	background: var(--bar-ink);
+	border-radius: var(--radius);
+	font-size: 0.85rem;
+	font-weight: 700;
+	pointer-events: none;
+}
+
+/* the one that does the work: a button's height, no more */
+.notes-button.is-go {
+	flex: none;
+	padding: 0.5rem 0.6rem;
+	font-size: 0.85rem;
+}
+/* everything in the panel keeps its own height; the list of cards is
+   the only thing that takes what is left */
+.notes-panel > * { flex: none; }
+.notes-panel > .notes-found { flex: 0 1 auto; }
+/* and the list reader is a quiet second, for a glossary you already
+   have in pairs */
+.notes-plain {
+	align-self: center;
+	padding: 0;
+	color: var(--bar-ink);
+	background: none;
+	border: 0;
+	border-bottom: 1px solid var(--bar-ink);
+	font-size: 0.72rem;
+	cursor: pointer;
+}
+.notes-plain[hidden] { display: none; }

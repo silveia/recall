@@ -19,6 +19,7 @@
    13. player    (songs off your own disk, and the bar's short copy)
    14. the bar's own three   (clock · storage · recently binned)
    15. home widgets   (the home page, yours to arrange)
+   16. notes → cards  (the left bar; reads notes, or asks claude)
    ============================================================ */
 
 /* ---------- 1. elements ---------- */
@@ -28,6 +29,7 @@ const homeScreen = document.getElementById('homeScreen');
 const modalVeil = document.getElementById('modalVeil');
 const makerScreen = document.getElementById('makerScreen');
 const studyScreen = document.getElementById('studyScreen');
+const notesScreen = document.getElementById('notesScreen');
 
 // sections
 const sectionTabs = document.getElementById('sectionTabs');
@@ -930,6 +932,8 @@ function closeModal() {
         modalVeil.classList.remove('is-leaving');
         makerScreen.hidden = true;
         studyScreen.hidden = true;
+        notesScreen.hidden = true;
+        returnNotesPanel();
     }, MODAL_EXIT_MS);
 }
 
@@ -947,6 +951,10 @@ function showScreen(screen) {
     modalVeil.hidden = false;
     makerScreen.hidden = screen !== makerScreen;
     studyScreen.hidden = screen !== studyScreen;
+    notesScreen.hidden = screen !== notesScreen;
+    // the notes panel is borrowed from the left bar; anything else
+    // opening means it is wanted back
+    if (screen !== notesScreen) returnNotesPanel();
 
     // the tile you pressed still holds the focus, so a space would
     // press it a second time and shut the window again. the window
@@ -1321,7 +1329,7 @@ function showContextMenu(event, target) {
         const removeButton = document.createElement('button');
         removeButton.className = 'context-action';
         removeButton.type = 'button';
-        removeButton.textContent = 'take it off';
+        removeButton.textContent = 'remove';
         removeButton.addEventListener('click', () => {
             removeWidget(target.id);
             hideContextMenu();
@@ -1820,6 +1828,15 @@ document.addEventListener('click', () => {
     closeWidgetPicks();
 });
 
+/* pressing away from the board is how you finish arranging it. the
+   tiles, the two circles and the picker are all part of it; anything
+   else is somewhere else, and the board settles. */
+document.addEventListener('click', (event) => {
+    if (!editingHome) return;
+    if (event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks, .context-menu')) return;
+    setHomeEditing(false);
+});
+
 // the backdrop is the way out; a click inside a panel is not
 modalVeil.addEventListener('click', (event) => {
     if (event.target === modalVeil) showScreen(homeScreen);
@@ -1936,7 +1953,7 @@ const senseOutputs = {
     threshold: document.getElementById('senseThresholdOut')
 };
 
-const DEFAULT_SENSE = { left: 4, bottom: 4, width: 25, height: 4, threshold: 2 };
+const DEFAULT_SENSE = { left: 4, bottom: 4, width: 25, height: 4, threshold: 1 };
 let senseSettings = { ...DEFAULT_SENSE };
 
 let activeStream = null;
@@ -1988,9 +2005,15 @@ function saveSenseSettings() {
 }
 
 function applySenseSettings() {
-    // keep the box inside the frame
-    senseSettings.width = Math.min(senseSettings.width, 100 - senseSettings.left);
-    senseSettings.height = Math.min(senseSettings.height, 100 - senseSettings.bottom);
+    /* the box is kept inside the frame by moving it, not by shrinking
+       it. the other way round, sliding it towards a wall cut the width
+       down to whatever was left — and sliding back didn't give it
+       returned, because the number had already been written over. the
+       size is what you set; the position gives way. */
+    senseSettings.width = Math.max(2, Math.min(100, senseSettings.width));
+    senseSettings.height = Math.max(2, Math.min(100, senseSettings.height));
+    senseSettings.left = Math.max(0, Math.min(senseSettings.left, 100 - senseSettings.width));
+    senseSettings.bottom = Math.max(0, Math.min(senseSettings.bottom, 100 - senseSettings.height));
 
     SENSE_KEYS.forEach((key) => {
         senseInputs[key].value = senseSettings[key];
@@ -2060,15 +2083,45 @@ document.addEventListener('pointerup', () => { panelDrag = null; });
 let dragMode = null;
 let dragStart = null;
 
+/* which part of the box the cursor is on. every edge and every corner
+   can be taken hold of, not just the two it used to be, and the grab
+   band shrinks on a small box so a thin strip is still mostly middle. */
 function boxPointerMode(event, box) {
-    const edge = 12;
-    const nearRight = event.clientX > box.right - edge;
-    const nearTop = event.clientY < box.top + edge;
-    if (nearRight && nearTop) return 'resize-both';
-    if (nearRight) return 'resize-x';
-    if (nearTop) return 'resize-y';
+    const sideways = Math.min(12, Math.max(4, box.width / 3));
+    const upright = Math.min(12, Math.max(4, box.height / 3));
+    const west = event.clientX - box.left <= sideways;
+    const east = box.right - event.clientX <= sideways;
+    const north = event.clientY - box.top <= upright;
+    const south = box.bottom - event.clientY <= upright;
+
+    if (north && west) return 'nw';
+    if (north && east) return 'ne';
+    if (south && west) return 'sw';
+    if (south && east) return 'se';
+    if (north) return 'n';
+    if (south) return 's';
+    if (west) return 'w';
+    if (east) return 'e';
     return 'move';
 }
+
+// the cursor says what the press will do before you make it
+const BOX_CURSORS = {
+    move: 'move',
+    n: 'ns-resize',
+    s: 'ns-resize',
+    e: 'ew-resize',
+    w: 'ew-resize',
+    ne: 'nesw-resize',
+    sw: 'nesw-resize',
+    nw: 'nwse-resize',
+    se: 'nwse-resize'
+};
+
+senseBox.addEventListener('pointermove', (event) => {
+    if (dragMode) return;   // mid-drag the cursor is already set
+    senseBox.style.cursor = BOX_CURSORS[boxPointerMode(event, senseBox.getBoundingClientRect())];
+});
 
 senseBox.addEventListener('pointerdown', (event) => {
     if (!previewWrap.classList.contains('showing-video')) return;
@@ -2095,16 +2148,36 @@ senseBox.addEventListener('pointermove', (event) => {
     const dy = (event.clientY - dragStart.y) / dragStart.frameHeight * 100;
 
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+    const mode = dragMode;
+    const holds = (letter) => mode.includes(letter);
 
-    if (dragMode === 'move') {
+    if (mode === 'move') {
         senseSettings.left = clamp(dragStart.left + dx, 0, 100 - senseSettings.width);
         senseSettings.bottom = clamp(dragStart.bottom - dy, 0, 100 - senseSettings.height);
-    }
-    if (dragMode === 'resize-x' || dragMode === 'resize-both') {
-        senseSettings.width = clamp(dragStart.width + dx, 2, 100 - senseSettings.left);
-    }
-    if (dragMode === 'resize-y' || dragMode === 'resize-both') {
-        senseSettings.height = clamp(dragStart.height - dy, 2, 100 - senseSettings.bottom);
+    } else {
+        /* an edge moves that edge and leaves the other three where they
+           are, which for the left and the bottom means the position
+           changes as well as the size. each is held to 2% and to the
+           far edge it is coming towards, so a side can't pass its
+           opposite number. */
+        if (holds('e')) {
+            senseSettings.width = clamp(dragStart.width + dx, 2, 100 - dragStart.left);
+        }
+        if (holds('w')) {
+            const right = dragStart.left + dragStart.width;
+            const left = clamp(dragStart.left + dx, 0, right - 2);
+            senseSettings.left = left;
+            senseSettings.width = right - left;
+        }
+        if (holds('n')) {
+            senseSettings.height = clamp(dragStart.height - dy, 2, 100 - dragStart.bottom);
+        }
+        if (holds('s')) {
+            const top = dragStart.bottom + dragStart.height;
+            const bottom = clamp(dragStart.bottom - dy, 0, top - 2);
+            senseSettings.bottom = bottom;
+            senseSettings.height = top - bottom;
+        }
     }
 
     applySenseSettings();
@@ -2372,7 +2445,8 @@ async function downloadAllClips() {
         }
         setRecordStatus(`packing ${done + 1} of ${clips.length}...`);
         try {
-            const mp3 = await blobToMp3(record.blob);
+            // a cropped clip goes out cropped here too
+            const mp3 = await blobToMp3(record.blob, clipSpan(record, record.durationMs / 1000));
             const href = URL.createObjectURL(mp3);
             const link = document.createElement('a');
             link.href = href;
@@ -2509,16 +2583,21 @@ function clipFileName(record) {
 /* decoding has to happen here (a worker has no AudioContext), but the
    encoding is the slow part, so that goes to mp3-worker.js and the page
    stays responsive while it runs. */
-async function blobToMp3(blob) {
+async function blobToMp3(blob, span) {
     const context = new AudioContext();
     const audio = await context.decodeAudioData(await blob.arrayBuffer());
     context.close();
 
-    // copies, because the worker takes ownership of whatever it is handed
-    const left = new Float32Array(audio.getChannelData(0));
-    const right = audio.numberOfChannels > 1
-        ? new Float32Array(audio.getChannelData(1))
-        : null;
+    /* a cropped clip is exported cropped: the whole thing is decoded,
+       and only the stretch between the marks is handed on. the copies
+       are needed anyway, because the worker takes ownership of whatever
+       it is given. */
+    const from = span ? Math.max(0, Math.floor(span.start * audio.sampleRate)) : 0;
+    const to = span && span.end ? Math.min(audio.length, Math.ceil(span.end * audio.sampleRate)) : audio.length;
+    const cut = (channel) => new Float32Array(audio.getChannelData(channel).subarray(from, to));
+
+    const left = cut(0);
+    const right = audio.numberOfChannels > 1 ? cut(1) : null;
 
     const worker = new Worker('mp3-worker.js');
     try {
@@ -2540,6 +2619,22 @@ async function blobToMp3(blob) {
 }
 
 /* --- recordings list --- */
+
+/* a clip can be cropped without being cut: the recording stays whole in
+   storage and the crop is two numbers kept beside it. playing, the
+   duration shown and the mp3 you download all read those two, so the
+   crop can be taken back by dragging the handles out again. */
+function clipStart(record) {
+    return record.trim ? record.trim.start : 0;
+}
+function clipEnd(record, whole) {
+    return record.trim ? record.trim.end : whole;
+}
+function clipSpan(record, whole) {
+    const start = Math.max(0, clipStart(record));
+    const end = Math.min(whole || 0, clipEnd(record, whole));
+    return { start, end, length: Math.max(0, end - start) };
+}
 
 function addRecording(record, alreadySaved, atEnd) {
     const item = document.createElement('li');
@@ -2586,9 +2681,8 @@ function addRecording(record, alreadySaved, atEnd) {
         item.classList.remove('is-playing');
     });
     player.addEventListener('ended', () => {
-        player.currentTime = 0;
-        fill.style.width = '0%';
-        label.textContent = `00:00 / ${record.duration}`;
+        player.currentTime = clipStart(record);
+        paintProgress();
     });
 
     // progress bar, scrubbable
@@ -2601,20 +2695,63 @@ function addRecording(record, alreadySaved, atEnd) {
     trackText.className = 'clip-text';
     trackText.textContent = record.name || `clip ${record.number}`;
 
-    track.append(fill, trackText);
+    /* the two marks you drag, and the stretch outside them. they live
+       inside the bar, so the bar's own rounding clips them. */
+    const shadeLeft = document.createElement('span');
+    shadeLeft.className = 'crop-shade is-left';
+    const shadeRight = document.createElement('span');
+    shadeRight.className = 'crop-shade is-right';
+    const handleStart = document.createElement('span');
+    handleStart.className = 'crop-handle is-start';
+    const handleEnd = document.createElement('span');
+    handleEnd.className = 'crop-handle is-end';
+
+    track.append(fill, shadeLeft, shadeRight, trackText);
+
+    /* the marks hang off a wrapper rather than off the bar: the bar
+       clips whatever leaves it, and the mark at the far end is half
+       outside — clipped, that half stopped taking the pointer, so the
+       end mark could be seen but not dragged. */
+    const trackWrap = document.createElement('div');
+    trackWrap.className = 'clip-track-wrap';
+    trackWrap.append(track, handleStart, handleEnd);
 
     const totalSeconds = record.durationMs ? record.durationMs / 1000 : 0;
 
     const isEditing = () => trackText.classList.contains('is-editing');
 
+    // the bar is the whole recording; the crop only says which stretch
+    // of it is played, and where the fill starts and stops
+    const paintCrop = () => {
+        const { start, end } = clipSpan(record, totalSeconds);
+        const from = totalSeconds ? (start / totalSeconds) * 100 : 0;
+        const to = totalSeconds ? (end / totalSeconds) * 100 : 100;
+        shadeLeft.style.width = `${from}%`;
+        shadeRight.style.left = `${to}%`;
+        shadeRight.style.width = `${100 - to}%`;
+        handleStart.style.left = `${from}%`;
+        handleEnd.style.left = `${to}%`;
+        item.classList.toggle('is-trimmed', Boolean(record.trim));
+    };
+
+    const paintProgress = () => {
+        const { start, end, length } = clipSpan(record, totalSeconds);
+        const at = Math.min(Math.max(player.currentTime, start), end);
+        const through = length ? (at - start) / length : 0;
+        fill.style.left = `${totalSeconds ? (start / totalSeconds) * 100 : 0}%`;
+        fill.style.width = `${totalSeconds ? (through * length / totalSeconds) * 100 : 0}%`;
+        label.textContent = `${formatDuration((at - start) * 1000)} / ${formatDuration(length * 1000)}`;
+        paintCrop();
+    };
+
     const seekTo = (clientX) => {
         if (isEditing() || !totalSeconds) return;
         loadPlayer();
+        const { start, end } = clipSpan(record, totalSeconds);
         const box = track.getBoundingClientRect();
         const ratio = Math.min(1, Math.max(0, (clientX - box.left) / box.width));
-        player.currentTime = ratio * totalSeconds;
-        fill.style.width = `${ratio * 100}%`;
-        label.textContent = `${formatDuration(player.currentTime * 1000)} / ${record.duration}`;
+        player.currentTime = Math.min(Math.max(ratio * totalSeconds, start), end);
+        paintProgress();
     };
 
     // a plain click landing on the name is for renaming, not seeking
@@ -2651,6 +2788,50 @@ function addRecording(record, alreadySaved, atEnd) {
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     });
+
+    /* dragging a mark. it writes straight into the record as it moves,
+       so what you hear while dragging is what the crop will be, and it
+       is only written to storage once you let go. the two can't cross,
+       and can't leave less than half a second between them. */
+    const GAP = 0.5;
+    const dragHandle = (handle, which) => {
+        handle.addEventListener('pointerdown', (event) => {
+            if (event.button || !totalSeconds) return;
+            event.stopPropagation();
+            event.preventDefault();
+            handle.setPointerCapture(event.pointerId);
+            item.classList.add('is-cropping-now');
+
+            const move = (moveEvent) => {
+                const box = track.getBoundingClientRect();
+                const at = Math.min(1, Math.max(0, (moveEvent.clientX - box.left) / box.width)) * totalSeconds;
+                const span = clipSpan(record, totalSeconds);
+                const trim = record.trim || { start: 0, end: totalSeconds };
+                if (which === 'start') trim.start = Math.min(at, span.end - GAP);
+                else trim.end = Math.max(at, span.start + GAP);
+                trim.start = Math.max(0, trim.start);
+                trim.end = Math.min(totalSeconds, trim.end);
+                record.trim = trim;
+                paintProgress();
+            };
+            const stop = () => {
+                handle.removeEventListener('pointermove', move);
+                handle.removeEventListener('pointerup', stop);
+                handle.removeEventListener('pointercancel', stop);
+                item.classList.remove('is-cropping-now');
+                // a crop that covers the whole thing is no crop at all
+                if (record.trim && record.trim.start <= 0.02
+                    && record.trim.end >= totalSeconds - 0.02) record.trim = null;
+                paintProgress();
+                saveClip(record);
+            };
+            handle.addEventListener('pointermove', move);
+            handle.addEventListener('pointerup', stop);
+            handle.addEventListener('pointercancel', stop);
+        });
+    };
+    dragHandle(handleStart, 'start');
+    dragHandle(handleEnd, 'end');
 
     // double-click the bar to rename the clip
     track.addEventListener('dblclick', (event) => {
@@ -2690,14 +2871,43 @@ function addRecording(record, alreadySaved, atEnd) {
 
     player.addEventListener('timeupdate', () => {
         if (!totalSeconds) return;
-        fill.style.width = `${Math.min(100, (player.currentTime / totalSeconds) * 100)}%`;
-        label.textContent = `${formatDuration(player.currentTime * 1000)} / ${record.duration}`;
+        const { start, end } = clipSpan(record, totalSeconds);
+        // the tail past the crop is never played: it stops at the mark
+        // and waits at the head, ready to go again
+        if (player.currentTime >= end - 0.02) {
+            player.pause();
+            player.currentTime = start;
+        }
+        paintProgress();
+    });
+    player.addEventListener('play', () => {
+        const { start, end } = clipSpan(record, totalSeconds);
+        if (player.currentTime < start || player.currentTime >= end) player.currentTime = start;
     });
 
     // label with duration
     const label = document.createElement('span');
     label.className = 'clip-label';
     label.textContent = `00:00 / ${record.duration}`;
+
+    /* crop: it doesn't cut anything, it shows the two marks and lets you
+       drag them. the clip keeps its whole self either way. */
+    const crop = document.createElement('button');
+    crop.className = 'clip-crop';
+    crop.type = 'button';
+    crop.setAttribute('aria-pressed', 'false');
+    crop.setAttribute('aria-label', `crop clip ${record.number}`);
+    crop.title = 'crop — drag the marks, they can be dragged back';
+    crop.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">'
+        + '<path d="M8 4 H5 V20 H8 M16 4 H19 V20 H16" fill="none" stroke="currentColor"'
+        + ' stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    crop.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const on = !item.classList.contains('is-cropping');
+        item.classList.toggle('is-cropping', on);
+        crop.setAttribute('aria-pressed', String(on));
+        paintCrop();
+    });
 
     const download = document.createElement('button');
     download.className = 'clip-download';
@@ -2708,9 +2918,12 @@ function addRecording(record, alreadySaved, atEnd) {
         event.stopPropagation();
         if (download.disabled) return;
         download.disabled = true;
-        download.textContent = '·';
+        // the mark it waits under is drawn by the stylesheet, so it sits
+        // in the middle of the button rather than wherever a glyph's own
+        // line box happens to put it
+        download.classList.add('is-working');
         try {
-            const mp3 = await blobToMp3(record.blob);
+            const mp3 = await blobToMp3(record.blob, clipSpan(record, totalSeconds));
             const href = URL.createObjectURL(mp3);
             const a = document.createElement('a');
             a.href = href;
@@ -2722,7 +2935,7 @@ function addRecording(record, alreadySaved, atEnd) {
             setRecordStatus(`mp3 failed — ${error.message}`, true);
         }
         download.disabled = false;
-        download.textContent = '↓';
+        download.classList.remove('is-working');
     });
 
     const discard = document.createElement('button');
@@ -2758,7 +2971,8 @@ function addRecording(record, alreadySaved, atEnd) {
         handle.focus();
     });
 
-    item.append(handle, playButton, track, label, download, discard, player);
+    item.append(handle, playButton, trackWrap, label, crop, download, discard, player);
+    paintProgress();
     if (atEnd) recordingList.append(item);
     else recordingList.prepend(item);
     refreshEmptyMessage();
@@ -3935,6 +4149,8 @@ const WIDGET_KEY = 'home-widgets';
 const WIDGET_SIZES = ['small', 'wide', 'large'];
 const SIZE_MARK = { small: '1×1', wide: '2×1', large: '2×2' };
 
+/* nothing comes with the board. the widgets you put on it are your own
+   pictures, added with the + — so there is no catalogue here yet. */
 /* each widget says what it's called, the face it wears, and how to
    fill its body at a given size. fill() is called again whenever
    anything it shows changes, so it always rebuilds rather than
@@ -4150,16 +4366,9 @@ function saveWidgets() {
 
 function renderWidgets() {
     widgetList.innerHTML = '';
-    if (!homeWidgets.length) {
-        widgetList.innerHTML =
-            '<p class="empty-message">'
-            + '<span class="empty-words">'
-            +   '<span class="empty-say"><b>an empty board</b></span>'
-            +   '<span class="empty-hint">press edit and add something to it</span>'
-            + '</span>'
-            + '<span class="empty-face">=ω=</span>'
-            + '</p>';
-    }
+    // an empty board says nothing — it just stands the add circle out
+    // where the tiles would be, so there is something to press
+    homePanel2.classList.toggle('is-empty', homeWidgets.length === 0);
 
     homeWidgets.forEach((entry) => {
         const widget = widgetById(entry.id);
@@ -4188,7 +4397,7 @@ function renderWidgets() {
         const drop = document.createElement('button');
         drop.className = 'widget-off';
         drop.type = 'button';
-        drop.setAttribute('aria-label', `take ${widget.name} off the board`);
+        drop.setAttribute('aria-label', `remove ${widget.name}`);
         drop.textContent = '×';
         drop.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -4250,6 +4459,16 @@ function cycleWidgetSize(id) {
     saveWidgets();
     slideBoard(() => renderWidgets());
 }
+
+/* a press anywhere that isn't the board or the buttons that work it puts
+   the arranging away, the same as pressing done. */
+document.addEventListener('pointerdown', (event) => {
+    if (!editingHome) return;
+    const inside = event.target.closest
+        && event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks');
+    if (inside) return;
+    setHomeEditing(false);
+});
 
 function setHomeEditing(on) {
     editingHome = on;
@@ -4405,7 +4624,34 @@ function renderWidgetPicks() {
         });
         widgetPickList.append(pick);
     });
+    // nothing to offer while the catalogue is empty — say so rather than
+    // opening a blank box
+    if (!widgetPickList.children.length) {
+        const none = document.createElement('p');
+        none.className = 'pop-say';
+        none.textContent = 'nothing to add yet.';
+        widgetPickList.append(none);
+    }
 }
+
+/* the function box keeps itself shut. it opens on the heading and
+   stays open until you shut it again — a page load starts it closed,
+   since by then you have usually read it once. */
+const helpToggle = document.getElementById('helpToggle');
+
+/* the state is a class on the box, not the attribute on the button. the
+   attribute is still set, for anything reading the page aloud, but the
+   drawer is opened by the class — a rule that hangs off an attribute on
+   a sibling is a lot of machinery for a box that opens. */
+function setHelpOpen(open) {
+    helpBox.classList.toggle('is-open', open);
+    helpToggle.setAttribute('aria-expanded', String(open));
+}
+
+helpToggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setHelpOpen(!helpBox.classList.contains('is-open'));
+});
 
 widgetEdit.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -4441,3 +4687,909 @@ start();
 // last of all: the widgets read the decks, so the decks load first
 loadWidgets();
 renderWidgets();
+
+/* ---------- 16. notes → cards   (the left bar) ---------- */
+
+/* paste a page of notes — or a photo of one, or a pdf of the whole
+   study guide — and get a deck out of it.
+
+   two ways in, and the first asks nothing of anybody: reading is done
+   here, off the shapes notes are already written in. anything without a
+   shape, and anything that isn't text at all, is what claude is for,
+   which needs a key of the reader's own kept in this browser.
+
+   the panel lives in the left bar and moves into a window when the bar
+   is too narrow to type in. it moves — there is one of it, so there is
+   one of everything in it and nothing to keep in step. */
+
+const notesPanel = document.getElementById('notesPanel');
+const notesSlot = document.getElementById('notesSlot');
+const notesWide = document.getElementById('notesWide');
+const notesInput = document.getElementById('notesInput');
+const notesFile = document.getElementById('notesFile');
+const notesBits = document.getElementById('notesBits');
+const notesAttach = document.getElementById('notesAttach');
+const notesGo = document.getElementById('notesGo');
+const notesRead = document.getElementById('notesRead');
+const notesNote = document.getElementById('notesNote');
+const notesFound = document.getElementById('notesFound');
+const notesKeepRow = document.getElementById('notesKeepRow');
+const notesKeep = document.getElementById('notesKeep');
+const notesKeepNew = document.getElementById('notesKeepNew');
+const notesKeyToggle = document.getElementById('notesKeyToggle');
+const notesKeyRow = document.getElementById('notesKeyRow');
+const notesKey = document.getElementById('notesKey');
+const notesKeySave = document.getElementById('notesKeySave');
+const notesKeyForget = document.getElementById('notesKeyForget');
+
+const KEY_STORE = 'claude-api-key';
+const NOTES_HOME = notesPanel.parentElement;   // the bar it came from
+
+let notesCards = [];       // what the last read found, waiting to be kept
+let notesDeckName = '';    // what claude would call the deck
+let notesBitsHeld = [];    // pictures and pdfs waiting to be read
+let notesBusy = false;
+
+/* --- reading it here, with nobody's help --- */
+
+/* the shapes a line can be a card in. each is tried in turn and the
+   first that bites wins, so a line with both a dash and a colon is
+   split on the dash — the dash is the more deliberate mark. */
+const CARD_SPLITS = [
+    /^\s*(?:[-*•]\s*|\d+[.)]\s*)?(.+?)\s+[—–]\s+(.+?)\s*$/,   // term — meaning
+    /^\s*(?:[-*•]\s*|\d+[.)]\s*)?(.+?)\s+-\s+(.+?)\s*$/,      // term - meaning
+    /^\s*(?:[-*•]\s*|\d+[.)]\s*)?(.+?)\s*=\s*(.+?)\s*$/,      // term = meaning
+    /^\s*(?:[-*•]\s*|\d+[.)]\s*)?(.+?)\s*:\s*(.+?)\s*$/,      // term: meaning
+    /^\s*(?:[-*•]\s*|\d+[.)]\s*)?(.+?)\s*\t+(.+?)\s*$/        // term<tab>meaning
+];
+
+function tidy(words) {
+    return String(words).replace(/\s+/g, ' ').replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+}
+
+/* q:/a: pairs first, since those lines also hold colons and would be
+   read as term: meaning otherwise */
+function readQAPairs(lines) {
+    const cards = [];
+    for (let index = 0; index < lines.length; index += 1) {
+        const question = lines[index].match(/^\s*(?:q|question)\s*[:.)-]\s*(.+)$/i);
+        if (!question) continue;
+        for (let look = index + 1; look < Math.min(lines.length, index + 4); look += 1) {
+            const answer = lines[look].match(/^\s*(?:a|ans|answer)\s*[:.)-]\s*(.+)$/i);
+            if (!answer) continue;
+            cards.push({ question: tidy(question[1]), answer: tidy(answer[1]) });
+            index = look;
+            break;
+        }
+    }
+    return cards;
+}
+
+/* notes written in paragraphs. a block with a heading and lines under
+   it is one card; where every block is a single line they pair off
+   instead, a term and then what it means. */
+function readBlocks(text) {
+    const blocks = text
+        .split(/\n\s*\n/)
+        .map((block) => block.split('\n').map((line) => line.trim()).filter(Boolean))
+        .filter((lines) => lines.length);
+
+    /* a heading has to look like one, or every paragraph of prose comes
+       out as a card whose question is its first line. short, and not
+       ending the way a sentence does. */
+    const isHeading = (line) => line.length <= 60 && !/[.,;]$/.test(line);
+    const deep = blocks.filter((lines) => lines.length > 1 && isHeading(lines[0]));
+    // one block on its own is a paragraph, whatever its first line looks
+    // like. notes laid out as heading-and-body come in more than one.
+    if (deep.length && blocks.length > 1) {
+        return deep.map((lines) => ({
+            question: tidy(lines[0].replace(/[:：]\s*$/, '')),
+            answer: tidy(lines.slice(1).join(' '))
+        }));
+    }
+
+    if (blocks.length >= 2 && blocks.length % 2 === 0) {
+        const cards = [];
+        for (let index = 0; index < blocks.length; index += 2) {
+            cards.push({ question: tidy(blocks[index][0]), answer: tidy(blocks[index + 1][0]) });
+        }
+        return cards;
+    }
+    return [];
+}
+
+function readNotes(text) {
+    const lines = text.split('\n').filter((line) => line.trim());
+    const pairs = readQAPairs(lines);
+    if (pairs.length) return pairs;
+
+    const cards = [];
+    lines.forEach((line) => {
+        if (/^\s*#{1,6}\s/.test(line)) return;   // a heading is not a card
+        for (const split of CARD_SPLITS) {
+            const hit = line.match(split);
+            if (!hit) continue;
+            const question = tidy(hit[1]);
+            const answer = tidy(hit[2]);
+            if (!question || !answer) return;
+            cards.push({ question, answer });
+            return;
+        }
+    });
+    if (cards.length) return cards;
+
+    return readBlocks(text);
+}
+
+/* --- what it found --- */
+
+// the same question twice is one card, whichever pass turned it up
+function mergeCards(into, more) {
+    const seen = new Set(into.map((card) => card.question.toLowerCase()));
+    more.forEach((card) => {
+        const mark = card.question.toLowerCase();
+        if (!card.question || !card.answer || seen.has(mark)) return;
+        seen.add(mark);
+        into.push(card);
+    });
+    return into;
+}
+
+function renderFound(cards, said) {
+    notesCards = cards;
+    notesFound.innerHTML = '';
+    cards.forEach((card, index) => {
+        const row = document.createElement('li');
+        row.className = 'notes-card';
+
+        const text = document.createElement('span');
+        text.className = 'notes-card-text';
+        const question = document.createElement('strong');
+        question.textContent = card.question;
+        const answer = document.createElement('small');
+        answer.textContent = card.answer;
+        text.append(question, answer);
+
+        const drop = document.createElement('button');
+        drop.className = 'notes-card-drop';
+        drop.type = 'button';
+        drop.textContent = '×';
+        drop.setAttribute('aria-label', `leave out ${card.question}`);
+        drop.addEventListener('click', () => {
+            notesCards.splice(index, 1);
+            renderFound(notesCards, said);
+        });
+
+        row.append(text, drop);
+        notesFound.append(row);
+    });
+
+    notesKeepRow.hidden = cards.length === 0;
+    notesKeep.textContent = `keep ${cards.length} card${cards.length === 1 ? '' : 's'}`;
+    if (said !== undefined) notesNote.textContent = said;
+}
+
+function keepCards(deck) {
+    notesCards.forEach((card) => deck.cards.push({ question: card.question, answer: card.answer }));
+    const kept = notesCards.length;
+    renderDecks();
+    renderCards();
+    saveDecks();
+    notesInput.value = '';
+    clearBits();
+    renderFound([], `${kept} card${kept === 1 ? '' : 's'} into ${deck.name}`);
+}
+
+notesKeep.addEventListener('click', () => {
+    if (notesCards.length) keepCards(activeDeck());
+});
+
+notesKeepNew.addEventListener('click', () => {
+    if (!notesCards.length) return;
+    const deck = {
+        id: `deck-${Date.now()}`,
+        name: notesDeckName || 'from my notes',
+        cards: []
+    };
+    decks.push(deck);
+    activeDeckId = deck.id;
+    keepCards(deck);
+});
+
+/* the second, quieter button: read the text as a list here, without
+   asking anybody. it is for a glossary you pasted and want turned over
+   in one go — for anything else the first button is the one. */
+notesRead.addEventListener('click', () => {
+    const text = notesInput.value.trim();
+    if (!text) {
+        notesNote.textContent = notesBitsHeld.length
+            ? 'a picture has to be looked at — use make flashcards'
+            : 'paste something first';
+        return;
+    }
+    const found = readNotes(text);
+    renderFound(found, found.length
+        ? `${found.length} off the list`
+        : 'no list in there — use make flashcards and it will read it properly');
+});
+
+/* --- pictures and pdfs --- */
+
+const BIT_LIMIT = 8;
+const BIT_BYTES = 6 * 1024 * 1024;   // per file, before it is turned into text
+
+function clearBits() {
+    notesBitsHeld = [];
+    renderBits();
+}
+
+function renderBits() {
+    notesBits.innerHTML = '';
+    notesBitsHeld.forEach((bit, index) => {
+        const chip = document.createElement('span');
+        chip.className = 'notes-bit';
+
+        if (bit.kind === 'image') {
+            const look = document.createElement('img');
+            look.src = `data:${bit.mediaType};base64,${bit.data}`;
+            look.alt = bit.name;
+            chip.append(look);
+        } else {
+            const mark = document.createElement('span');
+            mark.className = 'notes-bit-mark';
+            mark.textContent = 'pdf';
+            chip.append(mark);
+        }
+
+        const drop = document.createElement('button');
+        drop.className = 'notes-bit-drop';
+        drop.type = 'button';
+        drop.textContent = '×';
+        drop.title = bit.name;
+        drop.setAttribute('aria-label', `take off ${bit.name}`);
+        drop.addEventListener('click', () => {
+            notesBitsHeld.splice(index, 1);
+            renderBits();
+        });
+
+        chip.append(drop);
+        notesBits.append(chip);
+    });
+    notesBits.hidden = notesBitsHeld.length === 0;
+}
+
+function asBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        // the data url carries a header this doesn't want; the base64
+        // the api takes is whatever follows the comma
+        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = () => reject(new Error(`couldn't read ${file.name}`));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function holdFiles(files) {
+    const taking = [...files].filter((file) => file && (file.type.startsWith('image/') || file.type === 'application/pdf'));
+    if (!taking.length) {
+        notesNote.textContent = 'pictures and pdfs only';
+        return;
+    }
+    for (const file of taking) {
+        if (notesBitsHeld.length >= BIT_LIMIT) {
+            notesNote.textContent = `${BIT_LIMIT} at a time is the most it will carry`;
+            break;
+        }
+        if (file.size > BIT_BYTES) {
+            notesNote.textContent = `${file.name || 'that one'} is too big — under 6mb each`;
+            continue;
+        }
+        try {
+            notesBitsHeld.push({
+                kind: file.type === 'application/pdf' ? 'pdf' : 'image',
+                // the api takes these four; anything else a browser calls
+                // an image is sent as png and read the same way
+                mediaType: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'].includes(file.type)
+                    ? file.type
+                    : 'image/png',
+                data: await asBase64(file),
+                name: file.name || 'pasted'
+            });
+        } catch (error) {
+            notesNote.textContent = error.message;
+        }
+    }
+    renderBits();
+    if (notesBitsHeld.length) {
+        const count = notesBitsHeld.length;
+        notesNote.textContent = `${count} attached — press make flashcards`;
+    }
+}
+
+notesAttach.addEventListener('click', () => notesFile.click());
+notesFile.addEventListener('change', () => {
+    holdFiles(notesFile.files);
+    notesFile.value = '';
+});
+
+// a photo out of the clipboard, straight into the box
+notesInput.addEventListener('paste', (event) => {
+    const files = [...(event.clipboardData ? event.clipboardData.files : [])];
+    if (!files.length) return;
+    event.preventDefault();
+    holdFiles(files);
+});
+
+// or dropped anywhere on the panel
+['dragenter', 'dragover'].forEach((name) => {
+    notesPanel.addEventListener(name, (event) => {
+        event.preventDefault();
+        notesPanel.classList.add('is-catching');
+    });
+});
+['dragleave', 'drop'].forEach((name) => {
+    notesPanel.addEventListener(name, (event) => {
+        event.preventDefault();
+        if (name === 'dragleave' && notesPanel.contains(event.relatedTarget)) return;
+        notesPanel.classList.remove('is-catching');
+    });
+});
+notesPanel.addEventListener('drop', (event) => {
+    if (event.dataTransfer && event.dataTransfer.files.length) holdFiles(event.dataTransfer.files);
+});
+
+/* --- reading the words out of a picture, here --- */
+
+/* a photo of a page can be read without anyone's help: tesseract is an
+   ocr engine that runs in the browser, vendored beside the page the
+   same way the mp3 encoder is. it is loaded the first time a picture
+   needs reading and not before — it is several megabytes, and most
+   visits never touch it.
+
+   what it gives back is the words, not cards. those go into the box,
+   where they are the same as anything else you could have typed. */
+let ocrLoading = null;
+
+function loadOcr() {
+    if (window.Tesseract) return Promise.resolve();
+    if (ocrLoading) return ocrLoading;
+    ocrLoading = new Promise((resolve, reject) => {
+        const tag = document.createElement('script');
+        tag.src = 'ocr/tesseract.min.js';
+        tag.onload = () => resolve();
+        tag.onerror = () => reject(new Error('the reader would not load'));
+        document.head.append(tag);
+    });
+    return ocrLoading;
+}
+
+async function readPicture(bit, say) {
+    await loadOcr();
+    const worker = await window.Tesseract.createWorker('eng', 1, {
+        workerPath: 'ocr/worker.min.js',
+        corePath: 'ocr/',
+        langPath: 'ocr/',
+        gzip: true,
+        logger: (step) => {
+            if (step.status === 'recognizing text' && say) {
+                say(`reading the picture... ${Math.round(step.progress * 100)}%`);
+            }
+        }
+    });
+    try {
+        const { data } = await worker.recognize(`data:${bit.mediaType};base64,${bit.data}`);
+        return (data.text || '').trim();
+    } finally {
+        worker.terminate();
+    }
+}
+
+/* --- the model that runs here, with no account and no bill --- */
+
+/* the reader of last resort is not a service: it is a model that comes
+   down once and then lives in this browser. no key, no sign-up, and
+   nothing you paste ever leaves the machine.
+
+   it is smaller than what a company would run for you, so the cards
+   are plainer — but its answer is forced through the same schema the
+   api uses, so it can only fill in questions and answers, never
+   wander off into prose. it runs in a worker: the arithmetic is heavy
+   enough to stiffen the page if it ran on it. */
+
+const LOCAL_MODEL = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
+const LOCAL_SIZE = 'about 1.1gb';
+let localEngine = null;
+let localLoading = null;
+
+async function gpuThere() {
+    if (!navigator.gpu) return false;
+    try {
+        return Boolean(await navigator.gpu.requestAdapter());
+    } catch (error) {
+        return false;
+    }
+}
+
+/* one engine, made once and kept. the download is the browser's to
+   remember — it caches the weights itself, so the second time this
+   runs there is nothing to fetch and it is ready in a moment. */
+async function readyLocal(say) {
+    if (localEngine) return localEngine;
+    if (localLoading) return localLoading;
+
+    localLoading = (async () => {
+        const webllm = await import('./llm/web-llm.js');
+        const worker = new Worker('llm-worker.js', { type: 'module' });
+        const engine = await webllm.CreateWebWorkerMLCEngine(worker, LOCAL_MODEL, {
+            initProgressCallback: (report) => {
+                if (!say) return;
+                // the first run is a download; after that it is just
+                // the weights being put on the gpu, which is quick
+                const percent = Math.round((report.progress || 0) * 100);
+                say(percent >= 100 ? 'getting it ready...' : `getting the reader — ${percent}% of ${LOCAL_SIZE}`);
+            }
+        });
+        localEngine = engine;
+        return engine;
+    })();
+
+    try {
+        return await localLoading;
+    } finally {
+        localLoading = null;
+    }
+}
+
+/* the brief the small model gets. it is shorter and firmer than the
+   one the api gets — a model this size follows a short list of rules
+   further than a long argument. */
+const LOCAL_BRIEF = [
+    'you make flashcards out of study material.',
+    'read the text and write a card for every fact, term, date, name or step worth remembering.',
+    'question: a short prompt with one answer. answer: a word or a phrase, never a sentence.',
+    'one fact per card. do not repeat a card. do not invent anything that is not in the text.',
+    'write in lowercase. make as many cards as the text has facts.'
+].join('\n');
+
+/* a small model reads a smaller mouthful at a time than a large one */
+const LOCAL_PIECE = 2200;
+
+async function askLocal(text, onCards, say) {
+    const engine = await readyLocal(say);
+    const pieces = text.length <= LOCAL_PIECE ? [text] : cutIntoPieces(text, LOCAL_PIECE);
+    const gathered = [];
+
+    for (let index = 0; index < pieces.length; index += 1) {
+        const where = pieces.length > 1 ? ` · part ${index + 1} of ${pieces.length}` : '';
+        if (say) say(`reading${where}...`);
+        const answer = await engine.chat.completions.create({
+            messages: [
+                { role: 'system', content: LOCAL_BRIEF },
+                { role: 'user', content: pieces[index] }
+            ],
+            // the same shape the api is held to, enforced as it writes
+            response_format: { type: 'json_object', schema: JSON.stringify(NOTES_SCHEMA) },
+            temperature: 0.2,
+            max_tokens: 2000
+        });
+
+        let parsed;
+        try {
+            parsed = JSON.parse(answer.choices[0].message.content);
+        } catch (error) {
+            continue;   // that piece came out unreadable; the rest may not
+        }
+        mergeCards(gathered, (parsed.cards || [])
+            .map((card) => ({ question: tidy(card.question), answer: tidy(card.answer) }))
+            .filter((card) => card.question && card.answer));
+        if (!notesDeckName && parsed.deck_name) notesDeckName = tidy(parsed.deck_name);
+        if (onCards) onCards(gathered, where);
+    }
+    return gathered;
+}
+
+/* --- the key --- */
+
+function savedKey() {
+    try {
+        return window.localStorage.getItem(KEY_STORE) || '';
+    } catch (error) {
+        return '';
+    }
+}
+
+function paintKeyState() {
+    const key = savedKey();
+    notesKeyToggle.textContent = key ? 'sharper reading ✓' : 'sharper reading';
+    // without a key the only reading that can happen is the reading
+    // done here, so the button says what it will actually do
+    notesRead.hidden = !key;
+}
+
+notesKeyToggle.addEventListener('click', () => {
+    const open = notesKeyRow.hidden;
+    notesKeyRow.hidden = !open;
+    notesKeyToggle.setAttribute('aria-expanded', String(open));
+    if (open) notesKey.focus();
+});
+
+notesKeySave.addEventListener('click', () => {
+    const typed = notesKey.value.trim();
+    if (!typed) return;
+    try {
+        window.localStorage.setItem(KEY_STORE, typed);
+    } catch (error) {
+        notesNote.textContent = "this browser won't keep it";
+        return;
+    }
+    notesKey.value = '';
+    notesKeyRow.hidden = true;
+    notesKeyToggle.setAttribute('aria-expanded', 'false');
+    paintKeyState();
+    notesNote.textContent = 'key saved';
+});
+
+notesKeyForget.addEventListener('click', () => {
+    try {
+        window.localStorage.removeItem(KEY_STORE);
+    } catch (error) {
+        // nothing to forget
+    }
+    notesKey.value = '';
+    paintKeyState();
+    notesNote.textContent = 'key forgotten';
+});
+
+/* --- asking claude --- */
+
+/* the shape the answer has to come back in. asking for json by saying
+   "give me json" is a request; this is the api being told the schema,
+   so what comes back parses or the call fails. */
+const NOTES_SCHEMA = {
+    type: 'object',
+    properties: {
+        deck_name: { type: 'string' },
+        cards: {
+            type: 'array',
+            items: {
+                type: 'object',
+                properties: {
+                    question: { type: 'string' },
+                    answer: { type: 'string' }
+                },
+                required: ['question', 'answer'],
+                additionalProperties: false
+            }
+        }
+    },
+    required: ['deck_name', 'cards'],
+    additionalProperties: false
+};
+
+/* the brief. the first version of this asked for "one card per idea"
+   and got back a card — a whole page summarised into one. it says now,
+   at length, that the work is to cover the material rather than to sum
+   it up, because that is the thing a model will otherwise do. */
+const NOTES_BRIEF = [
+    'you turn study material into flashcards. you are thorough: your job is to cover the material, not to summarise it.',
+    '',
+    'what arrives is whatever the reader was studying, in whatever state they had it in:',
+    'a tidy list of terms, a page of prose, an essay, a lecture transcript, a chapter, a photograph of',
+    'handwritten notes, a slide, a diagram, a pdf. none of it will be laid out as cards, and it does not',
+    'need to be. read it, work out what it is teaching, and write the cards yourself.',
+    '',
+    'write a card for every fact, term, date, name, step, formula, cause, or distinction that could be asked about.',
+    'prose hides these in sentences — pull them out. a paragraph explaining one thing is still at least one card.',
+    'a dense page should give you twenty cards or more, and a chapter more than that. never stop at a handful.',
+    'never put two facts on one card. a list of six things is six cards, not one — plus, where it helps, one card asking for all six.',
+    '',
+    'the question side is a short prompt: a term to define, or a question with exactly one answer.',
+    'the answer side is the shortest thing that answers it — a word or a phrase where that will do, never a paragraph.',
+    'keep the wording of the source where it is already clear. do not invent anything that is not in the material.',
+    'no yes/no questions, no "what did the notes say about x", and no two cards asking the same thing.',
+    '',
+    'skip headings, page numbers, "chapter 4", admin, and anything else nobody would revise.',
+    'a picture: read everything in it, handwriting included, and take labelled diagrams apart piece by piece.',
+    'a pdf: work through all of it, not only the first page.',
+    'if it is genuinely not study material — a receipt, a screenshot of a chat — return no cards rather than inventing some.',
+    '',
+    'write everything in lowercase.',
+    'deck_name is two or three lowercase words naming the subject of the material.'
+].join('\n');
+
+/* long notes go up in pieces. a model asked for forty cards in one
+   breath starts to hurry towards the end of them; a piece at a time
+   keeps the whole of it read at the same care, and the pieces are cut
+   at blank lines so nothing is split mid-thought. */
+const NOTES_PIECE = 6000;
+
+function cutIntoPieces(text, size) {
+    const most = size || NOTES_PIECE;
+    if (text.length <= most) return [text];
+    const pieces = [];
+    let piece = '';
+    text.split(/\n\s*\n/).forEach((block) => {
+        if (piece && piece.length + block.length > most) {
+            pieces.push(piece);
+            piece = '';
+        }
+        piece += (piece ? '\n\n' : '') + block;
+    });
+    if (piece.trim()) pieces.push(piece);
+    return pieces;
+}
+
+/* the answer is streamed. a long deck takes a while to write and a
+   plain request would be sat on until the last card was done — this
+   way the count climbs while it works, and a slow answer can't run
+   into a timeout on the way. */
+async function askClaude(text, bits, onProgress) {
+    const key = savedKey();
+    if (!key) throw new Error('no key saved');
+
+    const content = [];
+    // documents and pictures before the words, which is the order the
+    // api reads them best in
+    bits.forEach((bit) => {
+        if (bit.kind === 'pdf') {
+            content.push({
+                type: 'document',
+                source: { type: 'base64', media_type: 'application/pdf', data: bit.data }
+            });
+        } else {
+            content.push({
+                type: 'image',
+                source: { type: 'base64', media_type: bit.mediaType, data: bit.data }
+            });
+        }
+    });
+    content.push({
+        type: 'text',
+        text: text || 'make cards from everything attached.'
+    });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01',
+            // the api refuses a call straight from a page without this
+            'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+            model: 'claude-opus-5',
+            max_tokens: 32000,
+            stream: true,
+            output_config: {
+                format: { type: 'json_schema', schema: NOTES_SCHEMA }
+            },
+            system: NOTES_BRIEF,
+            messages: [{ role: 'user', content }]
+        })
+    });
+
+    if (!response.ok) {
+        let said = `${response.status}`;
+        try {
+            const body = await response.json();
+            if (body.error && body.error.message) said = body.error.message;
+        } catch (error) {
+            // the status on its own will have to do
+        }
+        throw new Error(said);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let said = '';
+    let stopped = '';
+
+    // server-sent events: blocks separated by a blank line, each a few
+    // lines of which only the data one matters here
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let cut = buffer.indexOf('\n\n');
+        while (cut !== -1) {
+            const block = buffer.slice(0, cut);
+            buffer = buffer.slice(cut + 2);
+            block.split('\n').forEach((line) => {
+                if (!line.startsWith('data:')) return;
+                let event;
+                try {
+                    event = JSON.parse(line.slice(5).trim());
+                } catch (error) {
+                    return;
+                }
+                if (event.type === 'content_block_delta' && event.delta && event.delta.type === 'text_delta') {
+                    said += event.delta.text;
+                    // the cards are counted as they arrive, off the one
+                    // word that starts each of them
+                    if (onProgress) onProgress((said.match(/"question"/g) || []).length);
+                } else if (event.type === 'message_delta' && event.delta && event.delta.stop_reason) {
+                    stopped = event.delta.stop_reason;
+                } else if (event.type === 'error') {
+                    throw new Error((event.error && event.error.message) || 'the stream broke');
+                }
+            });
+            cut = buffer.indexOf('\n\n');
+        }
+    }
+
+    if (stopped === 'refusal') throw new Error('claude declined that one');
+    if (!said.trim()) throw new Error('nothing came back');
+
+    let parsed;
+    try {
+        parsed = JSON.parse(said);
+    } catch (error) {
+        // the only way out of a schema is to have been cut off partway
+        throw new Error(stopped === 'max_tokens'
+            ? 'too much at once — send it in halves'
+            : "couldn't read what came back");
+    }
+
+    return {
+        deckName: tidy(parsed.deck_name || ''),
+        cards: (parsed.cards || [])
+            .map((card) => ({ question: tidy(card.question), answer: tidy(card.answer) }))
+            .filter((card) => card.question && card.answer)
+    };
+}
+
+function setNotesBusy(busy) {
+    notesBusy = busy;
+    notesGo.disabled = busy;
+    notesRead.disabled = busy;
+    notesAttach.disabled = busy;
+    notesGo.textContent = busy ? 'reading...' : 'make flashcards';
+}
+
+/* the one button. it takes whatever is in the panel — words, photos, a
+   pdf, any mix of them — and comes back with cards.
+
+   every photo and every pdf is read on its own rather than all of them
+   in one go: a page of notes deserves the whole of the model's
+   attention, and one call holding six photos gives each a sixth of it.
+   long text is cut into pieces for the same reason. what comes back is
+   merged and deduped by question. */
+async function makeCards() {
+    if (notesBusy) return;
+    const text = notesInput.value.trim();
+    if (!text && !notesBitsHeld.length) {
+        notesNote.textContent = 'paste some notes, or drop a photo of them';
+        return;
+    }
+
+    /* with nobody's help. the pictures are read here first — the words
+       out of them go in the box beside whatever was typed, where they
+       can be corrected — and then the model that lives in this browser
+       makes the cards. no key, no account, nothing leaves the machine.
+       where there is no gpu to run it on, the list reader is what is
+       left, and it says so. */
+    if (!savedKey()) {
+        setNotesBusy(true);
+        notesDeckName = '';
+        try {
+            let gathered = text;
+            for (let index = 0; index < notesBitsHeld.length; index += 1) {
+                const bit = notesBitsHeld[index];
+                if (bit.kind === 'pdf') {
+                    notesNote.textContent = 'a pdf is more than this can read on its own — see below';
+                    continue;
+                }
+                const which = notesBitsHeld.length > 1 ? ` (${index + 1} of ${notesBitsHeld.length})` : '';
+                notesNote.textContent = `reading the picture${which}...`;
+                const said = await readPicture(bit, (how) => {
+                    notesNote.textContent = how + which;
+                });
+                if (said) gathered += (gathered ? '\n\n' : '') + said;
+            }
+            if (gathered !== text) {
+                notesInput.value = gathered;
+                clearBits();
+            }
+
+            if (!gathered.trim()) {
+                renderFound([], 'nothing readable in there');
+            } else if (await gpuThere()) {
+                const cards = await askLocal(
+                    gathered,
+                    (sofar, where) => renderFound([...sofar], `${sofar.length} cards${where}...`),
+                    (how) => { notesNote.textContent = how; }
+                );
+                renderFound(cards, cards.length
+                    ? `${cards.length} cards — drop any you don't want, then keep them`
+                    : 'it made nothing of that one');
+            } else {
+                const found = readNotes(gathered);
+                renderFound(found, found.length
+                    ? `${found.length} off the list`
+                    : "this browser can't run the reader — notes already in pairs are all it can do here");
+            }
+        } catch (error) {
+            // the weights want about a gigabyte of the browser's own
+            // room; when there is none, say that rather than the raw
+            // word the browser throws
+            notesNote.textContent = /quota/i.test(error.name + error.message)
+                ? 'no room in this browser for the reader — clear some space and try again'
+                : `couldn't read it — ${error.message}`;
+        }
+        setNotesBusy(false);
+        return;
+    }
+
+    setNotesBusy(true);
+    const gathered = [];
+    notesDeckName = '';
+
+    /* one run per thing to look at: each picture, each pdf, then the
+       words in pieces. the words ride along with the first picture when
+       there is one, since they are usually about it. */
+    const runs = [];
+    notesBitsHeld.forEach((bit, index) => {
+        runs.push({
+            bits: [bit],
+            text: index === 0 ? text : '',
+            said: bit.kind === 'pdf' ? 'the pdf' : `photo ${index + 1}`
+        });
+    });
+    if (!notesBitsHeld.length && text) {
+        const pieces = cutIntoPieces(text);
+        pieces.forEach((piece, index) => {
+            runs.push({ bits: [], text: piece, said: pieces.length > 1 ? `part ${index + 1}` : '' });
+        });
+    }
+
+    try {
+        for (let index = 0; index < runs.length; index += 1) {
+            const run = runs[index];
+            const where = runs.length > 1 ? ` · ${run.said || index + 1} of ${runs.length}` : '';
+            notesNote.textContent = `reading${where}...`;
+            const answer = await askClaude(run.text, run.bits, (count) => {
+                notesNote.textContent = `${gathered.length + count} cards${where}...`;
+            });
+            if (!notesDeckName) notesDeckName = answer.deckName;
+            mergeCards(gathered, answer.cards);
+            renderFound(gathered, `${gathered.length} cards${where}...`);
+        }
+
+        renderFound(gathered, gathered.length
+            ? `${gathered.length} cards — drop any you don't want, then keep them`
+            : 'nothing in there worth a card');
+    } catch (error) {
+        notesNote.textContent = `couldn't read it — ${error.message}`;
+    }
+    setNotesBusy(false);
+}
+
+notesGo.addEventListener('click', makeCards);
+
+/* --- the panel, opened wide --- */
+
+/* it moves rather than being copied: the window holds an empty slot,
+   and the panel goes in and comes back out. */
+function openNotesWide() {
+    if (notesScreen.contains(notesPanel)) {
+        showScreen(homeScreen);
+        return;
+    }
+    notesSlot.append(notesPanel);
+    showScreen(notesScreen);
+    notesInput.focus();
+}
+
+function returnNotesPanel() {
+    if (NOTES_HOME && !NOTES_HOME.contains(notesPanel)) NOTES_HOME.append(notesPanel);
+}
+
+notesWide.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openNotesWide();
+});
+
+renderBits();
+paintKeyState();
