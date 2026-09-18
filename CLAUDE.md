@@ -66,6 +66,20 @@ leaves the machine. The model is small, so the cards are plainer than
 the API's — its answer is forced through the same JSON schema, so it
 can only fill in questions and answers.
 
+The download starts on intent rather than on the press — a photo
+attached, the panel opened wide, or 200 characters typed — so by the
+time anyone presses the button it is usually already there. Nothing is
+fetched on a plain visit, or ever when a key is saved. If the button is
+pressed while it is still coming, whatever is already written as a pair
+goes up immediately and the model's cards replace them.
+
+Only ever load `LOCAL_MODEL`. Loading a second model stacks another
+copy in the browser's store and hits `QuotaExceededError` around 3GB —
+that is what the "don't stack up downloads" rule protects against.
+Qwen2.5 0.5B was measured as the smaller alternative and is not usable:
+it copies whole sentences as answers, and once returned a line of the
+brief itself as a card.
+
 It runs in `llm-worker.js`, a module worker: the arithmetic is heavy
 enough to stiffen the page if it ran on it. No WebGPU (older browser,
 no adapter) falls back to the list reader and says so. A full browser

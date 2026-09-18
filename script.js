@@ -5080,8 +5080,14 @@ async function holdFiles(files) {
     if (notesBitsHeld.length) {
         const count = notesBitsHeld.length;
         notesNote.textContent = `${count} attached — press make flashcards`;
+        warmLocal();
     }
 }
+
+/* enough typed that this is a page of notes, not a stray keystroke */
+notesInput.addEventListener('input', () => {
+    if (notesInput.value.trim().length >= 200) warmLocal();
+});
 
 notesAttach.addEventListener('click', () => notesFile.click());
 notesFile.addEventListener('change', () => {
@@ -5190,23 +5196,35 @@ async function gpuThere() {
 /* one engine, made once and kept. the download is the browser's to
    remember — it caches the weights itself, so the second time this
    runs there is nothing to fetch and it is ready in a moment. */
+let localSay = null;      // whoever is waiting on it, if anyone
+let localTold = '';       // the last thing the download said
+
 async function readyLocal(say) {
+    localSay = say || localSay;
     if (localEngine) return localEngine;
-    if (localLoading) return localLoading;
+    if (localLoading) {
+        // it is already on its way; whoever just asked hears the rest
+        if (say && localTold) say(localTold);
+        return localLoading;
+    }
 
     localLoading = (async () => {
         const webllm = await import('./llm/web-llm.js');
         const worker = new Worker('llm-worker.js', { type: 'module' });
         const engine = await webllm.CreateWebWorkerMLCEngine(worker, LOCAL_MODEL, {
             initProgressCallback: (report) => {
-                if (!say) return;
-                // the first run is a download; after that it is just
-                // the weights being put on the gpu, which is quick
+                // the first run is a download; after that it is just the
+                // weights being put on the gpu, which is quick
                 const percent = Math.round((report.progress || 0) * 100);
-                say(percent >= 100 ? 'getting it ready...' : `getting the reader — ${percent}% of ${LOCAL_SIZE}`);
+                const fetched = /(\d+)MB fetched/.exec(report.text || '');
+                localTold = percent >= 100 || !fetched
+                    ? 'getting the reader ready...'
+                    : `getting the reader — ${fetched[1]}mb of ${LOCAL_SIZE}, once only`;
+                if (localSay) localSay(localTold);
             }
         });
         localEngine = engine;
+        localTold = '';
         return engine;
     })();
 
@@ -5215,6 +5233,23 @@ async function readyLocal(say) {
     } finally {
         localLoading = null;
     }
+}
+
+/* the download is the slow part and it has nothing to do with what you
+   are about to paste, so it starts the moment it is clear you mean to
+   use it: a photo dropped in, the panel opened wide, or enough typed
+   that this isn't a stray keystroke. by the time the button is pressed
+   it is usually already here. nothing is fetched on a plain visit, and
+   never when a key is saved — that path needs no model at all. */
+let warmed = false;
+
+async function warmLocal() {
+    if (warmed || localEngine || localLoading || savedKey()) return;
+    if (!(await gpuThere())) return;
+    warmed = true;
+    // quietly: whoever presses the button will hear about it, and if
+    // nobody does it simply finishes and waits
+    readyLocal(null).catch(() => { warmed = false; });
 }
 
 /* the brief the small model gets. it is shorter and firmer than the
@@ -5573,6 +5608,15 @@ async function makeCards() {
             if (!gathered.trim()) {
                 renderFound([], 'nothing readable in there');
             } else if (await gpuThere()) {
+                /* anything already written as a pair is a card without
+                   anyone's help, so those go up straight away rather
+                   than the panel sitting empty while the reader comes.
+                   what the model makes of the whole thing replaces
+                   them when it is done. */
+                if (!localEngine) {
+                    const quick = readNotes(gathered);
+                    if (quick.length) renderFound(quick, `${quick.length} obvious ones — reading the rest...`);
+                }
                 const cards = await askLocal(
                     gathered,
                     (sofar, where) => renderFound([...sofar], `${sofar.length} cards${where}...`),
@@ -5657,6 +5701,7 @@ function openNotesWide() {
     notesSlot.append(notesPanel);
     showScreen(notesScreen);
     notesInput.focus();
+    warmLocal();
 }
 
 function returnNotesPanel() {
