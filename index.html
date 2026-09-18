@@ -274,19 +274,27 @@
 
                                 <!-- everything live goes here -->
                                 <div class="audio-stage">
+                                    <!-- the picture and the box ride together on the stage,
+                                         so zooming scales both and the box keeps its place
+                                         on the frame. the wrap around it is what scrolls
+                                         once the stage is bigger than it, and the settings
+                                         sit outside that so they hold still. -->
                                     <div class="preview-wrap" id="previewWrap" hidden>
-                                        <video id="previewVideo" muted playsinline></video>
-                                        <div class="sense-box" id="senseBox"></div>
-
-                                        <div class="sense-controls" id="senseControls" hidden>
-                                            <div class="panel-handle" aria-hidden="true"></div>
-                                            <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
-                                            <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
-                                            <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
-                                            <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
-                                            <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="1"><output id="senseThresholdOut"></output></label>
-                                            <button class="text-button" id="senseReset" type="button">reset to default</button>
+                                        <div class="preview-stage" id="previewStage">
+                                            <video id="previewVideo" muted playsinline></video>
+                                            <div class="sense-box" id="senseBox"></div>
                                         </div>
+                                    </div>
+
+                                    <div class="sense-controls" id="senseControls" hidden>
+                                        <div class="panel-handle" aria-hidden="true"></div>
+                                        <label>zoom <input type="range" id="senseZoom" min="100" max="500" step="10" value="100"><output id="senseZoomOut"></output></label>
+                                        <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
+                                        <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
+                                        <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
+                                        <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
+                                        <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="1"><output id="senseThresholdOut"></output></label>
+                                        <button class="text-button" id="senseReset" type="button">reset to default</button>
                                     </div>
 
                                     <p class="sense-readout" id="senseReadout" hidden>change 0.0</p>

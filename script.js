@@ -1938,6 +1938,10 @@ const senseToggle = document.getElementById('senseToggle');
 const senseReset = document.getElementById('senseReset');
 
 const SENSE_KEYS = ['left', 'bottom', 'width', 'height', 'threshold'];
+const previewStage = document.getElementById('previewStage');
+const senseZoom = document.getElementById('senseZoom');
+const senseZoomOut = document.getElementById('senseZoomOut');
+
 const senseInputs = {
     left: document.getElementById('senseLeft'),
     bottom: document.getElementById('senseBottom'),
@@ -1986,6 +1990,43 @@ function formatDuration(milliseconds) {
 }
 
 /* --- the sensing box --- */
+
+/* how far in the picture is blown up, kept apart from the region's own
+   numbers: it is about seeing what you are doing, not about what gets
+   sampled. it is remembered on its own key and nothing but the reader's
+   hand ever moves it. */
+const ZOOM_KEY = 'sense-zoom';
+let senseZoomAt = 100;
+
+function applyZoom() {
+    previewStage.style.width = `${senseZoomAt}%`;
+    senseZoom.value = senseZoomAt;
+    senseZoomOut.textContent = `${senseZoomAt}%`;
+    previewWrap.classList.toggle('is-zoomed', senseZoomAt > 100);
+}
+
+function loadZoom() {
+    const saved = Number(window.localStorage.getItem(ZOOM_KEY));
+    if (saved >= 100 && saved <= 500) senseZoomAt = saved;
+    applyZoom();
+}
+
+/* zooming keeps the middle of what you are looking at in the middle,
+   rather than sliding the picture out from under you */
+senseZoom.addEventListener('input', () => {
+    const was = senseZoomAt;
+    const middleX = (previewWrap.scrollLeft + previewWrap.clientWidth / 2) / was;
+    const middleY = (previewWrap.scrollTop + previewWrap.clientHeight / 2) / was;
+    senseZoomAt = Number(senseZoom.value);
+    applyZoom();
+    previewWrap.scrollLeft = middleX * senseZoomAt - previewWrap.clientWidth / 2;
+    previewWrap.scrollTop = middleY * senseZoomAt - previewWrap.clientHeight / 2;
+    try {
+        window.localStorage.setItem(ZOOM_KEY, String(senseZoomAt));
+    } catch (error) {
+        // it just won't be remembered
+    }
+});
 
 function loadSenseSettings() {
     const saved = window.localStorage.getItem('sense-region');
@@ -2049,6 +2090,8 @@ senseToggle.addEventListener('click', (event) => {
 
 senseReset.addEventListener('click', (event) => {
     event.stopPropagation();
+    // the zoom is how you are looking, not what is being watched, so
+    // resetting the region leaves it where you had it
     senseSettings = { ...DEFAULT_SENSE };
     applySenseSettings();
     saveSenseSettings();
@@ -2077,6 +2120,39 @@ document.addEventListener('pointermove', (event) => {
 });
 
 document.addEventListener('pointerup', () => { panelDrag = null; });
+
+/* --- pushing the picture about, once it is bigger than its bar --- */
+
+/* zoomed in you are looking through a window at something larger than
+   the window. a press anywhere but on the box itself takes hold of the
+   picture and slides it; the box keeps the press that lands on it. */
+let pushStart = null;
+
+previewWrap.addEventListener('pointerdown', (event) => {
+    if (senseZoomAt <= 100) return;
+    if (event.target.closest('.sense-box, .sense-controls')) return;
+    pushStart = {
+        x: event.clientX,
+        y: event.clientY,
+        left: previewWrap.scrollLeft,
+        top: previewWrap.scrollTop
+    };
+    previewWrap.classList.add('is-pushing');
+    previewWrap.setPointerCapture(event.pointerId);
+});
+
+previewWrap.addEventListener('pointermove', (event) => {
+    if (!pushStart) return;
+    previewWrap.scrollLeft = pushStart.left - (event.clientX - pushStart.x);
+    previewWrap.scrollTop = pushStart.top - (event.clientY - pushStart.y);
+});
+
+['pointerup', 'pointercancel'].forEach((name) => {
+    previewWrap.addEventListener(name, () => {
+        pushStart = null;
+        previewWrap.classList.remove('is-pushing');
+    });
+});
 
 /* --- dragging the sensing box --- */
 
@@ -3465,6 +3541,7 @@ recordToggle.addEventListener('click', (event) => {
 
 loadSenseSettings();
 applySenseSettings();
+loadZoom();
 recorderReady = true;
 loadStoredClips();
 senseToggle.hidden = true;

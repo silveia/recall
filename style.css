@@ -360,26 +360,6 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background-size: 26px 44px;
 }
 
-/* a white rim just outside the wave. the page behind the bar is already
-   white, so this only shows where the bar runs under the black top strip
-   — which is the point: it keeps the two blacks from merging into one
-   shape. it sits above the strip (5) and paints no white tile of its
-   own, only the stroke, so the strip isn't notched. the black is redrawn
-   over the stroke's inner half, so the bar's shape is unchanged. */
-.app-shell::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: calc(var(--rail) - 13px);
-	z-index: 5;
-	width: 26px;
-	pointer-events: none;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M4 0 A 25 25 0 0 1 4 44' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
-	background-repeat: repeat-y;
-	background-size: 26px 44px;
-}
-
 .app-right {
 	display: flex;
 	flex: 1;
@@ -1931,6 +1911,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 /* the stage only appears while you're aiming the sensing box */
 .audio-stage {
+	position: relative;   /* the settings panel hangs off it */
 	display: none;
 	flex: 1;
 	flex-direction: column;
@@ -2030,12 +2011,35 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	opacity: 0;
 	pointer-events: none;
 }
+/* the stage carries the picture and the sensing box together, so the
+   zoom scales both at once and the box keeps its place on the frame.
+   the wrap around it is what scrolls when the stage outgrows it. */
+.preview-stage {
+	position: relative;
+	flex: none;
+	width: 100%;
+	line-height: 0;
+}
+.preview-wrap.showing-video {
+	overflow: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+	/* the picture can be taller than the bar once it is blown up, but
+	   not so tall it pushes the rest of the page off */
+	max-height: 60vh;
+}
+.preview-wrap.showing-video::-webkit-scrollbar { width: 0; height: 0; }
+/* zoomed in, the picture is something you push about */
+.preview-wrap.is-zoomed { cursor: grab; }
+.preview-wrap.is-zoomed.is-pushing { cursor: grabbing; }
 .preview-wrap.showing-video {
 	height: auto;
 	padding: 0;
 	line-height: 0;
 }
-.preview-wrap.showing-video video { position: static; display: block; opacity: 1; }
+.preview-wrap.showing-video video { position: static; display: block; width: 100%; opacity: 1; }
+/* the settings sit outside the scrolling picture now, so they hold
+   still while it moves under them */
 /* =========================================================
    16. audio — sensing box and its settings
    ========================================================= */

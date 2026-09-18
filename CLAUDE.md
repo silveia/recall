@@ -137,9 +137,15 @@ person's turn.
   dragging the marks back out undoes it.
 - Only the audio track goes into a clip; the video track stays live purely for
   the pixel sampling.
-- Region defaults: left 4%, bottom 4%, width 25%, height 4%, threshold 2. The
+- Region defaults: left 4%, bottom 4%, width 25%, height 4%, threshold 1. The
   low threshold matters — a short username in a wide box dilutes the change
   score.
+- The preview zooms (100–500%) so the box can be placed precisely without
+  zooming the whole site. The picture and the box ride on one stage that
+  scales together; the wrap around it scrolls, and dragging the picture
+  pushes it about. The zoom is its own setting on its own key
+  (`sense-zoom`) — it survives a refresh and only the reader's hand
+  changes it, since it is about seeing, not about what gets sampled.
 - Download re-encodes to a real mp3 via lamejs in `mp3-worker.js`, off the main
   thread so the page doesn't freeze. Decoding stays on the main thread because
   a worker has no `AudioContext`.
