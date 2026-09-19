@@ -2497,14 +2497,16 @@ async function storedClipsInOrder() {
         request.onsuccess = () => resolve(request.result || []);
         request.onerror = () => reject(request.error);
     });
-    // the list's order, top to bottom — it's what you can see
+    /* the list's own order, and then up it rather than down: the newest
+       clip sits at the bottom, and that is the one you were waiting for
+       when you pressed the button. */
     const shown = [...recordingList.querySelectorAll('.recording-item')]
         .map((row) => row.dataset.clipId);
     return stored.sort((a, b) => {
         const left = shown.indexOf(a.id);
         const right = shown.indexOf(b.id);
-        if (left === -1 || right === -1) return a.number - b.number;
-        return left - right;
+        if (left === -1 || right === -1) return b.number - a.number;
+        return right - left;
     });
 }
 
@@ -5954,6 +5956,23 @@ upSave.addEventListener('click', () => {
         link.click();
         window.setTimeout(() => URL.revokeObjectURL(href), 10000);
     }, 'image/png');
+});
+
+/* pasted, which is how a screenshot usually arrives: the clipboard
+   carries it as a file, and there is nothing to type on this page so
+   the paste can be caught for the whole of it. */
+document.addEventListener('paste', (event) => {
+    if (upscalePanel.hidden) return;
+    // a paste into a field is that field's business. the document is a
+    // target too and has no closest() of its own, hence the guard.
+    const typing = event.target && event.target.closest
+        && event.target.closest('input, textarea, [contenteditable]');
+    if (typing) return;
+    const file = [...(event.clipboardData ? event.clipboardData.files : [])]
+        .find((one) => one.type.startsWith('image/'));
+    if (!file) return;
+    event.preventDefault();
+    upTake(file);
 });
 
 // dropped anywhere on the page while this one is open
