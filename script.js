@@ -20,6 +20,7 @@
    14. the bar's own three   (clock · storage · recently binned)
    15. home widgets   (the home page, yours to arrange)
    16. notes → cards  (the left bar; reads notes, or asks claude)
+   17. upscale        (a picture in, a bigger one out, here)
    ============================================================ */
 
 /* ---------- 1. elements ---------- */
@@ -34,6 +35,7 @@ const notesScreen = document.getElementById('notesScreen');
 // sections
 const sectionTabs = document.getElementById('sectionTabs');
 const audioPanel = document.getElementById('audioPanel');
+const upscalePanel = document.getElementById('upscalePanel');
 
 // decks
 const deckListSlot = document.getElementById('deckListSlot');
@@ -91,7 +93,8 @@ const sections = [
     { id: 'home', name: 'home' },
     { id: 'cards', name: 'cards' },
     { id: 'audio', name: 'audio' },
-    { id: 'player', name: 'player' }
+    { id: 'player', name: 'player' },
+    { id: 'upscale', name: 'upscale' }
 ];
 
 let decks = [
@@ -232,6 +235,7 @@ function renderSections() {
     if (activeSectionId !== 'cards') closeSharePanel();
     audioPanel.hidden = activeSectionId !== 'audio';
     playerPanel.hidden = activeSectionId !== 'player';
+    upscalePanel.hidden = activeSectionId !== 'upscale';
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
 
     // one tab per section; whichever is active grows, the rest shrink.
@@ -2011,22 +2015,47 @@ function loadZoom() {
     applyZoom();
 }
 
-/* zooming keeps the middle of what you are looking at in the middle,
-   rather than sliding the picture out from under you */
-senseZoom.addEventListener('input', () => {
+/* zooming holds one point of the picture still — whatever is under the
+   cursor when you turn the wheel, or the middle of the view when the
+   slider is what moved. without that the picture slides out from under
+   you the moment you go in. */
+function setZoom(next, holdX, holdY) {
     const was = senseZoomAt;
-    const middleX = (previewWrap.scrollLeft + previewWrap.clientWidth / 2) / was;
-    const middleY = (previewWrap.scrollTop + previewWrap.clientHeight / 2) / was;
-    senseZoomAt = Number(senseZoom.value);
+    // to the slider's own step, so the two never disagree by a few
+    const wanted = Math.max(100, Math.min(500, Math.round(next / 10) * 10));
+    if (wanted === was) return;
+
+    const box = previewWrap.getBoundingClientRect();
+    const overX = holdX === undefined ? previewWrap.clientWidth / 2 : holdX - box.left;
+    const overY = holdY === undefined ? previewWrap.clientHeight / 2 : holdY - box.top;
+    // where that point is on the picture, whatever the picture's size
+    const onPictureX = (previewWrap.scrollLeft + overX) / was;
+    const onPictureY = (previewWrap.scrollTop + overY) / was;
+
+    senseZoomAt = wanted;
     applyZoom();
-    previewWrap.scrollLeft = middleX * senseZoomAt - previewWrap.clientWidth / 2;
-    previewWrap.scrollTop = middleY * senseZoomAt - previewWrap.clientHeight / 2;
+    previewWrap.scrollLeft = onPictureX * wanted - overX;
+    previewWrap.scrollTop = onPictureY * wanted - overY;
+
     try {
-        window.localStorage.setItem(ZOOM_KEY, String(senseZoomAt));
+        window.localStorage.setItem(ZOOM_KEY, String(wanted));
     } catch (error) {
         // it just won't be remembered
     }
-});
+}
+
+senseZoom.addEventListener('input', () => setZoom(Number(senseZoom.value)));
+
+/* the wheel over the picture, which is how anyone actually zooms. a
+   trackpad pinch arrives here too — the browser sends it as a wheel
+   with ctrl held — so both do the same thing. */
+previewWrap.addEventListener('wheel', (event) => {
+    if (!previewWrap.classList.contains('showing-video')) return;
+    // the page would scroll instead, which is not what the gesture meant
+    event.preventDefault();
+    const by = event.deltaY < 0 ? 1.12 : 1 / 1.12;
+    setZoom(senseZoomAt * by, event.clientX, event.clientY);
+}, { passive: false });
 
 function loadSenseSettings() {
     const saved = window.localStorage.getItem('sense-region');
@@ -2520,6 +2549,13 @@ async function downloadAllClips() {
             await new Promise((resolve) => window.setTimeout(resolve, 200));
         }
         setRecordStatus(`packing ${done + 1} of ${clips.length}...`);
+        // the one being packed says so in the list itself, so you can
+        // see where down the list it has got to
+        const row = recordingList.querySelector(`[data-clip-id="${record.id}"]`);
+        if (row) {
+            row.classList.add('is-packing');
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
         try {
             // a cropped clip goes out cropped here too
             const mp3 = await blobToMp3(record.blob, clipSpan(record, record.durationMs / 1000));
@@ -2532,10 +2568,13 @@ async function downloadAllClips() {
             done += 1;
         } catch (error) {
             setRecordStatus(`clip ${record.number} failed — ${error.message}`, true);
+            if (row) row.classList.add('is-packing-failed');
         }
+        if (row) row.classList.remove('is-packing');
         await new Promise((resolve) => window.setTimeout(resolve, 400));
     }
     setRecordStatus(done === clips.length ? '' : `only ${done} of ${clips.length} worked`, done !== clips.length);
+    recordingList.querySelectorAll('.is-packing').forEach((row) => row.classList.remove('is-packing'));
     batchRunning = false;
     batchPaused = false;
     showBatchState();
@@ -5715,3 +5754,223 @@ notesWide.addEventListener('click', (event) => {
 
 renderBits();
 paintKeyState();
+
+/* ---------- 17. upscale   (a picture in, a bigger one out) ---------- */
+
+/* the same model a hosting company would run for you — swin2sr, the
+   weights straight off hugging face's hub — running in this page
+   instead of on somebody's server.
+
+   that is the whole trick of it. an upscaler you pay for is this
+   arithmetic done on a machine you rent; done here it costs nothing,
+   asks for no account, and the picture never leaves the laptop. what
+   it costs instead is one download of about 30mb the first time, and
+   your own gpu for a few seconds a picture. */
+
+const upFile = document.getElementById('upFile');
+const upPick = document.getElementById('upPick');
+const upTwo = document.getElementById('upTwo');
+const upFour = document.getElementById('upFour');
+const upGo = document.getElementById('upGo');
+const upSave = document.getElementById('upSave');
+const upNote = document.getElementById('upNote');
+const upBefore = document.getElementById('upBefore');
+const upAfter = document.getElementById('upAfter');
+const upBeforeSize = document.getElementById('upBeforeSize');
+const upAfterSize = document.getElementById('upAfterSize');
+
+/* two of the same family: one trained to enlarge a clean picture, one
+   trained on the mess a real photograph is — a phone snap of a page,
+   something already saved as a jpeg twice. */
+const UPSCALERS = {
+    2: 'Xenova/swin2SR-classical-sr-x2-64',
+    4: 'Xenova/swin2SR-realworld-sr-x4-64-bsrgan-psnr'
+};
+
+/* the work is quadratic in the pixels and it all has to fit in memory
+   at once, so a phone photograph is cut down first. a picture this
+   size still comes out at 1600 or 3200 across, which is past what a
+   screen shows. */
+const UP_MOST = 640;
+
+let upWorker = null;
+let upSource = null;      // { pixels, width, height, name }
+let upResult = null;      // the canvas holding what came back
+let upScale = 2;
+let upBusy = false;
+
+function upSay(words) {
+    upNote.textContent = words;
+}
+
+function upSizeOf(canvas) {
+    return `${canvas.width} × ${canvas.height}`;
+}
+
+// a picture, no bigger than the model will take in one go
+async function upTake(file) {
+    if (!file || !file.type.startsWith('image/')) {
+        upSay('pictures only');
+        return;
+    }
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, UP_MOST / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+
+    upBefore.width = width;
+    upBefore.height = height;
+    upBefore.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+
+    upSource = {
+        pixels: upBefore.getContext('2d').getImageData(0, 0, width, height).data,
+        width,
+        height,
+        name: (file.name || 'picture').replace(/\.[^.]+$/, '')
+    };
+
+    upBeforeSize.textContent = upSizeOf(upBefore);
+    upAfter.width = 0;
+    upAfter.height = 0;
+    upAfterSize.textContent = '';
+    upResult = null;
+    upSave.hidden = true;
+    upGo.disabled = false;
+    upSay(scale < 1
+        ? `taken down to ${width} × ${height} first — bigger than that is more than one bite`
+        : `${width} × ${height} — press make it bigger`);
+}
+
+function upReady() {
+    if (upWorker) return upWorker;
+    upWorker = new Worker('upscale-worker.js', { type: 'module' });
+    return upWorker;
+}
+
+function runUpscale() {
+    if (upBusy || !upSource) return;
+    upBusy = true;
+    upGo.disabled = true;
+    upSave.hidden = true;
+    upSay('getting the model...');
+
+    const worker = upReady();
+    const pixels = new Uint8ClampedArray(upSource.pixels).buffer;
+
+    worker.onmessage = (event) => {
+        const note = event.data;
+
+        if (note.kind === 'loading') {
+            const done = Math.round(note.done / 1048576);
+            const total = Math.round(note.total / 1048576);
+            upSay(`getting the model — ${done}mb of ${total}mb, once only`);
+            return;
+        }
+        if (note.kind === 'where') {
+            // the gpu does this in seconds and the cpu in minutes, so
+            // it is worth saying which one is about to have a go
+            upSay(note.gpu ? 'getting the model...' : 'no gpu here — this will be slow');
+            return;
+        }
+        if (note.kind === 'building') {
+            // the download is done and nothing is fetching any more;
+            // without this the panel looks stuck for the whole of it
+            upSay(note.device === 'webgpu'
+                ? 'putting it on the gpu — the first time this takes a minute'
+                : 'getting it ready — the first time this takes a minute');
+            return;
+        }
+        if (note.kind === 'fellback') {
+            upSay(`${note.why} — using the processor instead, which is slower`);
+            return;
+        }
+        if (note.kind === 'working') {
+            upSay(`working on ${upSource.width} × ${upSource.height}... this is the slow part`);
+            return;
+        }
+        if (note.kind === 'failed') {
+            upSay(`it wouldn't — ${note.message}`);
+            upBusy = false;
+            upGo.disabled = false;
+            return;
+        }
+
+        // done: paint what came back at its own size
+        upAfter.width = note.width;
+        upAfter.height = note.height;
+        upAfter.getContext('2d').putImageData(
+            new ImageData(new Uint8ClampedArray(note.pixels), note.width, note.height), 0, 0
+        );
+        upResult = upAfter;
+        upAfterSize.textContent = upSizeOf(upAfter);
+        upSave.hidden = false;
+        upBusy = false;
+        upGo.disabled = false;
+        const times = (note.width / upSource.width).toFixed(0);
+        upSay(`${note.width} × ${note.height} — ${times}× bigger. save it, or try the other size.`);
+    };
+
+    worker.onerror = (error) => {
+        upSay(`it wouldn't start — ${error.message || 'the worker failed'}`);
+        upBusy = false;
+        upGo.disabled = false;
+    };
+
+    worker.postMessage({
+        pixels,
+        width: upSource.width,
+        height: upSource.height,
+        model: UPSCALERS[upScale]
+    }, [pixels]);
+}
+
+function pickScale(times) {
+    upScale = times;
+    upTwo.classList.toggle('is-on', times === 2);
+    upFour.classList.toggle('is-on', times === 4);
+    upTwo.setAttribute('aria-pressed', String(times === 2));
+    upFour.setAttribute('aria-pressed', String(times === 4));
+}
+
+upTwo.addEventListener('click', () => pickScale(2));
+upFour.addEventListener('click', () => pickScale(4));
+
+upPick.addEventListener('click', () => upFile.click());
+upFile.addEventListener('change', () => {
+    if (upFile.files[0]) upTake(upFile.files[0]);
+    upFile.value = '';
+});
+
+upGo.addEventListener('click', runUpscale);
+
+upSave.addEventListener('click', () => {
+    if (!upResult) return;
+    upResult.toBlob((blob) => {
+        const href = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = href;
+        link.download = `${upSource.name}-${upScale}x.png`;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(href), 10000);
+    }, 'image/png');
+});
+
+// dropped anywhere on the page while this one is open
+['dragenter', 'dragover'].forEach((name) => {
+    upscalePanel.addEventListener(name, (event) => {
+        event.preventDefault();
+        upscalePanel.classList.add('is-catching');
+    });
+});
+['dragleave', 'drop'].forEach((name) => {
+    upscalePanel.addEventListener(name, (event) => {
+        event.preventDefault();
+        if (name === 'dragleave' && upscalePanel.contains(event.relatedTarget)) return;
+        upscalePanel.classList.remove('is-catching');
+    });
+});
+upscalePanel.addEventListener('drop', (event) => {
+    const file = event.dataTransfer && event.dataTransfer.files[0];
+    if (file) upTake(file);
+});

@@ -41,6 +41,7 @@
    22. the bar's own three — clock, storage, recently binned
    23. home — the widgets you arrange yourself
    24. the left bar — notes in, cards out
+   25. upscale — a picture in, a bigger one out
    ========================================================= */
 
 /* =========================================================
@@ -2501,18 +2502,28 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	.topbar { left: 0; }                   /* no scallop to reach under */
 }
 
-/* the strip only has room for four words, and each holds a quarter of
-   it: the big one comes down to size rather than being cut off by its
-   own quarter */
-@media (max-width: 900px) {
-	.section-tab { font-size: 1rem; }
-	.section-tab.active { font-size: 1.8rem; }
+/* five words share the strip, each holding a fifth of it, so the big
+   one has to come down to size sooner than it used to rather than be
+   cut off by its own fifth */
+@media (max-width: 1100px) {
+	.section-tab { font-size: 0.9rem; }
+	.section-tab.active { font-size: 1.3rem; }
+	.topbar .section-tabs { gap: 0.5rem; }
 }
 
 @media (max-width: 700px) {
 	.section-tab { font-size: 0.95rem; }
 	.section-tab.active { font-size: 1.35rem; }
 	.topbar .section-tabs { gap: 0.5rem; }
+}
+
+/* five words in a phone's width: the strip gives up size before it
+   gives up letters */
+@media (max-width: 520px) {
+	.section-tab { font-size: 0.78rem; }
+	.section-tab.active { font-size: 1.05rem; }
+	.topbar .section-tabs { gap: 0.3rem; }
+	.topbar { padding-left: calc(var(--tight) + 13px); padding-right: var(--tight); }
 }
 
 @media (max-width: 560px) {
@@ -3779,3 +3790,131 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	cursor: pointer;
 }
 .notes-plain[hidden] { display: none; }
+
+
+/* =========================================================
+   25. upscale — a picture in, a bigger one out
+   ========================================================= */
+
+.upscale-panel {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--group);
+	min-height: 0;
+}
+.upscale-panel.is-catching { outline: 2px dashed var(--line); outline-offset: -8px; }
+
+/* the row that does everything: pick, how much bigger, go, save */
+.upscale-bar {
+	display: flex;
+	align-items: center;
+	flex: none;
+	gap: var(--tight);
+}
+.upscale-bar .basic-button { height: var(--field); padding: 0 1rem; }
+.basic-button.is-solid {
+	color: var(--paper);
+	background: var(--ink);
+	border-color: var(--ink);
+	font-weight: 700;
+}
+.basic-button.is-solid:disabled { cursor: default; }
+
+/* two of a kind, so they sit in one outline and the chosen one fills */
+.up-sizes {
+	display: flex;
+	flex: none;
+	height: var(--field);
+	overflow: hidden;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+}
+.up-size {
+	padding: 0 0.9rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 0;
+	font-size: 0.9rem;
+	cursor: pointer;
+}
+.up-size + .up-size { border-left: 1px solid var(--line); }
+.up-size:hover { color: var(--paper); background: var(--ink); }
+.up-size.is-on { color: var(--paper); background: var(--ink); }
+
+.up-note { flex: none; margin: 0; font-size: 0.85rem; }
+
+/* the two pictures, side by side and the same size on screen whatever
+   their real sizes are — the numbers over them say what those are */
+.up-body {
+	display: grid;
+	flex: 1;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--group);
+	min-height: 0;
+}
+.up-side {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+}
+.up-cap {
+	flex: none;
+	font-family: var(--head-font);
+	font-size: 0.9rem;
+}
+.up-cap span { font-family: var(--font); font-size: 0.78rem; }
+.up-hold {
+	display: grid;
+	flex: 1;
+	place-items: center;
+	min-height: 0;
+	padding: var(--tight);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	overflow: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+}
+.up-hold::-webkit-scrollbar { width: 0; height: 0; }
+.up-hold canvas {
+	max-width: 100%;
+	max-height: 100%;
+	/* the point of the thing is the pixels, so they are shown as they
+	   are rather than smoothed over by the browser on the way down */
+	image-rendering: auto;
+}
+
+@media (max-width: 900px) {
+	.up-body { grid-template-columns: 1fr; }
+}
+
+/* the clip being packed while the whole list is downloading. it is the
+   same inversion every live thing on the site wears, so the eye finds
+   it without being told what to look for. */
+.recording-item.is-packing {
+	color: var(--paper);
+	background: var(--ink);
+	border-color: var(--ink);
+}
+.recording-item.is-packing .clip-track { border-color: var(--paper); }
+.recording-item.is-packing .clip-fill { background: var(--paper); }
+.recording-item.is-packing .crop-shade { filter: invert(1); }
+/* a mark that keeps moving, so a slow one doesn't look stuck */
+.recording-item.is-packing .clip-label::after {
+	content: '';
+	display: inline-block;
+	width: 5px;
+	height: 5px;
+	margin-left: 0.4rem;
+	vertical-align: middle;
+	background: var(--paper);
+	border-radius: 999px;
+	animation: clip-waiting 0.9s ease-in-out infinite;
+}
+/* one that wouldn't keeps its outline, so it can be found afterwards */
+.recording-item.is-packing-failed { border-color: var(--line); border-width: 2px; }

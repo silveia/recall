@@ -121,9 +121,31 @@ Long text is cut at blank lines into ~6000-character pieces and sent a
 piece at a time, merged by question so nothing repeats. Attachments are
 never chunked — a document is read whole.
 
-## The two sections
+## Upscaling (the upscale page)
 
-Switched by the `>` arrow next to the heading.
+A picture in, a bigger one out, with no account and nothing uploaded.
+It runs swin2SR — the same weights Hugging Face would run for you on
+their own machines — in `upscale-worker.js`, through transformers.js
+vendored under `upscaler/`. 2× uses the classical model, 4× the
+real-world one trained on the mess a phone photo is. About 52MB the
+first time, kept after that.
+
+Two things to leave alone:
+
+- **`dtype: 'fp32'`, not fp16.** The half-precision build asks
+  onnxruntime to re-use a buffer sized for the input on an output twice
+  the size, and the run dies on the shape mismatch. Measured: fp32 and
+  q8 both come out right, fp16 never does.
+- **The input is capped at 640px on the long side.** The work is
+  quadratic in the pixels and it all has to be in memory at once. 640
+  still gives 2560 across at 4×.
+
+WebGPU when there is one, wasm when there isn't, and the panel says
+which — on the CPU a small picture takes about twenty seconds.
+
+## The sections
+
+Switched by the tabs in the top strip.
 
 **cards** — the original flashcard app. Decks with drag-reorder, right-click
 rename and delete, undo with Ctrl+Z, a create screen, and a practice screen
@@ -185,6 +207,11 @@ person's turn.
 - `ocr/` — tesseract.js and its english data, for reading the words off a
   photo without a key. Vendored for the same reason as the rest. Nothing
   in here is fetched until a picture is actually read.
+- `upscale-worker.js` — runs the upscaling model in the browser. It is
+  the one thing here loaded from a CDN rather than vendored: its weights
+  and wasm come over the wire regardless, and GitHub's secret scanner
+  reads `Mistral3ForConditionalGeneration` in the library's model list
+  as a Mistral API key and blocks the push. The version is pinned.
 - `llm/` + `llm-worker.js` — web-llm, which runs the small model in the
   browser. Also lazy: nothing here loads until someone presses make
   flashcards without a key saved.

@@ -394,6 +394,37 @@
 
                         </section>
 
+                        <!-- ============ upscale ============
+                             a picture in, a bigger one out. the model runs
+                             in this page, so nothing is uploaded and there
+                             is nobody to sign up with. -->
+                        <section class="upscale-panel" id="upscalePanel" hidden>
+                            <div class="upscale-bar">
+                                <input id="upFile" type="file" accept="image/*" hidden>
+                                <button class="basic-button" id="upPick" type="button">pick a picture</button>
+                                <div class="up-sizes" role="group" aria-label="how much bigger">
+                                    <button class="up-size is-on" id="upTwo" type="button" aria-pressed="true">2&times;</button>
+                                    <button class="up-size" id="upFour" type="button" aria-pressed="false">4&times;</button>
+                                </div>
+                                <button class="basic-button is-solid" id="upGo" type="button" disabled>make it bigger</button>
+                                <button class="basic-button" id="upSave" type="button" hidden>save it</button>
+                            </div>
+
+                            <p class="up-note" id="upNote" aria-live="polite">drop a picture on this page, or pick one</p>
+
+                            <div class="up-body" id="upBody">
+                                <figure class="up-side">
+                                    <figcaption class="up-cap">before <span id="upBeforeSize"></span></figcaption>
+                                    <div class="up-hold"><canvas id="upBefore"></canvas></div>
+                                </figure>
+                                <figure class="up-side">
+                                    <figcaption class="up-cap">after <span id="upAfterSize"></span></figcaption>
+                                    <div class="up-hold"><canvas id="upAfter"></canvas></div>
+                                </figure>
+                            </div>
+                        </section>
+
+
                     </section>
 
                     <!-- create and practice are little windows over the
@@ -492,6 +523,7 @@
                         <p class="clock-date" id="clockDate"></p>
                     </section>
 
+
                     <!-- what the page you're on actually does. one
                          paragraph per section — keep this current
                          whenever something new lands on the site. -->
@@ -511,6 +543,8 @@
                         <p class="help-note" data-section="audio" hidden>an audio recorder that records audio clips that auto-cut when a change is detected in a selected area. press the crop mark on a clip to trim its ends &mdash; nothing is thrown away, so you can drag the marks back out again.</p>
 
                         <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface</p>
+
+                        <p class="help-note" data-section="upscale" hidden>drop in a picture and it comes back bigger &mdash; the same model hugging face would run for you, running here instead. nothing is uploaded and nothing is signed up for. the first picture waits about 30mb for the model; after that it is kept.</p>
 
                         </div></div>
                     </section>
