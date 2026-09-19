@@ -37,14 +37,15 @@ async function lookForGpu() {
     }
 }
 
-/* fp32 on purpose: the half-precision build of this model asks
-   onnxruntime to re-use a buffer sized for the input on an output twice
-   its size, and the run dies on the mismatch. measured — fp32 and q8
-   both come out right, fp16 never does. */
+/* q8, and never fp16: the half-precision build asks onnxruntime to
+   re-use a buffer sized for the input on an output twice its size and
+   dies on the mismatch. of the two that work, q8 is 20mb against
+   fp32's 52mb and builds three seconds quicker, and their answers
+   differ by an average of 3 parts in 255 — nothing anyone can see. */
 function build(model, device, say) {
     return pipeline('image-to-image', model, {
         device,
-        dtype: 'fp32',
+        dtype: 'q8',
         progress_callback: (report) => {
             if (report.status === 'progress' && report.total) {
                 say({ kind: 'loading', done: report.loaded, total: report.total });

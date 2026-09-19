@@ -132,10 +132,18 @@ first time, kept after that.
 
 Two things to leave alone:
 
-- **`dtype: 'fp32'`, not fp16.** The half-precision build asks
+- **`dtype: 'q8'`, and never fp16.** The half-precision build asks
   onnxruntime to re-use a buffer sized for the input on an output twice
-  the size, and the run dies on the shape mismatch. Measured: fp32 and
-  q8 both come out right, fp16 never does.
+  the size, and the run dies on the shape mismatch. Of the two that
+  work, q8 is 20MB against fp32's 52MB, builds ~3s quicker, runs the
+  same, and the two answers differ by an average of 3/255 per pixel.
+
+Where the wait actually goes, measured on the CPU path: 0.2s to fetch,
+12s to build the session, 21s to run a 160×120 picture. The download is
+the smallest part of it. On a GPU the build also compiles a shader per
+operation shape, which is where minutes come from — and because that
+setup is per *shape*, every differently-sized picture pays it again.
+Padding every input to one fixed size would buy that back.
 - **The input is capped at 640px on the long side.** The work is
   quadratic in the pixels and it all has to be in memory at once. 640
   still gives 2560 across at 4×.
