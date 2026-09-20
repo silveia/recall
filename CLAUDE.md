@@ -124,32 +124,31 @@ never chunked — a document is read whole.
 ## Upscaling (the upscale page)
 
 A picture in, a bigger one out, with no account and nothing uploaded.
-It runs swin2SR — the same weights Hugging Face would run for you on
-their own machines — in `upscale-worker.js`, through transformers.js
-vendored under `upscaler/`. 2× uses the classical model, 4× the
-real-world one trained on the mess a phone photo is. About 52MB the
-first time, kept after that.
+It runs the sub-pixel CNN — `upscaler/subpixel-x3.onnx`, 240KB, kept in
+this repo — over the picture's brightness in 224×224 tiles, and
+stretches the colour separately and more cheaply. That split is what
+this family of upscalers does: the eye reads detail in brightness and
+barely notices it in colour. The model gives 3×; a canvas takes the
+result the rest of the way to the 2× or 4× that was asked for.
 
-Two things to leave alone:
+**It replaced swin2SR, which was unusable here — that is the whole
+reason this file exists.** Measured on this machine, with WebGPU:
 
-- **`dtype: 'q8'`, and never fp16.** The half-precision build asks
-  onnxruntime to re-use a buffer sized for the input on an output twice
-  the size, and the run dies on the shape mismatch. Of the two that
-  work, q8 is 20MB against fp32's 52MB, builds ~3s quicker, runs the
-  same, and the two answers differ by an average of 3/255 per pixel.
+| | swin2SR | sub-pixel CNN |
+|---|---|---|
+| download | 20MB | 240KB |
+| building the session | 14s | 1s |
+| one tile | 18–20s (128px) | 7ms (224px) |
 
-Where the wait actually goes, measured on the CPU path: 0.2s to fetch,
-12s to build the session, 21s to run a 160×120 picture. The download is
-the smallest part of it. On a GPU the build also compiles a shader per
-operation shape, which is where minutes come from — and because that
-setup is per *shape*, every differently-sized picture pays it again.
-Padding every input to one fixed size would buy that back.
-- **The input is capped at 640px on the long side.** The work is
-  quadratic in the pixels and it all has to be in memory at once. 640
-  still gives 2560 across at 4×.
+WebGPU made no difference to swin2SR — 128×128 took 18s on the GPU and
+20s on the processor — so a real photograph was thirty tiles of that,
+which is what "stuck" meant. Do not put it back. The small model does a
+320×240 picture in under two seconds on the *processor*, and the result
+measures sharper than a plain resize (edge strength 53.0 against 47.7).
 
-WebGPU when there is one, wasm when there isn't, and the panel says
-which — on the CPU a small picture takes about twenty seconds.
+Tiles overlap by 8px and only their middles are kept, so there is no
+seam; checked by looking for a bright column at the join and finding
+letters instead.
 
 ## The sections
 
@@ -215,11 +214,9 @@ person's turn.
 - `ocr/` — tesseract.js and its english data, for reading the words off a
   photo without a key. Vendored for the same reason as the rest. Nothing
   in here is fetched until a picture is actually read.
-- `upscale-worker.js` — runs the upscaling model in the browser. It is
-  the one thing here loaded from a CDN rather than vendored: its weights
-  and wasm come over the wire regardless, and GitHub's secret scanner
-  reads `Mistral3ForConditionalGeneration` in the library's model list
-  as a Mistral API key and blocks the push. The version is pinned.
+- `upscaler/subpixel-x3.onnx` + `upscale-worker.js` — the upscaler. The
+  model is vendored; onnxruntime comes from a pinned CDN URL, since its
+  wasm has to come over the wire regardless.
 - `llm/` + `llm-worker.js` — web-llm, which runs the small model in the
   browser. Also lazy: nothing here loads until someone presses make
   flashcards without a key saved.

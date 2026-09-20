@@ -5366,9 +5366,79 @@ notesKeyToggle.addEventListener('click', () => {
     if (open) notesKey.focus();
 });
 
-notesKeySave.addEventListener('click', () => {
-    const typed = notesKey.value.trim();
+/* what a key looks like after a copy has been at it: quotes picked up
+   from a blog post, a "Bearer" someone pasted with it, a line break
+   from a terminal, the non-breaking spaces a pdf leaves behind. */
+function tidyKey(typed) {
+    return typed
+        .replace(/[\u00a0\u2000-\u200b]/g, ' ')
+        .replace(/^\s*(?:bearer|x-api-key|authorization)\s*[:=]?\s*/i, '')
+        // the spaces go before the quotes are looked for, or a quote
+        // with a stray newline behind it is never at the end
+        .replace(/\s+/g, '')
+        .replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, '')
+        /* and then anything a header cannot carry. a curly quote left
+           in here doesn't make the api say no — it makes fetch itself
+           throw, which came out as "could not reach the api" and sent
+           anyone reading it off to check their wifi. */
+        .replace(/[^\x21-\x7e]/g, '')
+        .trim();
+}
+
+/* the key is tried before it is kept. the alternative is what happened
+   before: it saved whatever was pasted, and the first anyone heard of a
+   bad one was a refusal in the middle of reading a page of notes. */
+async function keyWorks(key) {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        // the smallest question there is, so this costs a rounding error
+        body: JSON.stringify({
+            model: 'claude-opus-5',
+            max_tokens: 1,
+            messages: [{ role: 'user', content: 'hi' }]
+        })
+    });
+    if (response.ok) return { fine: true };
+
+    let said = `the api said ${response.status}`;
+    try {
+        const body = await response.json();
+        if (body.error && body.error.message) said = body.error.message;
+    } catch (error) {
+        // the status will have to do
+    }
+    return { fine: false, said };
+}
+
+notesKeySave.addEventListener('click', async () => {
+    const typed = tidyKey(notesKey.value);
     if (!typed) return;
+
+    notesKeySave.disabled = true;
+    notesNote.textContent = 'trying the key...';
+
+    let answer;
+    try {
+        answer = await keyWorks(typed);
+    } catch (error) {
+        answer = { fine: false, said: 'could not reach the api — is this machine online?' };
+    }
+    notesKeySave.disabled = false;
+
+    if (!answer.fine) {
+        // the api's own words, and then what to do about them
+        notesNote.textContent = /x-api-key|authentication/i.test(answer.said)
+            ? "that key was refused — copy it again from console.anthropic.com, keys page"
+            : `that key was refused — ${answer.said}`;
+        return;
+    }
+
     try {
         window.localStorage.setItem(KEY_STORE, typed);
     } catch (error) {
@@ -5379,7 +5449,7 @@ notesKeySave.addEventListener('click', () => {
     notesKeyRow.hidden = true;
     notesKeyToggle.setAttribute('aria-expanded', 'false');
     paintKeyState();
-    notesNote.textContent = 'key saved';
+    notesNote.textContent = 'key saved and working';
 });
 
 notesKeyForget.addEventListener('click', () => {
@@ -5723,7 +5793,9 @@ async function makeCards() {
             ? `${gathered.length} cards — drop any you don't want, then keep them`
             : 'nothing in there worth a card');
     } catch (error) {
-        notesNote.textContent = `couldn't read it — ${error.message}`;
+        notesNote.textContent = /x-api-key|authentication/i.test(error.message)
+            ? "the saved key was refused — open sharper reading and paste it again"
+            : `couldn't read it — ${error.message}`;
     }
     setNotesBusy(false);
 }
@@ -5784,16 +5856,10 @@ const upAfterSize = document.getElementById('upAfterSize');
 /* two of the same family: one trained to enlarge a clean picture, one
    trained on the mess a real photograph is — a phone snap of a page,
    something already saved as a jpeg twice. */
-const UPSCALERS = {
-    2: 'Xenova/swin2SR-classical-sr-x2-64',
-    4: 'Xenova/swin2SR-realworld-sr-x4-64-bsrgan-psnr'
-};
-
-/* the work is quadratic in the pixels and it all has to fit in memory
-   at once, so a phone photograph is cut down first. a picture this
-   size still comes out at 1600 or 3200 across, which is past what a
-   screen shows. */
-const UP_MOST = 640;
+/* it grows the picture three times over and then it is taken to
+   whatever was asked for — three is what the network was trained to
+   do, and a canvas is perfectly good at the last small step. */
+const UP_MOST = 1400;
 
 let upWorker = null;
 let upSource = null;      // { pixels, width, height, name }
@@ -5809,7 +5875,7 @@ function upSizeOf(canvas) {
     return `${canvas.width} × ${canvas.height}`;
 }
 
-// a picture, no bigger than the model will take in one go
+// a picture, no bigger than is worth holding in memory three times over
 async function upTake(file) {
     if (!file || !file.type.startsWith('image/')) {
         upSay('pictures only');
@@ -5840,7 +5906,7 @@ async function upTake(file) {
     upSave.hidden = true;
     upGo.disabled = false;
     upSay(scale < 1
-        ? `taken down to ${width} × ${height} first — bigger than that is more than one bite`
+        ? `taken down to ${width} × ${height} first`
         : `${width} × ${height} — press make it bigger`);
 }
 
@@ -5855,40 +5921,26 @@ function runUpscale() {
     upBusy = true;
     upGo.disabled = true;
     upSave.hidden = true;
-    upSay('getting the model...');
+    upSay('starting...');
 
     const worker = upReady();
     const pixels = new Uint8ClampedArray(upSource.pixels).buffer;
+    const began = Date.now();
 
     worker.onmessage = (event) => {
         const note = event.data;
 
-        if (note.kind === 'loading') {
-            const done = Math.round(note.done / 1048576);
-            const total = Math.round(note.total / 1048576);
-            upSay(`getting the model — ${done}mb of ${total}mb, once only`);
-            return;
-        }
         if (note.kind === 'where') {
-            // the gpu does this in seconds and the cpu in minutes, so
-            // it is worth saying which one is about to have a go
-            upSay(note.gpu ? 'getting the model...' : 'no gpu here — this will be slow');
+            upSay(note.on === 'webgpu' ? 'on the graphics card' : 'on the processor');
             return;
         }
-        if (note.kind === 'building') {
-            // the download is done and nothing is fetching any more;
-            // without this the panel looks stuck for the whole of it
-            upSay(note.device === 'webgpu'
-                ? 'putting it on the gpu — the first time this takes a minute'
-                : 'getting it ready — the first time this takes a minute');
+        if (note.kind === 'tiles') {
+            upSay(`${note.total} piece${note.total === 1 ? '' : 's'} to do...`);
             return;
         }
-        if (note.kind === 'fellback') {
-            upSay(`${note.why} — using the processor instead, which is slower`);
-            return;
-        }
-        if (note.kind === 'working') {
-            upSay(`working on ${upSource.width} × ${upSource.height}... this is the slow part`);
+        if (note.kind === 'tile') {
+            // it is usually too quick to read, which is the idea
+            upSay(`${note.done} of ${note.total}...`);
             return;
         }
         if (note.kind === 'failed') {
@@ -5898,19 +5950,34 @@ function runUpscale() {
             return;
         }
 
-        // done: paint what came back at its own size
-        upAfter.width = note.width;
-        upAfter.height = note.height;
-        upAfter.getContext('2d').putImageData(
+        /* what comes back is three times over; a canvas takes it the
+           rest of the way to whatever was asked for. going down from
+           three to two is a shrink, which is the sharpest thing a
+           canvas does. */
+        const wanted = {
+            width: Math.round(upSource.width * upScale),
+            height: Math.round(upSource.height * upScale)
+        };
+        const grown = document.createElement('canvas');
+        grown.width = note.width;
+        grown.height = note.height;
+        grown.getContext('2d').putImageData(
             new ImageData(new Uint8ClampedArray(note.pixels), note.width, note.height), 0, 0
         );
+
+        upAfter.width = wanted.width;
+        upAfter.height = wanted.height;
+        const paint = upAfter.getContext('2d');
+        paint.imageSmoothingQuality = 'high';
+        paint.drawImage(grown, 0, 0, wanted.width, wanted.height);
+
         upResult = upAfter;
         upAfterSize.textContent = upSizeOf(upAfter);
         upSave.hidden = false;
         upBusy = false;
         upGo.disabled = false;
-        const times = (note.width / upSource.width).toFixed(0);
-        upSay(`${note.width} × ${note.height} — ${times}× bigger. save it, or try the other size.`);
+        const took = ((Date.now() - began) / 1000).toFixed(1);
+        upSay(`${wanted.width} × ${wanted.height} — ${upScale}× bigger in ${took}s. save it, or try the other size.`);
     };
 
     worker.onerror = (error) => {
@@ -5919,12 +5986,7 @@ function runUpscale() {
         upGo.disabled = false;
     };
 
-    worker.postMessage({
-        pixels,
-        width: upSource.width,
-        height: upSource.height,
-        model: UPSCALERS[upScale]
-    }, [pixels]);
+    worker.postMessage({ pixels, width: upSource.width, height: upSource.height }, [pixels]);
 }
 
 function pickScale(times) {
