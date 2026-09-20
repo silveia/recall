@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&family=Bitcount+Prop+Double:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&family=Bitcount+Prop+Double:wght@400;700&family=VT323&display=swap');
 
 /* matrix sans print, by brad neil — a 5×7 dot matrix of separate round
    dots, the look of a dot-matrix printer or a motorway sign. it is
@@ -77,7 +77,7 @@
 	                      section uses this, cards, audio and whatever
 	                      comes next */
 	--tight: 0.5rem;   /* controls sitting side by side in one bar */
-	--rail-pad: 1rem;  /* the side bars are narrow — they run tighter */
+	--rail-pad: 0.85rem;  /* the side bars are narrow — they run tighter */
 
 	--ease: cubic-bezier(0.22, 1, 0.36, 1);   /* soft, decelerating */
 	--quick: 0.18s;    /* hovers and presses */
@@ -85,6 +85,12 @@
 
 	--font: 'Amiko', 'Segoe UI', system-ui, sans-serif;
 	--title-font: 'Bitcount Prop Double', 'Courier New', monospace;
+	/* numbers get their own face. bitcount draws a 1 as two dense
+	   columns of dots and a 0 as an open ring, so any figure with a
+	   zero in it reads as two different fonts side by side — at every
+	   size, because that is how the face is drawn. vt323 is the same
+	   kind of thing, a screen face, and its digits are all one weight. */
+	--num-font: 'VT323', 'Courier New', monospace;
 	/* the face every heading over a panel is set in */
 	--head-font: 'Matrix Sans Print', 'Courier New', monospace;
 }
@@ -105,6 +111,109 @@ html.inverted {
    2. reset + base
    ========================================================= */
 *, *::before, *::after { box-sizing: border-box; }
+
+/* --- the pointer ---
+
+   every name in here is prefixed. the first version called the text
+   cursor --bar, which is also the black bar's own colour: the top
+   strip and the rail clock quietly lost their backgrounds and painted
+   as nothing, because `background: var(--bar)` was suddenly a picture
+   and an invalid background is no background at all.
+
+   a thick round dot instead of the system arrow — and the same dot for
+   something you can press. it was that dot inverted, white on black,
+   which read as one dot changing size as the background under it
+   changed rather than as two different marks. the rest say what they
+   do rather than what they are: arrows apart for a divider, four ways
+   for something you can move anywhere, a ring standing off the dot for
+   something you can pick up.
+
+   each one carries a white halo a little over half a pixel — thinner
+   than the 1px lines on the page, so it reads as an edge on the black
+   bar rather than as part of the drawing, so it reads on the
+   black bar as well as on the page without the halo becoming part of
+   the drawing. a stroke straddles its path, so the white one under a
+   black line of weight L is drawn at L + 2; on a filled shape it sits
+   half outside, so it is drawn at twice the halo instead.
+
+   each names the system cursor it stands in for, so nothing is lost if
+   the drawing cannot be loaded. */
+:root {
+	--cur-dot: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 13 13, default;
+	--cur-tap: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 13 13, pointer;
+	--cur-bar: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Crect%20x='11.9'%20y='5.5'%20width='2.2'%20height='15'%20rx='1.1'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linejoin='round'/%3E%3Crect%20x='11.9'%20y='5.5'%20width='2.2'%20height='15'%20rx='1.1'%20fill='%23000'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linejoin='round'/%3E%3C/svg%3E") 13 13, text;
+	--cur-wide: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Cpath%20d='M9.4%208.5%205.5%2013l3.9%204.5z'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linejoin='round'/%3E%3Cpath%20d='M16.6%208.5%2020.5%2013l-3.9%204.5z'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linejoin='round'/%3E%3Cpath%20d='M9.4%208.5%205.5%2013l3.9%204.5z'%20fill='%23000'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linejoin='round'/%3E%3Cpath%20d='M16.6%208.5%2020.5%2013l-3.9%204.5z'%20fill='%23000'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linejoin='round'/%3E%3C/svg%3E") 13 13, col-resize;
+	--cur-tall: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Cpath%20d='M8.5%209.4%2013%205.5l4.5%203.9z'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linejoin='round'/%3E%3Cpath%20d='M8.5%2016.6%2013%2020.5l4.5-3.9z'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linejoin='round'/%3E%3Cpath%20d='M8.5%209.4%2013%205.5l4.5%203.9z'%20fill='%23000'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linejoin='round'/%3E%3Cpath%20d='M8.5%2016.6%2013%2020.5l4.5-3.9z'%20fill='%23000'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linejoin='round'/%3E%3C/svg%3E") 13 13, row-resize;
+	--cur-grab: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='7'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-dasharray='3%203'/%3E%3Ccircle%20cx='13'%20cy='13'%20r='7'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-dasharray='3%203'/%3E%3Ccircle%20cx='13'%20cy='13'%20r='3'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 13 13, grab;
+	--cur-held: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='7'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'/%3E%3Ccircle%20cx='13'%20cy='13'%20r='7'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'/%3E%3Ccircle%20cx='13'%20cy='13'%20r='3.6'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 13 13, grabbing;
+	--cur-move: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Cg%20fill='none'%20stroke='%23fff'%20stroke-width='1.20'%20stroke-linejoin='round'%3E%3Cpath%20d='M13%204.6%2015.8%209.2h-5.6z'/%3E%3Cpath%20d='M13%2021.4%2010.2%2016.8h5.6z'/%3E%3Cpath%20d='M4.6%2013%209.2%2010.2v5.6z'/%3E%3Cpath%20d='M21.4%2013%2016.8%2015.8v-5.6z'/%3E%3C/g%3E%3Cg%20fill='%23000'%3E%3Cpath%20d='M13%204.6%2015.8%209.2h-5.6z'/%3E%3Cpath%20d='M13%2021.4%2010.2%2016.8h5.6z'/%3E%3Cpath%20d='M4.6%2013%209.2%2010.2v5.6z'/%3E%3Cpath%20d='M21.4%2013%2016.8%2015.8v-5.6z'/%3E%3C/g%3E%3C/svg%3E") 13 13, move;
+	--cur-menu: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='9'%20cy='9'%20r='3.4'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3Cpath%20d='M13.5%2013.5h7M13.5%2017h7M13.5%2020.5h7'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linecap='round'/%3E%3Cpath%20d='M13.5%2013.5h7M13.5%2017h7M13.5%2020.5h7'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linecap='round'/%3E%3C/svg%3E") 13 13, context-menu;
+	--cur-no: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='6.4'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'/%3E%3Cpath%20d='M8.5%2017.5%2017.5%208.5'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linecap='round'/%3E%3Ccircle%20cx='13'%20cy='13'%20r='6.4'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'/%3E%3Cpath%20d='M8.5%2017.5%2017.5%208.5'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linecap='round'/%3E%3C/svg%3E") 13 13, not-allowed;
+	--cur-corner: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='26'%20height='26'%20viewBox='0%200%2026%2026'%3E%3Cpath%20d='M8.8%208.8%2017.2%2017.2'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linecap='round'/%3E%3Cpath%20d='M8.8%2013.5V8.8h4.7'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linejoin='round'%20stroke-linecap='round'/%3E%3Cpath%20d='M17.2%2012.5v4.7h-4.7'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linejoin='round'%20stroke-linecap='round'/%3E%3Cpath%20d='M8.8%208.8%2017.2%2017.2'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linecap='round'/%3E%3Cpath%20d='M8.8%2013.5V8.8h4.7'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linejoin='round'%20stroke-linecap='round'/%3E%3Cpath%20d='M17.2%2012.5v4.7h-4.7'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linejoin='round'%20stroke-linecap='round'/%3E%3C/svg%3E") 13 13, nwse-resize;
+}
+html { cursor: var(--cur-dot); }
+
+/* what the thing under the pointer does, while option is held. it sits
+   to the right of the pointer, out of its way, and never takes a press
+   of its own. */
+.say-what {
+	position: fixed;
+	z-index: 200;
+	left: 0;
+	top: 0;
+	max-width: 18rem;
+	padding: calc(0.3rem + var(--drop)) 0.7rem calc(0.3rem - var(--drop));
+	color: var(--paper);
+	background: var(--ink);
+	border-radius: 999px;
+	font-size: 0.75rem;
+	line-height: 1.3;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	opacity: 0;
+	transform: translateY(3px);
+	transition: opacity 0.14s var(--ease), transform 0.14s var(--ease);
+	pointer-events: none;
+}
+.say-what.is-up { opacity: 1; transform: none; }
+
+
+/* --- where the words sit in a box ---
+   a line of text is centred on the font's ascent-to-descent band, but
+   the eye centres on the capitals. every face here hangs further below
+   the baseline than it rises above the caps, so centred text comes out
+   sitting high. measured off the fonts themselves: amiko by 0.088 of
+   its size, bitcount by 0.060, matrix sans by nothing at all.
+
+   a box moves its line down by half the difference between its two
+   paddings, so the correction is either added above and taken off
+   below, or — where a fixed-height pill already pins both to nothing —
+   put on the top alone at twice the size. either way the box keeps the
+   height it had. */
+:root {
+	/* a drawer's easing. the one used before was an extreme ease-out —
+	   three quarters of the way open in the first hundred milliseconds
+	   and then a long crawl, which is exactly what "abrupt then slow"
+	   looks like as a number. this one spends its time evenly. */
+	--drawer: cubic-bezier(0.4, 0.05, 0.2, 1);
+	--drop: 0.088em;         /* amiko, the body face */
+	--drop-title: 0.06em;    /* bitcount, the h1 and the tabs */
+	--drop-num: -0.02em;     /* vt323 sits a hair low, so it is lifted */
+}
+
+/* named for anything reading the page aloud, drawn for nobody */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
 
 /* the shell is exactly the window and scrolls inside itself, so the
    page behind it must never move — without this, dragging up on empty
@@ -223,26 +332,29 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    were heading, which made a swap read as the whole page moving. the
    pieces are still staggered, so it arrives rather than blinks. */
 @keyframes panel-in {
-	from { opacity: 0; transform: scale(0.994); }
+	from { opacity: 0; transform: translateY(6px); }
 	60%  { opacity: 1; }
 	to   { opacity: 1; transform: none; }
 }
 .deck-bar:not([hidden]),
 .home-body:not([hidden]),
-.home-panel:not([hidden]),
-.player-panel:not([hidden]),
-.recorder-panel:not([hidden]),
-.help-box:not([hidden]),
-.quick-panel:not([hidden]) {
-	animation: panel-in 0.4s var(--ease) backwards;
-}
-.home-body:not([hidden]) { animation-delay: 0.05s; }
-.help-box:not([hidden]) { animation-delay: 0.08s; }
-.quick-panel:not([hidden]) { animation-delay: 0.14s; }
+/* whichever panel a section shows arrives the same way, and exactly
+   one thing per section does it.
 
-/* inside the audio panel the bar leads and the clips follow */
-.recorder-panel:not([hidden]) .audio-bar { animation: panel-in 0.4s var(--ease) 0.05s backwards; }
-.recorder-panel:not([hidden]) .audio-body { animation: panel-in 0.4s var(--ease) 0.12s backwards; }
+   before this the list was uneven: the cards page carried a delay with
+   no animation to delay, the upscale page had neither, and the audio
+   page faded its panel and then faded the bar and the list inside it
+   again — three fades over each other, which is what makes an entrance
+   look muddy rather than quick. */
+.home-panel:not([hidden]),
+.home-body:not([hidden]),
+.recorder-panel:not([hidden]),
+.player-panel:not([hidden]),
+.upscale-panel:not([hidden]) {
+	animation: panel-in 0.34s var(--drawer) backwards;
+}
+/* the rail's own box follows a beat behind the page */
+.help-box:not([hidden]) { animation: panel-in 0.34s var(--drawer) 0.06s backwards; }
 #studyQuestion { animation: rise-in 0.34s var(--ease) backwards; }
 
 /* the answer buttons deal themselves out one after another */
@@ -359,7 +471,40 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: 26px 44px;
+	/* the tiles start where the black strip ends rather than at the top
+	   of the window, so the first bump below it is a whole one. what is
+	   above is behind the strip and never seen. */
+	background-position: 0 var(--topbar);
 }
+
+/* in the dark the bar and the page are the same black, so the scallop
+   has no edge to be seen by — the same problem the top strip has, and
+   the same answer: a white line along it.
+
+   it is its own layer rather than a second picture swapped into the
+   one above, because swapping a picture happens all at once: the old
+   rule's note records a rectangle of the old one flashing over the bar
+   while everything else was still fading. this one only fades. */
+.app-shell::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: calc(var(--rail) - 13px);
+	/* over the strip that carves the edge, not under it. at the same
+	   level the carve painted last and buried this — which is why it
+	   was in the stylesheet and nowhere on the screen. */
+	z-index: 4;
+	width: 26px;
+	pointer-events: none;
+	opacity: 0;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M4 0 A 25 25 0 0 1 4 44' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");
+	background-repeat: repeat-y;
+	background-size: 26px 44px;
+	background-position: 0 var(--topbar);   /* in step with the carve */
+	transition: opacity 0.4s var(--ease);
+}
+html.inverted .app-shell::before { opacity: 1; }
 
 .app-right {
 	display: flex;
@@ -441,14 +586,32 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	padding-right: var(--gap);
 	color: var(--bar-ink);
 	background: var(--bar);
-	/* in the dark the strip is the same black as the page behind it, so
-	   a line along its underside says where it ends. it's a shadow, not
-	   a border: a border is drawn inside the strip, which read as a
-	   hairline laid on the black rather than the edge of it. and it is
-	   white on both sides of the swap — on a white page there is
-	   nothing to see, so it never appears or disappears, and there is
-	   no colour of its own to fade at its own pace. */
-	box-shadow: 0 1px 0 var(--bar-ink);
+}
+
+/* in the dark the strip is the same black as the page behind it, so a
+   line along its underside says where it ends. it is white on both
+   sides of the swap — on a white page there is nothing to see, so it
+   never appears or disappears, and has no colour of its own to fade at
+   its own pace.
+
+   it starts past the scalloped strip rather than running the bar's
+   whole width. the bar reaches 13px back under that strip so the two
+   meet without a seam, and a full-width line carried the white out
+   over the black bumps — a stub of white laid across the pattern, and
+   the first bump cut off from the bar above it. there is no end of bar
+   to mark there anyway: the black carries on down the scallop. */
+.topbar::after {
+	content: '';
+	position: absolute;
+	top: 100%;
+	/* it reaches the bar's own edge. at the line's height the scallop
+	   is at the start of a tile — its narrowest — so 4px in is exactly
+	   where the black begins, and the two meet with nothing between. */
+	left: 4px;
+	right: 0;
+	height: 1px;
+	background: var(--bar-ink);
+	pointer-events: none;
 }
 
 /* the screen's name, on a white bar directly under the black one. it
@@ -625,7 +788,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border-radius: 6px;
 	font-size: 1.4rem;
 	line-height: 1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .modal-close:hover { color: var(--paper); background: var(--ink); }
 
@@ -637,13 +800,13 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 /* pill button */
 .basic-button {
 	align-self: center;
-	padding: 0.65rem 1.5rem;
+	padding: calc(0.65rem + var(--drop)) 1.5rem calc(0.65rem - var(--drop));
 	color: var(--paper);
 	background: var(--ink);
 	border: 1px solid var(--ink);
 	border-radius: 999px;
 	font-weight: 600;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 
 
@@ -727,22 +890,43 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	font-size: 1.1rem;
 	font-weight: 400;
 	line-height: 1.1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 	/* no transition here on purpose — the only thing that changes is
 	   font-size, and animating that re-lays out the page on every
 	   frame. the size snaps in one pass, and switchSection() animates
 	   the difference with a transform instead. */
 }
-.section-tab.active { font-size: 2.25rem; cursor: default; }
+/* the words are only as tall as they are, which left most of the black
+   strip dead to a press — aim a little under a tab and nothing happened.
+   each keeps a pressable area the height of the whole strip, laid over
+   its own slot and nobody else's. */
+.section-tab::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: -16px;
+	bottom: -16px;
+}
+.section-tab.active { font-size: 2.25rem; cursor: var(--cur-dot); }
 /* centring the boxes still leaves the small word low — the letters
    don't fill their line the same way at the two sizes. this lifts it
    onto the big word's middle. it's `top`, not a transform, so the
    swap animation in switchSection() has the property to itself. */
-.section-tab:not(.active) { position: relative; top: -4px; }
+/* and then down again by the face's own share, so the word's capitals
+   sit on the strip's middle rather than its ascent-to-descent band —
+   see --drop-title. in em, so each size is corrected by its own. */
+.section-tab:not(.active) { position: relative; top: calc(-4px + var(--drop-title)); }
 /* the big word needs ~2px less lift than the small ones to land on the
    same middle — measured on words without descenders, so a descender is
    free to hang below the line rather than dragging the word up. */
-.section-tab.active { position: relative; top: -3px; }
+/* measured on the words' own ink, these land the big word 0.17px under
+   the strip's middle and the small ones 0.25px over it — which is the
+   half pixel of difference between them you can feel without being
+   able to point at it. do not try to close it: the type snaps to whole
+   pixels, so a 0.25px nudge here comes out as a whole one and lands
+   further off than it started. this was measured and reverted. */
+.section-tab.active { position: relative; top: calc(-3px + var(--drop-title)); }
 
 /* =========================================================
    8. home — deck bar
@@ -762,7 +946,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	line-height: 1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .square-button:hover {
 	color: var(--paper);
@@ -783,7 +967,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border-radius: var(--radius);
 }
 .deck-form input::placeholder { color: var(--muted); }
-.deck-form .basic-button { flex: none; height: var(--field); padding: 0 1.1rem; }
+.deck-form .basic-button { flex: none; height: var(--field); padding: calc(var(--drop) * 2) 1.1rem 0; }
 
 /* the deck's create button — the same square the share one is, but
    filled in, since it's the one that commits something */
@@ -834,7 +1018,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	overflow-wrap: anywhere;
 }
 .share-row textarea::placeholder { color: var(--muted); }
-.share-row .basic-button { flex: none; align-self: stretch; padding: 0 1.1rem; }
+.share-row .basic-button { flex: none; align-self: stretch; padding: calc(var(--drop) * 2) 1.1rem 0; }
 
 .share-note { min-height: 1.2rem; margin: 0; font-size: 0.8rem; }
 
@@ -858,14 +1042,47 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	/* the width you dragged it to, but it gives way when the window
 	   can't hold both columns — as a fixed width it simply pushed the
 	   card side off the right edge of the page */
-	flex: 0 1 var(--deck-col, 55%);
-	min-width: 14rem;
+	flex: 0 1 var(--deck-col, 50%);
+	/* no floor of its own — the grip takes it all the way down to
+	   nothing, getting smaller the whole way rather than sticking
+	   and then jumping shut */
+	min-width: 0;
+	overflow: hidden;
 }
 /* the cards take the rest, but never narrower than the two tiles */
 .card-side {
 	flex: 1;
 	min-width: 19rem;
+	/* no gap of its own below the tiles: the grip between the notes
+	   tool and the deck is their gap, the way it is between columns,
+	   and the tiles keep theirs as a margin */
+	gap: 0;
 }
+.card-side > .quick-panel { margin-bottom: var(--group); }
+/* the deck takes whatever the notes tool above it leaves */
+.card-side > .deck-stage { flex: 1; min-height: 0; }
+
+/* the grip laid across a column rather than down a row */
+.pane-split.is-across {
+	width: auto;
+	height: var(--grip, var(--group));
+	cursor: var(--cur-tall);
+}
+.pane-split.is-across::after {
+	top: 50%;
+	right: 0;
+	bottom: auto;
+	left: 0;
+	width: auto;
+	height: 1px;
+}
+.pane-split.is-across.is-tight::before {
+	left: 0;
+	right: 0;
+	top: -10px;
+	bottom: -10px;
+}
+.splitting-down, .splitting-down * { cursor: var(--cur-tall) !important; user-select: none; }
 
 /* the divider is exactly the gap the two panes used to have between
    them, so nothing moved — the whole gap is just grabbable now. it
@@ -873,8 +1090,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .pane-split {
 	position: relative;
 	flex: none;
-	width: var(--group);
-	cursor: col-resize;
+	/* the gap grows with the pane beside it — see wireSplit. shut, the
+	   pane has no gap to sit in, so the grip has no width either and
+	   the pane still open fills its row evenly. */
+	width: var(--grip, var(--group));
+	cursor: var(--cur-wide);
 	touch-action: none;
 }
 .pane-split::after {
@@ -890,8 +1110,38 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .pane-split:hover::after,
 .pane-split:focus-visible::after,
 .pane-split.is-dragging::after { opacity: 1; }
+/* narrow, it still has to be grabbable, so it keeps a strip to press.
+   the strip reaches outward, into the page's own margin, never back
+   over the pane that's still there — over that, a press meant for a
+   row near the edge would start a drag instead. */
+.pane-split.is-tight::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	/* both ways, not outward only. a pane shut against the wall puts
+	   its grip at the very edge, and a strip reaching further out lands
+	   under the side bar, which paints over it — there was nothing left
+	   to take hold of. ten pixels inward is the open pane's padding,
+	   not its contents. */
+	left: -10px;
+	right: -10px;
+}
 /* while it's being dragged nothing else takes the pointer */
-.splitting, .splitting * { cursor: col-resize !important; user-select: none; }
+.splitting, .splitting * { cursor: var(--cur-wide) !important; user-select: none; }
+/* every pane with a grip narrows the whole way down to nothing. the
+   words inside give up before the box does — each line ends in an
+   ellipsis rather than pushing the wall out. */
+.deck-side, .queue-side, .clip-side { min-width: 0; }
+.deck-card-text, .stage-card-text, .track-name, .clip-text,
+.widget-row-name, .notes-card-text { min-width: 0; }
+.deck-card, .stage-card, .track-item, .recording-item { min-width: 0; }
+.deck-side h2, .queue-side h2, .clip-side h2, .stage-head h2 {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
 
 /* the deck list — a third of the width, the stage takes the rest */
 .deck-list-slot {
@@ -924,14 +1174,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	text-align: left;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .deck-card:hover { color: var(--paper); background: var(--ink); }
 .deck-card.active-deck {
 	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
-	cursor: default;
+	cursor: var(--cur-dot);
 }
 
 /* the whole entry is the grip — drag one to move it up or down. it
@@ -981,16 +1231,21 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border-radius: var(--radius);
 }
 
-.stage-head {
+/* every panel wears the same head — the deck, the notes tool, the
+   scratch box. one rule for the lot, so the boxes read as a set rather
+   than three things that happen to sit near each other. the sizes were
+   1.5rem, 1rem and 1.05rem before this, which is exactly the sort of
+   thing you see without being able to name. */
+.panel-head {
 	display: flex;
 	flex: none;
-	align-items: baseline;
+	align-items: center;
 	justify-content: center;
 	gap: 0.75rem;
 	min-width: 0;
 	/* the margin holds the rule off both walls; the padding on top of
-	   it lines the deck name up with the question text on the cards
-	   below, so the column reads as one edge */
+	   it lines the name up with the rows below, so the column reads as
+	   one edge */
 	margin: 0 0.35rem;
 	/* measured off the glyphs, then lifted a touch past even: the word
 	   is capitals with nothing hanging below the line, and a heading
@@ -999,18 +1254,29 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	padding: 0 0.35rem calc(var(--tight) + 3px);
 	border-bottom: 1px solid var(--line);
 }
-.stage-head h2 {
+.panel-head h2 {
 	margin: 0;
-	font-family: var(--head-font);
-	font-weight: 400;
+	/* its own, so the head never takes its height from whatever line
+	   spacing the box around it happens to use — the help box sets a
+	   double-spaced body, which was inflating its heading's line box by
+	   twelve pixels and nothing else's */
+	line-height: 1.25;
 	/* it has to be allowed to shrink, or a flex item stays at its full
 	   text width and the ellipsis never gets a chance to appear */
 	min-width: 0;
 	overflow: hidden;
-	font-size: 1.5rem;
+	font-family: var(--head-font);
+	font-size: 1.25rem;
+	font-weight: 700;
+	text-align: center;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
+
+.stage-head {
+	flex: none;
+}
+
 
 /* one card — question above, answer below, the two buttons on the end */
 #deckCardList .stage-card {
@@ -1028,7 +1294,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .stage-card-text {
 	flex: 1;
 	min-width: 0;
-	cursor: text;
+	cursor: var(--cur-bar);
 }
 /* a card is two tagged lines, question over answer. each line is the
    full width of the row, so pressing beside the answer's last word
@@ -1091,7 +1357,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	padding: 0 0.3rem;
 	background: none;
 	border: 0;
-	cursor: grab;
+	cursor: var(--cur-grab);
 	touch-action: none;   /* a drag here moves the card, not the list */
 }
 .card-handle span {
@@ -1143,7 +1409,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 0;
 	font-size: 1.4rem;
 	line-height: 1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 	transition: transform 0.2s var(--ease);
 }
 .stage-card-action:hover { transform: scale(1.18); }
@@ -1208,7 +1474,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 0;
 	font-size: 1.4rem;
 	line-height: 1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 	opacity: 0;
 	transform: translate(0.45rem, -50%) scale(0.6);
 	pointer-events: none;
@@ -1227,7 +1493,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    9. home — renaming a deck in place
    ========================================================= */
 /* the entry turns into this while you retype its name */
-.deck-card.is-renaming { cursor: default; }
+.deck-card.is-renaming { cursor: var(--cur-dot); }
 /* a row being renamed is live, so it inverts like everything else here
    — otherwise the white field sat inside a white row and the whole
    thing was one thin outline inside another, easy to miss */
@@ -1256,6 +1522,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    opening a row never moves the tiles. */
 .help-box {
 	contain: layout paint;
+	display: flex;
+	flex-direction: column;
 	/* as tall as its own words, no more — it only gives way and starts
 	   scrolling if the bar genuinely runs out of room for it */
 	flex: 0 1 auto;
@@ -1263,9 +1531,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	overflow-y: auto;
 	/* double-spaced text carries half a line of air above its first
 	   word, so an even padding reads tight under the last one. the
-	   bottom takes the next step up the scale to make that back. */
+	   bottom takes the next step up the scale to make that back —
+	   but only while there are words down there. shut, that step was
+	   just a box with more room below the heading than above it. */
 	padding: var(--tight);
-	padding-bottom: var(--group);
+	transition: padding-bottom 0.26s var(--drawer);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-size: 0.9rem;
@@ -1275,66 +1545,108 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 /* the heading is a button now, so the band it sits in belongs to that
    and the words below it live in their own drawer */
 .help-head {
-	display: block;
-	width: 100%;
-	padding: 0;
 	background: none;
-	border: 0;
-	/* the rule under the word belongs to the words below it: shut,
-	   there is nothing for it to divide, so it goes */
-	border-bottom: 1px solid transparent;
+	/* a button brings a border of its own on every side, which made the
+	   band two pixels taller than the same head everywhere else. only
+	   the one under it is wanted, and .panel-head draws that. */
+	border-width: 0 0 1px;
 	color: inherit;
-	cursor: pointer;
-	transition: border-color 0.3s var(--ease);
+	cursor: var(--cur-tap);
 }
-.help-box.is-open .help-head { border-bottom-color: var(--line); }
-.help-head h2 { border-bottom: 0; }
 /* the drawer. the rows go from nothing to their own height, which is
-   the one way a height animates without a number being guessed. */
+   the one way a height animates without a number being guessed.
+
+   the box and the words in it are not on the same clock. opening, the
+   box unfolds and the words follow it up a beat later, so there is
+   something arriving rather than a shape that is suddenly full.
+   closing, the words go first and quickly — waiting for them to fade
+   while the box is already shutting is what made it feel like a
+   dropped blind. */
 .help-body {
 	display: grid;
 	grid-template-rows: 0fr;
-	transition: grid-template-rows 0.32s var(--ease);
+	/* shutting: a touch quicker than opening, which is how a drawer
+	   behaves and how it reads */
+	transition: grid-template-rows 0.26s var(--drawer);
 }
-.help-box.is-open .help-body { grid-template-rows: 1fr; }
-.help-body-inner { overflow: hidden; min-height: 0; }
+.help-box.is-open {
+	/* three times the step under the words: a justified block wants
+	   more room below it than beside it, or it reads as sitting on the
+	   floor of the box */
+	padding-bottom: calc(var(--tight) * 3);
+	transition: padding-bottom 0.34s var(--drawer);
+}
+.help-box.is-open .help-body {
+	grid-template-rows: 1fr;
+	transition: grid-template-rows 0.34s var(--drawer);
+}
+/* the words only fade. they used to slide up as the box grew, which is
+   two movements at once and reads as one of them being late.
 
-.help-box h2 {
-	/* the word sits in the middle of the band above the rule, both
-	   ways — the band gets a height of its own so there is a middle
-	   to sit in. it's the control height the deck bar uses. */
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	/* the band is a --tight taller than the control height, and gives
-	   that back as bottom padding — so the content box is unchanged and
-	   the word doesn't move, but the rule under it drops by that much.
-	   that puts the word midway between the box's top edge and the rule
-	   rather than sitting low against it. */
-	position: relative;   /* the caret hangs off the band */
-	height: calc(var(--field) + var(--tight));
-	margin: 0;
-	/* measured off the glyphs: with the heading face the word sat 1.5px
-	   low in the band, so the nudge that used to drop it is down to
-	   almost nothing */
-	padding: 1px 0 var(--tight);
-	line-height: 1;
-	/* the heading face, not the title one — it names the panel rather
-	   than competing with the tabs. bigger than the text under it so
-	   the two read as label and body. */
-	font-family: var(--head-font);
-	font-size: 1.05rem;
-	font-weight: 400;
-	/* a rule under the word, the same move the deck heading makes */
-	border-bottom: 1px solid var(--line);
+   the fade lasts as long as the box's own movement, both ways. going
+   out it used to take half the time the box did, so the words were
+   gone while there was still a drawer closing over nothing — which is
+   the blink you see if you watch it. now they leave at the rate the
+   box shuts, the same as they arrive at the rate it opens. */
+.help-body-inner {
+	overflow: hidden;
+	min-height: 0;
+	opacity: 0;
+	transition: opacity 0.26s var(--drawer);
 }
+.help-box.is-open .help-body-inner {
+	opacity: 1;
+	transition: opacity 0.28s var(--drawer) 0.06s;
+}
+
+/* nothing of its own: .panel-head draws this heading, exactly as it
+   draws the deck's, the notes tool's and the scratch box's. the only
+   thing left here is the one way it differs — its rule is the drawer's
+   rule, so it is only there when the drawer is. */
+/* the rule belongs to the words, not to the band above them: it comes
+   and goes on exactly the clock the words do, so the two read as one
+   thing opening rather than a line arriving a beat off. */
+.help-box .help-head { border-bottom-color: transparent; }
+.help-head { transition: border-color 0.26s var(--drawer); }
+.help-box.is-open .help-head { transition: border-color 0.28s var(--drawer) 0.06s; }
+
+/* shut there is no rule and nothing under it, so the room the head
+   holds for both is a hole. it comes off the bottom of the head and
+   the bottom of the box — never off the top, which is what fixes the
+   word in place: it sits 8px down whether the drawer is open or shut,
+   and does not move when it opens. */
+/* shut, the rule IS the bottom of the box: the head keeps the room it
+   always keeps, and the box keeps none below it, so the line lands
+   exactly on the edge. the word never moves either way — everything
+   that changes is below it. */
+.help-box:not(.is-open) { padding-bottom: 0; }
+.help-box.is-open .help-head { border-bottom-color: var(--line); }
 /* one paragraph, belonging to whichever page you're on. it sits well
    clear of the rule, off both walls, and centred like the word above. */
 .help-box .help-note {
 	margin: var(--group) 0 0;
-	padding: 0 var(--tight);
-	text-align: center;
+	/* both edges flush, so the block of words has the same straight
+	   sides the box around it does. the last line is left to its own
+	   length — stretching that one too is what makes justified text
+	   look broken rather than set. */
+	text-align: justify;
+	hyphens: auto;
+	/* the same inset the rule above it has. the head is held off the
+	   walls twice — a 0.35rem margin and a 0.35rem padding — so the
+	   line's ends are in from the box's own padding, and the words have
+	   to start there too or they run past it and look forced into the
+	   box. twice that now, for air at the sides. */
+	padding: 0 0.7rem;
+	/* a justified last line is left to its own length, which in a
+	   column this narrow can leave one word adrift on the left. the
+	   short line sits in the middle instead. */
+	text-align-last: center;
 }
+/* double-spaced lines carry half their leading under the last one,
+   which is five pixels of air at the floor with no counterpart at the
+   sides. it is taken back, so what shows below the words is the box's
+   padding and nothing else. */
+.help-body-inner { margin-bottom: -5px; }
 /* a pair of tiles sitting over the organizer, sharing its width */
 .quick-panel {
 	display: flex;
@@ -1362,7 +1674,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .quick-action.primary { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
@@ -1510,7 +1822,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 }
 .maker-field input:focus { outline: none; }
 .maker-field input::placeholder { color: var(--muted); }
-.maker-bar .basic-button { flex: none; height: var(--field); padding: 0 1.5rem; }
+.maker-bar .basic-button { flex: none; height: var(--field); padding: calc(var(--drop) * 2) 1.5rem 0; }
 
 /* the note sits over the bar's corner, so nothing shifts for it */
 .form-note {
@@ -1582,7 +1894,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 /* nothing to act on: it keeps the same outline as everything else and
    simply stops answering — no dashes, and no fade, since a faded black
    is just grey */
-.square-button:disabled { cursor: default; }
+.square-button:disabled { cursor: var(--cur-dot); }
 .square-button:disabled:hover { color: var(--ink); background: var(--paper); }
 .square-button:disabled:active { transform: none; }
 
@@ -1595,7 +1907,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	margin: 0;
 	padding: 0 0.6rem;
 	border-radius: 6px;
-	cursor: context-menu;
+	cursor: var(--cur-menu);
 }
 #cardList .card-item:hover { background: var(--hover); }
 #cardList .card-text {
@@ -1680,7 +1992,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	font-weight: 600;
 	overflow-wrap: anywhere;
 	hyphens: auto;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .answer-button:nth-child(1) { animation-delay: 0.02s; }
 .answer-button:nth-child(2) { animation-delay: 0.07s; }
@@ -1818,10 +2130,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 0;
 	border-radius: 6px;
 	text-align: left;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .context-action:hover:not(:disabled) { background: var(--hover); }
-.context-action:disabled { color: var(--ink); opacity: 0.35; cursor: not-allowed; }
+.context-action:disabled { color: var(--ink); opacity: 0.35; cursor: var(--cur-no); }
 
 /* =========================================================
    14. audio — layout
@@ -1841,7 +2153,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	align-items: center;
 	gap: var(--tight);
 }
-.audio-bar .basic-button { height: var(--field); padding: 0 1.4rem; }
+.audio-bar .basic-button { height: var(--field); padding: calc(var(--drop) * 2) 1.4rem 0; }
 .audio-bar .record-status { flex: 1; margin: 0 0 0 0.5rem; }
 
 /* the ask before something that can't be taken back. a popup hanging
@@ -1882,7 +2194,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border-radius: 999px;
 	font-size: 0.85rem;
 	font-weight: 700;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .chip-button:hover { color: var(--paper); background: var(--ink); }
 #confirmChipYes { color: var(--paper); background: var(--ink); }
@@ -1899,16 +2211,352 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .audio-body {
 	display: flex;
 	flex: 1;
-	gap: var(--gap);
+	/* no gap of its own: the grip between the two is the gap, exactly
+	   as it is on the cards page. a --gap either side of it as well
+	   left a canyon between the clips and the box. */
+	gap: 0;
 	min-height: 0;
 }
 #recordingList {
 	position: relative;    /* so a row's offsetTop is its slot in here */
-	width: 100%;           /* the whole row until there's a video beside it */
-	flex: none;
+	/* the whole row until there's something beside it, and then
+	   whatever the box on the right leaves — the clip bars shrink with
+	   it, since each one is the width of its row */
+	flex: 1;
 	align-self: stretch;
+	min-width: 0;
 	min-height: 0;
 }
+
+/* the box beside the clips. it is however wide you dragged it, never
+   past half the room, and nothing at all when it's shut. */
+.clip-side {
+	position: relative;   /* what the chip in its corner hangs off */
+	display: flex;
+	flex: 0 1 var(--clip-col, 50%);
+	flex-direction: column;
+	gap: var(--tight);
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	/* a box can never be narrower than its own padding and outline, so
+	   with a fixed padding this one jumped from nothing straight to
+	   18px the moment it opened. the padding comes in with it instead
+	   — see --skin in wireSplit — which leaves the outline as the only
+	   floor, and two pixels is not a jump anyone sees. */
+	/* the same step of air all the way round that the deck and the
+	   notes tool wear, so the three boxes read as one set */
+	padding: calc(var(--tight) * var(--skin, 1));
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+
+.clip-side-body { flex: 1; min-height: 0; overflow-y: auto; }
+.clip-side-body::-webkit-scrollbar { display: none; }
+.clip-side-body { scrollbar-width: none; }
+
+/* the link goes in the bar at the top, and what comes back fills the
+   box under it */
+/* the arrow lives inside the field rather than beside it — the same
+   move the notes box makes with its picture button. one thing on the
+   row instead of two, and the field gets the width back. */
+.scratch-bar {
+	position: relative;
+	display: flex;
+	flex: none;
+	min-width: 0;
+}
+/* the mark alone, no outline round it: inside a field that already has
+   one, a second ring was one shape too many and read as a button
+   stuck on rather than part of the row */
+.scratch-bar .square-button {
+	position: absolute;
+	top: 50%;
+	right: 0.55rem;
+	margin-top: -0.7rem;
+	width: 1.4rem;
+	height: 1.4rem;
+	background: none;
+	border: 0;
+	border-radius: 0;
+}
+.scratch-bar .square-button svg { width: 100%; height: 100%; }
+.scratch-bar .square-button:hover { color: var(--ink); transform: translateX(2px); }
+.scratch-bar .square-button { transition: transform 0.18s var(--ease); }
+.scratch-bar input {
+	flex: 1;
+	min-width: 0;
+	height: var(--field);
+	padding: 0 2.2rem 0 0.9rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	color: var(--ink);
+	font: inherit;
+	font-size: 0.85rem;
+	text-overflow: ellipsis;
+}
+.scratch-bar input::placeholder { color: var(--ink); opacity: 1; }
+.scratch-bar .square-button { flex: none; }
+/* a chip down in the corner, just over the copy button. as a line of
+   text under the field it shoved the whole list down every time it had
+   something to say, and it was the first thing you saw in a box whose
+   point is the songs. */
+.scratch-note {
+	position: absolute;
+	/* centred rather than hung off the right edge: a long one grew
+	   leftwards from a fixed corner, so the chip's own middle wandered
+	   with whatever it had to say */
+	left: 50%;
+	bottom: calc(var(--field) + var(--group) + var(--tight));
+	z-index: 2;
+	max-width: calc(100% - var(--tight) * 4);
+	margin: 0;
+	padding: calc(0.28rem + var(--drop)) 0.7rem calc(0.28rem - var(--drop));
+	color: var(--paper);
+	background: var(--ink);
+	border-radius: 999px;
+	font-size: 0.72rem;
+	text-align: center;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	opacity: 0;
+	transform: translate(-50%, 6px);
+	transition: opacity 0.24s var(--ease), transform 0.24s var(--ease);
+	pointer-events: none;
+}
+.scratch-note.is-up { opacity: 1; transform: translate(-50%, 0); }
+/* with no songs there is no copy button under it to clear */
+.clip-side:not(.has-songs) .scratch-note { bottom: var(--tight); }
+
+.scratch-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+/* the quiet second line under the field, the way the notes panel wears
+   its own. it is there before it is needed, and says so louder once a
+   playlist has actually run past the hundred. */
+/* the quiet line over the field. no rule under it and almost no room
+   taken — it is not wanted until a playlist runs past a hundred, and
+   until then it should be possible to not notice it. */
+.scratch-plain {
+	align-self: center;
+	margin: 0;
+	padding: 0;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	font: inherit;
+	font-size: 0.68rem;
+	line-height: 1;
+	opacity: 0.75;
+	cursor: var(--cur-tap);
+	transition: opacity 0.18s var(--ease);
+}
+.scratch-plain:hover { opacity: 1; }
+.scratch-plain[hidden] { display: none; }
+/* once it is wanted it stops being quiet */
+.scratch-plain.is-wanted { opacity: 1; font-weight: 700; }
+/* the line above the field takes the tighter step, not the group one */
+.clip-side > .scratch-plain { margin-bottom: calc(var(--tight) * -0.4); }
+
+.scratch-warn { font-weight: 700; }
+.scratch-warn[hidden] { display: none; }
+
+/* --- the windows that ask you for something ---
+   spotify's sign-in and the sharper reader wear the same shape: a
+   line on why, numbered steps, a field and one button. */
+.ask-screen { width: min(30rem, 100%); }
+.ask-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--group);
+	min-width: 0;
+	text-align: left;
+}
+/* why it is being asked for at all, with the mark of whose door it is */
+.ask-why {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--tight);
+	margin: 0;
+	font-size: 0.82rem;
+	line-height: 1.55;
+}
+.ask-mark { flex: none; width: 1.6rem; height: 1.6rem; }
+.ask-mark svg { display: block; width: 100%; height: 100%; }
+
+.ask-steps {
+	display: flex;
+	flex-direction: column;
+	gap: var(--group);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.ask-steps li {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--tight);
+	min-width: 0;
+}
+/* the count, in the number face like every other figure here */
+.ask-step {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 1.5rem;
+	height: 1.5rem;
+	padding-top: calc(var(--drop-num) * 2);
+	color: var(--paper);
+	background: var(--ink);
+	border-radius: 999px;
+	font-family: var(--num-font);
+	font-size: 1rem;
+}
+.ask-said {
+	min-width: 0;
+	font-size: 0.82rem;
+	line-height: 1.55;
+}
+.ask-said .scratch-url { display: block; margin-top: var(--tight); }
+.ask-warn {
+	display: block;
+	margin-top: var(--tight);
+	font-size: 0.78rem;
+	font-weight: 700;
+}
+.ask-warn[hidden] { display: none; }
+.ask-screen input {
+	width: 100%;
+	height: var(--field);
+	padding: 0 0.9rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	color: var(--ink);
+	font: inherit;
+	font-size: 0.85rem;
+}
+.ask-screen input::placeholder { color: var(--ink); opacity: 1; }
+.ask-go { align-self: stretch; height: var(--field); padding: calc(var(--drop) * 2) 1.5rem 0; }
+.ask-forget { align-self: center; }
+
+.scratch-key {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	gap: var(--tight);
+	min-width: 0;
+}
+.scratch-key[hidden] { display: none; }
+.scratch-say { margin: 0; font-size: 0.72rem; line-height: 1.5; text-align: center; }
+/* the address they have to hand spotify, set apart so it can be read
+   off in one go */
+.scratch-url {
+	padding: calc(0.3rem + var(--drop)) 0.6rem calc(0.3rem - var(--drop));
+	background: var(--ink);
+	color: var(--paper);
+	border-radius: var(--radius);
+	font-family: var(--head-font);
+	font-size: 0.7rem;
+	text-align: center;
+	overflow-wrap: anywhere;
+	cursor: var(--cur-tap);
+}
+.scratch-key input {
+	width: 100%;
+	height: var(--field);
+	padding: 0 0.9rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	color: var(--ink);
+	font: inherit;
+	font-size: 0.8rem;
+	text-overflow: ellipsis;
+}
+.scratch-key input::placeholder { color: var(--ink); opacity: 1; }
+.scratch-key-row {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--tight);
+}
+.scratch-connect { align-self: stretch; height: var(--field); padding: calc(var(--drop) * 2) 1.5rem 0; }
+
+/* one song. the whole row is the copy button — there is nothing else
+   to press on it, so a separate mark beside the words would only be a
+   second thing to aim at. */
+.scratch-song {
+	display: flex;
+	align-items: center;
+	gap: var(--tight);
+	width: 100%;
+	min-width: 0;
+	padding: 0.35rem var(--tight);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	color: var(--ink);
+	font: inherit;
+	font-size: 0.82rem;
+	text-align: left;
+	cursor: var(--cur-tap);
+	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.scratch-song:hover { background: var(--ink); color: var(--paper); }
+/* it says so for a moment after you press it, then goes back */
+.scratch-song.is-copied { background: var(--ink); color: var(--paper); }
+.scratch-song .scratch-at {
+	flex: none;
+	display: grid;
+	place-items: center;
+	/* wide enough for three figures without the row squeezing them */
+	min-width: 1.95rem;
+	/* the number face. bitcount draws its 1 as two dense columns of
+	   dots and its 0 as an open ring, so "100" came out as one solid
+	   figure beside two hollow ones — at every size, because that is
+	   how the face is drawn. */
+	font-family: var(--num-font);
+	font-size: 1rem;
+	padding-top: calc(var(--drop-num) * 2);
+}
+.scratch-song .scratch-words { min-width: 0; }
+.scratch-song .scratch-words strong,
+.scratch-song .scratch-words small {
+	display: block;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.scratch-song .scratch-words strong { font-size: 0.82rem; font-weight: 600; }
+.scratch-song .scratch-words small { font-size: 0.72rem; }
+/* a fixed height with the pill's own generous padding leaves the line
+   box taller than what is left for it, so the label is placed from the
+   top rather than centred. the padding goes and the height does the
+   centring, plus the drop every other label gets. */
+/* it spans the box the way the rows above it do, rather than sitting
+   as a pill in the middle of a full-width list */
+.scratch-all {
+	flex: none;
+	align-self: stretch;
+	height: var(--field);
+	padding: calc(var(--drop) * 2) 1.5rem 0;
+}
+/* shut it keeps no outline and no padding — an empty sliver of box
+   would read as a mistake. the grip beside it stays put, so it can
+   always be pulled back out. */
+.clip-side.is-shut, .notes-home.is-shut { padding: 0; border-width: 0; }
+/* while you're aiming the sensing box the stage wants the whole width */
+.recorder-panel.is-tuning .clip-side,
+.recorder-panel.is-tuning .clip-split { display: none; }
 
 /* the stage only appears while you're aiming the sensing box */
 .audio-stage {
@@ -2031,8 +2679,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 }
 .preview-wrap.showing-video::-webkit-scrollbar { width: 0; height: 0; }
 /* zoomed in, the picture is something you push about */
-.preview-wrap.is-zoomed { cursor: grab; }
-.preview-wrap.is-zoomed.is-pushing { cursor: grabbing; }
+.preview-wrap.is-zoomed { cursor: var(--cur-grab); }
+.preview-wrap.is-zoomed.is-pushing { cursor: var(--cur-held); }
 .preview-wrap.showing-video {
 	height: auto;
 	padding: 0;
@@ -2049,7 +2697,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .sense-box {
 	position: absolute;
 	z-index: 4;
-	cursor: move;
+	cursor: var(--cur-move);
 	touch-action: none;
 	/* sits over arbitrary video, so it's a white frame with a black
 	   outline either side — readable on any footage. thin, because it
@@ -2106,7 +2754,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background: none;
 	-webkit-appearance: none;
 	appearance: none;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 /* a hairline to run along, and a white bead to take hold of */
 .sense-controls input[type="range"]::-webkit-slider-runnable-track,
@@ -2163,7 +2811,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 0;
 	font-size: 0.85rem;
 	text-decoration: none;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .text-button:hover { text-decoration: underline; }
 .panel-handle {
@@ -2172,10 +2820,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background:
 		repeating-linear-gradient(90deg, var(--ink) 0 3px, transparent 3px 6px)
 		center / auto 2px no-repeat;
-	cursor: grab;
+	cursor: var(--cur-grab);
 	touch-action: none;
 }
-.panel-handle:active { cursor: grabbing; }
+.panel-handle:active { cursor: var(--cur-held); }
 
 /* =========================================================
    17. audio — saved clips
@@ -2211,10 +2859,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	padding: 0 0.3rem;
 	background: none;
 	border: 0;
-	cursor: grab;
+	cursor: var(--cur-grab);
 	touch-action: none;   /* a drag here moves the clip, not the list */
 }
-.clip-handle:active { cursor: grabbing; }
+.clip-handle:active { cursor: var(--cur-held); }
 .clip-handle span {
 	display: block;
 	height: 1px;
@@ -2223,7 +2871,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 /* while a row is in hand, nothing else on the page takes the drag —
    no text selecting itself as the cursor sweeps past */
 .sorting-rows, .sorting-rows * { user-select: none; }
-.sorting-grab { cursor: grabbing; }
+.sorting-grab { cursor: var(--cur-held); }
 
 /* the row in your hand: it's picked up off the page, so it outlines
    itself. its slot stays behind as the space it would drop into. */
@@ -2233,7 +2881,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background: var(--paper);
 	outline: 1px solid var(--line);
 	outline-offset: -1px;
-	cursor: grabbing;
+	cursor: var(--cur-held);
 	will-change: transform;   /* its own layer — the list isn't repainted
 	                             every time it moves a pixel */
 }
@@ -2253,7 +2901,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 0;
 	font-size: 0.75rem;
 	line-height: 1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 /* playing reads off the glyph alone now — there's no ring to fill */
 .is-playing .clip-play { color: var(--ink); }
@@ -2268,7 +2916,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	overflow: hidden;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 /* the fill is placed as well as sized: a cropped clip starts its fill
    at the first mark rather than at the left end of the bar */
@@ -2301,7 +2949,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .clip-text.is-editing {
 	user-select: text;
 	pointer-events: auto;
-	cursor: text;
+	cursor: var(--cur-bar);
 	outline: none;
 }
 
@@ -2323,7 +2971,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 0;
 	border-radius: 2px;
 	line-height: 1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .clip-download { font-size: 0.9rem; margin-top: 3px; }
 .clip-discard { font-size: 1.1rem; margin-top: 1px; }
@@ -2367,7 +3015,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	color: var(--ink);
 	background: none;
 	border: 0;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .clip-crop svg { display: block; width: 0.85rem; height: 0.85rem; }
 .recording-item.is-cropping .clip-crop,
@@ -2411,10 +3059,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	margin-left: -4.5px;
 	background: var(--ink);
 	border-radius: 2px;
-	cursor: ew-resize;
+	cursor: var(--cur-wide);
 	touch-action: none;
 }
-.recording-item.is-cropping-now .clip-track { cursor: ew-resize; }
+.recording-item.is-cropping-now .clip-track { cursor: var(--cur-wide); }
 
 /* =========================================================
    18. audio — the live row and its pulse
@@ -2498,7 +3146,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 @media (max-width: 760px) {
 	.rail-left { display: none; }
-	.app-shell::after { display: none; }   /* its edge goes with it */
+	.app-shell::after, .app-shell::before { display: none; }   /* its edge goes with it */
 	.topbar { left: 0; }                   /* no scallop to reach under */
 }
 
@@ -2577,8 +3225,9 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .queue-side {
 	/* the width you dragged it to, but it gives way rather than push
 	   the player off the right of the page — see .deck-side */
-	flex: 0 1 var(--queue-col, 42%);
-	min-width: 16rem;
+	flex: 0 1 var(--queue-col, 55%);
+	min-width: 0;      /* see .deck-side — it shrinks the whole way */
+	overflow: hidden;
 }
 .stage-side {
 	flex: 1;
@@ -2598,7 +3247,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: 1;
 	min-width: 0;
 	height: var(--field);
-	padding: 0 0.8rem;
+	padding: calc(var(--drop) * 2) 0.8rem 0;
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
@@ -2622,7 +3271,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: 1;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	/* stacked from the top, not centred. centred, every row's place
+	   depended on how tall the whole stack happened to be, so dragging
+	   the divider walked the scrub bar up and down the panel. */
+	justify-content: flex-start;
 	gap: var(--group);
 	min-height: 0;
 	padding: var(--group) var(--tight);
@@ -2633,56 +3285,6 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 }
 .now-body::-webkit-scrollbar { display: none; }
 
-/* there's no cover art to show, so the player shows the thing a player
-   has always had instead: a record, turning while something is on and
-   still when it isn't. drawn from four circles, no image needed. */
-.now-disc {
-	position: relative;
-	display: grid;
-	flex: none;
-	place-items: center;
-	width: clamp(6rem, 46%, 13rem);
-	aspect-ratio: 1;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 50%;
-}
-/* two grooves */
-.now-disc::before,
-.now-disc::after {
-	content: '';
-	position: absolute;
-	border: 1px solid var(--line);
-	border-radius: 50%;
-}
-.now-disc::before { inset: 9%; }
-.now-disc::after  { inset: 19%; }
-/* the label, with the spindle hole punched out of it */
-.disc-hub {
-	display: grid;
-	place-items: center;
-	width: 34%;
-	height: 34%;
-	background: var(--ink);
-	border-radius: 50%;
-}
-.disc-hub::after {
-	content: '';
-	display: block;
-	width: 22%;
-	height: 22%;
-	background: var(--paper);
-	border-radius: 50%;
-}
-@keyframes disc-turn {
-	to { transform: rotate(360deg); }
-}
-.now-disc.is-spinning { animation: disc-turn 3.6s linear infinite; }
-/* a turning record is decoration; it shouldn't move for anyone who has
-   asked the system for less of that */
-@media (prefers-reduced-motion: reduce) {
-	.now-disc.is-spinning { animation: none; }
-}
 .now-title {
 	flex: none;
 	width: 100%;
@@ -2707,15 +3309,48 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	display: flex;
 	flex: none;
 	align-items: center;
+	/* the row has to survive the narrowest the panel can be dragged to,
+	   which is 17rem — at a --group between each of five buttons it was
+	   34px wider than that and the ends were cut off */
 	gap: var(--tight);
+	margin-top: var(--tight);
 }
 /* the one you press most is the biggest */
 .square-button.is-big {
-	width: 3.25rem;
-	height: 3.25rem;
-	font-size: 1.1rem;
+	width: 3.3rem;
+	height: 3.3rem;
 }
-.now-controls .square-button { font-size: 0.85rem; }
+/* a shade under the site's control height, so five of them and their
+   gaps still fit the panel at its smallest. the marks inside are a
+   share of the button, so they come down with it. */
+.now-controls .square-button {
+	width: 2.4rem;
+	height: 2.4rem;
+}
+.now-controls .square-button.is-big { width: 3.3rem; height: 3.3rem; }
+/* round, and the mark inside fills it. a small glyph floating in a
+   square button is what made these look like something off an old
+   stereo — the shape is the button, so the icon can have the room. */
+.now-controls .square-button {
+	border-radius: 999px;
+	padding: 0;
+}
+.now-controls .square-button svg {
+	display: block;
+	/* the drawn ones are outlines and read lighter than the solid play
+	   beside them, so they are given a little more of the button */
+	width: 66%;
+	height: 66%;
+}
+.now-controls .square-button.is-big svg { width: 52%; height: 52%; }
+/* the play mark is a solid triangle and reads light for its size, so
+   it gets a little more than the rest */
+.now-controls #playToggle svg { width: 56%; height: 56%; }
+.now-controls #playToggle .mark-play { transform: translateX(4%); }
+
+/* the same marks in the bar's short copy */
+.rail-controls .clip-play svg { display: block; width: 62%; height: 62%; }
+.rail-controls .clip-play { display: grid; place-items: center; }
 
 .now-volume {
 	display: flex;
@@ -2724,7 +3359,68 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: var(--tight);
 	width: 100%;
 	max-width: 15rem;
+	margin-top: var(--tight);
 	font-size: 0.8rem;
+}
+/* a speaker that opens up as you turn it. the three arcs are all drawn
+   all the time and shown one at a time, so each one grows out of the
+   cone rather than a whole new picture being swapped in. */
+.volume-mark {
+	flex: none;
+	display: block;
+	width: 1.35rem;
+	height: 1.35rem;
+}
+.volume-mark svg { display: block; width: 100%; height: 100%; }
+.vol-wave, .vol-hush {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.9;
+	stroke-linecap: round;
+	/* they grow out of the cone's mouth rather than out of the middle
+	   of the picture, so each one reads as the sound leaving it */
+	transform-origin: 9px 12px;
+	transition: opacity 0.42s var(--ease),
+	            transform 0.42s cubic-bezier(0.22, 1.08, 0.36, 1);
+}
+.vol-wave { opacity: 0; transform: scale(0.55); }
+.vol-hush { opacity: 0; transform: scale(0.55); }
+
+/* the three arcs don't move together: opening up they arrive from the
+   inside out, and going quiet the outermost is the first to leave. it
+   is the same half-second either way, and the ripple is what makes it
+   read as one thing happening rather than three. */
+.is-one   { transition-delay: 0.14s; }
+.is-two   { transition-delay: 0.07s; }
+.is-three { transition-delay: 0s; }
+
+.volume-mark[data-level="0"] .vol-hush { opacity: 1; transform: none; }
+.volume-mark[data-level="1"] .is-one,
+.volume-mark[data-level="2"] .is-one,
+.volume-mark[data-level="2"] .is-two,
+.volume-mark[data-level="3"] .is-one,
+.volume-mark[data-level="3"] .is-two,
+.volume-mark[data-level="3"] .is-three { opacity: 1; transform: none; }
+
+.volume-mark[data-level="1"] .is-one,
+.volume-mark[data-level="2"] .is-one,
+.volume-mark[data-level="3"] .is-one { transition-delay: 0s; }
+.volume-mark[data-level="2"] .is-two,
+.volume-mark[data-level="3"] .is-two { transition-delay: 0.07s; }
+.volume-mark[data-level="3"] .is-three { transition-delay: 0.14s; }
+
+/* the cone leans back a touch when it is shut, so the turn has
+   something of its own to do at the bottom of the slider */
+.vol-cone {
+	transform-origin: 6px 12px;
+	transition: transform 0.42s cubic-bezier(0.22, 1.08, 0.36, 1);
+}
+.volume-mark[data-level="0"] .vol-cone { transform: scale(0.9); }
+
+/* it is decoration; anyone who has asked the system for less of that
+   gets the same picture without the travel */
+@media (prefers-reduced-motion: reduce) {
+	.vol-wave, .vol-hush, .vol-cone { transition-duration: 0.01s; transition-delay: 0s; }
 }
 .now-volume input { flex: 1; min-width: 0; }
 .now-note { flex: none; margin: 0; min-height: 1.1rem; font-size: 0.8rem; }
@@ -2813,7 +3509,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 0;
 	font-size: 1.2rem;
 	line-height: 1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 	transition: transform 0.2s var(--ease);
 }
 .track-drop:hover { transform: scale(1.18); }
@@ -2847,7 +3543,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background: none;
 	border: 0;
 	font-size: 0;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 	transition: transform 0.28s cubic-bezier(0.34, 1.3, 0.5, 1);
 }
 .field-add::before,
@@ -2884,6 +3580,13 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 	text-align: left;
 	animation: confirm-in 0.18s var(--ease);
+	transition: opacity 0.16s var(--ease), transform 0.16s var(--ease);
+}
+/* on the way out it settles back rather than blinking off */
+.pop-panel.is-leaving {
+	opacity: 0;
+	transform: translateY(4px) scale(0.98);
+	pointer-events: none;
 }
 .pop-say {
 	width: 100%;
@@ -2893,17 +3596,89 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	font-size: 0.78rem;
 	line-height: 1.45;
 }
+/* a one-word label has nothing to divide from what is under it */
+.pop-plain {
+	padding-bottom: 0;
+	border-bottom: 0;
+	text-align: center;
+}
 
 /* the answers themselves, as a wrapping set of switches */
 .pop-picks { display: flex; flex-direction: column; }
+
+/* the shapes, drawn at the shape they are. a picture of each says more
+   than its numbers do — a 2×2 is obvious as a square and not as a word. */
+/* no panel and no label: the three shapes are the whole of it, and a
+   box around them was a box around a box */
+.pop-sizes {
+	width: auto;
+	padding: 0;
+	background: none;
+	border: 0;
+	box-shadow: none;
+}
+.size-list { display: flex; gap: var(--tight); }
+.size-pick {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.35rem;
+	padding: var(--tight);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	color: var(--ink);
+	font: inherit;
+	font-size: 0.7rem;
+	font-family: var(--num-font);
+	cursor: var(--cur-tap);
+	transition: color 0.18s var(--ease), background-color 0.18s var(--ease);
+}
+.size-pick:hover { color: var(--paper); background: var(--ink); }
+/* the one it already is, filled in the way every live state here is */
+.size-pick.is-on { color: var(--paper); background: var(--ink); }
+/* the shape itself, to scale against the others */
+.size-shape {
+	display: block;
+	border: 1px solid currentColor;
+	border-radius: 3px;
+	background: none;
+}
+.size-pick[data-size="small"] .size-shape { width: 1.1rem; height: 1.1rem; }
+.size-pick[data-size="wide"]  .size-shape { width: 2.4rem; height: 1.1rem; }
+.size-pick[data-size="large"] .size-shape { width: 2.4rem; height: 2.4rem; }
+/* every choice is the same box whatever shape it offers, and a short
+   shape sits in the middle of its own — three boxes of three heights
+   in a row reads as a mistake rather than as a scale */
+.size-list { align-items: stretch; }
+.size-pick { justify-content: center; }
+.size-pick .size-shape { margin: auto 0; }
+/* a plain list, one under the other, every row the same length. as a
+   wrapped row of pills each was as wide as its own name, which read as
+   a jumble rather than as a list of the same kind of thing. */
 .pick-list {
 	display: flex;
-	flex-wrap: wrap;
-	gap: var(--tight);
-	max-height: 13rem;
+	flex-direction: column;
+	gap: 0.3rem;
+	max-height: 15rem;
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	scrollbar-width: none;
+}
+.pick-list::-webkit-scrollbar { display: none; }
+/* no panel around it: just the list. it is a column of outlined pills
+   on the page, and a box around a box is one box too many. */
+.pop-picks {
+	width: 11rem;
+	padding: 0;
+	background: none;
+	border: 0;
+	box-shadow: none;
+}
+.pick-list .widget-pick {
+	justify-content: center;
+	width: 100%;
+	max-width: none;
 }
 .pick-list::-webkit-scrollbar { display: none; }
 .pick-list .empty-message { padding: 0.3rem; font-size: 0.85rem; }
@@ -2919,7 +3694,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font-size: 0.85rem;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .option-pick input {
 	position: absolute;
@@ -2955,7 +3730,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	overflow: hidden;
 	font-family: var(--head-font);
 	font-size: 0.85rem;
-	font-weight: 400;
+	font-weight: 700;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	text-align: center;
@@ -2968,7 +3743,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: var(--group);
 }
 .rail-controls .clip-play { font-size: 0.75rem; }
-.rail-controls .clip-play:disabled { cursor: default; }
+.rail-controls .clip-play:disabled { cursor: var(--cur-dot); }
 
 
 /* =========================================================
@@ -2982,7 +3757,9 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex-direction: column;
 	align-items: center;
 	gap: 0.1rem;
-	padding: 0.7rem var(--rail-pad) 0.8rem;
+	/* measured to the ink rather than to the boxes: the moon at the top
+	   and the date at the floor sit the same distance off their edges */
+	padding: 0.7rem var(--rail-pad) 0.61rem;
 	color: var(--bar-ink);
 	background: var(--bar);
 	border: 1px solid var(--line);
@@ -2992,7 +3769,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 0.5rem;
+	gap: 0.45rem;
+	/* the moon and its two letters ride nearer the top edge, and take
+	   less room while they are up there — they name the hour, they are
+	   not the hour */
+	margin-top: -0.15rem;
 }
 .clock-suffix {
 	/* measured off the glyphs: the ink of the two letters sits high in
@@ -3001,20 +3782,25 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   half a pixel each way is as close as the rasteriser gets. */
 	position: relative;
 	top: 1px;
-	font-size: 1.05rem;
+	font-size: 0.9rem;
 	font-weight: 700;
 	line-height: 1;
 }
+/* the hour is the one thing in this box worth reading from across the
+   room, so it is the title face rather than the number one — bitcount
+   is the heaviest of the four. never bold: its letters are dots and the
+   bold weight fills the gaps between them. */
 .clock-time {
 	margin: 0;
 	font-family: var(--title-font);
-	font-size: 2.6rem;
-	font-weight: 400;
+	font-size: 4.05rem;
+	font-weight: 400;   /* bitcount is never bold — the dots close up */
 	line-height: 1;
 	letter-spacing: 0.02em;
+	padding-top: calc(var(--drop-title) * 2);
 }
 .clock-date {
-	margin: 0.3rem 0 0;
+	margin: 0.15rem 0 0;
 	font-size: 0.8rem;
 }
 
@@ -3023,13 +3809,13 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	display: grid;
 	flex: none;
 	place-items: center;
-	width: 1.5rem;
-	height: 1.5rem;
+	width: 1.3rem;
+	height: 1.3rem;
 	padding: 0;
 	color: inherit;
 	background: none;
 	border: 0;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 	transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.5, 1);
 }
 .theme-swap:hover { transform: scale(1.12); }
@@ -3070,7 +3856,10 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	display: flex;
 	flex: none;
 	flex-direction: column;
-	gap: 0.35rem;
+	/* the same step below the label as the box keeps above it. at a
+	   third of that the words sat almost on the bar, with all the air
+	   over their heads — which reads as a label that has slipped. */
+	gap: var(--rail-pad);
 	padding: var(--rail-pad);
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -3089,7 +3878,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	   against the even padding. the line box is the words themselves. */
 	line-height: 1;
 }
-.store-head span:first-child { font-family: var(--head-font); font-weight: 400; }
+.store-head span:first-child { font-family: var(--head-font); font-weight: 700; }
 .store-bar {
 	width: 100%;
 	height: 10px;
@@ -3110,7 +3899,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	display: flex;
 	flex: none;
 	flex-direction: column;
-	gap: var(--tight);
+	gap: var(--rail-pad);   /* see .rail-store */
 	padding: var(--rail-pad);
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -3124,13 +3913,19 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	margin: 0;
 	font-family: var(--head-font);
 	font-size: 0.78rem;
-	font-weight: 400;
+	font-weight: 700;
 }
 .binned-count::before { content: ' · '; }
 .binned-count:empty { display: none; }
 .binned-empty {
 	flex: none;
-	padding: 0.1rem 0.5rem;
+	/* a fixed height does the centring, plus the drop every other pill
+	   carries. as bare padding the label leaned, because the line box
+	   is taller than the room the padding left it. */
+	display: grid;
+	place-items: center;
+	height: 1.35rem;
+	padding: 0 0.5rem;
 	color: inherit;
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -3138,7 +3933,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	font: inherit;
 	font-size: 0.7rem;
 	font-weight: 700;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .binned-empty:hover { color: var(--paper); background: var(--ink); }
 .binned-list {
@@ -3163,7 +3958,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	white-space: nowrap;
 	text-align: left;
 	text-overflow: ellipsis;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .binned-item:hover { color: var(--paper); background: var(--ink); }
 
@@ -3187,15 +3982,73 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 .widget-list {
 	display: grid;
 	flex: 0 1 auto;
-	grid-template-columns: repeat(4, 1fr);
+	/* minmax(0, ...) and not plain 1fr: a 1fr track still grows to fit
+	   an item too big for it, and while a tile is being animated from a
+	   wide shape to a narrow one it IS too big for it. the columns were
+	   stretching to hold it and everything in them jumped 129px sideways
+	   and back — which is the snap. at minmax(0,1fr) the track holds its
+	   share and the tile simply overflows it while it shrinks. */
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	/* one row per row in use, and a spare one under them while you are
+	   arranging so a tile can be dropped below everything else */
+	grid-template-rows: repeat(var(--board-rows, 1), 8.5rem);
 	grid-auto-rows: 8.5rem;
 	gap: var(--group);
 	min-height: 0;
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	scrollbar-width: none;
+	/* a scrolling box crops whatever leaves it, and in edit the tiles
+	   lift and cast a shadow — both of which left it. the board is
+	   inset by that much and given the same back as negative margin, so
+	   nothing is cut and nothing has moved. */
+	padding: 8px;
+	margin: -8px;
 }
 .widget-list::-webkit-scrollbar { display: none; }
+
+/* the way out. it is not there until a tile is in the air, and it is
+   the one place on the board that does something other than hold. */
+.widget-bin {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--tight);
+	height: 3.4rem;
+	padding: 0 6.5rem 0 var(--group);   /* clear of the two corner buttons */
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px dashed var(--line);
+	border-radius: var(--radius);
+	font-size: 0.8rem;
+	pointer-events: none;
+	opacity: 0;
+	transform: translateY(10px);
+	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease),
+	            color 0.18s var(--ease), background-color 0.18s var(--ease);
+}
+.widget-bin[hidden] { display: none; }
+.widget-bin.is-up { opacity: 1; transform: none; }
+/* over it, it fills in — the same thing every live state here does */
+.widget-bin.is-live {
+	color: var(--paper);
+	background: var(--ink);
+	border-style: solid;
+	border-color: var(--ink);
+}
+.widget-bin svg { display: block; flex: none; }
+
+/* where a tile will land, left behind while it is in the air */
+.widget-ghost {
+	border: 1px dashed var(--line);
+	border-radius: var(--radius);
+	pointer-events: none;
+}
 
 /* the three shapes. a square says one number, a wide one says three,
    and the big one has room for the whole story — which is why every
@@ -3210,7 +4063,14 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	flex-direction: column;
 	gap: var(--tight);
 	min-width: 0;
-	padding: 0.8rem;
+	/* tighter over the head than under the body: the name and its cross
+	   ride at the top of the tile, and the cross sits the same distance
+	   from the top edge as from the left one */
+	/* the head's row is as tall as the name's line box, not as tall as
+	   the cross, so the cross centres 2.2px below where the padding
+	   alone would put it. the top gives that back, and the cross ends
+	   up the same distance from the top edge as from the left. */
+	padding: 0.46rem 0.8rem 0.8rem;
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
@@ -3220,14 +4080,24 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	   and the lift must not tread on either of them */
 	transition: translate 0.18s ease, box-shadow 0.18s ease;
 }
+/* the top row: a slot for the ×, the name, and a slot the same width
+   on the other side. the name is centred whichever of the two are
+   showing, which is what lets the × appear without the name moving. */
 .widget-head {
-	display: flex;
+	display: grid;
+	grid-template-columns: 0.95rem 1fr 0.95rem;
 	align-items: center;
 	gap: var(--tight);
 	flex: none;
+	min-height: 0.95rem;
+	/* the row reaches a little past the tile's own padding on both
+	   sides, which carries the cross out towards the corner without
+	   moving the name — the two edges give way by the same amount, so
+	   what is between them stays in the middle */
+	margin: 0 -0.2rem;
 }
 .widget-head h3 {
-	flex: 1;
+	grid-column: 2;
 	min-width: 0;
 	margin: 0;
 	overflow: hidden;
@@ -3236,8 +4106,13 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	font-family: var(--head-font);
 	font-size: 0.82rem;
 	font-weight: 400;
+	text-align: center;
 }
-.widget-face { flex: none; font-size: 0.75rem; }
+.widget-face {
+	grid-column: 3;
+	font-size: 0.75rem;
+	text-align: right;
+}
 /* a square has no room for both the name and its face */
 .widget-card[data-size="small"] .widget-face { display: none; }
 
@@ -3257,13 +4132,13 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	align-items: baseline;
 	gap: 0.35rem;
 	margin: 0;
-	font-family: var(--title-font);
-	font-size: 2rem;
+	font-family: var(--num-font);
+	font-size: 2.5rem;
 	font-weight: 400;
 	line-height: 1;
 	overflow-wrap: anywhere;
 }
-.widget-card[data-size="large"] .widget-big { font-size: 2.6rem; }
+.widget-card[data-size="large"] .widget-big { font-size: 3.25rem; }
 .widget-unit {
 	font-family: var(--font);
 	font-size: 0.8rem;
@@ -3293,8 +4168,8 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	line-height: 1;
 }
 .widget-tally strong {
-	font-family: var(--title-font);
-	font-size: 1.5rem;
+	font-family: var(--num-font);
+	font-size: 1.9rem;
 	font-weight: 400;   /* a <strong> would come out bold on its own */
 }
 .widget-tally small {
@@ -3361,7 +4236,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	text-align: left;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .widget-jump:hover { color: var(--paper); background: var(--ink); }
 .widget-jump .deck-shape { width: 20px; height: 20px; }
@@ -3389,7 +4264,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 /* the add button becomes a circle beside it while edit is on */
 .home-panel.is-editing .widget-add {
@@ -3412,18 +4287,23 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 		border-color 0.28s var(--ease),
 		transform 0.28s var(--ease);
 }
-/* the pen while the board is settled, a tick while you're arranging.
+/* the pen while the board is settled, a cross while you're arranging.
    they sit on top of each other and change places by turning, rather
-   than one being switched off and the other on. */
+   than one being switched off and the other on.
+
+   it was a tick, which read as "save what I did" — and there is
+   nothing to save: every move is already kept as it is made. a cross
+   says the only thing the button does, which is put the arranging
+   away. */
 .widget-edit svg { position: relative; }
-.widget-edit .mark-pen, .widget-edit .mark-done {
+.widget-edit .mark-pen, .widget-edit .mark-shut {
 	transform-box: fill-box;
 	transform-origin: center;
 	transition: opacity 0.24s var(--ease), transform 0.32s var(--ease);
 }
-.widget-edit .mark-done { opacity: 0; transform: rotate(-90deg) scale(0.6); }
+.widget-edit .mark-shut { opacity: 0; transform: rotate(-90deg) scale(0.6); }
 .home-panel.is-editing .widget-edit .mark-pen { opacity: 0; transform: rotate(90deg) scale(0.6); }
-.home-panel.is-editing .widget-edit .mark-done { opacity: 1; transform: none; }
+.home-panel.is-editing .widget-edit .mark-shut { opacity: 1; transform: none; }
 .widget-edit:hover, .home-panel.is-editing .widget-edit {
 	color: var(--paper);
 	background: var(--ink);
@@ -3431,50 +4311,106 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 }
 
 
-/* the two handles live on every tile and only show in edit */
-.widget-off,
+/* the × sits in the head's first slot rather than floating in the
+   corner, so it lines up with the name beside it and keeps the same
+   air above it as to its left. it is the mark alone — a circle round
+   it made a second shape to centre inside a first, and it read as off
+   whichever of the two you looked at. */
+.widget-off {
+	grid-column: 1;
+	display: grid;
+	place-items: center;
+	width: 0.95rem;
+	height: 0.95rem;
+	padding: 0;
+	background: none;
+	border: 0;
+	color: inherit;
+	cursor: var(--cur-tap);
+	opacity: 0;
+	transform: scale(0.6);
+	pointer-events: none;
+	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+.widget-off svg { display: block; width: 100%; height: 100%; }
+.widget-off:hover { transform: scale(1.12); }
+
+/* the shape it is, in the bottom corner. it fades up into place with
+   the rest of edit rather than appearing whole. */
 .widget-size {
 	position: absolute;
 	z-index: 2;
-	display: none;
-	align-items: center;
-	justify-content: center;
+	/* beside the grip and level with it: the grip sits 0.1rem off the
+	   corner and stands 1.25rem, so its middle is 0.725rem up — which
+	   is where a 1.15rem chip sits when its floor is 0.15rem */
+	right: 1.45rem;
+	bottom: 0.15rem;
+	display: grid;
+	place-items: center;
+	height: 1.15rem;
+	padding: 0 0.45rem;
+	/* the numerals ride high in their line, like every other label
+	   here — see --drop */
+	padding-top: calc(var(--drop) * 2);
 	background: var(--paper);
 	border: 1px solid var(--line);
-	cursor: pointer;
-}
-/* the × takes the top left, out of the way of the name and its face */
-.widget-off {
-	top: 0.35rem;
-	left: 0.35rem;
-	width: 1.3rem;
-	height: 1.3rem;
-	border-radius: 999px;
-	font-size: 0.9rem;
-	line-height: 1;
-}
-.widget-size {
-	right: 0.35rem;
-	bottom: 0.35rem;
-	padding: 0.1rem 0.45rem;
 	border-radius: 999px;
 	font-size: 0.68rem;
 	font-weight: 700;
+	line-height: 1;
+	cursor: var(--cur-tap);
+	opacity: 0;
+	transform: translateY(4px) scale(0.9);
+	pointer-events: none;
+	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease),
+	            color 0.18s var(--ease), background-color 0.18s var(--ease);
 }
-.widget-off:hover, .widget-size:hover { color: var(--paper); background: var(--ink); }
+.widget-size:hover { color: var(--paper); background: var(--ink); }
+
+/* the corner you can pull. it is the indicator as much as the handle:
+   three strokes in the corner are what say a thing is resizable, and
+   the pointer turns diagonal over it to say the same again. */
+.widget-grip {
+	position: absolute;
+	z-index: 2;
+	right: 0.1rem;
+	bottom: 0.1rem;
+	width: 1.25rem;
+	height: 1.25rem;
+	padding: 0;
+	background: none;
+	border: 0;
+	color: inherit;
+	cursor: var(--cur-corner);
+	touch-action: none;
+	opacity: 0;
+	transform: translate(4px, 4px);
+	pointer-events: none;
+	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+.widget-grip svg { display: block; width: 100%; height: 100%; }
+.widget-grip:hover { transform: translate(1px, 1px); }
 
 .home-panel.is-editing .widget-off,
-.home-panel.is-editing .widget-size { display: flex; }
-/* the handles take a corner each, so the tile's own content steps out
-   of both: the head moves off the ×, and the body off the chip */
-.home-panel.is-editing .widget-head { padding-left: 1.6rem; }
-.home-panel.is-editing .widget-face { display: none; }
+.home-panel.is-editing .widget-size,
+.home-panel.is-editing .widget-grip {
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+}
+.home-panel.is-editing .widget-grip:hover { transform: translate(1px, 1px); }
+/* while a corner is being pulled the whole board keeps that pointer */
+.sizing, .sizing * { cursor: var(--cur-corner) !important; user-select: none; }
+.home-panel.is-editing .widget-off:hover { transform: scale(1.12); }
+/* the chip takes the bottom corner, so the tile's own words step off it */
+.home-panel.is-editing .widget-face { opacity: 0; }
+.widget-face { transition: opacity 0.22s var(--ease); }
 .home-panel.is-editing .widget-body { padding-bottom: 1.2rem; }
 /* in edit a tile is something you move, so nothing inside it answers */
 /* turning edit on lifts the board off the page and turning it off sets it
    back down, so the mode arrives and leaves rather than snapping */
 .home-panel.is-editing .widget-card {
-	cursor: grab;
+	cursor: var(--cur-grab);
 	touch-action: none;
 	user-select: none;
 	translate: 0 -4px;
@@ -3489,10 +4425,48 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	.widget-card { transition: none; }
 }
 
-.home-panel.is-editing .widget-card.is-dragging {
-	z-index: 4;
-	cursor: grabbing;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+/* in the air it belongs to the window, not to the board — nothing can
+   crop it and no reflow can shift it while it is up there */
+.widget-card.is-dragging {
+	position: fixed;
+	z-index: 90;
+	margin: 0;
+	cursor: var(--cur-held);
+	translate: 0 -4px;
+	box-shadow: 5px 5px 0 var(--ink);
+	pointer-events: none;
+	/* the lift and the shadow arrive rather than appearing whole. left
+	   and top are written every frame, so they stay out of here. */
+	transition: translate 0.16s var(--ease), box-shadow 0.16s var(--ease);
+}
+/* the handles step back while it is in your hand — there is nothing to
+   press on a thing that is moving. they used to blink out, because the
+   tile was being moved to the end of the page and a reparented element
+   has no previous style to move from. */
+.home-panel.is-editing .widget-card.is-dragging .widget-off,
+.home-panel.is-editing .widget-card.is-dragging .widget-size,
+.home-panel.is-editing .widget-card.is-dragging .widget-grip {
+	opacity: 0;
+	transform: scale(0.7);
+	pointer-events: none;
+}
+
+/* held over the bin it shrinks in your hand, so you can see what
+   letting go would do before you do it */
+.widget-card.is-going-out {
+	translate: 0 -4px;
+	scale: 0.88;
+	opacity: 0.75;
+	transition: translate 0.18s var(--ease), scale 0.18s var(--ease),
+	            opacity 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+
+/* it shrinks into its slot on the way out rather than blinking off */
+.widget-card.is-going {
+	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+	opacity: 0;
+	transform: scale(0.88);
+	pointer-events: none;
 }
 
 /* the add button only means anything while you're arranging */
@@ -3501,7 +4475,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	align-self: flex-start;
 }
 .home-panel:not(.is-editing):not(.is-empty) .widget-add { display: none; }
-.widget-pick { cursor: pointer; }
+.widget-pick { cursor: var(--cur-tap); }
 .widget-pick:hover { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
 
@@ -3509,41 +4483,61 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
    24. the left bar — notes in, cards out
    ========================================================= */
 
-/* the bar is solid black on both sides of the swap, so everything in
-   here is written in the bar's own two colours rather than the page's:
-   white on black, and the one button that matters filled white. */
+/* it lives on the page now rather than in the black bar, so it is
+   written in the page's two colours like everything else here — a
+   white box with an outline, and the one button that matters filled
+   in black. */
 .notes-panel {
 	display: flex;
 	flex-direction: column;
 	gap: var(--tight);
 	min-height: 0;
-	padding: var(--rail-pad);
-	padding-top: calc(var(--topbar) + var(--rail-pad));
-	color: var(--bar-ink);
+	color: var(--ink);
+}
+/* under the two tiles, over the deck. it takes its own height and the
+   deck below it takes the rest. */
+.notes-home {
+	display: flex;
+	/* the height the grip below it was dragged to. it shrinks the whole
+	   way to nothing, like every other pane with a grip. */
+	flex: 0 1 var(--notes-row, 44%);
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+	/* the padding comes in with the box rather than all at once — a box
+	   can never be smaller than its own padding and outline, which
+	   would stop this one short of shut. see --skin in wireSplit. */
+	padding: calc(var(--tight) * var(--skin, 1));
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
 }
 .notes-title {
 	margin: 0;
-	padding-bottom: var(--tight);
-	border-bottom: 1px solid var(--bar-ink);
+	min-width: 0;
+	overflow: hidden;
 	font-family: var(--head-font);
-	font-size: 1rem;
-	font-weight: 400;
+	font-size: 1.25rem;
+	font-weight: 700;
 	text-align: center;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .notes-input {
 	width: 100%;
 	padding: 0.5rem 0.6rem;
-	color: var(--bar-ink);
+	color: var(--ink);
 	background: none;
-	border: 1px solid var(--bar-ink);
+	border: 1px solid var(--ink);
 	border-radius: var(--radius);
 	font-size: 0.82rem;
 	line-height: 1.5;
 	resize: vertical;
 }
 .notes-input.is-one-line { resize: none; }
-.notes-input::placeholder { color: var(--bar-ink); opacity: 0.55; }
+.notes-input::placeholder { color: var(--ink); opacity: 0.55; }
 
 .notes-actions { display: flex; flex: none; gap: var(--tight); }
 /* the stretch is for buttons sharing a row. left on the loose, a button
@@ -3552,20 +4546,20 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 .notes-actions .notes-button { flex: 1; }
 .notes-button {
 	flex: none;
-	padding: 0.35rem 0.6rem;
-	color: var(--bar-ink);
+	padding: calc(0.35rem + var(--drop)) 0.6rem calc(0.35rem - var(--drop));
+	color: var(--ink);
 	background: none;
-	border: 1px solid var(--bar-ink);
+	border: 1px solid var(--ink);
 	border-radius: 999px;
 	font-size: 0.8rem;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
-.notes-button:hover { color: var(--bar); background: var(--bar-ink); }
+.notes-button:hover { color: var(--paper); background: var(--ink); }
 /* the one that acts on the deck is filled in, the way a live state is
    everywhere else — inverted here, because the bar is already black */
-.notes-button.is-solid { color: var(--bar); background: var(--bar-ink); font-weight: 700; }
-.notes-button:disabled { cursor: default; opacity: 1; }
-.notes-button:disabled:hover { color: var(--bar-ink); background: none; }
+.notes-button.is-solid { color: var(--paper); background: var(--ink); font-weight: 700; }
+.notes-button:disabled { cursor: var(--cur-dot); opacity: 1; }
+.notes-button:disabled:hover { color: var(--ink); background: none; }
 
 .notes-note {
 	margin: 0;
@@ -3593,7 +4587,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	align-items: center;
 	gap: var(--tight);
 	padding: 0.35rem 0.5rem;
-	border: 1px solid var(--bar-ink);
+	border: 1px solid var(--ink);
 	border-radius: var(--radius);
 }
 .notes-card-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -3606,52 +4600,61 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	width: 1.1rem;
 	height: 1.1rem;
 	padding: 0;
-	color: var(--bar-ink);
+	color: var(--ink);
 	background: none;
 	border: 0;
 	font-size: 1rem;
 	line-height: 1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 
 /* the key lives behind its own switch: it is a thing you set once and
    never look at again, and it shouldn't sit in the way meanwhile */
+/* the quiet second line under the button, the same as the scratch
+   box's. a rule under two small words read as a mistake rather than as
+   a link. */
 .notes-key-toggle {
-	align-self: flex-start;
+	align-self: center;
+	/* it sat 16px under the button and 9px off the floor — the panel's
+	   own gap on top of the room the button above it keeps. the seven
+	   comes back so it lies evenly between the two. */
+	margin: -7px 0 0;
 	padding: 0;
-	color: var(--bar-ink);
+	color: var(--ink);
 	background: none;
 	border: 0;
-	border-bottom: 1px solid var(--bar-ink);
-	font-size: 0.72rem;
-	cursor: pointer;
+	font-size: 0.7rem;
+	line-height: 1;
+	opacity: 0.75;
+	cursor: var(--cur-tap);
+	transition: opacity 0.18s var(--ease);
 }
+.notes-key-toggle:hover { opacity: 1; }
 .notes-key { display: flex; flex-direction: column; gap: var(--tight); }
 
 /* the head row: the name, and the button that opens it wide */
 .notes-head {
-	display: flex;
+	display: grid;
+	grid-template-columns: 0.95rem 1fr 0.95rem;
 	align-items: center;
-	gap: var(--tight);
-	padding-bottom: var(--tight);
-	border-bottom: 1px solid var(--bar-ink);
 }
 .notes-head .notes-title {
-	flex: 1;
+	grid-column: 2;
 	padding-bottom: 0;
 	border-bottom: 0;
 }
+.notes-wide { grid-column: 3; }
 .notes-wide {
 	flex: none;
 	display: grid;
 	place-items: center;
-	width: 1.2rem;
-	height: 1.2rem;
+	width: 0.95rem;
+	height: 0.95rem;
 	padding: 0;
 	color: inherit;
 	background: none;
 	border: 0;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .notes-wide svg { display: block; width: 100%; height: 100%; }
 
@@ -3665,7 +4668,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	width: 3rem;
 	height: 3rem;
 	overflow: hidden;
-	border: 1px solid var(--bar-ink);
+	border: 1px solid var(--ink);
 	border-radius: var(--radius);
 }
 .notes-bit img { width: 100%; height: 100%; object-fit: cover; }
@@ -3677,16 +4680,16 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	width: 1.1rem;
 	height: 1.1rem;
 	padding: 0;
-	color: var(--bar);
-	background: var(--bar-ink);
+	color: var(--paper);
+	background: var(--ink);
 	border: 0;
 	border-radius: 0 0 0 var(--radius);
 	font-size: 0.85rem;
 	line-height: 1;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 /* something being dragged over the panel */
-.notes-panel.is-catching { outline: 2px dashed var(--bar-ink); outline-offset: -6px; }
+.notes-panel.is-catching { outline: 2px dashed var(--ink); outline-offset: -6px; }
 
 /* opened wide: the same panel, in a window with room to type in. it
    keeps the bar's colours — it is the bar's panel, just moved. */
@@ -3701,7 +4704,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	margin: 0 calc(var(--gap) * -1) calc(var(--gap) * -1);
 	border-radius: 0 0 var(--radius) var(--radius);
 	overflow: hidden;
-	background: var(--bar);
+	background: var(--paper);
 }
 .notes-slot .notes-panel {
 	flex: 1;
@@ -3718,16 +4721,17 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 .notes-slot .notes-found { max-height: none; }
 .notes-slot .notes-bit { width: 4.5rem; height: 4.5rem; }
 
-/* the bar's own copy: a box worth typing in, and the panel scrolls
-   rather than the words running past the bottom of the bar */
-.rail-left .notes-panel {
-	height: 100%;
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	scrollbar-width: none;
-}
-.rail-left .notes-panel::-webkit-scrollbar { display: none; }
-.rail-left .notes-input { min-height: 9rem; }
+/* on the page it is a column among columns: the box is worth typing in
+   without being the whole page, and what it finds scrolls inside
+   itself rather than pushing the deck off the bottom */
+.notes-home .notes-panel { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.notes-home .notes-panel::-webkit-scrollbar { display: none; }
+/* the box you type in takes whatever the panel has spare rather than a
+   height of its own, so the blank part of it is only ever as big as
+   the tool has been given */
+.notes-home .notes-box { flex: 1 1 auto; min-height: 3.2rem; }
+.notes-home .notes-input { flex: 1; min-height: 0; resize: none; }
+.notes-home .notes-found { max-height: 9rem; }
 
 /* the box you type in is the drop target too: one thing to aim at
    rather than a panel of boxes, and the picture button lives in its
@@ -3743,14 +4747,14 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	width: 1.7rem;
 	height: 1.7rem;
 	padding: 0;
-	color: var(--bar-ink);
-	background: var(--bar);
-	border: 1px solid var(--bar-ink);
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--ink);
 	border-radius: 999px;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .notes-clip svg { display: block; width: 0.95rem; height: 0.95rem; }
-.notes-clip:hover { color: var(--bar); background: var(--bar-ink); }
+.notes-clip:hover { color: var(--paper); background: var(--ink); }
 
 /* while something is being dragged over, the box says so itself */
 .notes-panel.is-catching .notes-box::after {
@@ -3759,8 +4763,8 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	inset: 0;
 	display: grid;
 	place-items: center;
-	color: var(--bar);
-	background: var(--bar-ink);
+	color: var(--paper);
+	background: var(--ink);
 	border-radius: var(--radius);
 	font-size: 0.85rem;
 	font-weight: 700;
@@ -3770,7 +4774,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 /* the one that does the work: a button's height, no more */
 .notes-button.is-go {
 	flex: none;
-	padding: 0.5rem 0.6rem;
+	padding: calc(0.5rem + var(--drop)) 0.6rem calc(0.5rem - var(--drop));
 	font-size: 0.85rem;
 }
 /* everything in the panel keeps its own height; the list of cards is
@@ -3782,12 +4786,12 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 .notes-plain {
 	align-self: center;
 	padding: 0;
-	color: var(--bar-ink);
+	color: var(--ink);
 	background: none;
 	border: 0;
-	border-bottom: 1px solid var(--bar-ink);
+	border-bottom: 1px solid var(--ink);
 	font-size: 0.72rem;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .notes-plain[hidden] { display: none; }
 
@@ -3812,14 +4816,14 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	flex: none;
 	gap: var(--tight);
 }
-.upscale-bar .basic-button { height: var(--field); padding: 0 1rem; }
+.upscale-bar .basic-button { height: var(--field); padding: calc(var(--drop) * 2) 1rem 0; }
 .basic-button.is-solid {
 	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 	font-weight: 700;
 }
-.basic-button.is-solid:disabled { cursor: default; }
+.basic-button.is-solid:disabled { cursor: var(--cur-dot); }
 
 /* two of a kind, so they sit in one outline and the chosen one fills */
 .up-sizes {
@@ -3831,18 +4835,18 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	border-radius: 999px;
 }
 .up-size {
-	padding: 0 0.9rem;
+	padding: calc(var(--drop) * 2) 0.9rem 0;
 	color: var(--ink);
 	background: var(--paper);
 	border: 0;
 	font-size: 0.9rem;
-	cursor: pointer;
+	cursor: var(--cur-tap);
 }
 .up-size + .up-size { border-left: 1px solid var(--line); }
 .up-size:hover { color: var(--paper); background: var(--ink); }
 .up-size.is-on { color: var(--paper); background: var(--ink); }
 
-.up-note { flex: none; margin: 0; font-size: 0.85rem; }
+.up-note { flex: none; margin: 0; font-size: 0.85rem; text-align: center; }
 
 /* the two pictures, side by side and the same size on screen whatever
    their real sizes are — the numbers over them say what those are */
@@ -3853,6 +4857,34 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 	gap: var(--group);
 	min-height: 0;
 }
+/* each side is a box like any other: a head, then what it holds */
+.up-side {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	padding: var(--group);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+/* what it holds sits inside that frame, so it has none of its own */
+.up-side > .up-hold {
+	padding: 0;
+	background: none;
+	border: 0;
+	border-radius: 0;
+}
+.up-cap {
+	flex: none;
+	margin: 0;
+	min-height: 1rem;
+	font-size: 0.75rem;
+	text-align: center;
+}
+.up-cap:empty { display: none; }
 .up-side {
 	display: flex;
 	flex-direction: column;
