@@ -203,6 +203,15 @@ person's turn.
   pushes it about. The zoom is its own setting on its own key
   (`sense-zoom`) — it survives a refresh and only the reader's hand
   changes it, since it is about seeing, not about what gets sampled.
+  It **travels rather than arriving**: a wheel notch was a jump of a
+  tenth, and a jump is the one thing a picture you are aiming at
+  shouldn't do. The point being held still is worked out once, when the
+  gesture starts, and the scroll is written from it on every frame, so
+  the picture grows around the cursor the whole way; taken again
+  mid-flight it would be read off a half-grown picture and the anchor
+  would wander. Notches add off where the zoom is *heading*, so they add
+  up instead of fighting the glide already running. The slider's own
+  thumb is left alone while it is the thing being dragged.
 - Download re-encodes to a real mp3 via lamejs in `mp3-worker.js`, off the main
   thread so the page doesn't freeze. Decoding stays on the main thread because
   a worker has no `AudioContext`.
