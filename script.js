@@ -2407,20 +2407,12 @@ SENSE_KEYS.forEach((key) => {
     });
 });
 
-/* the window has to be on screen before it can be measured — hidden it
-   measures as nothing and lands in the corner. so: show, then place. */
-function placeSensePop() {
-    if (!audioPanel.classList.contains('is-tuning')) return;
-    placeUnder(sensePop, senseToggle);
-}
-
 function openSensing(open) {
     senseControls.hidden = !open;
     senseToggle.setAttribute('aria-expanded', String(open));
     previewWrap.classList.toggle('showing-video', open);
     audioPanel.classList.toggle('is-tuning', open);
     sensePop.classList.toggle('is-open', open);
-    if (open) placeSensePop();
 }
 
 senseToggle.addEventListener('click', (event) => {
@@ -2428,8 +2420,6 @@ senseToggle.addEventListener('click', (event) => {
     openSensing(senseControls.hidden);
 });
 
-// it is a window over the page, so it keeps its corner under the button
-window.addEventListener('resize', placeSensePop);
 window.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     if (audioPanel.classList.contains('is-tuning')) openSensing(false);

@@ -343,9 +343,12 @@ And because it lives outside every panel, **hiding the page does not
 take it with it** — `showSection` closes it by hand when the audio page
 is left. Escape closes it too.
 
-`placeUnder()` measures with `offsetWidth`, so the window is shown
-first and placed second. Verified: right edges within 0px of the gear's,
-6px under it.
+**It sits dead centre of the screen, and nowhere else.** Hung off the
+gear it landed wherever the gear happened to be that day — a different
+place at every window width, which reads as random. `top/left: 50%` and
+a translate do it in the stylesheet, so there is nothing to recompute on
+a resize and no frame where it is in the wrong place. Measured: 330px of
+air either side, 328px above and below.
 
 ## The picture zooms like a picture
 

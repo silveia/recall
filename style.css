@@ -2670,13 +2670,19 @@ html.inverted .app-shell::before { opacity: 1; }
 
    fixed, so nothing under it reflows; over everything, so nothing shows
    through; and half the window wide, which is room enough to put the
-   box on a name without leaning on the zoom. placeUnder() sets the
-   corner — see the sensing toggle in script.js. */
+   box on a name without leaning on the zoom.
+
+   dead centre of the screen, and nowhere else. hung off the gear it
+   landed wherever the gear happened to be that day, which is a
+   different place at every window width and reads as random. */
 .audio-stage {
 	position: fixed;
+	top: 50%;
+	left: 50%;
 	z-index: 60;
 	display: none;
 	flex-direction: column;
+	transform: translate(-50%, -50%);
 	gap: var(--tight);
 	width: min(640px, calc(100vw - 2rem));
 	max-height: calc(100vh - 5rem);
