@@ -2308,7 +2308,8 @@ html.inverted .app-shell::before { opacity: 1; }
 	   leftwards from a fixed corner, so the chip's own middle wandered
 	   with whatever it had to say */
 	left: 50%;
-	bottom: calc(var(--field) + var(--group) + var(--tight));
+	/* two buttons under it now — copy, and match — so it clears both */
+	bottom: calc(var(--field) * 2 + var(--tight) * 2 + var(--group));
 	z-index: 2;
 	max-width: calc(100% - var(--tight) * 4);
 	margin: 0;
@@ -2528,7 +2529,44 @@ html.inverted .app-shell::before { opacity: 1; }
 	font-size: 1rem;
 	padding-top: calc(var(--drop-num) * 2);
 }
-.scratch-song .scratch-words { min-width: 0; }
+/* a song a clip answers to. the number wears the black, the way every
+   live thing on this site does — and it has to come back off under the
+   hover, which takes the black for the whole row. */
+.scratch-song.is-got .scratch-at {
+	color: var(--paper);
+	background: var(--ink);
+	border-radius: 999px;
+}
+.scratch-song.is-got:hover .scratch-at,
+.scratch-song.is-got.is-copied .scratch-at {
+	color: var(--ink);
+	background: var(--paper);
+}
+
+/* the same song, twice in the playlist. two clips will answer to the
+   one name, so it is worth saying — quietly, at the end of the row. */
+.scratch-twice {
+	flex: none;
+	padding: 0 0.25rem;
+	font-family: var(--num-font);
+	font-size: 0.95rem;
+	line-height: 1;
+}
+
+/* a song nothing has been recorded of. the outline goes dashed — the
+   same thing a slot on the home board does while it is only a place
+   something could go — and the ring says it again at the end of the
+   row, for a list being read down rather than looked at. */
+.scratch-song.is-missing { border-style: dashed; }
+.scratch-none {
+	flex: none;
+	padding: 0 0.1rem;
+	font-size: 0.7rem;
+	line-height: 1;
+}
+
+/* the words take the room, so the marks sit against the right wall */
+.scratch-song .scratch-words { flex: 1; min-width: 0; }
 .scratch-song .scratch-words strong,
 .scratch-song .scratch-words small {
 	display: block;
@@ -2953,11 +2991,38 @@ html.inverted .app-shell::before { opacity: 1; }
 	outline: none;
 }
 
+/* which one this is, counting up from the bottom of the list — the
+   order the songs were recorded in. a number, so it is VT323, and it
+   is fixed width so the rows don't shift as the count runs into two
+   figures. */
+.clip-number {
+	flex: none;
+	width: 1.1rem;
+	font-family: var(--num-font);
+	font-size: 1rem;
+	line-height: 1;
+	text-align: right;
+	user-select: none;
+}
+
 .clip-label {
 	flex: none;
 	font-size: 0.85rem;
 	font-variant-numeric: tabular-nums;
 }
+
+/* the clip whose length answers no song left in the playlist. it sits
+   against the length, which is the thing it is disagreeing with. */
+.clip-off {
+	flex: none;
+	width: 0.6rem;
+	margin-left: -0.15rem;
+	font-size: 0.95rem;
+	line-height: 1;
+	text-align: center;
+	user-select: none;
+}
+.clip-off[hidden] { display: none; }
 .recording-item .clip-label { margin-top: 2px; }
 
 /* download and discard */
@@ -3295,6 +3360,117 @@ html.inverted .app-shell::before { opacity: 1; }
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
+/* --- the deck, and the disc in it --- */
+
+/* a top-loading player: a box with a round well in it and a disc that
+   is lifted clear of the spindle until something is playing. the whole
+   thing is drawn here and in one svg — no picture, so it is black and
+   white at every size. */
+.cd-deck {
+	position: relative;
+	flex: none;
+	width: min(10.5rem, 78%);
+	aspect-ratio: 1;
+	padding: 6.5%;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+
+/* the lid's seam. dashed rather than faint — there is no faint here */
+.cd-hinge {
+	position: absolute;
+	top: 6%;
+	right: 16%;
+	left: 16%;
+	border-top: 1px dashed var(--line);
+}
+
+/* the one light on the front. outlined until it is running, then it is
+   simply on — the same thing every live state on this site does. */
+.cd-lamp {
+	position: absolute;
+	right: 7%;
+	bottom: 6%;
+	width: 5%;
+	aspect-ratio: 1;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	transition: background 0.34s var(--ease);
+}
+.cd-deck.is-playing .cd-lamp { background: var(--ink); }
+
+/* the well the disc sits in. it takes the black while something is
+   playing and the disc comes back the other way round with it, since
+   everything in there is drawn in currentColor. */
+.cd-well {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: 100%;
+	height: 100%;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	overflow: hidden;
+	transition: background 0.42s var(--ease), color 0.42s var(--ease);
+}
+.cd-deck.is-playing .cd-well {
+	color: var(--paper);
+	background: var(--ink);
+}
+
+/* pressing on and off: the disc rides up off the spindle and sits
+   askew when nothing is playing, and settles flat onto it when
+   something is. the overshoot at the end of the curve is the click. */
+.cd-press {
+	width: 82%;
+	aspect-ratio: 1;
+	/* the lift has to stay inside the well, which clips — at 82% wide
+	   and a twentieth up it comes to 48.6% of the well's half, against
+	   the 50% there is room for */
+	transform: translateY(-6%) rotate(-5deg) scale(1.04);
+	transition: transform 0.52s cubic-bezier(0.26, 1.42, 0.4, 1);
+}
+.cd-deck.is-playing .cd-press { transform: translateY(0) rotate(0deg) scale(1); }
+
+/* the turn itself is written by spinDisc(), a frame at a time, so it
+   can come up to speed and coast down again rather than snapping
+   between stopped and full tilt. nothing to transition here. */
+.cd-spin { width: 100%; height: 100%; }
+.cd-spin svg { display: block; width: 100%; height: 100%; }
+
+/* three claws that take hold of the disc as it presses on */
+.cd-clamp i {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 7%;
+	height: 1.8%;
+	background: currentColor;
+	border-radius: 999px;
+	transform: translate(-50%, -50%) rotate(var(--turn)) translateX(210%);
+	transition: transform 0.52s cubic-bezier(0.26, 1.42, 0.4, 1);
+}
+.cd-clamp i:nth-child(1) { --turn: -90deg; }
+.cd-clamp i:nth-child(2) { --turn: 30deg; }
+.cd-clamp i:nth-child(3) { --turn: 150deg; }
+.cd-deck.is-playing .cd-clamp i { transform: translate(-50%, -50%) rotate(var(--turn)) translateX(120%); }
+
+/* the spindle. it is the one thing in the well that never moves. */
+.cd-hub {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 5.5%;
+	aspect-ratio: 1;
+	background: currentColor;
+	border-radius: 50%;
+	transform: translate(-50%, -50%);
+}
+
 .now-body .clip-track { flex: none; width: 100%; height: 15px; }
 .now-times {
 	display: flex;
@@ -3826,28 +4002,60 @@ html.inverted .app-shell::before { opacity: 1; }
 /* only while the page is actually changing sides. left on all the
    time, the resting angle set during a page load counted as a change
    and the moon span itself round on every refresh. */
-html.theming .theme-swap svg {
+html.fading .theme-swap svg {
 	transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.45, 1);
 }
 html.inverted .theme-swap svg { transform: rotate(180deg); }
 
 /* the swap used to be one filter on the root, which inverted the page
    as a picture: the black bars came out as slabs of white. now the two
-   colour tokens change places and every surface follows. the move is
-   carried by a transition that is only switched on while it happens,
-   so nothing else on the page is paying for it the rest of the time. */
-/* the pseudo-elements have to be named: a star matches elements, not
-   the things drawn before and after them. left out, the scalloped edge
-   and the dotted one changed colour on the spot while the page was
-   still fading — a rectangle of the new colour appearing over the old
-   page, which is exactly what it looked like. */
-html.theming, html.theming *, html.theming *::before, html.theming *::after {
+   colour tokens change places and every surface follows.
+
+   how the move is carried matters more than it sounds. it was a
+   transition on every element on the page at once — four properties
+   each, and colour is not a thing the compositor can do on its own, so
+   every frame of it was the main thread walking the whole document.
+   with a board of tiles, a deck and a list of clips up, that is
+   thousands of animations for four tenths of a second, and it stuttered.
+
+   the browser will do the whole thing as one picture instead: it takes
+   a copy of the page before and after and fades one into the other on
+   the compositor, which costs one paint and then nothing. that is the
+   path below; the blanket transition is kept only for a browser
+   without it. */
+::view-transition-old(root), ::view-transition-new(root) {
+	animation-duration: 0.34s;
+	animation-timing-function: var(--ease);
+}
+/* the moon is lifted out of that picture into one of its own, so it can
+   still turn over as the page changes sides — the same half turn with a
+   dip through the middle, drawn as two snapshots passing rather than as
+   an animation on the button itself. */
+html.theming .theme-swap { view-transition-name: moon; }
+::view-transition-old(moon) { animation: moon-away 0.34s var(--ease) both; }
+::view-transition-new(moon) { animation: moon-here 0.34s var(--ease) both; }
+@keyframes moon-away {
+	to { opacity: 0; transform: rotate(84deg) scale(0.74); }
+}
+@keyframes moon-here {
+	from { opacity: 0; transform: rotate(-84deg) scale(0.74); }
+}
+
+/* the fallback, for a browser with no view transitions. the
+   pseudo-elements have to be named: a star matches elements, not the
+   things drawn before and after them. left out, the scalloped edge and
+   the dotted one changed colour on the spot while the page was still
+   fading — a rectangle of the new colour appearing over the old page,
+   which is exactly what it looked like. */
+html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	transition: background-color 0.4s var(--ease), color 0.4s var(--ease),
 		border-color 0.4s var(--ease), fill 0.4s var(--ease) !important;
 }
 @media (prefers-reduced-motion: reduce) {
-	html.theming, html.theming *,
-	html.theming *::before, html.theming *::after { transition: none !important; }
+	html.fading, html.fading *,
+	html.fading *::before, html.fading *::after { transition: none !important; }
+	::view-transition-old(root), ::view-transition-new(root),
+	::view-transition-old(moon), ::view-transition-new(moon) { animation: none; }
 	.theme-swap { transition: none; }
 }
 

@@ -1657,6 +1657,7 @@ function redoLastUndo() {
             player.src = '';
         }
         row.remove();
+        clipRows.delete(again.item.id);
         deleteClip(again.item.id);
         refreshEmptyMessage();
         rememberClipOrder();
@@ -2220,51 +2221,93 @@ function formatDuration(milliseconds) {
    sampled. it is remembered on its own key and nothing but the reader's
    hand ever moves it. */
 const ZOOM_KEY = 'sense-zoom';
-let senseZoomAt = 100;
+let senseZoomAt = 100;      // where the picture is now
+let zoomGoal = 100;         // and where it is heading
+let zoomFrame = 0;
+let zoomHold = null;        // the point of the picture being held still
+let zoomBySlider = false;
 
-function applyZoom() {
+function applyZoom(touchSlider) {
     previewStage.style.width = `${senseZoomAt}%`;
-    senseZoom.value = senseZoomAt;
-    senseZoomOut.textContent = `${senseZoomAt}%`;
-    previewWrap.classList.toggle('is-zoomed', senseZoomAt > 100);
+    if (touchSlider !== false) senseZoom.value = String(Math.round(senseZoomAt));
+    senseZoomOut.textContent = `${Math.round(senseZoomAt)}%`;
+    previewWrap.classList.toggle('is-zoomed', senseZoomAt > 100.5);
 }
 
 function loadZoom() {
     const saved = Number(window.localStorage.getItem(ZOOM_KEY));
     if (saved >= 100 && saved <= 500) senseZoomAt = saved;
+    zoomGoal = senseZoomAt;
     applyZoom();
 }
 
 /* zooming holds one point of the picture still — whatever is under the
    cursor when you turn the wheel, or the middle of the view when the
    slider is what moved. without that the picture slides out from under
-   you the moment you go in. */
-function setZoom(next, holdX, holdY) {
-    const was = senseZoomAt;
-    // to the slider's own step, so the two never disagree by a few
-    const wanted = Math.max(100, Math.min(500, Math.round(next / 10) * 10));
-    if (wanted === was) return;
+   you the moment you go in.
 
-    const box = previewWrap.getBoundingClientRect();
-    const overX = holdX === undefined ? previewWrap.clientWidth / 2 : holdX - box.left;
-    const overY = holdY === undefined ? previewWrap.clientHeight / 2 : holdY - box.top;
-    // where that point is on the picture, whatever the picture's size
-    const onPictureX = (previewWrap.scrollLeft + overX) / was;
-    const onPictureY = (previewWrap.scrollTop + overY) / was;
+   it travels there rather than arriving: a wheel notch used to be a
+   jump of a tenth, and a jump is the one thing a picture you are aiming
+   at shouldn't do. the point being held still is worked out once, when
+   the gesture starts, and the scroll is written from it on every frame,
+   so the picture grows around the cursor all the way through. */
+function glideZoom(last) {
+    zoomFrame = 0;
+    const now = performance.now();
+    const step = Math.min((now - (last || now)) / 1000, 0.1);
 
-    senseZoomAt = wanted;
-    applyZoom();
-    previewWrap.scrollLeft = onPictureX * wanted - overX;
-    previewWrap.scrollTop = onPictureY * wanted - overY;
+    senseZoomAt += (zoomGoal - senseZoomAt) * Math.min(step * 17, 1);
+    if (Math.abs(zoomGoal - senseZoomAt) < 0.15) senseZoomAt = zoomGoal;
+    applyZoom(!zoomBySlider);
 
+    if (zoomHold) {
+        previewWrap.scrollLeft = zoomHold.pictureX * senseZoomAt - zoomHold.overX;
+        previewWrap.scrollTop = zoomHold.pictureY * senseZoomAt - zoomHold.overY;
+    }
+
+    if (senseZoomAt !== zoomGoal) {
+        zoomFrame = window.requestAnimationFrame(() => glideZoom(now));
+        return;
+    }
+
+    zoomHold = null;
+    zoomBySlider = false;
     try {
-        window.localStorage.setItem(ZOOM_KEY, String(wanted));
+        window.localStorage.setItem(ZOOM_KEY, String(Math.round(zoomGoal)));
     } catch (error) {
         // it just won't be remembered
     }
 }
 
-senseZoom.addEventListener('input', () => setZoom(Number(senseZoom.value)));
+function setZoom(next, holdX, holdY) {
+    const wanted = Math.max(100, Math.min(500, next));
+    if (Math.abs(wanted - zoomGoal) < 0.01) return;
+    zoomGoal = wanted;
+
+    /* the point to hold is taken from where the picture is *now*, and
+       only when a fresh gesture starts — taken again mid-flight it
+       would be read off a half-grown picture and the anchor would
+       wander. */
+    if (!zoomHold) {
+        const box = previewWrap.getBoundingClientRect();
+        const overX = holdX === undefined ? previewWrap.clientWidth / 2 : holdX - box.left;
+        const overY = holdY === undefined ? previewWrap.clientHeight / 2 : holdY - box.top;
+        zoomHold = {
+            overX,
+            overY,
+            pictureX: (previewWrap.scrollLeft + overX) / senseZoomAt,
+            pictureY: (previewWrap.scrollTop + overY) / senseZoomAt
+        };
+    }
+    if (!zoomFrame) zoomFrame = window.requestAnimationFrame(() => glideZoom());
+}
+
+// the slider writes its own thumb, so the glide must not write it back
+// underneath the hand holding it
+senseZoom.addEventListener('input', () => {
+    zoomBySlider = true;
+    setZoom(Number(senseZoom.value));
+});
 
 /* the wheel over the picture, which is how anyone actually zooms. a
    trackpad pinch arrives here too — the browser sends it as a wheel
@@ -2274,7 +2317,10 @@ previewWrap.addEventListener('wheel', (event) => {
     // the page would scroll instead, which is not what the gesture meant
     event.preventDefault();
     const by = event.deltaY < 0 ? 1.12 : 1 / 1.12;
-    setZoom(senseZoomAt * by, event.clientX, event.clientY);
+    zoomBySlider = false;
+    // off where it is heading, not where it has got to, so notch after
+    // notch adds up instead of fighting the glide already running
+    setZoom(zoomGoal * by, event.clientX, event.clientY);
 }, { passive: false });
 
 function loadSenseSettings() {
@@ -2719,6 +2765,7 @@ async function clearAllClips() {
         player.src = '';
     });
     recordingList.innerHTML = '';
+    clipRows.clear();
 
     try {
         const db = await openClipDb();
@@ -3040,10 +3087,40 @@ function clipSpan(record, whole) {
     return { start, end, length: Math.max(0, end - start) };
 }
 
+/* every row on show, by the clip's id — the rows are the only place a
+   record lives once it is drawn, and matching a playlist against them
+   has to reach both. a row takes itself back out when it is discarded. */
+const clipRows = new Map();
+
+/* the clips are recorded downwards — newest on top — so the first one
+   you recorded is the one at the bottom, and that is the one the
+   playlist starts at. the number counts up from there, and is worked
+   out from the rows themselves rather than kept anywhere, so binning
+   one in the middle renumbers everything above it. */
+function numberClips() {
+    const rows = [...recordingList.querySelectorAll('.recording-item')];
+    rows.forEach((row, index) => {
+        const mark = row.querySelector('.clip-number');
+        if (mark) mark.textContent = String(rows.length - index);
+    });
+}
+
 function addRecording(record, alreadySaved, atEnd) {
     const item = document.createElement('li');
     item.className = 'recording-item';
     item.dataset.clipId = record.id;
+
+    // where this clip sits counting up from the bottom of the list
+    const number = document.createElement('span');
+    number.className = 'clip-number';
+
+    /* the mark for a clip whose length doesn't answer any song left in
+       the playlist. it is only ever put there by a match, and the next
+       match takes it away again. */
+    const offMark = document.createElement('span');
+    offMark.className = 'clip-off';
+    offMark.textContent = '!';
+    offMark.hidden = true;
 
     // the clip is only handed to the audio element on first play, so opening
     // the page with a full list doesn't start a decoder for every row
@@ -3356,6 +3433,7 @@ function addRecording(record, alreadySaved, atEnd) {
         const rows = [...recordingList.querySelectorAll('.recording-item')];
         rememberDeleted({ type: 'clip', item: record, index: rows.indexOf(item) });
         item.remove();
+        clipRows.delete(record.id);
         deleteClip(record.id);
         refreshEmptyMessage();
         rememberClipOrder();
@@ -3375,14 +3453,33 @@ function addRecording(record, alreadySaved, atEnd) {
         handle.focus();
     });
 
-    item.append(handle, playButton, trackWrap, label, crop, download, discard, player);
+    item.append(handle, number, playButton, trackWrap, label, offMark, crop, download, discard, player);
     paintProgress();
     if (atEnd) recordingList.append(item);
     else recordingList.prepend(item);
     refreshEmptyMessage();
 
+    /* what the matcher needs of this row: how long it plays for after
+       any crop, what it is called, and the two marks it can set. */
+    clipRows.set(record.id, {
+        record,
+        item,
+        seconds: () => clipSpan(record, totalSeconds).length,
+        rename: (words) => {
+            record.name = words;
+            trackText.textContent = words;
+            saveClip(record);
+        },
+        sayOff: (off, why) => {
+            offMark.hidden = !off;
+            if (why) offMark.title = why;
+            else offMark.removeAttribute('title');
+        }
+    });
+
     if (!alreadySaved) saveClip(record);
     if (!alreadySaved) rememberClipOrder();
+    numberClips();
     paintStorage();
 }
 
@@ -3646,6 +3743,7 @@ function savedClipOrder() {
 }
 
 function rememberClipOrder() {
+    numberClips();
     const ids = [...recordingList.querySelectorAll('.recording-item')]
         .map((row) => row.dataset.clipId);
     try {
@@ -3916,6 +4014,8 @@ const railToggle = document.getElementById('railToggle');
 const railPrev = document.getElementById('railPrev');
 const railNext = document.getElementById('railNext');
 const linkClipsButton = document.getElementById('linkClips');
+const cdDeck = document.getElementById('cdDeck');
+const cdSpin = document.getElementById('cdSpin');
 const nowTitle = document.getElementById('nowTitle');
 const nowElapsed = document.getElementById('nowElapsed');
 const nowTotal = document.getElementById('nowTotal');
@@ -4249,9 +4349,49 @@ function stepTrack(step) {
     playTrack(tracks[to].id);
 }
 
+/* --- the disc --- */
+
+/* a disc doesn't start turning at full speed and doesn't stop dead, so
+   this is a frame at a time rather than a css animation: the speed
+   eases towards whichever it is meant to be and the angle is added up
+   from it. pressing pause leaves it coasting, and pressing play again
+   picks it up from wherever it had got to.
+
+   the loop only runs while there is something to see — it parks itself
+   the moment the disc is stopped and nothing is playing. */
+let discAngle = 0;
+let discSpeed = 0;      // turns a second, near enough
+let discFrame = 0;
+let discWanted = 0;
+
+function spinDisc(last) {
+    discFrame = 0;
+    const now = performance.now();
+    // a frame's worth, capped: coming back to a tab that was away
+    // shouldn't spin it a hundred times at once
+    const step = Math.min((now - (last || now)) / 1000, 0.1);
+
+    discSpeed += (discWanted - discSpeed) * Math.min(step * 3.4, 1);
+    discAngle = (discAngle + discSpeed * 360 * step) % 360;
+    cdSpin.style.transform = `rotate(${discAngle}deg)`;
+
+    if (discWanted || discSpeed > 0.004) {
+        discFrame = window.requestAnimationFrame(() => spinDisc(now));
+    } else {
+        discSpeed = 0;
+    }
+}
+
+function turnDisc(playing) {
+    discWanted = playing ? 0.42 : 0;    // a little over two seconds a turn
+    if (!discFrame) discFrame = window.requestAnimationFrame(() => spinDisc());
+}
+
 /* the row that's on wears the black, the way an open deck does */
 function refreshPlayerState() {
     const playing = Boolean(playingId) && !songPlayer.paused;
+    cdDeck.classList.toggle('is-playing', playing);
+    turnDisc(playing);
     playToggle.innerHTML = playing ? MARK_PAUSE : MARK_PLAY;
     playToggle.setAttribute('aria-label', playing ? 'pause' : 'play');
     playToggle.title = playing ? 'pause' : 'play';
@@ -4411,9 +4551,81 @@ function paintVolume() {
     );
 }
 
-playerVolume.addEventListener('input', () => {
-    songPlayer.volume = Number(playerVolume.value) / 100;
+/* the slider slides. a press anywhere along the line used to put the
+   bead there in the same instant — the one movement on this page that
+   happened without happening — so the bead is driven here instead: it
+   is always travelling towards where it has been asked to be, and
+   arrives in about a tenth of a second. under a finger that is short
+   enough to feel attached; across the whole line it reads as a slide.
+
+   the press is taken off the browser (preventDefault) so it can't jump
+   the value out from under the glide. the arrow keys still work the
+   way they always did, and are picked up as a new destination. */
+let volShown = Number(playerVolume.value);
+let volGoal = volShown;
+let volFrame = 0;
+
+function paintVolumeNow() {
+    playerVolume.value = String(Math.round(volShown));
+    songPlayer.volume = Math.max(0, Math.min(1, volShown / 100));
     paintVolume();
+}
+
+function glideVolume(last) {
+    volFrame = 0;
+    const now = performance.now();
+    const step = Math.min((now - (last || now)) / 1000, 0.1);
+    volShown += (volGoal - volShown) * Math.min(step * 18, 1);
+    if (Math.abs(volGoal - volShown) < 0.35) volShown = volGoal;
+    paintVolumeNow();
+    if (volShown !== volGoal) volFrame = window.requestAnimationFrame(() => glideVolume(now));
+}
+
+function aimVolume(value) {
+    volGoal = Math.max(0, Math.min(100, value));
+    if (!volFrame) volFrame = window.requestAnimationFrame(() => glideVolume());
+}
+
+/* where along the line a press landed. the bead is a bead wide, so the
+   run it travels is short by half of one at each end — without that,
+   pressing the very end never quite reaches it. */
+function volumeAt(clientX) {
+    const box = playerVolume.getBoundingClientRect();
+    const bead = parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.85;
+    const run = Math.max(1, box.width - bead);
+    return ((clientX - box.left - bead / 2) / run) * 100;
+}
+
+playerVolume.addEventListener('pointerdown', (event) => {
+    if (event.button) return;
+    event.preventDefault();
+    playerVolume.focus();
+    aimVolume(volumeAt(event.clientX));
+    // the capture keeps the drag on the slider once the pointer has
+    // left it. a pointer it doesn't know about throws rather than
+    // refusing, and that mustn't take the press with it.
+    try {
+        playerVolume.setPointerCapture(event.pointerId);
+    } catch (error) {
+        // no capture; the drag simply ends if the pointer wanders off
+    }
+
+    const move = (moveEvent) => aimVolume(volumeAt(moveEvent.clientX));
+    const stop = () => {
+        playerVolume.removeEventListener('pointermove', move);
+        playerVolume.removeEventListener('pointerup', stop);
+        playerVolume.removeEventListener('pointercancel', stop);
+    };
+    playerVolume.addEventListener('pointermove', move);
+    playerVolume.addEventListener('pointerup', stop);
+    playerVolume.addEventListener('pointercancel', stop);
+});
+
+// the arrow keys, and anything else that writes the value itself
+playerVolume.addEventListener('input', () => {
+    const typed = Number(playerVolume.value);
+    if (Math.abs(typed - volShown) < 0.6) return;
+    aimVolume(typed);
 });
 paintVolume();
 
@@ -4534,40 +4746,67 @@ const THEME_KEY = 'page-inverted';
 let themingTimer = 0;
 let themeReady = false;   // true once the page has settled on load
 
-function setInverted(on) {
-    const root = document.documentElement;
-    // nothing is animated unless the page is actually changing sides —
-    // the call on load would otherwise spin the moon at every refresh
-    const moved = root.classList.contains('inverted') !== on && themeReady;
-    // the transition is only on while the swap is happening — see the
-    // note beside .theming in the stylesheet
-    if (moved) {
-        root.classList.add('theming');
-        window.clearTimeout(themingTimer);
-        themingTimer = window.setTimeout(() => root.classList.remove('theming'), 450);
-    }
-    root.classList.toggle('inverted', on);
+// the swap itself, and nothing else: one class and the words that go
+// with it. whatever is carrying the move calls this in the middle of it.
+function paintTheme(on) {
+    document.documentElement.classList.toggle('inverted', on);
     themeSwap.setAttribute('aria-pressed', String(on));
-    /* the moon turns over as the page does: a half turn the way you're
-       heading, with a dip through the middle so it reads as being
-       flipped rather than spun. it starts and ends exactly where the
-       stylesheet rests it, so nothing jumps when it hands back. on a
-       page load there is nothing to play — the moon is simply already
-       the way round it was left. */
-    const moon = themeSwap.querySelector('svg');
-    if (moved && moon && typeof moon.animate === 'function') {
-        moon.animate([
-            { transform: `rotate(${on ? 0 : 180}deg) scale(1)` },
-            { transform: 'rotate(90deg) scale(0.76)', offset: 0.45 },
-            { transform: `rotate(${on ? 180 : 0}deg) scale(1)` }
-        ], { duration: 520, easing: 'cubic-bezier(0.34, 1.2, 0.45, 1)' });
-    }
     themeSwap.title = on ? 'back to the light' : 'turn the lights off';
     themeSwap.setAttribute('aria-label', on ? 'back to the light' : 'turn the lights off');
     try {
         window.localStorage.setItem(THEME_KEY, on ? 'yes' : 'no');
     } catch (error) {
         // it just won't be remembered
+    }
+}
+
+function setInverted(on) {
+    const root = document.documentElement;
+    // nothing is animated unless the page is actually changing sides —
+    // the call on load would otherwise turn the moon over at every refresh
+    const moved = root.classList.contains('inverted') !== on && themeReady;
+    if (!moved) {
+        paintTheme(on);
+        return;
+    }
+
+    /* the browser fades the whole page as one picture where it can —
+       one paint, then the compositor, whatever is on the page. the
+       class goes on first because the copy is taken the moment this is
+       called, and it is what lifts the moon into a picture of its own.
+       see the note beside ::view-transition-old(root). */
+    root.classList.add('theming');
+    window.clearTimeout(themingTimer);
+    const done = () => root.classList.remove('theming', 'fading');
+
+    if (typeof document.startViewTransition === 'function') {
+        document.startViewTransition(() => paintTheme(on)).finished.then(done, done);
+        /* if the fade never reports back — a tab put in the background
+           mid-swap will do it — the page must not be left half turned
+           with the moon lifted out of it. writing the theme again costs
+           nothing and can only agree with itself. */
+        themingTimer = window.setTimeout(() => {
+            paintTheme(on);
+            done();
+        }, 900);
+        return;
+    }
+
+    /* no view transitions: every element carries the move itself, which
+       is the expensive way and the reason the fast path exists. the
+       moon is turned over by hand here, since there are no snapshots to
+       do it — a half turn the way you're heading, with a dip through
+       the middle so it reads as being flipped rather than spun. */
+    root.classList.add('fading');
+    themingTimer = window.setTimeout(done, 450);
+    paintTheme(on);
+    const moon = themeSwap.querySelector('svg');
+    if (moon && typeof moon.animate === 'function') {
+        moon.animate([
+            { transform: `rotate(${on ? 0 : 180}deg) scale(1)` },
+            { transform: 'rotate(90deg) scale(0.76)', offset: 0.45 },
+            { transform: `rotate(${on ? 180 : 0}deg) scale(1)` }
+        ], { duration: 520, easing: 'cubic-bezier(0.34, 1.2, 0.45, 1)' });
     }
 }
 
@@ -6971,6 +7210,7 @@ const scratchGo = document.getElementById('scratchGo');
 const scratchNote = document.getElementById('scratchNote');
 const scratchList = document.getElementById('scratchList');
 const scratchCopyAll = document.getElementById('scratchCopyAll');
+const scratchMatch = document.getElementById('scratchMatch');
 const clipSide = document.getElementById('clipSide');
 
 const SCRATCH_KEY = 'scratch-playlist';
@@ -7243,7 +7483,10 @@ function songsIn(data) {
     return best.map((song) => ({
         title: tidy(song.title),
         by: tidy(song.subtitle
-            || (Array.isArray(song.artists) ? song.artists.map((one) => one.name).join(', ') : ''))
+            || (Array.isArray(song.artists) ? song.artists.map((one) => one.name).join(', ') : '')),
+        // how long the song runs, in milliseconds. it is what the clips
+        // are matched against, and spotify has called it both of these
+        ms: Number(song.duration || song.duration_ms) || 0
     })).filter((song) => song.title);
 }
 
@@ -7314,7 +7557,8 @@ async function theRest(bit, token, have, say) {
             if (!song || !song.name) return null;
             return {
                 title: tidy(song.name),
-                by: tidy((song.artists || []).map((one) => one.name).join(', '))
+                by: tidy((song.artists || []).map((one) => one.name).join(', ')),
+                ms: Number(song.duration_ms) || 0
             };
         }).filter(Boolean);
 
@@ -7327,7 +7571,8 @@ async function theRest(bit, token, have, say) {
 
 /* the same page already read for us, as plain text. it comes back as a
    numbered list — the song under one mark, whoever made it under the
-   next — so it is read a pair of lines at a time. */
+   next, and how long it runs on the line after that — so it is read a
+   few lines at a time. */
 function songsFromReading(text) {
     return { songs: readingToSongs(text) };
 }
@@ -7347,10 +7592,24 @@ function readingToSongs(text) {
             index = look;
             break;
         }
+        /* the length comes a line or two under the name, as 03:22, and
+           it is the only bare clock face in there. the search stops at
+           the next number in the list so one song can't take the one
+           belonging to the song after it. */
+        let ms = 0;
+        for (let look = index + 1; look < Math.min(lines.length, index + 6); look += 1) {
+            if (/^\s*\d+\.\s/.test(lines[look])) break;
+            const clock = lines[look].match(/^\s*(?:(\d+):)?(\d{1,2}):(\d{2})\s*$/);
+            if (!clock) continue;
+            ms = ((Number(clock[1] || 0) * 3600) + (Number(clock[2]) * 60) + Number(clock[3])) * 1000;
+            index = look;
+            break;
+        }
         songs.push({
             title: tidy(title[1]),
             // several names come back run together on the commas
-            by: tidy(by.replace(/\s*,\s*/g, ', '))
+            by: tidy(by.replace(/\s*,\s*/g, ', ')),
+            ms
         });
     }
     return songs.filter((song) => song.title);
@@ -7477,8 +7736,27 @@ function saySc(words, hold = 3600) {
     if (hold) scratchSayTimer = window.setTimeout(() => scratchNote.classList.remove('is-up'), hold);
 }
 
+/* one song, as a key — the same song in a playlist twice is the same
+   two words whatever the case of them. */
+function songKey(song) {
+    return `${tidy(song.title)}\u0000${tidy(song.by || '')}`.toLowerCase();
+}
+
+// how many times each one is in there. a playlist with a song on it
+// twice is a playlist with a song on it twice, not a mistake — but it
+// is worth being told, since two clips will answer to the one name.
+function countSongs(songs) {
+    const seen = new Map();
+    songs.forEach((song) => {
+        const key = songKey(song);
+        seen.set(key, (seen.get(key) || 0) + 1);
+    });
+    return seen;
+}
+
 function renderScratch(songs, said) {
     scratchSongs = songs;
+    const twiceOver = countSongs(songs);
     scratchList.innerHTML = '';
     songs.forEach((song, index) => {
         const item = document.createElement('li');
@@ -7490,6 +7768,7 @@ function renderScratch(songs, said) {
         const at = document.createElement('span');
         at.className = 'scratch-at';
         at.textContent = String(index + 1);
+        if (twiceOver.get(songKey(song)) > 1) row.classList.add('is-twice');
 
         const words = document.createElement('span');
         words.className = 'scratch-words';
@@ -7500,6 +7779,13 @@ function renderScratch(songs, said) {
         words.append(name, by);
 
         row.append(at, words);
+        if (row.classList.contains('is-twice')) {
+            const twice = document.createElement('span');
+            twice.className = 'scratch-twice';
+            twice.textContent = `\u00d7${twiceOver.get(songKey(song))}`;
+            twice.title = 'this one is in the playlist more than once';
+            row.append(twice);
+        }
         row.addEventListener('click', (event) => {
             event.stopPropagation();
             copyWords(songLine(song), row);
@@ -7508,6 +7794,7 @@ function renderScratch(songs, said) {
         scratchList.append(item);
     });
     scratchCopyAll.hidden = songs.length === 0;
+    scratchMatch.hidden = songs.length === 0;
     clipSide.classList.toggle('has-songs', songs.length > 0);
     /* a playlist past a hundred is cut short by spotify, not by us, and
        that is the one thing the list itself cannot tell you */
@@ -7566,6 +7853,246 @@ scratchForm.addEventListener('submit', async (event) => {
         renderScratch([], error.message);
     }
     scratchGo.disabled = false;
+});
+
+/* --- the playlist, laid against the clips --- */
+
+/* the clips are recorded while the playlist plays, so the two lists are
+   the same list twice: the bottom clip is the first song, and each one
+   above it is the next. what tells them apart is length — a clip is the
+   song it is as long as, to within a second.
+
+   the walk goes up the clips and along the songs together, and only
+   ever forwards. a clip that answers no song left in the playlist is
+   marked and the songs stay where they are, so one stray recording
+   doesn't throw everything above it out of step; a song nobody recorded
+   is simply stepped over on the way to the next one that fits. */
+const MATCH_SLACK = 1;      // seconds either way, and no more
+const MATCH_NAMED = 2;     // and a little more when the name agrees too
+const MATCH_REACH = 12;    // how many songs it will step over to find one
+const MATCH_STEP = 0.6;    // what skipping one of them costs, in seconds of fit
+
+/* the words of a title, worth comparing. what a playlist calls a song
+   and what you called the clip are the same name with different things
+   hung off it — (feat. someone), - remastered 2011, a stray dash — so
+   those come off and what is left is compared as a bag of words. */
+function titleWords(words) {
+    return String(words || '')
+        .toLowerCase()
+        .replace(/\(.*?\)|\[.*?\]/g, ' ')
+        .replace(/\s-\s.*$/, ' ')
+        .replace(/[^\p{L}\p{N} ]+/gu, ' ')
+        .split(/\s+/)
+        .filter((word) => word.length > 1);
+}
+
+/* near enough the same name. it is deliberately loose — it is there to
+   tell one song from the others within a dozen of it, not to prove
+   anything. */
+function titleAgrees(name, song) {
+    const mine = titleWords(splitName(name).title);
+    const theirs = titleWords(song.title);
+    if (!mine.length || !theirs.length) return false;
+    const shared = theirs.filter((word) => mine.includes(word)).length;
+    return shared / Math.min(mine.length, theirs.length) >= 0.6;
+}
+
+// a clip you named yourself is yours. only the ones still going by the
+// number they were given are written over.
+function clipUnnamed(record) {
+    return !record.name || /^clip \d+$/.test(record.name.trim());
+}
+
+/* the best song for one clip, somewhere between two points in the
+   playlist. it answers with the one it picked and with the nearest it
+   saw either way, which is what the clip is told when nothing fit.
+
+   `anchor` is where the walk had got to. a song further along than that
+   is a song skipped, and a skip is paid for — a tenth of a second on
+   the score for each one. without that, a clip half a second better
+   answered four songs ahead pulled the whole walk along with it, and
+   every clip above it then looked for its song behind where the walk
+   had already got to and found nothing. that is what "the ones with the
+   right timing are marked too" was. */
+function songFor(row, from, to, anchor, claimed) {
+    const seconds = row.seconds();
+
+    /* a clip that already has a name is worth asking. the name is only
+       listened to where it answers something in the stretch being
+       looked at — one you typed yourself agrees with nothing, and a
+       name that agrees with nothing must not veto everything. */
+    const own = clipUnnamed(row.record) ? '' : row.record.name;
+    const agrees = [];
+    if (own) {
+        for (let look = from; look < to; look += 1) {
+            if (titleAgrees(own, scratchSongs[look])) agrees.push(look);
+        }
+    }
+
+    let found = -1;
+    let best = Infinity;
+    let near = Infinity;
+    for (let look = from; look < to; look += 1) {
+        const song = scratchSongs[look];
+        if (!song.ms) continue;
+        if (claimed && claimed.has(look)) continue;
+        const apart = Math.abs((song.ms / 1000) - seconds);
+        near = Math.min(near, apart);
+        if (agrees.length && agrees.indexOf(look) === -1) continue;
+        const allowed = agrees.length ? MATCH_NAMED : MATCH_SLACK;
+        if (apart > allowed) continue;
+        const score = apart + (anchor === null ? 0 : Math.max(0, look - anchor) * MATCH_STEP);
+        if (score < best) {
+            best = score;
+            found = look;
+        }
+    }
+    return { found, near, byName: agrees.length > 0 };
+}
+
+function matchClipsToSongs() {
+    const rows = [...recordingList.querySelectorAll('.recording-item')]
+        .reverse()                                  // bottom of the list first
+        .map((row) => clipRows.get(row.dataset.clipId))
+        .filter(Boolean);
+
+    if (!rows.length) return saySc('no clips to match');
+    if (!scratchSongs.some((song) => song.ms)) {
+        return saySc('these songs came without their lengths — read the link again');
+    }
+
+    const picks = rows.map(() => -1);
+    const claimed = new Set();
+    const nearest = rows.map(() => Infinity);
+    let byName = 0;
+    let at = 0;             // how far along the playlist the walk has got
+
+    /* the walk itself, up the clips and along the songs together.
+
+       a match that steps over songs is looked at twice before it is
+       taken: if the clip above it would then find nothing, and would
+       have found something had this one stayed put, the skip is
+       declined and this clip is the one marked instead. one clip that
+       isn't a song at all — an advert, a false start — used to take
+       whatever it happened to be the length of further down the
+       playlist and leave every clip above it looking behind where the
+       walk had got to. that is one lookahead, not a search. */
+    rows.forEach((row, index) => {
+        const end = Math.min(scratchSongs.length, at + MATCH_REACH);
+        const got = songFor(row, at, end, at, claimed);
+        nearest[index] = got.near;
+        if (got.found === -1) return;
+
+        const next = rows[index + 1];
+        if (got.found > at && next) {
+            const reach = (from) => songFor(
+                next, from, Math.min(scratchSongs.length, from + MATCH_REACH), null, claimed
+            ).found;
+            if (reach(got.found + 1) === -1 && reach(at) !== -1) return;
+        }
+
+        picks[index] = got.found;
+        claimed.add(got.found);
+        if (got.byName) byName += 1;
+        at = got.found + 1;
+    });
+
+    /* and a second look for the ones left over. a clip that fits
+       nothing on the way past is often a clip whose song was taken by
+       something before it — an advert, a false start, a turn recorded
+       twice. it is allowed anywhere between the songs its neighbours
+       took, so the order still holds, and only where nobody else has
+       claimed it. nothing is skipped here, so no skip is paid for. */
+    rows.forEach((row, index) => {
+        if (picks[index] !== -1) return;
+        let low = 0;
+        for (let below = index - 1; below >= 0; below -= 1) {
+            if (picks[below] !== -1) { low = picks[below] + 1; break; }
+        }
+        let high = scratchSongs.length;
+        for (let above = index + 1; above < rows.length; above += 1) {
+            if (picks[above] !== -1) { high = picks[above]; break; }
+        }
+        if (low >= high) return;
+        const got = songFor(row, low, high, null, claimed);
+        nearest[index] = Math.min(nearest[index], got.near);
+        if (got.found === -1) return;
+        picks[index] = got.found;
+        claimed.add(got.found);
+        if (got.byName) byName += 1;
+    });
+
+    let named = 0;
+    let off = 0;
+    rows.forEach((row, index) => {
+        if (picks[index] === -1) {
+            off += 1;
+            /* the mark says why, rather than only that. hold option over
+               it, or rest on it — it is the same `title` every other
+               thing on this page is named by. */
+            const miss = !Number.isFinite(nearest[index])
+                ? `nothing left in the playlist to match ${clockFace(row.seconds())}`
+                : nearest[index] <= MATCH_SLACK
+                    ? `${clockFace(row.seconds())} only fits a song out of its turn here`
+                    : `nothing within a second of ${clockFace(row.seconds())} — the nearest is ${nearest[index].toFixed(1)}s off`;
+            row.sayOff(true, miss);
+            return;
+        }
+        row.sayOff(false, '');
+        if (clipUnnamed(row.record)) {
+            row.rename(songLine(scratchSongs[picks[index]]));
+            named += 1;
+        }
+    });
+
+    /* and the other way round: which songs nothing answered to. a
+       playlist you are working through has a tail of songs not
+       recorded yet, and the list is where that belongs — the chip only
+       counts them. */
+    const missing = markScratch(claimed);
+
+    const lined = rows.length - off;
+    const bits = [off ? `${lined} lined up, ${off} off` : `all ${lined} lined up`];
+    if (named) bits.push(`${named} named`);
+    else if (byName) bits.push(`${byName} checked by name`);
+    if (missing) bits.push(`${missing} not here yet`);
+    saySc(bits.join(' · ') + (off || missing ? '' : ' ✓'));
+}
+
+/* the songs that got a clip wear the black on their number; the ones
+   that didn't are left plain, which is the point — what is left plain
+   is what is left to record. it says the same in words on the row, for
+   anyone holding option over it. */
+function markScratch(claimed) {
+    const rows = [...scratchList.querySelectorAll('.scratch-song')];
+    let missing = 0;
+    rows.forEach((row, index) => {
+        const got = claimed.has(index);
+        row.classList.toggle('is-got', got);
+        row.classList.toggle('is-missing', !got);
+
+        /* the ones with nothing recorded say so outright — a dashed
+           outline and a ring of their own. leaving them plain said it
+           too, but only to someone who knew that plain meant anything. */
+        let ring = row.querySelector('.scratch-none');
+        if (got && ring) ring.remove();
+        if (!got && !ring) {
+            ring = document.createElement('span');
+            ring.className = 'scratch-none';
+            ring.textContent = '\u25cb';
+            row.insertBefore(ring, row.querySelector('.scratch-twice'));
+        }
+        if (!got) missing += 1;
+
+        const song = scratchSongs[index];
+        row.title = `${songLine(song)} — ${got ? 'a clip of this one is in the list' : 'no clip of this one yet'}, press to copy`;
+    });
+    return missing;
+}
+
+scratchMatch.addEventListener('click', (event) => {
+    event.stopPropagation();
+    matchClipsToSongs();
 });
 
 scratchCopyAll.addEventListener('click', async (event) => {

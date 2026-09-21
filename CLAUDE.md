@@ -254,6 +254,116 @@ a path into it — it searches the whole thing for the longest array of
 objects that look like songs. Leave it that way; a rename in the middle
 of their JSON then costs nothing.
 
+## Clips laid against a playlist
+
+The clips are recorded while the playlist plays, so the two lists are
+the same list twice. **`match the clips`** in the scratch box walks them
+together: the bottom clip is song 1, and each one above it is the next.
+What tells them apart is length — a clip is the song it is as long as,
+to within **one second**, measured on the *cropped* length, so trimming
+can bring one into line.
+
+The walk only ever goes forwards, and no further than **twelve songs
+ahead** — without a limit, a stray clip that happened to be the length
+of something near the end leapt there and took half the playlist with
+it. Within that reach it takes the **closest** in length, not the first
+that fits: two songs a second apart both answer a clip between them, and
+the earlier one is not the better answer. A clip that answers nothing in
+reach is marked `!` and the playlist **stays where it is**, so one stray
+recording can't throw everything above it out of step; a song nobody
+recorded is stepped over on the way to the next one that fits.
+
+**A skip costs something.** Among the songs that fit, one further along
+than the walk has reached is paid for at `MATCH_STEP` (0.6s of fit) per
+song stepped over, so a song half a second better answered four along
+doesn't pull the whole walk with it. And a skip is looked at twice: if
+the clip above would then find nothing, and would have found something
+had this one stayed put, the skip is declined and *this* clip is the one
+marked. That is one lookahead, not a search.
+
+**Then a second look for the ones left over.** A clip that fits nothing
+on the way past is often a clip whose song was taken by something before
+it — an advert, a false start, a turn recorded twice. It is allowed
+anywhere between the songs its neighbours took, so the order still
+holds, and only where nobody else has claimed it.
+
+Between them these are what "the ones with the right timing are marked
+too" was: one clip that wasn't a song at all took whatever it happened
+to be the length of further down the playlist, and every clip above it
+then looked for its own song behind where the walk had already got to.
+
+**The `!` says why**, in its `title` — hold option over it. Either
+nothing came within a second (and by how much the nearest missed), or
+the only song it fits is out of its turn.
+
+**A clip that already has a name is asked about it.** `titleAgrees()`
+strips the `(feat. …)`, the `- remastered 2011` and the punctuation off
+both names and compares what is left as a bag of words, at 60% overlap.
+Where the name answers something in reach, only the songs it agrees with
+are considered, and the length is allowed two seconds instead of one.
+Where it agrees with *nothing* in reach it is ignored entirely — a name
+you typed yourself agrees with nothing, and a name that agrees with
+nothing must never be allowed to veto everything. That guard is the
+whole reason the check is safe to leave on.
+Matched clips take `title؁artist` — but only clips still going by the
+number they were given. A name you typed is yours.
+
+Every row carries its number, counting up **from the bottom**, worked
+out from the rows themselves rather than stored, so binning one in the
+middle renumbers the rest.
+
+**And the same answer read the other way.** After a match the song list
+says both halves outright: a song a clip answered to wears the black on
+its number, the way every live thing here does, and a song with nothing
+recorded of it goes **dashed, with a ring at the end of its row** — the
+same dashed outline a slot on the home board wears while it is only a
+place something could go. Leaving those plain said it too, but only to
+someone who already knew that plain meant anything. The chip counts them
+(`… · 3 not here yet`). A song that is
+in the playlist more than once is marked `×2` as the list is drawn,
+before any matching: two clips will answer to the one name, and that is
+worth being told rather than discovering in the file names. The mark
+comes off the playlist alone, so it is there whether or not anything has
+been recorded.
+
+This needs the songs' lengths, which is why all three sources now carry
+`ms`: `duration` in the embed blob, `duration_ms` off the Web API, and
+the `03:22` under each name on the reader path. A playlist saved before
+that was added has no lengths and the button says so rather than
+matching everything to nothing.
+
+## The deck on the player page
+
+A disc in a well, drawn as one SVG so it is black and white at every
+size. It is **lifted off the spindle and sitting askew** when nothing is
+playing and **presses down flat** onto it when something is; the well
+takes the black while it runs, and everything in it is `currentColor`,
+so the disc comes back the other way round for free.
+
+The turn is `spinDisc()` — a frame at a time, not a CSS animation,
+because a disc doesn't start at full speed or stop dead. The speed eases
+towards where it should be and the angle is added up from it, so pause
+leaves it coasting and play picks it up from wherever it got to. The
+loop parks itself the moment the disc is stopped. Measured: 0.1°/frame
+on the first frame up to 2.4° at full tilt (~2.4s a turn), and the
+same shape coming down.
+
+**A ring of circles spins invisibly.** The disc is nearly all concentric
+lines, so the sheen arcs and the nick in the label are the only things
+that say it is moving — that is what they are for. Drawing the rim band
+as 36 long spokes instead read as a fan, and as 48 short ones as a
+clock.
+
+## The volume slides
+
+A press anywhere along the line used to put the bead there in the same
+instant — the one movement on the page that happened without happening.
+The press is taken off the browser (`preventDefault`) and the bead is
+driven by hand: it is always travelling towards where it has been asked
+to be and arrives in about a tenth of a second. Under a finger that is
+short enough to feel attached; across the whole line it reads as a
+slide. The arrow keys are picked up as a new destination.
+
 ## The player's controls
 
 Five round buttons in a row, and the row has to survive the narrowest
@@ -443,6 +553,29 @@ that token returned `429 QUOTA_EXCEEDED` on every attempt here, so it
 may simply not be allowed on the Web API. The attempt is cheap and
 harmless; when the list comes back a round hundred, the box says so at
 the end of the list rather than pretending.
+
+## Turning the lights off costs one picture
+
+The swap was a transition on **every element on the page at once** —
+four properties each, and colour is not something the compositor can do
+on its own, so every frame was the main thread walking the whole
+document. With a board of tiles, a deck and a list of clips up, that is
+thousands of animations for four tenths of a second, and it stuttered.
+
+`document.startViewTransition` does the whole thing as one picture
+instead: the browser copies the page before and after and fades one into
+the other on the compositor — one paint, then nothing. The moon is
+lifted into a picture of its own (`view-transition-name` on
+`html.theming`) so it can still turn over, drawn as two snapshots
+passing rather than as an animation on the button.
+
+The blanket transition is kept under `html.fading`, for a browser with
+no view transitions, and that path still turns the moon by hand. **Don't
+put the two on at once** — that is paying for both.
+
+`finished` doesn't always report back (a tab put in the background
+mid-swap), so a 900ms timer writes the theme again and takes the classes
+off. Writing it twice can only agree with itself.
 
 ## Never name a custom property after a common word
 
