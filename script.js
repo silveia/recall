@@ -2979,7 +2979,28 @@ function showBatchState() {
     downloadAllButton.title = label;
 }
 
-async function downloadAllClips() {
+/* two clips can carry the same name — the same song twice on a
+   playlist, or two turns of one speaker — and a folder can only hold
+   one of each. the second one along is numbered rather than written
+   over the first. */
+function freeName(taken, wanted) {
+    if (!taken.has(wanted)) {
+        taken.add(wanted);
+        return wanted;
+    }
+    const stop = wanted.lastIndexOf('.');
+    const stem = stop === -1 ? wanted : wanted.slice(0, stop);
+    const tail = stop === -1 ? '' : wanted.slice(stop);
+    for (let again = 2; ; again += 1) {
+        const tried = `${stem} (${again})${tail}`;
+        if (!taken.has(tried)) {
+            taken.add(tried);
+            return tried;
+        }
+    }
+}
+
+async function downloadAllClips(folder) {
     if (downloadAllButton.disabled) return;
     let clips;
     try {
@@ -2990,8 +3011,13 @@ async function downloadAllClips() {
     }
     if (!clips.length) return;
 
-    const sure = await askConfirm(`download ${clips.length} clip${clips.length === 1 ? '' : 's'}? one at a time`, downloadAllButton);
-    if (!sure) return;
+    /* picking the folder was the asking. it is only the download that
+       has to be agreed to first, because sixty-four files arriving one
+       after another is not something anyone should meet by surprise. */
+    if (!folder) {
+        const sure = await askConfirm(`download ${clips.length} clip${clips.length === 1 ? '' : 's'}? one at a time`, downloadAllButton);
+        if (!sure) return;
+    }
 
     // it stays live — it's the pause button now
     batchRunning = true;
@@ -2999,12 +3025,15 @@ async function downloadAllClips() {
     showBatchState();
 
     let done = 0;
+    const taken = new Set();
     for (const record of clips) {
         while (batchPaused) {
             setRecordStatus(`held at ${done} of ${clips.length}`);
             await new Promise((resolve) => window.setTimeout(resolve, 200));
         }
-        setRecordStatus(`packing ${done + 1} of ${clips.length}...`);
+        setRecordStatus(folder
+            ? `packing ${done + 1} of ${clips.length} into ${folder.name}...`
+            : `packing ${done + 1} of ${clips.length}...`);
         // the one being packed says so in the list itself, so you can
         // see where down the list it has got to
         const row = recordingList.querySelector(`[data-clip-id="${record.id}"]`);
@@ -3016,21 +3045,35 @@ async function downloadAllClips() {
             // a cropped clip goes out cropped here too
             const mp3 = await blobToMp3(record.blob, clipSpan(record, record.durationMs / 1000),
                                        splitName(record.name));
-            const href = URL.createObjectURL(mp3);
-            const link = document.createElement('a');
-            link.href = href;
-            link.download = clipFileName(record);
-            link.click();
-            window.setTimeout(() => URL.revokeObjectURL(href), 10000);
+            const called = freeName(taken, clipFileName(record));
+            if (folder) {
+                // straight into the folder you chose, no download at all
+                const file = await folder.getFileHandle(called, { create: true });
+                const out = await file.createWritable();
+                await out.write(mp3);
+                await out.close();
+            } else {
+                const href = URL.createObjectURL(mp3);
+                const link = document.createElement('a');
+                link.href = href;
+                link.download = called;
+                link.click();
+                window.setTimeout(() => URL.revokeObjectURL(href), 10000);
+            }
             done += 1;
         } catch (error) {
             setRecordStatus(`clip ${record.number} failed — ${error.message}`, true);
             if (row) row.classList.add('is-packing-failed');
         }
         if (row) row.classList.remove('is-packing');
-        await new Promise((resolve) => window.setTimeout(resolve, 400));
+        /* a breath between downloads, because chrome drops a burst of
+           them. writing into a folder is not a download and needs no
+           such thing. */
+        if (!folder) await new Promise((resolve) => window.setTimeout(resolve, 400));
     }
-    setRecordStatus(done === clips.length ? '' : `only ${done} of ${clips.length} worked`, done !== clips.length);
+    setRecordStatus(done !== clips.length ? `only ${done} of ${clips.length} worked`
+        : folder ? `${done} saved into ${folder.name}`
+        : '', done !== clips.length);
     recordingList.querySelectorAll('.is-packing').forEach((row) => row.classList.remove('is-packing'));
     batchRunning = false;
     batchPaused = false;
@@ -3038,13 +3081,28 @@ async function downloadAllClips() {
     refreshEmptyMessage();
 }
 
-downloadAllButton.addEventListener('click', () => {
+downloadAllButton.addEventListener('click', async () => {
     if (batchRunning) {
         batchPaused = !batchPaused;
         showBatchState();
         return;
     }
-    downloadAllClips();
+
+    /* a folder to put them in, asked for first — the picker only opens
+       while the press is still a press, and reading the clips takes
+       longer than that. sixty-four files in one place beats sixty-four
+       downloads, and beats a zip nobody asked to unpack. a browser
+       that won't do it falls back to the downloads. */
+    let folder = null;
+    if (window.showDirectoryPicker) {
+        try {
+            folder = await window.showDirectoryPicker({ id: 'recall-clips', mode: 'readwrite' });
+        } catch (error) {
+            if (error && error.name === 'AbortError') return;   // they changed their mind
+            folder = null;                                      // not allowed here; download instead
+        }
+    }
+    downloadAllClips(folder);
 });
 
 /* --- clip storage (survives refresh) --- */

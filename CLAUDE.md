@@ -263,6 +263,26 @@ a path into it — it searches the whole thing for the longest array of
 objects that look like songs. Leave it that way; a rename in the middle
 of their JSON then costs nothing.
 
+## Every clip into a folder
+
+`download every clip` asks for a **folder** and writes the mp3s straight
+into it — not sixty-four downloads one after another, and not a zip
+nobody asked to unpack. The folder is asked for **first**, in the click
+handler before any `await`: `showDirectoryPicker` only opens while the
+press is still a press, and reading the clips takes longer than that.
+Picking the folder *is* the asking, so the confirm is skipped on that
+path; it is only the downloads that have to be agreed to first, because
+sixty-four files arriving one after another is not something anyone
+should meet by surprise.
+
+Two clips can carry the same name — the same song twice on a playlist,
+or two turns of one speaker — and a folder holds one of each, so
+`freeName()` numbers the second `name (2).mp3` rather than writing it
+over the first. Downloads keep the 400ms breath between them, because
+Chrome drops a burst; writing into a folder is not a download and needs
+none. A browser without the picker falls back to the downloads
+unchanged.
+
 ## Carrying the clips to another address
 
 **The browser's store belongs to one address.** Clips recorded with the
