@@ -4663,7 +4663,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	display: flex;
 	/* the height the grip below it was dragged to. it shrinks the whole
 	   way to nothing, like every other pane with a grip. */
-	flex: 0 1 var(--notes-row, 44%);
+	flex: 0 1 var(--notes-row, 30%);
 	flex-direction: column;
 	min-width: 0;
 	min-height: 0;

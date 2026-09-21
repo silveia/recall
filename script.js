@@ -578,7 +578,7 @@ const notesSplit = wireSplit({
     // it wears a --tight all round rather than the clip box's --group
     skinAt: 36,
     max: 70,
-    fallback: 44
+    fallback: 30
 });
 
 function loadDeckColumn() {
