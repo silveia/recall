@@ -5111,7 +5111,17 @@ function setInverted(on) {
     const done = () => root.classList.remove('theming', 'fading');
 
     if (typeof document.startViewTransition === 'function') {
-        document.startViewTransition(() => paintTheme(on)).finished.then(done, done);
+        const swap = document.startViewTransition(() => paintTheme(on));
+        /* a transition that is cut short rejects, and a rejection nobody
+           catches is an error in the console every time the lights go
+           on or off. it is cut short whenever the next press comes
+           before this one has finished, and whenever the tab is not
+           being drawn — both of which are fine and neither of which is
+           worth a word. only `finished` is listened to; the rest are
+           swallowed on purpose. */
+        swap.ready.catch(() => {});
+        swap.updateCallbackDone.catch(() => {});
+        swap.finished.then(done, done);
         /* if the fade never reports back — a tab put in the background
            mid-swap will do it — the page must not be left half turned
            with the moon lifted out of it. writing the theme again costs
