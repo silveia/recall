@@ -2151,6 +2151,9 @@ const recordToggle = document.getElementById('recordToggle');
 const recordStatus = document.getElementById('recordStatus');
 const recordingList = document.getElementById('recordingList');
 const clearClipsButton = document.getElementById('clearClips');
+const packClips = document.getElementById('packClips');
+const unpackClips = document.getElementById('unpackClips');
+const unpackInput = document.getElementById('unpackInput');
 const previewWrap = document.getElementById('previewWrap');
 const previewVideo = document.getElementById('previewVideo');
 const senseBox = document.getElementById('senseBox');
@@ -2779,6 +2782,164 @@ async function clearAllClips() {
 }
 
 clearClipsButton.addEventListener('click', clearAllClips);
+
+/* --- carrying the clips to another address --- */
+
+/* the browser's store belongs to one address. clips recorded with the
+   page opened as a file are not there at localhost, and neither lot is
+   there on the site — the page is identical, the store is not, and
+   there is nothing on screen to say so until the list comes up empty.
+
+   so: every clip into one file, and that file back in anywhere else.
+   the recordings themselves are copied byte for byte — they are not
+   re-encoded, decoded, or even read into memory, only pointed at — so
+   this works where the mp3 export cannot, which is exactly the corner
+   this is for.
+
+   the file is a short header and then the recordings end to end:
+
+       RECALLCLIPS1\n
+       <how many bytes of header>\n
+       <the header, as json: everything but the sound>
+       <clip><clip><clip>...
+*/
+const PACK_MARK = 'RECALLCLIPS1';
+
+function buildBundle(stored) {
+    const header = stored.map((record) => ({
+        id: record.id,
+        number: record.number,
+        name: record.name || '',
+        duration: record.duration,
+        durationMs: record.durationMs,
+        trim: record.trim || null,
+        type: (record.blob && record.blob.type) || 'audio/webm',
+        size: record.blob ? record.blob.size : 0
+    }));
+
+    const words = new TextEncoder().encode(JSON.stringify(header));
+    const parts = [`${PACK_MARK}\n${words.length}\n`, words, ...stored.map((record) => record.blob)];
+    return new Blob(parts, { type: 'application/octet-stream' });
+}
+
+async function packAllClips() {
+    const named = `recall-clips-${new Date().toISOString().slice(0, 10)}.recall`;
+
+    /* where to put it is asked first, before anything is read: the
+       picker only opens while the press is still a press, and reading
+       the clips takes longer than that. it also writes straight to
+       disk, which matters when the answer is a couple of hundred
+       megabytes. a browser without it falls back to a download. */
+    let handle = null;
+    if (window.showSaveFilePicker) {
+        try {
+            handle = await window.showSaveFilePicker({
+                suggestedName: named,
+                types: [{ description: 'recall clips', accept: { 'application/octet-stream': ['.recall'] } }]
+            });
+        } catch (error) {
+            if (error && error.name === 'AbortError') return;   // they changed their mind
+            handle = null;                                      // not allowed here; download instead
+        }
+    }
+
+    const stored = await storedClipsInOrder();
+    if (!stored.length) {
+        setRecordStatus('nothing to save', true);
+        return;
+    }
+
+    setRecordStatus(`packing ${stored.length} clip${stored.length === 1 ? '' : 's'}...`);
+    const bundle = buildBundle(stored);
+    const much = `${stored.length} clips saved — ${Math.round(bundle.size / 1048576)}mb`;
+
+    if (handle) {
+        const out = await handle.createWritable();
+        await out.write(bundle);
+        await out.close();
+        setRecordStatus(much);
+        return;
+    }
+
+    const href = URL.createObjectURL(bundle);
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = named;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(href), 20000);
+    setRecordStatus(much);
+}
+
+/* and back in. nothing is read into memory here either: the header is
+   the only part actually looked at, and each recording is a slice of
+   the file on disk, which the browser keeps as a file until something
+   asks for the bytes. */
+async function unpackClipsFrom(file) {
+    const head = new TextDecoder().decode(await file.slice(0, 64).arrayBuffer());
+    const lines = head.split('\n');
+    if (lines[0] !== PACK_MARK) {
+        setRecordStatus('that is not a clips file', true);
+        return;
+    }
+    const wordCount = Number(lines[1]);
+    const from = lines[0].length + 1 + lines[1].length + 1;
+    let header;
+    try {
+        header = JSON.parse(new TextDecoder().decode(
+            await file.slice(from, from + wordCount).arrayBuffer()
+        ));
+    } catch (error) {
+        setRecordStatus('that file is damaged', true);
+        return;
+    }
+
+    /* ids from the other address can clash with what is already here.
+       a clip that is already in the list is left alone rather than
+       written over, and anything else coming in gets an id of its own. */
+    const here = new Set([...recordingList.querySelectorAll('.recording-item')]
+        .map((row) => row.dataset.clipId));
+
+    let at = from + wordCount;
+    let brought = 0;
+    for (const entry of header) {
+        const blob = file.slice(at, at + entry.size, entry.type);
+        at += entry.size;
+        if (here.has(entry.id)) continue;
+
+        clipCount += 1;
+        const record = {
+            id: entry.id,
+            number: clipCount,
+            name: entry.name || '',
+            duration: entry.duration,
+            durationMs: entry.durationMs,
+            trim: entry.trim || null,
+            blob
+        };
+        await saveClip(record);
+        addRecording(record, true, true);
+        brought += 1;
+        setRecordStatus(`bringing them in... ${brought} of ${header.length}`);
+    }
+
+    rememberClipOrder();
+    paintStorage();
+    setRecordStatus(brought
+        ? `${brought} clip${brought === 1 ? '' : 's'} brought in`
+        : 'they are all here already');
+}
+
+packClips.addEventListener('click', () => {
+    packAllClips().catch((error) => setRecordStatus(`could not save them — ${error.message}`, true));
+});
+unpackClips.addEventListener('click', () => unpackInput.click());
+unpackInput.addEventListener('change', () => {
+    const file = unpackInput.files && unpackInput.files[0];
+    unpackInput.value = '';   // the same file can be picked again
+    if (file) {
+        unpackClipsFrom(file).catch((error) => setRecordStatus(`could not read it — ${error.message}`, true));
+    }
+});
 
 // every clip as an mp3, oldest first. they go one at a time — chrome
 // drops a burst of downloads, and encoding them all at once would

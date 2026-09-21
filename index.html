@@ -280,6 +280,28 @@
                                         <path d="M14.5 5.5v13"/>
                                     </svg>
                                 </button>
+                                <!-- clips live in the browser's own store, and
+                                     that store belongs to one address: clips
+                                     recorded at file:// are not there at
+                                     localhost or on the site, however identical
+                                     the page is. these two carry them across —
+                                     one file out, the same file in. -->
+                                <button class="square-button" id="packClips" type="button" aria-label="save every clip to one file" title="save every clip to one file, to carry to another address">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M4.5 8.5 12 4.5l7.5 4v7L12 19.5 4.5 15.5z"/>
+                                        <path d="M4.5 8.5 12 12.5l7.5-4"/>
+                                        <path d="M12 12.5v7"/>
+                                    </svg>
+                                </button>
+                                <button class="square-button" id="unpackClips" type="button" aria-label="bring clips in from a file" title="bring clips in from a file saved on another address">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M4.5 8.5 12 4.5l7.5 4v7L12 19.5 4.5 15.5z"/>
+                                        <path d="M12 15.5V8"/>
+                                        <path d="M9 11l3-3 3 3"/>
+                                    </svg>
+                                </button>
+                                <input id="unpackInput" type="file" accept=".recall,application/octet-stream" hidden>
+
                                 <button class="square-button" id="clearClips" type="button" aria-label="bin every clip" title="bin every clip">
                                     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M4.5 6.5h15"/>
@@ -732,7 +754,7 @@
 
                         <p class="help-note" data-section="cards" hidden>flashcard maker; decks and flashcards can be organized. ai can also convert notes or images into flashcards which may not work perfectly</p>
 
-                        <p class="help-note" data-section="audio" hidden>an audio recorder that records audio clips that auto-cut when a change is detected in a selected area. crop a clip from its bar; nothing is thrown away, drag the marks back out. the box on the right turns a spotify link into a list you can copy from, and <em>match the clips</em> lays that list against your clips by length, bottom to top — the ones that line up take the song’s name, and a clip that fits nothing gets a !. a clip you already named is checked against the title too, and the song list marks which ones a clip answers to — the dashed rows with a ring are the ones still to record.</p>
+                        <p class="help-note" data-section="audio" hidden>an audio recorder that records audio clips that auto-cut when a change is detected in a selected area. crop a clip from its bar; nothing is thrown away, drag the marks back out. the two box buttons carry every clip to another address as one file and back again — clips belong to the address they were recorded at, so a clip recorded from a file on your disk is not there on the site. the box on the right turns a spotify link into a list you can copy from, and <em>match the clips</em> lays that list against your clips by length, bottom to top — the ones that line up take the song’s name, and a clip that fits nothing gets a !. a clip you already named is checked against the title too, and the song list marks which ones a clip answers to — the dashed rows with a ring are the ones still to record.</p>
 
                         <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface. the disc presses onto its spindle and comes up to speed when something plays, and coasts to a stop when it doesn’t.</p>
 

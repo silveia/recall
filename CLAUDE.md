@@ -263,6 +263,45 @@ a path into it — it searches the whole thing for the longest array of
 objects that look like songs. Leave it that way; a rename in the middle
 of their JSON then costs nothing.
 
+## Carrying the clips to another address
+
+**The browser's store belongs to one address.** Clips recorded with the
+page opened as a file (`file://`) are not there at `localhost:8000`, and
+neither lot is there on the site — the page is identical, the store is
+not, and nothing on screen says so until the list comes up empty. This
+has already cost one set of 64 recordings, which is why the two box
+buttons in the audio bar exist: every clip out as one file, and that
+file back in anywhere else.
+
+The recordings are copied **byte for byte** — not re-encoded, not
+decoded, not even read into memory, only pointed at — so this works
+where the mp3 export cannot, which is exactly the corner it is for (on
+`file://` the mp3 worker won't load at all).
+
+The file is a short header and then the recordings end to end:
+
+    RECALLCLIPS1\n
+    <how many bytes of header>\n
+    <the header, as json: everything but the sound>
+    <clip><clip><clip>...
+
+Coming back in, each recording is a `slice` of the file on disk, which
+the browser keeps as a file until something asks for the bytes — so a
+200MB bundle never becomes 200MB of memory. A clip whose id is already
+in the list is skipped rather than written over, so the same file can be
+brought in twice without doubling anything.
+
+Saving asks **where to put it first**, before it reads a single clip:
+`showSaveFilePicker` only opens while the press is still a press, and
+reading the clips takes longer than that. It also writes straight to
+disk, which is what a couple of hundred megabytes wants. Where the
+picker isn't allowed, it falls back to an ordinary download.
+
+Verified end to end: three clips out and back with their exact byte
+counts, first and last bytes, types, names (`؁` and all), crops and
+durations intact; a second import adding nothing; and a file that isn't
+a bundle being turned away rather than half-read.
+
 ## Clips laid against a playlist
 
 The clips are recorded while the playlist plays, so the two lists are
