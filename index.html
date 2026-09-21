@@ -300,7 +300,11 @@
                                         <path d="M9 11l3-3 3 3"/>
                                     </svg>
                                 </button>
-                                <input id="unpackInput" type="file" accept=".recall,application/octet-stream" hidden>
+                                <!-- no accept list: macos greys out anything it does not recognise,
+                                     and it does not recognise .recall — the file could be
+                                     seen in the picker and not chosen. what is in it is
+                                     checked when it is read instead. -->
+                                <input id="unpackInput" type="file" hidden>
 
                                 <button class="square-button" id="clearClips" type="button" aria-label="bin every clip" title="bin every clip">
                                     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
