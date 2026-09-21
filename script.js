@@ -2973,8 +2973,8 @@ let batchPaused = false;
 function showBatchState() {
     const packing = batchRunning && !batchPaused;
     downloadAllButton.classList.toggle('is-packing', packing);
-    const label = !batchRunning ? 'download every clip'
-        : packing ? 'pause the download' : 'carry on downloading';
+    const label = !batchRunning ? 'every clip to a folder'
+        : packing ? 'pause' : 'carry on';
     downloadAllButton.setAttribute('aria-label', label);
     downloadAllButton.title = label;
 }
@@ -4190,7 +4190,7 @@ recordToggle.addEventListener('click', (event) => {
 const clipSplitter = wireSplit({
     split: document.getElementById('clipSplit'),
     body: document.querySelector('.audio-body'),
-    other: recordingList,
+    other: document.querySelector('.clip-column'),
     pane: document.getElementById('clipSide'),
     variable: '--clip-col',
     key: 'clip-column',
@@ -8002,7 +8002,7 @@ function renderScratch(songs, said) {
             const twice = document.createElement('span');
             twice.className = 'scratch-twice';
             twice.textContent = `\u00d7${twiceOver.get(songKey(song))}`;
-            twice.title = 'this one is in the playlist more than once';
+            twice.title = 'in the playlist twice';
             row.append(twice);
         }
         row.addEventListener('click', (event) => {
@@ -8250,10 +8250,10 @@ function matchClipsToSongs() {
                it, or rest on it — it is the same `title` every other
                thing on this page is named by. */
             const miss = !Number.isFinite(nearest[index])
-                ? `nothing left in the playlist to match ${clockFace(row.seconds())}`
+                ? `no songs left for ${clockFace(row.seconds())}`
                 : nearest[index] <= MATCH_SLACK
-                    ? `${clockFace(row.seconds())} only fits a song out of its turn here`
-                    : `nothing within a second of ${clockFace(row.seconds())} — the nearest is ${nearest[index].toFixed(1)}s off`;
+                    ? `${clockFace(row.seconds())} fits a song out of turn`
+                    : `no song near ${clockFace(row.seconds())} — nearest ${nearest[index].toFixed(1)}s off`;
             row.sayOff(true, miss);
             return;
         }
@@ -8304,7 +8304,7 @@ function markScratch(claimed) {
         if (!got) missing += 1;
 
         const song = scratchSongs[index];
-        row.title = `${songLine(song)} — ${got ? 'a clip of this one is in the list' : 'no clip of this one yet'}, press to copy`;
+        row.title = got ? 'recorded — press to copy' : 'not recorded — press to copy';
     });
     return missing;
 }

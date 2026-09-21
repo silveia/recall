@@ -289,9 +289,12 @@ unchanged.
 page opened as a file (`file://`) are not there at `localhost:8000`, and
 neither lot is there on the site — the page is identical, the store is
 not, and nothing on screen says so until the list comes up empty. This
-has already cost one set of 64 recordings, which is why the two box
-buttons in the audio bar exist: every clip out as one file, and that
-file back in anywhere else.
+has already cost one set of 64 recordings, which is why the two quiet
+lines under the clip list exist: every clip out as one file, and that
+file back in anywhere else. They are wanted once in a blue moon, so they
+sit under the list they act on rather than taking a place in the bar —
+which is also why `.clip-column` wraps the list now, and why the grip
+sizes *that* rather than `#recordingList`.
 
 The recordings are copied **byte for byte** — not re-encoded, not
 decoded, not even read into memory, only pointed at — so this works
@@ -644,6 +647,16 @@ put the two on at once** — that is paying for both.
 `finished` doesn't always report back (a tab put in the background
 mid-swap), so a 900ms timer writes the theme again and takes the classes
 off. Writing it twice can only agree with itself.
+
+## Holding option has a character limit
+
+`whatItDoes()` cuts at 90 characters, and a tooltip that has to be read
+is a tooltip nobody reads. Every `title` on this site is a **name for
+the thing**, not a sentence about it: `clips out to one file`, `every
+clip to a folder`, `in the playlist twice`, `no song near 3:09 —
+nearest 14.6s off`. Fourteen to twenty-two characters is the range the
+existing ones sit in. Anything that needs explaining belongs in the
+`function` box, not in a `title`.
 
 ## Never name a custom property after a common word
 

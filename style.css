@@ -2217,15 +2217,33 @@ html.inverted .app-shell::before { opacity: 1; }
 	gap: 0;
 	min-height: 0;
 }
-#recordingList {
-	position: relative;    /* so a row's offsetTop is its slot in here */
+/* the clips and the two lines under them. the column is what the grip
+   sizes now, so the lines stay the width of the list they belong to. */
+.clip-column {
+	display: flex;
 	/* the whole row until there's something beside it, and then
 	   whatever the box on the right leaves — the clip bars shrink with
 	   it, since each one is the width of its row */
 	flex: 1;
-	align-self: stretch;
+	flex-direction: column;
 	min-width: 0;
 	min-height: 0;
+}
+#recordingList {
+	position: relative;    /* so a row's offsetTop is its slot in here */
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+}
+
+/* quiet, and out of the way: two things wanted once in a blue moon,
+   under the list they act on rather than in the bar over it */
+.clip-footer {
+	display: flex;
+	flex: none;
+	justify-content: center;
+	gap: var(--group);
+	padding: var(--tight) 0 calc(var(--tight) * 0.5);
 }
 
 /* the box beside the clips. it is however wide you dragged it, never
