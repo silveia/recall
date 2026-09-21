@@ -304,7 +304,7 @@
                                          first time, and after that nothing is
                                          asked again — see folderFor(). -->
                                     <div class="clip-folder">
-                                        <input id="folderName" type="text" placeholder="folder for the mp3s" aria-label="folder for the mp3s" title="folder for the mp3s">
+                                        <input id="folderName" type="text" placeholder="folder name" aria-label="folder name" title="folder for the mp3s" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                     </div>
                                     <ol id="recordingList"></ol>
                                     <div class="clip-footer">
@@ -420,57 +420,6 @@
                                         </div>
 
                                         <div class="now-body">
-
-                                            <!-- the deck. the disc is lifted off
-                                                 its spindle when nothing is
-                                                 playing and presses down onto it
-                                                 when something is — it takes a
-                                                 moment to come up to speed and
-                                                 coasts to a stop rather than
-                                                 stopping dead. see spinDisc(). -->
-                                            <div class="cd-deck" id="cdDeck" aria-hidden="true">
-                                                <span class="cd-hinge"></span>
-                                                <div class="cd-well">
-                                                    <div class="cd-spin" id="cdSpin">
-                                                        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor">
-                                                                <!-- the disc itself: a rim, the rings of the
-                                                                     recorded part, a label and the hole. -->
-                                                                <circle cx="50" cy="50" r="46" stroke-width="1.2"/>
-                                                                <circle cx="50" cy="50" r="43.5" stroke-width="0.6"/>
-                                                                <circle cx="50" cy="50" r="38" stroke-width="0.45"/>
-                                                                <circle cx="50" cy="50" r="30.5" stroke-width="0.45"/>
-                                                                <circle cx="50" cy="50" r="23" stroke-width="1.2"/>
-                                                                <circle cx="50" cy="50" r="21" stroke-width="0.45"/>
-                                                                <circle cx="50" cy="50" r="7.5" stroke-width="1"/>
-                                                                <!-- the sheen off the surface. it is the only
-                                                                     thing on the disc that isn't round, so it
-                                                                     is what makes the turn readable — a plain
-                                                                     ring of circles spins invisibly. -->
-                                                                <g class="cd-sheen">
-                                                                <path d="M36.6 8.6A43.5 43.5 0 0 1 62.0 8.2" stroke-width="2.4" stroke-linecap="round"/>
-                                                                <path d="M40.6 12.2A39 39 0 0 1 56.8 11.6" stroke-width="1.6" stroke-linecap="round"/>
-                                                                <path d="M44.0 16.0A34.5 34.5 0 0 1 52.4 15.6" stroke-width="1.2" stroke-linecap="round"/>
-                                                                <path d="M66.3 90.3A43.5 43.5 0 0 1 54.5 93.3" stroke-width="1.4" stroke-linecap="round"/>
-                                                                <path d="M62.1 87.1A39 39 0 0 1 55.4 88.6" stroke-width="1.0" stroke-linecap="round"/>
-                                                                </g>
-                                                                <!-- and the nick in the label, so a slow turn
-                                                                     can be counted -->
-                                                                <path class="cd-nick" d="M50 27V21" stroke-width="1.6" stroke-linecap="round"/>
-                                                            </svg>
-                                                    </div>
-                                                    <!-- the head that comes down on it. away from
-                                                         the disc it is drawn larger, which is how a
-                                                         flat picture says something is above the
-                                                         thing under it; on the press it comes to
-                                                         its own size and the claws take hold. -->
-                                                    <span class="cd-head">
-                                                        <i class="cd-claw"></i><i class="cd-claw"></i><i class="cd-claw"></i>
-                                                    </span>
-                                                    <span class="cd-hub"></span>
-                                                </div>
-                                                <span class="cd-front"><span class="cd-lamp"></span></span>
-                                            </div>
-
                                             <p class="now-title" id="nowTitle"></p>
 
                                             <div class="clip-track" id="playerTrack">

@@ -4335,8 +4335,6 @@ const railToggle = document.getElementById('railToggle');
 const railPrev = document.getElementById('railPrev');
 const railNext = document.getElementById('railNext');
 const linkClipsButton = document.getElementById('linkClips');
-const cdDeck = document.getElementById('cdDeck');
-const cdSpin = document.getElementById('cdSpin');
 const nowTitle = document.getElementById('nowTitle');
 const nowElapsed = document.getElementById('nowElapsed');
 const nowTotal = document.getElementById('nowTotal');
@@ -4670,49 +4668,9 @@ function stepTrack(step) {
     playTrack(tracks[to].id);
 }
 
-/* --- the disc --- */
-
-/* a disc doesn't start turning at full speed and doesn't stop dead, so
-   this is a frame at a time rather than a css animation: the speed
-   eases towards whichever it is meant to be and the angle is added up
-   from it. pressing pause leaves it coasting, and pressing play again
-   picks it up from wherever it had got to.
-
-   the loop only runs while there is something to see — it parks itself
-   the moment the disc is stopped and nothing is playing. */
-let discAngle = 0;
-let discSpeed = 0;      // turns a second, near enough
-let discFrame = 0;
-let discWanted = 0;
-
-function spinDisc(last) {
-    discFrame = 0;
-    const now = performance.now();
-    // a frame's worth, capped: coming back to a tab that was away
-    // shouldn't spin it a hundred times at once
-    const step = Math.min((now - (last || now)) / 1000, 0.1);
-
-    discSpeed += (discWanted - discSpeed) * Math.min(step * 3.4, 1);
-    discAngle = (discAngle + discSpeed * 360 * step) % 360;
-    cdSpin.style.transform = `rotate(${discAngle}deg)`;
-
-    if (discWanted || discSpeed > 0.004) {
-        discFrame = window.requestAnimationFrame(() => spinDisc(now));
-    } else {
-        discSpeed = 0;
-    }
-}
-
-function turnDisc(playing) {
-    discWanted = playing ? 0.42 : 0;    // a little over two seconds a turn
-    if (!discFrame) discFrame = window.requestAnimationFrame(() => spinDisc());
-}
-
 /* the row that's on wears the black, the way an open deck does */
 function refreshPlayerState() {
     const playing = Boolean(playingId) && !songPlayer.paused;
-    cdDeck.classList.toggle('is-playing', playing);
-    turnDisc(playing);
     playToggle.innerHTML = playing ? MARK_PAUSE : MARK_PLAY;
     playToggle.setAttribute('aria-label', playing ? 'pause' : 'play');
     playToggle.title = playing ? 'pause' : 'play';
@@ -8446,18 +8404,51 @@ let pointerAt = { x: 0, y: 0 };
 // tells a screen reader, then whatever it actually says
 function whatItDoes(node) {
     const named = node && node.closest
-        && node.closest('[title], [aria-label], button, a, input, [role="button"]');
+        && node.closest('[title], [data-said], [aria-label], button, a, input, [role="button"]');
     if (!named) return '';
     const said = named.getAttribute('title')
+        || named.getAttribute('data-said')
         || named.getAttribute('aria-label')
         || named.getAttribute('placeholder')
         || named.textContent;
     return tidy(said || '').slice(0, 90);
 }
 
+/* the browser's own tooltip, out of the way.
+
+   holding option already says what a thing does — instantly, beside
+   the pointer, in the site's two colours. rest on the same thing for a
+   second and a half and the system's own yellow box arrives underneath
+   it saying the same words again, in another typeface, somewhere else.
+   two answers to one question.
+
+   a `title` cannot be told not to do that, so it is taken off the one
+   thing under the pointer while option is held and put back the moment
+   it isn't. only ever one element, and it is the one being looked at. */
+let hushed = null;
+
+function hushTitle(named) {
+    if (hushed === named) return;
+    sayTitleAgain();
+    if (!named || !named.hasAttribute('title')) return;
+    named.setAttribute('data-said', named.getAttribute('title'));
+    named.removeAttribute('title');
+    hushed = named;
+}
+
+function sayTitleAgain() {
+    if (!hushed) return;
+    if (hushed.hasAttribute('data-said')) {
+        hushed.setAttribute('title', hushed.getAttribute('data-said'));
+        hushed.removeAttribute('data-said');
+    }
+    hushed = null;
+}
+
 function placeSayWhat() {
     if (!optionDown) return;
     const under = document.elementFromPoint(pointerAt.x, pointerAt.y);
+    hushTitle(under && under.closest && under.closest('[title], [data-said]'));
     const words = whatItDoes(under);
     if (!words) {
         sayWhat.classList.remove('is-up');
@@ -8496,10 +8487,12 @@ window.addEventListener('keyup', (event) => {
     if (event.key !== 'Alt') return;
     optionDown = false;
     sayWhat.classList.remove('is-up');
+    sayTitleAgain();
 });
 
 // letting go of the window counts as letting go of the key
 window.addEventListener('blur', () => {
     optionDown = false;
     sayWhat.classList.remove('is-up');
+    sayTitleAgain();
 });
