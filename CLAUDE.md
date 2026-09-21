@@ -553,6 +553,19 @@ pointing at, which changed the answer.
 as negative margin, which is what gives the edit-mode lift and shadow
 room. Any "clipping at the edge" on this board is that.
 
+## The mark lands in the middle, and the word holds still
+
+A tick or a cross on the tile you pressed. The word used to **slide down
+14px** to make room overhead and the mark came in above it — so the
+answer you were reading walked off its line at the exact moment you were
+told whether it was right. The word does not move now; the mark grows in
+at the centre of the tile, over it.
+
+The trade is that the mark is drawn across the letters. At a short
+answer (`6`, `42`) that reads fine; over a long one it is busier. If it
+ever needs solving, fade the word rather than moving it — the point of
+this change is that nothing on the tile shifts.
+
 ## One entrance for every section
 
 One rule, one animation per section: `panel-in`, 0.34s, a 6px rise and

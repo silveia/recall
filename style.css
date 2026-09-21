@@ -2043,16 +2043,13 @@ html.inverted .app-shell::before { opacity: 1; }
 }
 .answer-button.correct:not(.is-right) { animation: pop 0.35s var(--ease); }
 
-/* the mark sits over the word rather than beside it: the word slides
-   down to make the room and the mark comes in above it, so the pair
-   reads as one thing and nothing is squeezed sideways. only the tile
-   you pressed is ever marked — a tick and a cross say which way it
-   went, and the answer itself is shown by being filled in. */
-.answer-word {
-	display: block;
-	transition: transform 0.3s var(--ease);
-}
-.answer-button.is-marked .answer-word { transform: translateY(14px); }
+/* the mark lands in the middle of the tile and the word does not move
+   at all. it used to slide down to make room overhead, which meant the
+   answer you were reading walked off its line at the moment you were
+   told whether it was right. only the tile you pressed is ever marked —
+   a tick and a cross say which way it went, and the answer itself is
+   shown by being filled in. */
+.answer-word { display: block; }
 
 .answer-mark {
 	position: absolute;
@@ -2066,10 +2063,10 @@ html.inverted .app-shell::before { opacity: 1; }
 	animation: mark-in 0.3s var(--ease) backwards;
 }
 @keyframes mark-in {
-	from { opacity: 0; transform: translate(-50%, calc(-50% - 8px)) scale(0.8); }
-	to   { opacity: 1; transform: translate(-50%, calc(-50% - 13px)) scale(1); }
+	from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+	to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
-.answer-mark { transform: translate(-50%, calc(-50% - 13px)); }
+.answer-mark { transform: translate(-50%, -50%); }
 .answer-mark svg { display: block; width: 100%; height: 100%; }
 
 /* the tick is written on, one stroke, left to right */
