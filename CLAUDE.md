@@ -423,36 +423,6 @@ the `03:22` under each name on the reader path. A playlist saved before
 that was added has no lengths and the button says so rather than
 matching everything to nothing.
 
-## The deck on the player page
-
-A box that holds a disc. **The disc never leaves the well** — what moves
-is the head above it, which comes down and takes hold when something
-plays and lifts off when nothing does, which is what the player on the
-shelf does and the reason it is worth drawing at all. The first version
-had the disc itself lifting off the spindle, which is not a thing any
-CD player has ever done.
-
-A flat picture has no depth to say "above", so the head says it twice:
-**larger, and dashed**. Away from the disc it is drawn at 2.4× and
-dashed — the same dashed outline a slot on the home board wears while it
-is only a place something could go — and on the press it comes to its
-own size, goes solid at 2px, and the three claws close. The well takes
-the black while it runs and everything in it is `currentColor`, so the
-disc and the head come back the other way round for free.
-
-The turn is `spinDisc()` — a frame at a time, not a CSS animation,
-because a disc doesn't start at full speed or stop dead. The speed eases
-towards where it should be and the angle is added up from it, so pause
-leaves it coasting and play picks it up from wherever it got to. The
-loop parks itself the moment the disc is stopped. Measured: 0.1°/frame
-on the first frame up to 2.4° at full tilt (~2.4s a turn), and the same
-shape coming down.
-
-**A ring of circles spins invisibly.** The disc is nearly all concentric
-lines, so the sheen arcs and the nick in the label are the only things
-that say it is moving — that is what they are for. Drawing the rim band
-as 36 long spokes instead read as a fan, and as 48 short ones as a clock.
-
 ## The volume slides
 
 A press anywhere along the line used to put the bead there in the same
@@ -727,9 +697,19 @@ invisible on the black bar until that was fixed. Check any new cursor
 on both backgrounds.
 
 **Holding option** names whatever is under the pointer, beside it, in
-the site's own colours (`whatItDoes()` → `title`, then `aria-label`,
-then `placeholder`, then the text). Nothing new has to be registered:
-anything named properly is covered. Which also means a stale `title` is
+the site's own colours (`whatItDoes()` → `title`, then `data-said`, then
+`aria-label`, then `placeholder`, then the text). Nothing new has to be
+registered: anything named properly is covered.
+
+**And the browser's own tooltip gets out of the way while it is held.**
+Resting on the same thing for a second and a half brought the system's
+box up underneath, saying the same words again in another typeface
+somewhere else — two answers to one question. A `title` cannot be told
+not to do that, so it is taken off the one element under the pointer
+while option is down (kept in `data-said`, which is why `whatItDoes()`
+reads that too) and put back the moment the key is up, the window loses
+focus, or the pointer moves to something else. Only ever one element,
+and it is the one being looked at. Which also means a stale `title` is
 now visible — "oldest first" on the download button outlived the change
 to bottom-to-top.
 
@@ -815,9 +795,16 @@ nothing against one wall and the pane still open sat off-centre by
 exactly that much. It ramps from 0 to `--group` as the pane opens
 (`--grip`, set in `wireSplit`), and keeps an outward press strip while
 it is too thin to aim at, so a shut pane can always be pulled back out.
-The clip box's padding ramps the same way (`--skin`): a border-box
+The clip box's side padding ramps the same way (`--skin`): a border-box
 element can never be narrower than its own padding plus outline, so a
-fixed padding made it jump from nothing straight to 18px. Measured: the
+fixed padding made it jump from nothing straight to 18px.
+
+**Only the sides ramp.** The floor `--skin` exists for is a *width*
+floor, and ramping the top and bottom with it slid everything in the box
+down nine pixels as it was dragged shut — `copy all` and `match the
+clips` visibly dropping while the box narrowed. Measured after: they
+hold at 749.0 from full width down to 12px.
+ Measured: the
 pane tracks the cursor within a pixel from 4px wide upward, and both
 edges of the row stay at 0.0px at every width.
 
