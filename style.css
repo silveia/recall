@@ -940,13 +940,18 @@ html.inverted .app-shell::before { opacity: 1; }
 /* the big word needs ~2px less lift than the small ones to land on the
    same middle — measured on words without descenders, so a descender is
    free to hang below the line rather than dragging the word up. */
-/* measured on the words' own ink, these land the big word 0.17px under
-   the strip's middle and the small ones 0.25px over it — which is the
-   half pixel of difference between them you can feel without being
-   able to point at it. do not try to close it: the type snaps to whole
-   pixels, so a 0.25px nudge here comes out as a whole one and lands
-   further off than it started. this was measured and reverted. */
-.section-tab.active { position: relative; top: calc(-3px + var(--drop-title)); }
+/* at -3px the big word sat 0.75px low — 16.00px of air over its ink
+   against 14.50 under, which is small on paper and plain to see at
+   36px. a quarter of a pixel at a time, measured off the rendered
+   pixels each time, lands it at -3.75px: 15.25 above and 15.25 below,
+   dead level. so a fractional `top` does move type here — the note
+   that used to sit in this spot said it could not, and it was wrong.
+   measure the pixels, not the font's metrics.
+   checked on every section's word. `audio` reads high and `player`
+   low because `d` climbs over the capitals and `p` and `y` hang under
+   the line; that is the letters doing what letters do, and correcting
+   it would push the capitals off the middle to flatter the tails. */
+.section-tab.active { position: relative; top: calc(-3.75px + var(--drop-title)); }
 
 /* =========================================================
    8. home — deck bar

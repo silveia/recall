@@ -683,14 +683,26 @@ and it is the one being looked at. Which also means a stale `title` is
 now visible — "oldest first" on the download button outlived the change
 to bottom-to-top.
 
-## Two things the renderer will not do
+## Level the big tab off the pixels, not the metrics
 
-**The section tabs cannot be levelled past a quarter-pixel.** Measured
-on the words' own ink, the big one lies 0.17px under the strip's middle
-and the small ones 0.25px over it. That half-pixel is felt but not
-fixable: type snaps to whole pixels, so a 0.25px nudge comes out as a
-whole one and lands further off than it started. Measured, tried,
-reverted — don't try again.
+The active tab sat **0.75px low** — 16.00px of air over its ink against
+14.50 under. Small on paper, plain to see at 36px. A quarter-pixel at a
+time, measured off a 4× screenshot each time, lands it at
+`top: -3.75px`: 15.25 above, 15.25 below, dead level, and it holds on
+every section's word.
+
+**A fractional `top` does move type.** A note used to sit here saying it
+couldn't — that type snaps to whole pixels so a sub-pixel nudge lands
+further off than it started — and it was wrong. It was written from the
+font's own metrics rather than from the rendered pixels. Screenshot at
+4×, find the first and last row with ink in it, and count.
+
+`audio` measures high and `player` low against the others because `d`
+climbs over the capitals and `p` and `y` hang under the line. That is
+the letters doing what letters do; correcting it would push the capitals
+off the middle to flatter the tails. Measure a word with neither.
+
+## One thing the renderer will not do
 
 **A cursor cannot fade.** `cursor` is not animatable; the OS swaps the
 image outright. The only way is to hide the real pointer and draw a
