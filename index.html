@@ -299,6 +299,13 @@
                                      so they sit with what they act on rather than
                                      taking a place in the bar. -->
                                 <div class="clip-column">
+                                    <!-- the folder the mp3s go into. it is made
+                                         inside whatever place you point at the
+                                         first time, and after that nothing is
+                                         asked again — see folderFor(). -->
+                                    <div class="clip-folder">
+                                        <input id="folderName" type="text" placeholder="folder for the mp3s" aria-label="folder for the mp3s" title="folder for the mp3s">
+                                    </div>
                                     <ol id="recordingList"></ol>
                                     <div class="clip-footer">
                                         <button class="scratch-plain" id="packClips" type="button" title="clips out to one file">clips to a file</button>
@@ -342,7 +349,7 @@
                                      always be pulled back out. -->
                                 <div class="pane-split clip-split" id="clipSplit" role="separator" aria-orientation="vertical" tabindex="0" aria-label="resize the box beside the clips"></div>
                                 <aside class="clip-side" id="clipSide">
-                                    <div class="panel-head"><h2>scratch</h2></div>
+                                    <div class="panel-head"><h2>playlist</h2></div>
                                     <!-- spotify's own page hands over a hundred
                                          songs and stops. signing in lifts that,
                                          and nothing here asks for it until a
@@ -423,11 +430,9 @@
                                                  stopping dead. see spinDisc(). -->
                                             <div class="cd-deck" id="cdDeck" aria-hidden="true">
                                                 <span class="cd-hinge"></span>
-                                                <span class="cd-lamp"></span>
                                                 <div class="cd-well">
-                                                    <div class="cd-press">
-                                                        <div class="cd-spin" id="cdSpin">
-                                                            <svg viewBox="0 0 100 100" fill="none" stroke="currentColor">
+                                                    <div class="cd-spin" id="cdSpin">
+                                                        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor">
                                                                 <!-- the disc itself: a rim, the rings of the
                                                                      recorded part, a label and the hole. -->
                                                                 <circle cx="50" cy="50" r="46" stroke-width="1.2"/>
@@ -452,13 +457,18 @@
                                                                      can be counted -->
                                                                 <path class="cd-nick" d="M50 27V21" stroke-width="1.6" stroke-linecap="round"/>
                                                             </svg>
-                                                        </div>
                                                     </div>
-                                                    <!-- the three claws that take hold of it, and the
-                                                         spindle they close onto -->
-                                                    <span class="cd-clamp"><i></i><i></i><i></i></span>
+                                                    <!-- the head that comes down on it. away from
+                                                         the disc it is drawn larger, which is how a
+                                                         flat picture says something is above the
+                                                         thing under it; on the press it comes to
+                                                         its own size and the claws take hold. -->
+                                                    <span class="cd-head">
+                                                        <i class="cd-claw"></i><i class="cd-claw"></i><i class="cd-claw"></i>
+                                                    </span>
                                                     <span class="cd-hub"></span>
                                                 </div>
+                                                <span class="cd-front"><span class="cd-lamp"></span></span>
                                             </div>
 
                                             <p class="now-title" id="nowTitle"></p>

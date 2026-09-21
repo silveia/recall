@@ -800,13 +800,25 @@ html.inverted .app-shell::before { opacity: 1; }
 /* pill button */
 .basic-button {
 	align-self: center;
-	padding: calc(0.65rem + var(--drop)) 1.5rem calc(0.65rem - var(--drop));
+	/* the side padding gives way before the words do — a tenth of the
+	   button rather than a fixed step, once a fixed step is more than
+	   the button can spare */
+	padding: calc(0.65rem + var(--drop)) min(1.5rem, 10%) calc(0.65rem - var(--drop));
 	color: var(--paper);
 	background: var(--ink);
 	border: 1px solid var(--ink);
 	border-radius: 999px;
 	font-weight: 600;
 	cursor: var(--cur-tap);
+	/* a pill is a fixed height, so a label allowed to wrap drops its
+	   second line straight out of the bottom — dragging a pane narrow
+	   cut every one of these through the middle of the words. they keep
+	   to one line and give way at the side instead, which is the same
+	   thing the queue's pills have always done. */
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 
@@ -2236,6 +2248,31 @@ html.inverted .app-shell::before { opacity: 1; }
 	min-height: 0;
 }
 
+/* the folder the mp3s land in, over everything else in the column. it
+   wears the same field as the playlist link below it. */
+.clip-folder {
+	display: flex;
+	flex: none;
+	min-width: 0;
+	padding: 0 0 var(--tight);
+}
+.clip-folder input {
+	flex: 1;
+	min-width: 0;
+	height: var(--field);
+	padding: 0 0.9rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font: inherit;
+	font-size: 0.85rem;
+	text-align: center;
+	cursor: var(--cur-bar);
+}
+.clip-folder input::placeholder { color: var(--ink); opacity: 0.55; }
+.clip-folder input:focus { outline: none; border-width: 2px; padding: 0 calc(0.9rem - 1px); }
+
 /* quiet, and out of the way: two things wanted once in a blue moon,
    under the list they act on rather than in the bar over it */
 .clip-footer {
@@ -2604,7 +2641,7 @@ html.inverted .app-shell::before { opacity: 1; }
 	flex: none;
 	align-self: stretch;
 	height: var(--field);
-	padding: calc(var(--drop) * 2) 1.5rem 0;
+	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
 }
 /* shut it keeps no outline and no padding — an empty sliver of box
    would read as a mistake. the grip beside it stays put, so it can
@@ -3380,54 +3417,42 @@ html.inverted .app-shell::before { opacity: 1; }
 }
 /* --- the deck, and the disc in it --- */
 
-/* a top-loading player: a box with a round well in it and a disc that
-   is lifted clear of the spindle until something is playing. the whole
-   thing is drawn here and in one svg — no picture, so it is black and
-   white at every size. */
+/* a box that holds a disc. the disc sits in the well the whole time;
+   what moves is the head above it, which comes down and takes hold
+   when something plays and lifts off when nothing does — which is what
+   the player on the shelf does, and the reason it is worth drawing.
+   all of it is css and one svg, so it is black and white at any size. */
 .cd-deck {
 	position: relative;
+	display: flex;
 	flex: none;
-	width: min(10.5rem, 78%);
-	aspect-ratio: 1;
-	padding: 6.5%;
+	flex-direction: column;
+	align-items: center;
+	width: min(11rem, 82%);
+	padding: 8% 8% 0;
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
 
-/* the lid's seam. dashed rather than faint — there is no faint here */
+/* the lid's seam, across the top of the box */
 .cd-hinge {
 	position: absolute;
-	top: 6%;
-	right: 16%;
-	left: 16%;
+	top: 5.5%;
+	right: 14%;
+	left: 14%;
 	border-top: 1px dashed var(--line);
 }
 
-/* the one light on the front. outlined until it is running, then it is
-   simply on — the same thing every live state on this site does. */
-.cd-lamp {
-	position: absolute;
-	right: 7%;
-	bottom: 6%;
-	width: 5%;
-	aspect-ratio: 1;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 50%;
-	transition: background 0.34s var(--ease);
-}
-.cd-deck.is-playing .cd-lamp { background: var(--ink); }
-
-/* the well the disc sits in. it takes the black while something is
-   playing and the disc comes back the other way round with it, since
-   everything in there is drawn in currentColor. */
+/* the well the disc lies in. it takes the black while something is
+   playing and everything in it is drawn in currentColor, so the disc
+   and the head come back the other way round with it. */
 .cd-well {
 	position: relative;
 	display: grid;
 	place-items: center;
 	width: 100%;
-	height: 100%;
+	aspect-ratio: 1;
 	color: var(--ink);
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -3440,54 +3465,103 @@ html.inverted .app-shell::before { opacity: 1; }
 	background: var(--ink);
 }
 
-/* pressing on and off: the disc rides up off the spindle and sits
-   askew when nothing is playing, and settles flat onto it when
-   something is. the overshoot at the end of the curve is the click. */
-.cd-press {
-	width: 82%;
-	aspect-ratio: 1;
-	/* the lift has to stay inside the well, which clips — at 82% wide
-	   and a twentieth up it comes to 48.6% of the well's half, against
-	   the 50% there is room for */
-	transform: translateY(-6%) rotate(-5deg) scale(1.04);
-	transition: transform 0.52s cubic-bezier(0.26, 1.42, 0.4, 1);
-}
-.cd-deck.is-playing .cd-press { transform: translateY(0) rotate(0deg) scale(1); }
-
-/* the turn itself is written by spinDisc(), a frame at a time, so it
-   can come up to speed and coast down again rather than snapping
-   between stopped and full tilt. nothing to transition here. */
-.cd-spin { width: 100%; height: 100%; }
+/* the disc. it never leaves the well; the turn is written by
+   spinDisc(), a frame at a time, so nothing is transitioned here. */
+.cd-spin { width: 88%; height: 88%; }
 .cd-spin svg { display: block; width: 100%; height: 100%; }
 
-/* three claws that take hold of the disc as it presses on */
-.cd-clamp i {
+/* the head. drawn larger it reads as being above the disc — that is
+   the whole trick, and it is why it grows rather than fades. the
+   overshoot at the end of the curve is the clunk as it lands. */
+.cd-head {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	width: 7%;
-	height: 1.8%;
+	width: 30%;
+	aspect-ratio: 1;
+	/* dashed until it lands, the same way a slot on the home board is
+	   dashed while it is only a place something could go. bigger and
+	   dashed says "not down yet" twice, which a flat picture needs. */
+	border: 1px dashed currentColor;
+	border-radius: 50%;
+	transform: translate(-50%, -56%) scale(2.4);
+	transition: transform 0.5s cubic-bezier(0.26, 1.42, 0.4, 1),
+		border-width 0.3s var(--ease), border-style 0s linear 0.22s;
+}
+.cd-deck.is-playing .cd-head {
+	border-style: solid;
+	border-width: 2px;
+	transform: translate(-50%, -50%) scale(1);
+	transition: transform 0.5s cubic-bezier(0.26, 1.42, 0.4, 1),
+		border-width 0.3s var(--ease), border-style 0s linear 0.28s;
+}
+
+/* the three claws on it, open until it lands */
+.cd-claw {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 26%;
+	height: 6%;
 	background: currentColor;
 	border-radius: 999px;
-	transform: translate(-50%, -50%) rotate(var(--turn)) translateX(210%);
-	transition: transform 0.52s cubic-bezier(0.26, 1.42, 0.4, 1);
+	transform: translate(-50%, -50%) rotate(var(--turn)) translateX(150%);
+	transition: transform 0.5s cubic-bezier(0.26, 1.42, 0.4, 1);
 }
-.cd-clamp i:nth-child(1) { --turn: -90deg; }
-.cd-clamp i:nth-child(2) { --turn: 30deg; }
-.cd-clamp i:nth-child(3) { --turn: 150deg; }
-.cd-deck.is-playing .cd-clamp i { transform: translate(-50%, -50%) rotate(var(--turn)) translateX(120%); }
+.cd-claw:nth-child(1) { --turn: -90deg; }
+.cd-claw:nth-child(2) { --turn: 30deg; }
+.cd-claw:nth-child(3) { --turn: 150deg; }
+.cd-deck.is-playing .cd-claw {
+	transform: translate(-50%, -50%) rotate(var(--turn)) translateX(88%);
+}
 
-/* the spindle. it is the one thing in the well that never moves. */
+/* the spindle. the one thing in the well that never moves. */
 .cd-hub {
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	width: 5.5%;
+	width: 5%;
 	aspect-ratio: 1;
 	background: currentColor;
 	border-radius: 50%;
 	transform: translate(-50%, -50%);
 }
+
+/* the front of the box, under the well, with the one light on it */
+/* the front of the box: two marks for its buttons, and the one light */
+.cd-front {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.3rem;
+	width: 100%;
+	height: 1.6rem;
+	padding-right: 2%;
+}
+.cd-front::before {
+	content: '';
+	margin-right: auto;
+	width: 1.5rem;
+	height: 0.3rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+}
+.cd-front::after {
+	content: '';
+	width: 0.42rem;
+	height: 0.42rem;
+	border: 1px solid var(--line);
+	border-radius: 1px;
+}
+.cd-lamp {
+	width: 0.42rem;
+	height: 0.42rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	transition: background 0.34s var(--ease);
+}
+.cd-deck.is-playing .cd-lamp { background: var(--ink); }
 
 .now-body .clip-track { flex: none; width: 100%; height: 15px; }
 .now-times {

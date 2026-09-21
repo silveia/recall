@@ -2151,6 +2151,7 @@ const recordToggle = document.getElementById('recordToggle');
 const recordStatus = document.getElementById('recordStatus');
 const recordingList = document.getElementById('recordingList');
 const clearClipsButton = document.getElementById('clearClips');
+const folderName = document.getElementById('folderName');
 const packClips = document.getElementById('packClips');
 const unpackClips = document.getElementById('unpackClips');
 const unpackInput = document.getElementById('unpackInput');
@@ -2979,6 +2980,113 @@ function showBatchState() {
     downloadAllButton.title = label;
 }
 
+/* --- the folder the mp3s go into --- */
+
+/* a page cannot make a folder anywhere it likes, and it cannot be told
+   one by name — it has to be handed one. so it is handed one *once*:
+   the place to keep them, remembered, and every download after that
+   makes its own folder inside it from whatever is typed in the box at
+   the top of the clips. nothing is asked again unless the browser
+   forgets the permission, which it does between visits.
+
+   the handle itself is what is kept, not a path — a path is a string a
+   page has no right to open. the browser hands back the same handle
+   and asks the reader once whether it may still write there. */
+const HOME_DB = 'recall-home';
+const HOME_STORE = 'home';
+const FOLDER_KEY = 'clip-folder-name';
+let homeDbPromise = null;
+
+function openHomeDb() {
+    if (homeDbPromise) return homeDbPromise;
+    homeDbPromise = new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(HOME_DB, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(HOME_STORE)) db.createObjectStore(HOME_STORE);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+    return homeDbPromise;
+}
+
+async function keepFolderHome(handle) {
+    try {
+        const db = await openHomeDb();
+        const tx = db.transaction(HOME_STORE, 'readwrite');
+        tx.objectStore(HOME_STORE).put(handle, 'parent');
+    } catch (error) {
+        // it will just ask again next time
+    }
+}
+
+async function folderHome() {
+    try {
+        const db = await openHomeDb();
+        return await new Promise((resolve) => {
+            const request = db.transaction(HOME_STORE, 'readonly').objectStore(HOME_STORE).get('parent');
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => resolve(null);
+        });
+    } catch (error) {
+        return null;
+    }
+}
+
+// may we still write there? asked of the browser, which asks the reader
+// only if it has to — and only while a press is still a press.
+async function stillAllowed(handle) {
+    try {
+        const asked = { mode: 'readwrite' };
+        if (await handle.queryPermission(asked) === 'granted') return true;
+        return await handle.requestPermission(asked) === 'granted';
+    } catch (error) {
+        return false;
+    }
+}
+
+// a folder name with nothing in it that a folder name can't hold
+function tidyFolder(typed) {
+    return String(typed || '')
+        .replace(/[/\\:*?"<>|]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/^\.+/, '')
+        .trim()
+        .slice(0, 60);
+}
+
+/* the folder to write this lot into. 'stop' means they closed the
+   picker, which is a no rather than a fallback. */
+async function folderFor(called) {
+    let parent = await folderHome();
+    if (parent && !(await stillAllowed(parent))) parent = null;
+
+    if (!parent) {
+        if (!window.showDirectoryPicker) return null;
+        try {
+            parent = await window.showDirectoryPicker({ id: 'recall-clips', mode: 'readwrite' });
+        } catch (error) {
+            return error && error.name === 'AbortError' ? 'stop' : null;
+        }
+        await keepFolderHome(parent);
+    }
+
+    // no name typed: straight into the place itself
+    if (!called) return parent;
+    try {
+        return await parent.getDirectoryHandle(called, { create: true });
+    } catch (error) {
+        setRecordStatus(`could not make a folder called ${called}`, true);
+        return parent;
+    }
+}
+
+folderName.value = window.localStorage.getItem(FOLDER_KEY) || '';
+folderName.addEventListener('input', () => {
+    window.localStorage.setItem(FOLDER_KEY, folderName.value);
+});
+
 /* two clips can carry the same name — the same song twice on a
    playlist, or two turns of one speaker — and a folder can only hold
    one of each. the second one along is numbered rather than written
@@ -3088,20 +3196,14 @@ downloadAllButton.addEventListener('click', async () => {
         return;
     }
 
-    /* a folder to put them in, asked for first — the picker only opens
+    /* the folder first, before anything is read — a picker only opens
        while the press is still a press, and reading the clips takes
-       longer than that. sixty-four files in one place beats sixty-four
-       downloads, and beats a zip nobody asked to unpack. a browser
-       that won't do it falls back to the downloads. */
-    let folder = null;
-    if (window.showDirectoryPicker) {
-        try {
-            folder = await window.showDirectoryPicker({ id: 'recall-clips', mode: 'readwrite' });
-        } catch (error) {
-            if (error && error.name === 'AbortError') return;   // they changed their mind
-            folder = null;                                      // not allowed here; download instead
-        }
-    }
+       longer than that. after the first time there is no picker at all:
+       the place is remembered and the folder named at the top of the
+       clips is made inside it. a browser that won't do any of this
+       falls back to the downloads. */
+    const folder = await folderFor(tidyFolder(folderName.value));
+    if (folder === 'stop') return;      // they closed the picker
     downloadAllClips(folder);
 });
 

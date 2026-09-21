@@ -216,7 +216,12 @@ person's turn.
   thread so the page doesn't freeze. Decoding stays on the main thread because
   a worker has no `AudioContext`.
 
-## The scratch box (beside the clips)
+## The playlist box (beside the clips)
+
+**It reads `playlist` on the page**; everything in the code still says
+`scratch` — `SCRATCH_WAYS`, `.scratch-song`, `saySc()`, `scratchSongs`.
+One is what it is called, the other is what it is named, and renaming
+forty identifiers to match buys nothing.
 
 The audio page's clip list has a box to its right, sized by the grip
 between them. It takes a Spotify link — playlist, album or track, in
@@ -265,15 +270,30 @@ of their JSON then costs nothing.
 
 ## Every clip into a folder
 
-`download every clip` asks for a **folder** and writes the mp3s straight
-into it — not sixty-four downloads one after another, and not a zip
-nobody asked to unpack. The folder is asked for **first**, in the click
-handler before any `await`: `showDirectoryPicker` only opens while the
-press is still a press, and reading the clips takes longer than that.
-Picking the folder *is* the asking, so the confirm is skipped on that
-path; it is only the downloads that have to be agreed to first, because
-sixty-four files arriving one after another is not something anyone
-should meet by surprise.
+`download every clip` writes the mp3s straight into a folder — not
+sixty-four downloads one after another, and not a zip nobody asked to
+unpack.
+
+**A page cannot make a folder anywhere it likes, and cannot be told one
+by name — it has to be handed one.** So it is handed one *once*: the
+first download opens the picker, that place is remembered
+(`folderHome()`, the handle itself in its own tiny IndexedDB — a path is
+a string a page has no right to open), and every download after that
+makes its own folder inside it from whatever is typed in the box at the
+top of the clips. Nothing is asked again unless the browser has
+forgotten the permission, which it does between visits — one press to
+say yes, and `stillAllowed()` only asks when it has to.
+
+The folder is settled **before anything is read**: a picker and a
+permission prompt only open while the press is still a press, and
+reading the clips takes longer than that. Picking the folder *is* the
+asking, so the confirm is skipped on that path; it is only the downloads
+that have to be agreed to first, because sixty-four files arriving one
+after another is not something anyone should meet by surprise.
+
+`tidyFolder()` takes the slashes, colons and leading dots out of what
+was typed, since a folder name can't hold them. Nothing typed at all
+means straight into the place itself.
 
 Two clips can carry the same name — the same song twice on a playlist,
 or two turns of one speaker — and a folder holds one of each, so
@@ -405,25 +425,33 @@ matching everything to nothing.
 
 ## The deck on the player page
 
-A disc in a well, drawn as one SVG so it is black and white at every
-size. It is **lifted off the spindle and sitting askew** when nothing is
-playing and **presses down flat** onto it when something is; the well
-takes the black while it runs, and everything in it is `currentColor`,
-so the disc comes back the other way round for free.
+A box that holds a disc. **The disc never leaves the well** — what moves
+is the head above it, which comes down and takes hold when something
+plays and lifts off when nothing does, which is what the player on the
+shelf does and the reason it is worth drawing at all. The first version
+had the disc itself lifting off the spindle, which is not a thing any
+CD player has ever done.
+
+A flat picture has no depth to say "above", so the head says it twice:
+**larger, and dashed**. Away from the disc it is drawn at 2.4× and
+dashed — the same dashed outline a slot on the home board wears while it
+is only a place something could go — and on the press it comes to its
+own size, goes solid at 2px, and the three claws close. The well takes
+the black while it runs and everything in it is `currentColor`, so the
+disc and the head come back the other way round for free.
 
 The turn is `spinDisc()` — a frame at a time, not a CSS animation,
 because a disc doesn't start at full speed or stop dead. The speed eases
 towards where it should be and the angle is added up from it, so pause
 leaves it coasting and play picks it up from wherever it got to. The
 loop parks itself the moment the disc is stopped. Measured: 0.1°/frame
-on the first frame up to 2.4° at full tilt (~2.4s a turn), and the
-same shape coming down.
+on the first frame up to 2.4° at full tilt (~2.4s a turn), and the same
+shape coming down.
 
 **A ring of circles spins invisibly.** The disc is nearly all concentric
 lines, so the sheen arcs and the nick in the label are the only things
 that say it is moving — that is what they are for. Drawing the rim band
-as 36 long spokes instead read as a fan, and as 48 short ones as a
-clock.
+as 36 long spokes instead read as a fan, and as 48 short ones as a clock.
 
 ## The volume slides
 
@@ -647,6 +675,15 @@ put the two on at once** — that is paying for both.
 `finished` doesn't always report back (a tab put in the background
 mid-swap), so a 900ms timer writes the theme again and takes the classes
 off. Writing it twice can only agree with itself.
+
+## A pill never wraps
+
+`.basic-button` is a fixed height, so a label allowed to wrap drops its
+second line straight out of the bottom — dragging a pane narrow cut
+every one of these through the middle of the words. They keep to one
+line, ellipsize, and their side padding is `min(1.5rem, 10%)` so the air
+gives way before the words do. Every pane on this site narrows to
+nothing; anything with words in it has to survive that.
 
 ## Holding option has a character limit
 
