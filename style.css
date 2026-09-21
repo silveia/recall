@@ -2280,6 +2280,9 @@ html.inverted .app-shell::before { opacity: 1; }
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font: inherit;
+	/* centred: a short name left-aligned in a full-width field reads as
+	   a box with something forgotten in the corner of it */
+	text-align: center;
 	cursor: var(--cur-bar);
 }
 .clip-folder input::placeholder { color: var(--muted); }
@@ -2663,20 +2666,32 @@ html.inverted .app-shell::before { opacity: 1; }
    would read as a mistake. the grip beside it stays put, so it can
    always be pulled back out. */
 .clip-side.is-shut, .notes-home.is-shut { padding: 0; border-width: 0; }
-/* while you're aiming the sensing box the stage wants the whole width */
-.recorder-panel.is-tuning .clip-side,
-.recorder-panel.is-tuning .clip-split { display: none; }
+/* aiming the sensing box is a window under the gear now, not the page
+   given over to it. it used to hide the clip list and the playlist box
+   and leave the rest of the page standing in an empty room — and the
+   thing you were aiming was a strip three and a quarter rems tall.
 
-/* the stage only appears while you're aiming the sensing box */
+   fixed, so nothing under it reflows; over everything, so nothing shows
+   through; and half the window wide, which is room enough to put the
+   box on a name without leaning on the zoom. placeUnder() sets the
+   corner — see the sensing toggle in script.js. */
 .audio-stage {
-	position: relative;   /* the settings panel hangs off it */
+	position: fixed;
+	z-index: 60;
 	display: none;
-	flex: 1;
 	flex-direction: column;
-	gap: var(--group);
-	min-width: 0;
+	gap: var(--tight);
+	width: min(640px, calc(100vw - 2rem));
+	max-height: calc(100vh - 5rem);
+	padding: var(--tight);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	overflow: auto;
+	scrollbar-width: none;
 }
-.recorder-panel.is-tuning .audio-stage { display: flex; }
+.audio-stage::-webkit-scrollbar { display: none; }
+.audio-stage.is-open { display: flex; }
 #recordToggle.recording {
 	color: var(--ink);
 	background: var(--paper);
@@ -2791,7 +2806,9 @@ html.inverted .app-shell::before { opacity: 1; }
 .preview-wrap.is-zoomed { cursor: var(--cur-grab); }
 .preview-wrap.is-zoomed.is-pushing { cursor: var(--cur-held); }
 .preview-wrap.showing-video {
-	height: auto;
+	/* tall enough to aim in, and it gives way on a short screen rather
+	   than pushing the sliders out of the window */
+	height: min(46vh, 22rem);
 	padding: 0;
 	line-height: 0;
 }
@@ -2820,23 +2837,20 @@ html.inverted .app-shell::before { opacity: 1; }
 
 .sense-box.is-triggered { background: rgba(255, 255, 255, 0.5); }
 
+/* the controls are their own block under the picture, inside the same
+   window — separate from it, but opened and closed with it. no outline
+   of its own: a box inside a box, one step in from the wall. */
 .sense-controls {
-	position: absolute;
-	top: 2.9rem;
-	right: 0.5rem;
-	z-index: 2;
 	display: flex;
+	flex: none;
 	flex-direction: column;
 	gap: 0.35rem;
-	width: min(20rem, calc(100% - 1rem));
-	padding: 0.6rem;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+	width: 100%;
+	padding: var(--tight) 0.35rem 0;
 	text-align: left;
 	line-height: 1.5;
 	font-size: 0.85rem;
+	border-top: 1px solid var(--line);
 }
 .sense-controls label {
 	display: grid;
@@ -2910,8 +2924,7 @@ html.inverted .app-shell::before { opacity: 1; }
 	font-variant-numeric: tabular-nums;
 }
 .preview-wrap.showing-video ~ .sense-readout { display: none; }
-.recorder-panel.is-tuning #recordingList { display: none; }
-.recorder-panel.is-tuning .record-status { display: none; }
+
 
 .text-button {
 	align-self: center;

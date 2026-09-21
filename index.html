@@ -17,6 +17,38 @@
     <!-- what "customize options" is for, and the answers themselves.
          both hang off their buttons rather than sitting in the form. -->
 
+    <!-- aiming the sensing box: a window under the
+         gear rather than the whole page given over
+         to it. fixed to the screen and over
+         everything, so nothing under it moves or
+         shows through. -->
+    <div class="audio-stage" id="sensePop">
+        <!-- the picture and the box ride together on the stage,
+             so zooming scales both and the box keeps its place
+             on the frame. the wrap around it is what scrolls
+             once the stage is bigger than it, and the settings
+             sit outside that so they hold still. -->
+        <div class="preview-wrap" id="previewWrap" hidden>
+            <div class="preview-stage" id="previewStage">
+                <video id="previewVideo" muted playsinline></video>
+                <div class="sense-box" id="senseBox"></div>
+            </div>
+        </div>
+
+        <div class="sense-controls" id="senseControls" hidden>
+            <div class="panel-handle" aria-hidden="true"></div>
+            <label>zoom <input type="range" id="senseZoom" min="100" max="500" step="1" value="100"><output id="senseZoomOut"></output></label>
+            <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
+            <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
+            <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
+            <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
+            <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="1"><output id="senseThresholdOut"></output></label>
+            <button class="text-button" id="senseReset" type="button">reset to default</button>
+        </div>
+
+        <p class="sense-readout" id="senseReadout" hidden>change 0.0</p>
+    </div>
+
     <div class="pop-panel pop-picks" id="optionsPanel" hidden>
 
         <!-- edit this line freely; the picker leaves it alone -->
@@ -314,35 +346,7 @@
                                     </div>
                                 </div>
 
-                                <!-- everything live goes here -->
-                                <div class="audio-stage">
-                                    <!-- the picture and the box ride together on the stage,
-                                         so zooming scales both and the box keeps its place
-                                         on the frame. the wrap around it is what scrolls
-                                         once the stage is bigger than it, and the settings
-                                         sit outside that so they hold still. -->
-                                    <div class="preview-wrap" id="previewWrap" hidden>
-                                        <div class="preview-stage" id="previewStage">
-                                            <video id="previewVideo" muted playsinline></video>
-                                            <div class="sense-box" id="senseBox"></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="sense-controls" id="senseControls" hidden>
-                                        <div class="panel-handle" aria-hidden="true"></div>
-                                        <label>zoom <input type="range" id="senseZoom" min="100" max="500" step="1" value="100"><output id="senseZoomOut"></output></label>
-                                        <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
-                                        <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
-                                        <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
-                                        <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
-                                        <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="1"><output id="senseThresholdOut"></output></label>
-                                        <button class="text-button" id="senseReset" type="button">reset to default</button>
-                                    </div>
-
-                                    <p class="sense-readout" id="senseReadout" hidden>change 0.0</p>
-                                </div>
-
-                                <!-- the spare box beside the clips. it is dragged
+<!-- the spare box beside the clips. it is dragged
                                      to whatever width you want it, up to half the
                                      room, and all the way shut at nothing — the
                                      grip stays where it is either way, so it can
@@ -664,11 +668,11 @@
 
                         <div class="help-body" id="helpBody"><div class="help-body-inner">
 
-                        <p class="help-note" data-section="home" hidden>welcome to my house. press the pen to arrange the board &mdash; drag tiles anywhere, size chip to grow one, &times; to drop it.</p>
+                        <p class="help-note" data-section="home" hidden>welcome to my house</p>
 
-                        <p class="help-note" data-section="cards" hidden>flashcard maker; decks and flashcards can be organized. ai can also convert notes or images into flashcards which may not work perfectly</p>
+                        <p class="help-note" data-section="cards" hidden>flashcard maker; decks and flashcards can be organized. notes or images can be converted to flashcards, although this is still getting experimented and may not work well.</p>
 
-                        <p class="help-note" data-section="audio" hidden>an audio recorder that records audio clips that auto-cut when a change is detected in a selected area. crop a clip from its bar; nothing is thrown away, drag the marks back out. the box on the right turns a spotify link into a list you can copy from. <em>match the clips</em> lines that list up against your clips by length and names the ones that fit. the down arrow saves them all as mp3s into a folder you name. the two lines under the clips carry them to another address as one file.</p>
+                        <p class="help-note" data-section="audio" hidden>audio recorder; records clips that cut when a change is detected in a selected area. clips can be cropped and downloaded as mp3s individually, or get batch downloaded in a custom folder all tg. clips also can be matched up w a spotify playlist.</p>
 
                         <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface</p>
 

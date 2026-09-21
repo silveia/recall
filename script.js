@@ -238,6 +238,9 @@ function renderSections() {
     audioPanel.hidden = activeSectionId !== 'audio';
     playerPanel.hidden = activeSectionId !== 'player';
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
+    /* the sensing window is fixed to the screen and lives outside every
+       panel — hiding the page it belongs to does not take it with it */
+    if (activeSectionId !== 'audio' && typeof openSensing === 'function') openSensing(false);
 
     /* the grips could not be measured while their panel was hidden, so
        whichever has just come on screen is worked out now */
@@ -2160,6 +2163,7 @@ const switchCount = document.getElementById('switchCount');
 const liveLabel = document.getElementById('liveLabel');
 const downloadAllButton = document.getElementById('downloadAll');
 const senseToggle = document.getElementById('senseToggle');
+const sensePop = document.getElementById('sensePop');
 const senseReset = document.getElementById('senseReset');
 
 const SENSE_KEYS = ['left', 'bottom', 'width', 'height', 'threshold'];
@@ -2309,17 +2313,41 @@ senseZoom.addEventListener('input', () => {
     setZoom(Number(senseZoom.value));
 });
 
-/* the wheel over the picture, which is how anyone actually zooms. a
-   trackpad pinch arrives here too — the browser sends it as a wheel
-   with ctrl held — so both do the same thing. */
+/* the wheel over the picture, the way a picture behaves everywhere else
+   on this machine: **two fingers push it about, a pinch zooms it**.
+
+   it used to zoom on any wheel at all, a fixed eighth per event — and a
+   trackpad sends a burst of events for one flick of two fingers, so a
+   nudge meant to shift the picture an inch threw the zoom from 100 to
+   300. the pinch arrives as a wheel with ctrl held, which is the only
+   thing that tells the two apart; a mouse can hold option or command
+   for the same.
+
+   the zoom is off the size of the delta rather than a fixed step, so a
+   pinch moves it as far as the fingers did — and capped either way,
+   since one notch of a mouse wheel arrives as a hundred at once. */
 previewWrap.addEventListener('wheel', (event) => {
     if (!previewWrap.classList.contains('showing-video')) return;
-    // the page would scroll instead, which is not what the gesture meant
+
+    // a line is about sixteen pixels, a page about the window
+    const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? previewWrap.clientHeight : 1;
+    const downY = event.deltaY * scale;
+    const acrossX = event.deltaX * scale;
+
+    if (!(event.ctrlKey || event.metaKey || event.altKey)) {
+        // nothing to push at full frame — let it scroll whatever is under it
+        if (senseZoomAt <= 100.5) return;
+        event.preventDefault();
+        previewWrap.scrollLeft += acrossX;
+        previewWrap.scrollTop += downY;
+        return;
+    }
+
     event.preventDefault();
-    const by = event.deltaY < 0 ? 1.12 : 1 / 1.12;
     zoomBySlider = false;
-    // off where it is heading, not where it has got to, so notch after
-    // notch adds up instead of fighting the glide already running
+    const by = Math.min(1.18, Math.max(0.85, Math.exp(-downY * 0.0075)));
+    // off where it is heading, not where it has got to, so one push of
+    // the fingers adds up instead of fighting the glide already running
     setZoom(zoomGoal * by, event.clientX, event.clientY);
 }, { passive: false });
 
@@ -2351,11 +2379,16 @@ function applySenseSettings() {
     senseSettings.left = Math.max(0, Math.min(senseSettings.left, 100 - senseSettings.width));
     senseSettings.bottom = Math.max(0, Math.min(senseSettings.bottom, 100 - senseSettings.height));
 
+    /* dragging the box itself writes wherever the pointer was, which is
+       a fraction of a percent with a tail of decimals on it. the number
+       kept is the exact one — nudging the box a hair must not move it —
+       but what is shown is rounded, since nobody is reading the sixth
+       decimal place of 4.0833333333333%. */
     SENSE_KEYS.forEach((key) => {
         senseInputs[key].value = senseSettings[key];
         senseOutputs[key].textContent = key === 'threshold'
-            ? senseSettings[key]
-            : `${senseSettings[key]}%`;
+            ? Math.round(senseSettings[key])
+            : `${Math.round(senseSettings[key])}%`;
     });
 
     senseBox.style.left = `${senseSettings.left}%`;
@@ -2374,13 +2407,32 @@ SENSE_KEYS.forEach((key) => {
     });
 });
 
+/* the window has to be on screen before it can be measured — hidden it
+   measures as nothing and lands in the corner. so: show, then place. */
+function placeSensePop() {
+    if (!audioPanel.classList.contains('is-tuning')) return;
+    placeUnder(sensePop, senseToggle);
+}
+
+function openSensing(open) {
+    senseControls.hidden = !open;
+    senseToggle.setAttribute('aria-expanded', String(open));
+    previewWrap.classList.toggle('showing-video', open);
+    audioPanel.classList.toggle('is-tuning', open);
+    sensePop.classList.toggle('is-open', open);
+    if (open) placeSensePop();
+}
+
 senseToggle.addEventListener('click', (event) => {
     event.stopPropagation();
-    const nowOpen = senseControls.hidden;
-    senseControls.hidden = !nowOpen;
-    senseToggle.setAttribute('aria-expanded', String(nowOpen));
-    previewWrap.classList.toggle('showing-video', nowOpen);
-    audioPanel.classList.toggle('is-tuning', nowOpen);
+    openSensing(senseControls.hidden);
+});
+
+// it is a window over the page, so it keeps its corner under the button
+window.addEventListener('resize', placeSensePop);
+window.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (audioPanel.classList.contains('is-tuning')) openSensing(false);
 });
 
 senseReset.addEventListener('click', (event) => {
@@ -2424,8 +2476,9 @@ document.addEventListener('pointerup', () => { panelDrag = null; });
 let pushStart = null;
 
 previewWrap.addEventListener('pointerdown', (event) => {
-    if (senseZoomAt <= 100) return;
+    if (senseZoomAt <= 100.5) return;
     if (event.target.closest('.sense-box, .sense-controls')) return;
+    event.preventDefault();       // no text or picture dragging off it
     pushStart = {
         x: event.clientX,
         y: event.clientY,
@@ -4215,6 +4268,9 @@ function stopCapture() {
     stopLevelMeter();
     previewWrap.classList.remove('showing-video');
     audioPanel.classList.remove('is-tuning');
+    sensePop.classList.remove('is-open');
+    senseControls.hidden = true;
+    senseToggle.setAttribute('aria-expanded', 'false');
     if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
     activeStream = null;
     previewVideo.srcObject = null;

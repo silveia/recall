@@ -168,6 +168,11 @@ person's turn.
 - Region defaults: left 4%, bottom 4%, width 25%, height 4%, threshold 1. The
   low threshold matters — a short username in a wide box dilutes the change
   score.
+- The sliders show their numbers **rounded**. Dragging the box itself
+  writes wherever the pointer was, which is a fraction of a percent with
+  a tail of decimals on it; the number kept is the exact one, since
+  nudging the box a hair must not move it, but nobody is reading the
+  sixth decimal place of 4.0833333333333%.
 - The preview zooms (100–500%) so the box can be placed precisely without
   zooming the whole site. The picture and the box ride on one stage that
   scales together; the wrap around it scrolls, and dragging the picture
@@ -263,7 +268,9 @@ that have to be agreed to first, because sixty-four files arriving one
 after another is not something anyone should meet by surprise.
 
 `tidyFolder()` takes the slashes, colons and leading dots out of what
-was typed, since a folder name can't hold them. Nothing typed at all
+was typed, since a folder name can't hold them. The field centres its
+name: a short one left-aligned in a full-width box reads as something
+forgotten in the corner of it. Nothing typed at all
 means straight into the place itself.
 
 Two clips can carry the same name — the same song twice on a playlist,
@@ -315,6 +322,48 @@ Verified end to end: three clips out and back with their exact byte
 counts, first and last bytes, types, names (`؁` and all), crops and
 durations intact; a second import adding nothing; and a file that isn't
 a bundle being turned away rather than half-read.
+
+## Aiming the sensing box is a window, not the page
+
+Pressing the gear used to hide the clip list, the playlist box and the
+grip between them and give the whole page over to a picture **three and
+a quarter rems tall** — the thing you were aiming, in a strip, in an
+otherwise empty room. It is a window under the gear now: `position:
+fixed`, `z-index: 60`, half the screen wide, the picture on top and the
+sliders as their own block under it.
+
+**A `fixed` popup must not sit under a transformed ancestor.** Inside
+the panel it inherited one from the section's entrance animation, and
+`fixed` then measures from that ancestor instead of the screen — its own
+`left/top` said 8px and its rect said 328px, off by exactly the page's
+own corner. It lives beside the other pop panels at the top of `<body>`
+now, which is why they all do.
+
+And because it lives outside every panel, **hiding the page does not
+take it with it** — `showSection` closes it by hand when the audio page
+is left. Escape closes it too.
+
+`placeUnder()` measures with `offsetWidth`, so the window is shown
+first and placed second. Verified: right edges within 0px of the gear's,
+6px under it.
+
+## The picture zooms like a picture
+
+Two fingers **push it about**; a pinch **zooms**. It used to zoom on any
+wheel at all, a fixed eighth per event — and a trackpad sends a burst of
+events for one flick, so a nudge meant to shift the picture an inch threw
+the zoom from 100 to 300. A pinch arrives as a wheel with `ctrlKey`
+held, which is the only thing that tells the two apart; option or
+command does the same for a mouse.
+
+The step is taken from the size of the delta rather than fixed, so a
+pinch moves it as far as the fingers did — capped to 0.85–1.18 per
+event, since one notch of a mouse wheel arrives as a hundred at once.
+Measured: a twelve-event pinch opens 100% → 205%, and one ctrl-notch of
+a mouse moves 100% → 118% instead of leaping.
+
+At full frame a two-finger scroll is left alone, so it scrolls whatever
+is under it rather than swallowing the gesture.
 
 ## Clips laid against a playlist
 
