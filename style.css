@@ -41,7 +41,6 @@
    22. the bar's own three — clock, storage, recently binned
    23. home — the widgets you arrange yourself
    24. the left bar — notes in, cards out
-   25. upscale — a picture in, a bigger one out
    ========================================================= */
 
 /* =========================================================
@@ -342,15 +341,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    one thing per section does it.
 
    before this the list was uneven: the cards page carried a delay with
-   no animation to delay, the upscale page had neither, and the audio
+   no animation to delay, and the audio
    page faded its panel and then faded the bar and the list inside it
    again — three fades over each other, which is what makes an entrance
    look muddy rather than quick. */
 .home-panel:not([hidden]),
 .home-body:not([hidden]),
 .recorder-panel:not([hidden]),
-.player-panel:not([hidden]),
-.upscale-panel:not([hidden]) {
+.player-panel:not([hidden]) {
 	animation: panel-in 0.34s var(--drawer) backwards;
 }
 /* the rail's own box follows a beat behind the page */
@@ -821,6 +819,16 @@ html.inverted .app-shell::before { opacity: 1; }
 	text-overflow: ellipsis;
 }
 
+
+/* a filled pill, for the one that commits something. it lived with the
+   upscale page's rules and went out with them — it is worn by the key
+   window and spotify's, which is why it lives here now. */
+.basic-button.is-solid {
+	color: var(--paper);
+	background: var(--ink);
+	border-color: var(--ink);
+}
+.basic-button.is-solid:disabled { cursor: var(--cur-dot); }
 
 /* an empty state fills whatever box it's in and sits dead centre of
    it — never tucked up against the top. every list on the site uses
@@ -4956,134 +4964,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .notes-plain[hidden] { display: none; }
 
 
-/* =========================================================
-   25. upscale — a picture in, a bigger one out
-   ========================================================= */
-
-.upscale-panel {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: var(--group);
-	min-height: 0;
-}
-.upscale-panel.is-catching { outline: 2px dashed var(--line); outline-offset: -8px; }
-
-/* the row that does everything: pick, how much bigger, go, save */
-.upscale-bar {
-	display: flex;
-	align-items: center;
-	flex: none;
-	gap: var(--tight);
-}
-.upscale-bar .basic-button { height: var(--field); padding: calc(var(--drop) * 2) 1rem 0; }
-.basic-button.is-solid {
-	color: var(--paper);
-	background: var(--ink);
-	border-color: var(--ink);
-	font-weight: 700;
-}
-.basic-button.is-solid:disabled { cursor: var(--cur-dot); }
-
-/* two of a kind, so they sit in one outline and the chosen one fills */
-.up-sizes {
-	display: flex;
-	flex: none;
-	height: var(--field);
-	overflow: hidden;
-	border: 1px solid var(--line);
-	border-radius: 999px;
-}
-.up-size {
-	padding: calc(var(--drop) * 2) 0.9rem 0;
-	color: var(--ink);
-	background: var(--paper);
-	border: 0;
-	font-size: 0.9rem;
-	cursor: var(--cur-tap);
-}
-.up-size + .up-size { border-left: 1px solid var(--line); }
-.up-size:hover { color: var(--paper); background: var(--ink); }
-.up-size.is-on { color: var(--paper); background: var(--ink); }
-
-.up-note { flex: none; margin: 0; font-size: 0.85rem; text-align: center; }
-
-/* the two pictures, side by side and the same size on screen whatever
-   their real sizes are — the numbers over them say what those are */
-.up-body {
-	display: grid;
-	flex: 1;
-	grid-template-columns: 1fr 1fr;
-	gap: var(--group);
-	min-height: 0;
-}
-/* each side is a box like any other: a head, then what it holds */
-.up-side {
-	display: flex;
-	flex-direction: column;
-	gap: var(--tight);
-	min-width: 0;
-	min-height: 0;
-	margin: 0;
-	padding: var(--group);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-}
-/* what it holds sits inside that frame, so it has none of its own */
-.up-side > .up-hold {
-	padding: 0;
-	background: none;
-	border: 0;
-	border-radius: 0;
-}
-.up-cap {
-	flex: none;
-	margin: 0;
-	min-height: 1rem;
-	font-size: 0.75rem;
-	text-align: center;
-}
-.up-cap:empty { display: none; }
-.up-side {
-	display: flex;
-	flex-direction: column;
-	gap: var(--tight);
-	min-width: 0;
-	min-height: 0;
-	margin: 0;
-}
-.up-cap {
-	flex: none;
-	font-family: var(--head-font);
-	font-size: 0.9rem;
-}
-.up-cap span { font-family: var(--font); font-size: 0.78rem; }
-.up-hold {
-	display: grid;
-	flex: 1;
-	place-items: center;
-	min-height: 0;
-	padding: var(--tight);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	overflow: auto;
-	overscroll-behavior: contain;
-	scrollbar-width: none;
-}
-.up-hold::-webkit-scrollbar { width: 0; height: 0; }
-.up-hold canvas {
-	max-width: 100%;
-	max-height: 100%;
-	/* the point of the thing is the pixels, so they are shown as they
-	   are rather than smoothed over by the browser on the way down */
-	image-rendering: auto;
-}
-
-@media (max-width: 900px) {
-	.up-body { grid-template-columns: 1fr; }
-}
 
 /* the clip being packed while the whole list is downloading. it is the
    same inversion every live thing on the site wears, so the eye finds

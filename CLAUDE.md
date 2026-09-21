@@ -135,35 +135,6 @@ Long text is cut at blank lines into ~6000-character pieces and sent a
 piece at a time, merged by question so nothing repeats. Attachments are
 never chunked — a document is read whole.
 
-## Upscaling (the upscale page)
-
-A picture in, a bigger one out, with no account and nothing uploaded.
-It runs the sub-pixel CNN — `upscaler/subpixel-x3.onnx`, 240KB, kept in
-this repo — over the picture's brightness in 224×224 tiles, and
-stretches the colour separately and more cheaply. That split is what
-this family of upscalers does: the eye reads detail in brightness and
-barely notices it in colour. The model gives 3×; a canvas takes the
-result the rest of the way to the 2× or 4× that was asked for.
-
-**It replaced swin2SR, which was unusable here — that is the whole
-reason this file exists.** Measured on this machine, with WebGPU:
-
-| | swin2SR | sub-pixel CNN |
-|---|---|---|
-| download | 20MB | 240KB |
-| building the session | 14s | 1s |
-| one tile | 18–20s (128px) | 7ms (224px) |
-
-WebGPU made no difference to swin2SR — 128×128 took 18s on the GPU and
-20s on the processor — so a real photograph was thirty tiles of that,
-which is what "stuck" meant. Do not put it back. The small model does a
-320×240 picture in under two seconds on the *processor*, and the result
-measures sharper than a plain resize (edge strength 53.0 against 47.7).
-
-Tiles overlap by 8px and only their middles are kept, so there is no
-seam; checked by looking for a bright column at the join and finding
-letters instead.
-
 ## The sections
 
 Switched by the tabs in the top strip.
@@ -537,7 +508,7 @@ room. Any "clipping at the edge" on this board is that.
 
 One rule, one animation per section: `panel-in`, 0.34s, a 6px rise and
 a fade. Before this the list was uneven — the cards page carried a
-delay with no animation to delay, the upscale page had neither, and the
+delay with no animation to delay, and the
 audio page faded its panel and then faded the bar and the list inside
 it again. Three fades over each other is what makes an entrance look
 muddy rather than quick. **One element per section animates.** The
@@ -568,8 +539,7 @@ element's.
 
 ## One head for every panel
 
-`.panel-head` — the deck, the notes tool, the scratch box, and both
-halves of the upscale page. They were
+`.panel-head` — the deck, the notes tool and the playlist box. They were
 1.5rem, 1rem and 1.05rem with three different paddings, which is
 exactly the sort of thing that is visible without being nameable. One
 rule now; the notes head centres its title with a three-column grid
@@ -833,9 +803,6 @@ than assumed.
 - `ocr/` — tesseract.js and its english data, for reading the words off a
   photo without a key. Vendored for the same reason as the rest. Nothing
   in here is fetched until a picture is actually read.
-- `upscaler/subpixel-x3.onnx` + `upscale-worker.js` — the upscaler. The
-  model is vendored; onnxruntime comes from a pinned CDN URL, since its
-  wasm has to come over the wire regardless.
 - `llm/` + `llm-worker.js` — web-llm, which runs the small model in the
   browser. Also lazy: nothing here loads until someone presses make
   flashcards without a key saved.

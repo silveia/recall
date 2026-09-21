@@ -20,8 +20,7 @@
    14. the bar's own three   (clock · storage · recently binned)
    15. home widgets   (the home page, yours to arrange)
    16. notes → cards  (the left bar; reads notes, or asks claude)
-   17. upscale        (a picture in, a bigger one out, here)
-   18. scratch        (the box beside the clips — a spotify playlist,
+   17. scratch        (the box beside the clips — a spotify playlist,
                        spelled out, every song copyable)
    ============================================================ */
 
@@ -37,7 +36,6 @@ const notesScreen = document.getElementById('notesScreen');
 // sections
 const sectionTabs = document.getElementById('sectionTabs');
 const audioPanel = document.getElementById('audioPanel');
-const upscalePanel = document.getElementById('upscalePanel');
 
 // decks
 const deckListSlot = document.getElementById('deckListSlot');
@@ -95,8 +93,7 @@ const sections = [
     { id: 'home', name: 'home' },
     { id: 'cards', name: 'cards' },
     { id: 'audio', name: 'audio' },
-    { id: 'player', name: 'player' },
-    { id: 'upscale', name: 'upscale' }
+    { id: 'player', name: 'player' }
 ];
 
 let decks = [
@@ -240,7 +237,6 @@ function renderSections() {
     if (activeSectionId !== 'cards') closeSharePanel();
     audioPanel.hidden = activeSectionId !== 'audio';
     playerPanel.hidden = activeSectionId !== 'player';
-    upscalePanel.hidden = activeSectionId !== 'upscale';
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
 
     /* the grips could not be measured while their panel was hidden, so
@@ -7242,234 +7238,7 @@ notesWide.addEventListener('click', (event) => {
 renderBits();
 paintKeyState();
 
-/* ---------- 17. upscale   (a picture in, a bigger one out) ---------- */
-
-/* the same model a hosting company would run for you — swin2sr, the
-   weights straight off hugging face's hub — running in this page
-   instead of on somebody's server.
-
-   that is the whole trick of it. an upscaler you pay for is this
-   arithmetic done on a machine you rent; done here it costs nothing,
-   asks for no account, and the picture never leaves the laptop. what
-   it costs instead is one download of about 30mb the first time, and
-   your own gpu for a few seconds a picture. */
-
-const upFile = document.getElementById('upFile');
-const upPick = document.getElementById('upPick');
-const upTwo = document.getElementById('upTwo');
-const upFour = document.getElementById('upFour');
-const upGo = document.getElementById('upGo');
-const upSave = document.getElementById('upSave');
-const upNote = document.getElementById('upNote');
-const upBefore = document.getElementById('upBefore');
-const upAfter = document.getElementById('upAfter');
-const upBeforeSize = document.getElementById('upBeforeSize');
-const upAfterSize = document.getElementById('upAfterSize');
-
-/* two of the same family: one trained to enlarge a clean picture, one
-   trained on the mess a real photograph is — a phone snap of a page,
-   something already saved as a jpeg twice. */
-/* it grows the picture three times over and then it is taken to
-   whatever was asked for — three is what the network was trained to
-   do, and a canvas is perfectly good at the last small step. */
-const UP_MOST = 1400;
-
-let upWorker = null;
-let upSource = null;      // { pixels, width, height, name }
-let upResult = null;      // the canvas holding what came back
-let upScale = 2;
-let upBusy = false;
-
-function upSay(words) {
-    upNote.textContent = words;
-}
-
-function upSizeOf(canvas) {
-    return `${canvas.width} × ${canvas.height}`;
-}
-
-// a picture, no bigger than is worth holding in memory three times over
-async function upTake(file) {
-    if (!file || !file.type.startsWith('image/')) {
-        upSay('pictures only');
-        return;
-    }
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, UP_MOST / Math.max(bitmap.width, bitmap.height));
-    const width = Math.round(bitmap.width * scale);
-    const height = Math.round(bitmap.height * scale);
-
-    upBefore.width = width;
-    upBefore.height = height;
-    upBefore.getContext('2d').drawImage(bitmap, 0, 0, width, height);
-    bitmap.close();
-
-    upSource = {
-        pixels: upBefore.getContext('2d').getImageData(0, 0, width, height).data,
-        width,
-        height,
-        name: (file.name || 'picture').replace(/\.[^.]+$/, '')
-    };
-
-    upBeforeSize.textContent = upSizeOf(upBefore);
-    upAfter.width = 0;
-    upAfter.height = 0;
-    upAfterSize.textContent = '';
-    upResult = null;
-    upSave.hidden = true;
-    upGo.disabled = false;
-    upSay(scale < 1
-        ? `taken down to ${width} × ${height} first`
-        : `${width} × ${height} — press make it bigger`);
-}
-
-function upReady() {
-    if (upWorker) return upWorker;
-    upWorker = new Worker('upscale-worker.js', { type: 'module' });
-    return upWorker;
-}
-
-function runUpscale() {
-    if (upBusy || !upSource) return;
-    upBusy = true;
-    upGo.disabled = true;
-    upSave.hidden = true;
-    upSay('starting...');
-
-    const worker = upReady();
-    const pixels = new Uint8ClampedArray(upSource.pixels).buffer;
-    const began = Date.now();
-
-    worker.onmessage = (event) => {
-        const note = event.data;
-
-        if (note.kind === 'where') {
-            upSay(note.on === 'webgpu' ? 'on the graphics card' : 'on the processor');
-            return;
-        }
-        if (note.kind === 'tiles') {
-            upSay(`${note.total} piece${note.total === 1 ? '' : 's'} to do...`);
-            return;
-        }
-        if (note.kind === 'tile') {
-            // it is usually too quick to read, which is the idea
-            upSay(`${note.done} of ${note.total}...`);
-            return;
-        }
-        if (note.kind === 'failed') {
-            upSay(`it wouldn't — ${note.message}`);
-            upBusy = false;
-            upGo.disabled = false;
-            return;
-        }
-
-        /* what comes back is three times over; a canvas takes it the
-           rest of the way to whatever was asked for. going down from
-           three to two is a shrink, which is the sharpest thing a
-           canvas does. */
-        const wanted = {
-            width: Math.round(upSource.width * upScale),
-            height: Math.round(upSource.height * upScale)
-        };
-        const grown = document.createElement('canvas');
-        grown.width = note.width;
-        grown.height = note.height;
-        grown.getContext('2d').putImageData(
-            new ImageData(new Uint8ClampedArray(note.pixels), note.width, note.height), 0, 0
-        );
-
-        upAfter.width = wanted.width;
-        upAfter.height = wanted.height;
-        const paint = upAfter.getContext('2d');
-        paint.imageSmoothingQuality = 'high';
-        paint.drawImage(grown, 0, 0, wanted.width, wanted.height);
-
-        upResult = upAfter;
-        upAfterSize.textContent = upSizeOf(upAfter);
-        upSave.hidden = false;
-        upBusy = false;
-        upGo.disabled = false;
-        const took = ((Date.now() - began) / 1000).toFixed(1);
-        upSay(`${wanted.width} × ${wanted.height} — ${upScale}× bigger in ${took}s. save it, or try the other size.`);
-    };
-
-    worker.onerror = (error) => {
-        upSay(`it wouldn't start — ${error.message || 'the worker failed'}`);
-        upBusy = false;
-        upGo.disabled = false;
-    };
-
-    worker.postMessage({ pixels, width: upSource.width, height: upSource.height }, [pixels]);
-}
-
-function pickScale(times) {
-    upScale = times;
-    upTwo.classList.toggle('is-on', times === 2);
-    upFour.classList.toggle('is-on', times === 4);
-    upTwo.setAttribute('aria-pressed', String(times === 2));
-    upFour.setAttribute('aria-pressed', String(times === 4));
-}
-
-upTwo.addEventListener('click', () => pickScale(2));
-upFour.addEventListener('click', () => pickScale(4));
-
-upPick.addEventListener('click', () => upFile.click());
-upFile.addEventListener('change', () => {
-    if (upFile.files[0]) upTake(upFile.files[0]);
-    upFile.value = '';
-});
-
-upGo.addEventListener('click', runUpscale);
-
-upSave.addEventListener('click', () => {
-    if (!upResult) return;
-    upResult.toBlob((blob) => {
-        const href = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = href;
-        link.download = `${upSource.name}-${upScale}x.png`;
-        link.click();
-        window.setTimeout(() => URL.revokeObjectURL(href), 10000);
-    }, 'image/png');
-});
-
-/* pasted, which is how a screenshot usually arrives: the clipboard
-   carries it as a file, and there is nothing to type on this page so
-   the paste can be caught for the whole of it. */
-document.addEventListener('paste', (event) => {
-    if (upscalePanel.hidden) return;
-    // a paste into a field is that field's business. the document is a
-    // target too and has no closest() of its own, hence the guard.
-    const typing = event.target && event.target.closest
-        && event.target.closest('input, textarea, [contenteditable]');
-    if (typing) return;
-    const file = [...(event.clipboardData ? event.clipboardData.files : [])]
-        .find((one) => one.type.startsWith('image/'));
-    if (!file) return;
-    event.preventDefault();
-    upTake(file);
-});
-
-// dropped anywhere on the page while this one is open
-['dragenter', 'dragover'].forEach((name) => {
-    upscalePanel.addEventListener(name, (event) => {
-        event.preventDefault();
-        upscalePanel.classList.add('is-catching');
-    });
-});
-['dragleave', 'drop'].forEach((name) => {
-    upscalePanel.addEventListener(name, (event) => {
-        event.preventDefault();
-        if (name === 'dragleave' && upscalePanel.contains(event.relatedTarget)) return;
-        upscalePanel.classList.remove('is-catching');
-    });
-});
-upscalePanel.addEventListener('drop', (event) => {
-    const file = event.dataTransfer && event.dataTransfer.files[0];
-    if (file) upTake(file);
-});
-
-/* ---------- 18. scratch   (a spotify playlist, spelled out) ---------- */
+/* ---------- 17. scratch   (a spotify playlist, spelled out) ---------- */
 
 /* paste a link to a playlist and get the songs listed out beside the
    clips, in the playlist's own order, each one a button that copies
@@ -8385,7 +8154,7 @@ loadScratch();
 paintSpot();
 spotComeBack();
 
-/* ---------- 19. option, and what things do ---------- */
+/* ---------- 18. option, and what things do ---------- */
 
 /* every button on this site already says what it does — in `title`, for
    the browser's own tooltip, which arrives a second and a half later in
