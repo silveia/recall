@@ -2869,23 +2869,15 @@ function buildBundle(stored) {
 async function packAllClips() {
     const named = `recall-clips-${new Date().toISOString().slice(0, 10)}.call`;
 
-    /* where to put it is asked first, before anything is read: the
-       picker only opens while the press is still a press, and reading
-       the clips takes longer than that. it also writes straight to
-       disk, which matters when the answer is a couple of hundred
-       megabytes. a browser without it falls back to a download. */
-    let handle = null;
-    if (window.showSaveFilePicker) {
-        try {
-            handle = await window.showSaveFilePicker({
-                suggestedName: named,
-                types: [{ description: 'recall clips', accept: { 'application/octet-stream': ['.call'] } }]
-            });
-        } catch (error) {
-            if (error && error.name === 'AbortError') return;   // they changed their mind
-            handle = null;                                      // not allowed here; download instead
-        }
-    }
+    /* the asking is the site's own, not the system's. the save picker
+       brought up chrome's window — its own typeface, its own wording,
+       and a warning about editing files that cannot be reworded from
+       here, because a page rewording a permission prompt is the whole
+       trick a permission prompt exists to stop. so there is no picker:
+       the chip asks, and the file goes to downloads like anything else
+       that leaves this page. */
+    const sure = await askConfirm('save current yummy fat clips', packClips);
+    if (!sure) return;
 
     const stored = await storedClipsInOrder();
     if (!stored.length) {
@@ -2896,14 +2888,6 @@ async function packAllClips() {
     setRecordStatus(`packing ${stored.length} clip${stored.length === 1 ? '' : 's'}...`);
     const bundle = buildBundle(stored);
     const much = `${stored.length} clips saved — ${Math.round(bundle.size / 1048576)}mb`;
-
-    if (handle) {
-        const out = await handle.createWritable();
-        await out.write(bundle);
-        await out.close();
-        setRecordStatus(much);
-        return;
-    }
 
     const href = URL.createObjectURL(bundle);
     const link = document.createElement('a');

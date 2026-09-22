@@ -352,11 +352,17 @@ the browser keeps as a file until something asks for the bytes — so a
 in the list is skipped rather than written over, so the same file can be
 brought in twice without doubling anything.
 
-Saving asks **where to put it first**, before it reads a single clip:
-`showSaveFilePicker` only opens while the press is still a press, and
-reading the clips takes longer than that. It also writes straight to
-disk, which is what a couple of hundred megabytes wants. Where the
-picker isn't allowed, it falls back to an ordinary download.
+**The asking is the site's own, not the system's.** The save picker
+brought up Chrome's own window — its typeface, its wording, and a
+warning about editing files. That warning **cannot be reworded from
+here**, and shouldn't be: a page rewording a permission prompt is the
+whole trick the prompt exists to stop. So there is no picker on this
+path. The confirm chip asks, and the file goes to downloads like
+anything else that leaves the page.
+
+The folder picker for the mp3s is a different matter and stays — that
+one buys a folder to write sixty-four files into, which nothing else
+can do.
 
 Verified end to end: three clips out and back with their exact byte
 counts, first and last bytes, types, names (`؁` and all), crops and
