@@ -7752,6 +7752,34 @@ function tellingOne(failures) {
         || failures[failures.length - 1];
 }
 
+/* Spotify's reason for a refusal, however it has chosen to put it.
+   Reading only `error.message` off a parsed body missed most of them:
+   it answers with a bare json string sometimes, with plain text
+   sometimes, and with nothing at all sometimes. Read as text first and
+   parsed only if it parses, so none of those come out blank. The
+   number is always said, because a refusal with no words at all still
+   tells you something by its code. */
+async function whyRefused(answer) {
+    let words = '';
+    try {
+        const raw = (await answer.text()).trim();
+        if (raw) {
+            try {
+                const body = JSON.parse(raw);
+                words = typeof body === 'string' ? body
+                    : (body && body.error && (body.error.message || body.error))
+                        || (body && body.message) || '';
+            } catch (error) {
+                words = raw;            // not json at all, just words
+            }
+        }
+    } catch (error) {
+        words = '';                     // nothing readable came back
+    }
+    words = tidy(String(words || '')).slice(0, 140);
+    return words ? `${answer.status} ${words}` : `${answer.status}`;
+}
+
 async function oneKeyRest(bit, token, have, say) {
     const path = bit.kind === 'album' ? 'albums' : 'playlists';
     const more = [];
@@ -7799,12 +7827,7 @@ async function oneKeyRest(bit, token, have, say) {
                refusal from its number alone, which is how this went
                round so many times. Whatever it says is repeated as it
                said it. */
-            try {
-                const body = await answer.json();
-                said = tidy((body && body.error && body.error.message) || '');
-            } catch (error) {
-                said = '';
-            }
+            said = await whyRefused(answer);
             break;
         }
 
@@ -8171,8 +8194,7 @@ function renderScratch(songs, said) {
             ? `${have} — spotify won't hand this playlist to apps at all${
                 songs.said ? `. it says: ${songs.said}` : ''}`
             : songs.why === 'offlimits' && yours
-                ? `${have} — sign-in fine, playlist refused${
-                    songs.said ? `. spotify says: ${songs.said}` : ''}`
+                ? `${have} — sign-in fine, playlist refused. spotify: ${songs.said || '403'}`
                 : songs.why === 'offlimits'
                     ? `${have} — spotify won't allow that playlist. sign in for the rest`
                     : songs.why === 'expired' && yours
