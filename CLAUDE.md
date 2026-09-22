@@ -651,6 +651,18 @@ answer (`6`, `42`) that reads fine; over a long one it is busier. If it
 ever needs solving, fade the word rather than moving it — the point of
 this change is that nothing on the tile shifts.
 
+## Coming in
+
+A hard refresh showed the page in pieces — the columns blank, then the
+clips arriving out of storage a beat later. It is held back now until
+what it draws is there, then faded in as one thing, with three dots
+holding the place meanwhile.
+
+**The holding-back is set in the head, not the stylesheet**, so a page
+whose script never runs is never left hidden. The same inline snippet
+takes the class off after 2.5s whatever happens; `loadStoredClips()`
+takes it off sooner when the store answers.
+
 ## One entrance for every section
 
 One rule, one animation per section: `panel-in`, 0.34s, a 6px rise and
@@ -784,6 +796,13 @@ otherwise win.
 **The section tabs are the exception**, asked for twice and knowingly:
 Bitcount fills its own gaps at 700, and the strip is meant to shout
 anyway. Everywhere else the no-bold rule stands.
+
+## The site never scrolls sideways
+
+`overflow-x: hidden` on `html, body`. Every pane here narrows to
+nothing and every strip of words in one ellipsizes, so nothing should
+ever push the page wider — but a single overlooked `min-width` would,
+and this is the belt.
 
 ## A pill never wraps
 

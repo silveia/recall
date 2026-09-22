@@ -2549,10 +2549,10 @@ html.inverted .app-shell::before { opacity: 1; }
    the frame itself is the one thing that works from outside. */
 .list-site iframe {
 	display: block;
-	width: 125%;
-	height: 125%;
+	width: 140%;
+	height: 140%;
 	border: 0;
-	transform: scale(0.8);
+	transform: scale(0.714);
 	transform-origin: top left;
 }
 
@@ -5235,3 +5235,48 @@ body, body *, .modal-panel, .modal-panel *, .pop-panel, .pop-panel * {
    site that is meant to shout. asked for twice, knowing bitcount fills
    its own gaps at this weight. */
 .section-tab { font-weight: 700 !important; }
+
+
+/* =========================================================
+   coming in
+   ========================================================= */
+/* a hard refresh used to show the page in pieces — the columns blank,
+   then the clips arriving out of storage a beat later. it is held back
+   until what it draws is there and then faded in as one thing, with
+   three dots holding the place meanwhile. */
+html.booting .app-shell { opacity: 0; }
+.app-shell { opacity: 1; transition: opacity 0.34s var(--ease); }
+
+.booting-mark {
+	position: fixed;
+	inset: 0;
+	z-index: 90;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	gap: 0.45rem;
+	background: var(--paper);
+	pointer-events: none;
+}
+html.booting .booting-mark { display: flex; }
+.booting-mark span {
+	width: 0.42rem;
+	height: 0.42rem;
+	background: var(--ink);
+	border-radius: 50%;
+	animation: booting-beat 1s ease-in-out infinite;
+}
+.booting-mark span:nth-child(2) { animation-delay: 0.14s; }
+.booting-mark span:nth-child(3) { animation-delay: 0.28s; }
+@keyframes booting-beat {
+	0%, 100% { transform: scale(0.6); }
+	50%      { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+	.booting-mark span { animation: none; }
+	.app-shell { transition: none; }
+}
+
+/* the site itself never scrolls sideways; every pane inside it ends in
+   an ellipsis rather than pushing the page wider */
+html, body { overflow-x: hidden; }

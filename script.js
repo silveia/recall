@@ -4438,7 +4438,14 @@ loadSenseSettings();
 applySenseSettings();
 loadZoom();
 recorderReady = true;
-loadStoredClips();
+/* and the page comes in, once what it draws from storage is there. the
+   inline snippet in the head takes the class off anyway after two and a
+   half seconds, so a slow store delays this rather than stopping it. */
+loadStoredClips().finally(() => {
+    window.requestAnimationFrame(() => {
+        document.documentElement.classList.remove('booting');
+    });
+});
 senseToggle.hidden = true;
 
 /* ---------- 13. player   (songs off your own disk) ---------- */

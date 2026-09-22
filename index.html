@@ -7,6 +7,17 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- the page comes in as one thing rather than in pieces: it is held
+         back until what it draws from storage is there, then faded in.
+         set here rather than in the stylesheet so a page whose script
+         never runs is never left hidden, and taken off again after two
+         and a half seconds whatever happens. -->
+    <script>
+        document.documentElement.classList.add('booting');
+        setTimeout(function () { document.documentElement.classList.remove('booting'); }, 2500);
+    </script>
+    <div class="booting-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+
 
     <!-- right-click menu, shared by every screen -->
     <div class="context-menu" id="contextMenu" hidden></div>
