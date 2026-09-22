@@ -2828,6 +2828,12 @@ html.inverted .app-shell::before { opacity: 1; }
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	/* Centring a line of words centres its line box, and a line box
+	   carries the face's leading above and below the letters — unevenly,
+	   which is the lean. Pinned to the letters themselves there is
+	   nothing uneven left to centre, and the padding goes back to being
+	   the one small nudge the face asks for. */
+	line-height: 1;
 	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
 	margin-bottom: var(--tight);
 }
