@@ -7530,6 +7530,11 @@ function paintSpot() {
     spotToggle.textContent = on ? 'signed in to spotify' : 'sign in to spotify';
     spotForget.hidden = !on;
     if (spotMine) spotMine.hidden = !on;
+    if (spotUsing) {
+        const using = spotAppId();
+        spotUsing.hidden = !using;
+        if (using) spotUsingId.textContent = using;
+    }
     spotBack.textContent = spotReturn();
     // only ever your own id; the app's own is not yours to edit or undo
     const mine = (window.localStorage.getItem(SPOT_ID_KEY) || '').trim();
@@ -7594,6 +7599,10 @@ spotForget.addEventListener('click', () => {
    go and find a link for it. Your own playlists come from a different
    address than a playlist asked for by its id, so this is also the one
    place worth trying when that address is the one being refused. */
+
+const spotUsing = document.getElementById('spotUsing');
+const spotUsingId = document.getElementById('spotUsingId');
+const spotUsingClear = document.getElementById('spotUsingClear');
 
 const spotMine = document.getElementById('spotMine');
 const spotMineList = document.getElementById('spotMineList');
@@ -7696,6 +7705,18 @@ async function takeMine(one) {
 }
 
 spotMineAgain.addEventListener('click', () => loadMine(true));
+
+/* The id lives in this browser, so making a second app in the
+   dashboard does not put it here — the page went on signing in through
+   the first one with nothing on screen to say so. */
+spotUsingClear.addEventListener('click', () => {
+    window.localStorage.removeItem(SPOT_ID_KEY);
+    forgetSpotToken();
+    mineHeld = null;
+    spotId.value = '';
+    paintSpot();
+    saySc('that id is forgotten');
+});
 
 
 /* tried in turn; the first that answers with something readable wins.

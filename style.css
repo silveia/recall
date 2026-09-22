@@ -2429,6 +2429,14 @@ html.inverted .app-shell::before { opacity: 1; }
 /* with no songs there is no copy button under it to clear */
 .clip-side:not(.has-songs) .scratch-note { bottom: var(--tight); }
 
+/* which app the page is signing in through, said plainly */
+.spot-using {
+	display: flex; align-items: baseline; justify-content: space-between;
+	gap: var(--tight); margin: var(--tight) 0 0;
+	font-size: 0.7rem; word-break: break-all;
+}
+.spot-using span { font-family: var(--num-font); font-size: 0.85rem; }
+
 /* signed in, the spotify window lists your own playlists to pick from.
    white with an outline like everything else; the one under the pointer
    inverts, the way a live thing does here. */
