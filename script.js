@@ -1076,6 +1076,7 @@ function closeModal() {
         studyScreen.hidden = true;
         notesScreen.hidden = true;
         listScreen.hidden = true;
+        folderScreen.hidden = true;
         keyScreen.hidden = true;
         returnNotesPanel();
     }, MODAL_EXIT_MS);
@@ -1097,6 +1098,7 @@ function showScreen(screen) {
     studyScreen.hidden = screen !== studyScreen;
     notesScreen.hidden = screen !== notesScreen;
     listScreen.hidden = screen !== listScreen;
+    folderScreen.hidden = screen !== folderScreen;
     keyScreen.hidden = screen !== keyScreen;
     // the notes panel is borrowed from the left bar; anything else
     // opening means it is wanted back
@@ -2151,6 +2153,7 @@ const recordStatus = document.getElementById('recordStatus');
 const recordingList = document.getElementById('recordingList');
 const clearClipsButton = document.getElementById('clearClips');
 const folderName = document.getElementById('folderName');
+const folderScreen = document.getElementById('folderScreen');
 const packClips = document.getElementById('packClips');
 const unpackClips = document.getElementById('unpackClips');
 const unpackInput = document.getElementById('unpackInput');
@@ -3116,14 +3119,22 @@ function tidyFolder(typed) {
 
 /* the folder to write this lot into. 'stop' means they closed the
    picker, which is a no rather than a fallback. */
-async function folderFor(called) {
+async function folderFor(called, startIn) {
     let parent = await folderHome();
     if (parent && !(await stillAllowed(parent))) parent = null;
 
     if (!parent) {
         if (!window.showDirectoryPicker) return null;
         try {
-            parent = await window.showDirectoryPicker({ id: 'recall-clips', mode: 'readwrite' });
+            /* `startIn` is the whole of what a page may say about where
+               on the disk it means — it opens the picker on that shelf.
+               the yes itself is the browser's to take, and only once:
+               after it the place is remembered and never asked again. */
+            parent = await window.showDirectoryPicker({
+                id: 'recall-clips',
+                mode: 'readwrite',
+                startIn: startIn || 'downloads'
+            });
         } catch (error) {
             return error && error.name === 'AbortError' ? 'stop' : null;
         }
@@ -3144,6 +3155,38 @@ folderName.value = window.localStorage.getItem(FOLDER_KEY) || '';
 folderName.addEventListener('input', () => {
     window.localStorage.setItem(FOLDER_KEY, folderName.value);
 });
+
+/* --- the window that asks where --- */
+
+const PLACE_KEY = 'clip-folder-place';
+const placeStrip = document.getElementById('placeStrip');
+const folderGo = document.getElementById('folderGo');
+let placeWanted = window.localStorage.getItem(PLACE_KEY) || 'downloads';
+
+function paintPlaces() {
+    placeStrip.querySelectorAll('.place-bubble').forEach((one) => {
+        one.classList.toggle('is-on', one.dataset.place === placeWanted);
+    });
+}
+
+/* the press that sends them. the picker, where one is still wanted,
+   opens from here — so it opens off a press, which is the only time a
+   browser will open one at all. */
+folderGo.addEventListener('click', async () => {
+    const folder = await folderFor(tidyFolder(folderName.value), placeWanted);
+    if (folder === 'stop') return;              // they closed the picker
+    showScreen(homeScreen);
+    downloadAllClips(folder);
+});
+
+placeStrip.addEventListener('click', (event) => {
+    const one = event.target.closest('.place-bubble');
+    if (!one) return;
+    placeWanted = one.dataset.place;
+    window.localStorage.setItem(PLACE_KEY, placeWanted);
+    paintPlaces();
+});
+paintPlaces();
 
 /* two clips can carry the same name — the same song twice on a
    playlist, or two turns of one speaker — and a folder can only hold
@@ -3254,15 +3297,9 @@ downloadAllButton.addEventListener('click', async () => {
         return;
     }
 
-    /* the folder first, before anything is read — a picker only opens
-       while the press is still a press, and reading the clips takes
-       longer than that. after the first time there is no picker at all:
-       the place is remembered and the folder named at the top of the
-       clips is made inside it. a browser that won't do any of this
-       falls back to the downloads. */
-    const folder = await folderFor(tidyFolder(folderName.value));
-    if (folder === 'stop') return;      // they closed the picker
-    downloadAllClips(folder);
+    // the window asks the name and the place; its own press does the rest
+    paintPlaces();
+    showScreen(folderScreen);
 });
 
 /* --- clip storage (survives refresh) --- */

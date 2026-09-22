@@ -344,7 +344,6 @@
                                             <input id="unpackInput" type="file" hidden>
                                         </div>
 
-                                        <input id="folderName" type="text" placeholder="folder name" aria-label="folder name" title="folder for the mp3s" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 
                                         <div class="clip-folder-side is-right">
                                             <button class="square-button" id="downloadAll" type="button" aria-label="every clip to a folder" title="every clip to a folder">
@@ -636,6 +635,29 @@
                                 </div>
                             </section>
 
+
+                            <!-- ============ where the mp3s go ============
+                                 a name, a place, and a press. the place
+                                 only points the picker at the right shelf —
+                                 permission to write there is the browser's
+                                 to give, once. -->
+                            <section class="modal-panel ask-screen folder-screen" id="folderScreen" data-title="folder" hidden>
+                                <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                                <h2 class="modal-title">where to</h2>
+
+                                <div class="ask-body">
+                                    <input id="folderName" type="text" placeholder="folder name" aria-label="folder name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+                                    <div class="place-strip" id="placeStrip" role="group" aria-label="where to keep it">
+                                        <button class="place-bubble" type="button" data-place="downloads">downloads</button>
+                                        <button class="place-bubble" type="button" data-place="desktop">desktop</button>
+                                        <button class="place-bubble" type="button" data-place="documents">documents</button>
+                                        <button class="place-bubble" type="button" data-place="music">music</button>
+                                    </div>
+
+                                    <button class="basic-button is-solid ask-go" id="folderGo" type="button">save them there</button>
+                                </div>
+                            </section>
 
                             <!-- ============ practice ============ -->
                             <section class="modal-panel study-screen" id="studyScreen" data-title="practice" hidden>

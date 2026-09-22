@@ -2335,8 +2335,37 @@ html.inverted .app-shell::before { opacity: 1; }
 	min-width: 0;
 }
 .clip-folder-side.is-right { justify-content: flex-end; }
+/* the window that asks where the mp3s go: a name, a strip of places,
+   and a press. */
+.folder-screen .ask-body { gap: var(--group); }
+.place-strip {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tight);
+}
+.place-bubble {
+	flex: 1;
+	min-width: 0;
+	height: 2rem;
+	padding: calc(var(--drop) * 2) 0.7rem 0;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font: inherit;
+	font-size: 0.82rem;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	cursor: var(--cur-tap);
+	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.place-bubble:hover { color: var(--paper); background: var(--ink); }
+/* the one chosen wears the black, like every live thing here */
+.place-bubble.is-on { color: var(--paper); background: var(--ink); }
+
 /* the same field the new deck is typed into, over on the cards page */
-.clip-folder input {
+.folder-screen input, .clip-folder input {
 	flex: 1;
 	min-width: 0;
 	height: var(--field);

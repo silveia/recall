@@ -298,6 +298,17 @@ has to be added in both places: `showScreen` and `closeModal`.
 sixty-four downloads one after another, and not a zip nobody asked to
 unpack.
 
+**The asking is a window of this site's own**: a name, a strip of
+places, and a press. `where to` opens on the download button; the press
+inside it is what opens the picker, since a browser only opens one off a
+press.
+
+**`startIn` is the whole of what a page may say about where on the disk
+it means.** The bubbles set it — `downloads`, `desktop`, `documents`,
+`music` — and it opens the picker on that shelf. The yes itself is the
+browser's to take, and only once: after it the place is remembered and
+never asked again.
+
 **A page cannot make a folder anywhere it likes, and cannot be told one
 by name — it has to be handed one.** So it is handed one *once*: the
 first download opens the picker, that place is remembered
