@@ -7529,6 +7529,7 @@ function paintSpot() {
     const on = Boolean(held && held.access);
     spotToggle.textContent = on ? 'signed in to spotify' : 'sign in to spotify';
     spotForget.hidden = !on;
+    if (spotMine) spotMine.hidden = !on;
     spotBack.textContent = spotReturn();
     // only ever your own id; the app's own is not yours to edit or undo
     const mine = (window.localStorage.getItem(SPOT_ID_KEY) || '').trim();
@@ -7563,7 +7564,11 @@ function paintSpot() {
 spotToggle.addEventListener('click', () => {
     spotToggle.classList.remove('is-wanted');
     const held = spotHeld();
-    if (held && held.access) { showScreen(spotScreen); return; }
+    if (held && held.access) {
+        showScreen(spotScreen);
+        loadMine(false);           // signed in: the window is your playlists
+        return;
+    }
     if (spotAppId()) { spotSignIn(); return; }
     showScreen(spotScreen);
 });
@@ -7582,6 +7587,115 @@ spotForget.addEventListener('click', () => {
     forgetSpotToken();
     saySc('signed out');
 });
+
+/* ---- your own playlists, listed to pick from ----
+
+   Signed in, the window lists what you have rather than asking you to
+   go and find a link for it. Your own playlists come from a different
+   address than a playlist asked for by its id, so this is also the one
+   place worth trying when that address is the one being refused. */
+
+const spotMine = document.getElementById('spotMine');
+const spotMineList = document.getElementById('spotMineList');
+const spotMineAgain = document.getElementById('spotMineAgain');
+
+let mineHeld = null;        // what came back last, so reopening is instant
+let mineBusy = false;
+
+function sayMine(words) {
+    spotMineList.innerHTML = '';
+    const line = document.createElement('div');
+    line.className = 'spot-mine-said';
+    line.textContent = words;
+    spotMineList.appendChild(line);
+}
+
+/* every playlist you have, fifty at a time. the address of each one's
+   own track list comes back with it, which is the address used to read
+   it — asked for rather than built. */
+async function myPlaylists(token) {
+    const all = [];
+    for (let at = 0; at < 2000; at += 50) {
+        let answer;
+        try {
+            answer = await fetch(
+                `https://api.spotify.com/v1/me/playlists?offset=${at}&limit=50`,
+                { headers: { authorization: `Bearer ${token}` } });
+        } catch (error) {
+            throw new Error('could not reach spotify');
+        }
+        if (!answer.ok) throw new Error(await whyRefused(answer));
+        const body = await answer.json();
+        const batch = (body.items || []).filter((one) => one && one.id);
+        all.push(...batch.map((one) => ({
+            id: one.id,
+            name: tidy(one.name || 'untitled'),
+            count: (one.tracks && Number(one.tracks.total)) || 0,
+            at: (one.tracks && one.tracks.href ? String(one.tracks.href).split('?')[0] : '')
+        })));
+        if (!batch.length || all.length >= (Number(body.total) || 0)) break;
+    }
+    return all;
+}
+
+function paintMine(list) {
+    if (!list.length) { sayMine('no playlists on this account'); return; }
+    spotMineList.innerHTML = '';
+    for (const one of list) {
+        const row = document.createElement('button');
+        row.className = 'spot-pick';
+        row.type = 'button';
+        row.title = `${one.name} — ${one.count} songs`;
+        const name = document.createElement('span');
+        name.className = 'spot-pick-name';
+        name.textContent = one.name;
+        const count = document.createElement('span');
+        count.className = 'spot-pick-count';
+        count.textContent = String(one.count);
+        row.append(name, count);
+        row.addEventListener('click', () => takeMine(one));
+        spotMineList.appendChild(row);
+    }
+}
+
+async function loadMine(afresh) {
+    if (mineBusy) return;
+    if (mineHeld && !afresh) { paintMine(mineHeld); return; }
+    const token = await spotToken();
+    if (!token) { sayMine('sign in first'); return; }
+    mineBusy = true;
+    sayMine('reading your playlists...');
+    try {
+        mineHeld = await myPlaylists(token);
+        paintMine(mineHeld);
+    } catch (error) {
+        sayMine(error.message);
+    }
+    mineBusy = false;
+}
+
+/* one of yours, picked: its songs in the playlist's own order. read
+   from the address spotify gave for it, from the first song rather than
+   from the hundredth, since nothing has been read yet. */
+async function takeMine(one) {
+    const token = await spotToken();
+    if (!token) { sayMine('sign in first'); return; }
+    spotScreen.hidden = true;
+    saySc(`reading ${one.name}...`, 0);
+    const got = await oneKeyRest({ kind: 'playlist', id: one.id, at: one.at }, token, 0,
+        (said) => saySc(said, 0));
+    if (!got.more.length) {
+        renderScratch([], `${one.name} — ${got.said || 'nothing came back'}`);
+        return;
+    }
+    renderScratch(got.more, '');
+    keepScratch('', got.more);
+    const short = got.total && got.more.length < got.total;
+    saySc(short ? `${got.more.length} of ${got.total} — ${got.said || 'cut short'}`
+                : `${got.more.length} songs`);
+}
+
+spotMineAgain.addEventListener('click', () => loadMine(true));
 
 
 /* tried in turn; the first that answers with something readable wins.
@@ -7824,17 +7938,22 @@ async function oneKeyRest(bit, token, have, say) {
     ];
     let wording = 0;
 
-    /* asked the way spotify offers it, falling back to the address we
-       would have built ourselves if the playlist will not come out */
-    const whole = await playlistItself(bit, token);
-    const from = (whole.ok && whole.at)
-        ? whole.at
-        : `https://api.spotify.com/v1/${path}/${bit.id}/tracks`;
-    if (whole.ok && whole.total) total = whole.total;
-    if (!whole.ok && whole.status === 403) {
-        // the playlist itself is refused, not merely its songs
-        return { more, total, why: 'offlimits', after: 0, said: whole.said };
+    /* Asked the way spotify offers it. Picked out of your own
+       playlists, the address came back with the playlist and there is
+       nothing to look up; given only a link, the playlist is asked for
+       first to get it, and the address we would have built is the
+       fallback if it will not come out. */
+    let from = bit.at || '';
+    if (!from) {
+        const whole = await playlistItself(bit, token);
+        if (!whole.ok && whole.status === 403) {
+            // the playlist itself is refused, not merely its songs
+            return { more, total, why: 'offlimits', after: 0, said: whole.said };
+        }
+        if (whole.ok && whole.at) from = whole.at;
+        if (whole.ok && whole.total) total = whole.total;
     }
+    if (!from) from = `https://api.spotify.com/v1/${path}/${bit.id}/tracks`;
 
     for (let at = have; at < 10000; at += 100) {
         if (say) say(`reading the playlist... ${have + more.length} so far`);

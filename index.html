@@ -605,6 +605,19 @@
                                     <input id="spotId" type="text" placeholder="client id" aria-label="spotify client id" autocomplete="off" spellcheck="false">
                                     <button class="basic-button is-solid ask-go" id="spotGo" type="button">connect</button>
                                     <button class="scratch-plain ask-forget" id="spotForget" type="button" hidden>forget it</button>
+
+                                    <!-- signed in, the window is a list of your
+                                         own playlists rather than a form: pick
+                                         one and its songs come back in order,
+                                         which is most of what anyone wants from
+                                         here and beats hunting out a link. -->
+                                    <div class="spot-mine" id="spotMine" hidden>
+                                        <div class="spot-mine-head">
+                                            <span>your playlists</span>
+                                            <button class="scratch-plain" id="spotMineAgain" type="button">refresh</button>
+                                        </div>
+                                        <div class="spot-mine-list" id="spotMineList"></div>
+                                    </div>
                                 </div>
                             </section>
 

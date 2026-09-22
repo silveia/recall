@@ -2429,6 +2429,35 @@ html.inverted .app-shell::before { opacity: 1; }
 /* with no songs there is no copy button under it to clear */
 .clip-side:not(.has-songs) .scratch-note { bottom: var(--tight); }
 
+/* signed in, the spotify window lists your own playlists to pick from.
+   white with an outline like everything else; the one under the pointer
+   inverts, the way a live thing does here. */
+.spot-mine { margin-top: var(--group); }
+.spot-mine-head {
+	display: flex; align-items: baseline; justify-content: space-between;
+	gap: var(--tight); margin-bottom: var(--tight);
+	font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.spot-mine-list {
+	display: flex; flex-direction: column;
+	max-height: 42vh; overflow-y: auto;
+	border: 1px solid var(--ink); border-radius: var(--round);
+}
+.spot-pick {
+	display: flex; align-items: baseline; gap: var(--tight);
+	width: 100%; padding: 0.42rem 0.6rem;
+	background: none; border: 0; border-bottom: 1px solid var(--ink);
+	font: inherit; font-size: 0.8rem; color: var(--ink);
+	text-align: left; cursor: pointer;
+}
+.spot-pick:last-child { border-bottom: 0; }
+.spot-pick:hover, .spot-pick:focus-visible { background: var(--ink); color: var(--paper); }
+.spot-pick .spot-pick-name {
+	flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.spot-pick .spot-pick-count { flex: none; font-family: var(--num-font); font-size: 0.9rem; }
+.spot-mine-said { padding: 0.6rem; font-size: 0.75rem; text-align: center; }
+
 .scratch-list {
 	display: flex;
 	flex-direction: column;
