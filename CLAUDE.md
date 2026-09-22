@@ -267,8 +267,17 @@ so their whole width fits with nothing to scroll sideways for and their
 text lands near this site's own size. A `grayscale(1)` filter was tried
 and taken off again: it looks better with its colour.
 
-The site takes the window; the steps, a line of copy and the kept
-playlists sit in a column beside it, starting at the top. The step's
+The site takes the window; a line of copy, the steps and the kept
+playlists sit in a column beside it, starting at the top. The window
+keeps only a `--group` of side air rather than a `--gap`, since a window
+that is mostly somebody else's page wants the page, not the margin —
+which leaves exportify **1105 css pixels** of its own at a 1400px
+window, a full desktop width with nothing to scroll sideways for.
+
+**Three dots hold the pane while it starts**, and the site fades in over
+them on its `load`. Blank white for a second and a half reads as broken
+rather than as loading. After eight seconds it is shown either way:
+dots spinning forever say less than an empty page does. The step's
 circle is centred on its **first line**, not on the block — centred on
 the block it drifted down the side of a step that wrapped. Measured:
 0.16px off the first line's middle at `margin-top: 0.03rem`.

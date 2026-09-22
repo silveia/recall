@@ -2531,6 +2531,7 @@ html.inverted .app-shell::before { opacity: 1; }
 /* exportify, in the window. it is somebody else's page, so it gets a
    box of its own and nothing of ours over it. */
 .list-site {
+	position: relative;     /* the dots wait in here */
 	flex: 1;
 	min-width: 0;
 	height: min(74vh, 36rem);
@@ -2539,6 +2540,30 @@ html.inverted .app-shell::before { opacity: 1; }
 	border-radius: var(--radius);
 	overflow: hidden;
 }
+
+/* the pane holds three dots while somebody else's site starts, and the
+   site fades in over them once it is there — blank white for a second
+   and a half reads as broken rather than as loading. */
+.site-wait {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.45rem;
+	background: var(--paper);
+	transition: opacity 0.3s var(--ease);
+}
+.site-wait span {
+	width: 0.42rem;
+	height: 0.42rem;
+	background: var(--ink);
+	border-radius: 50%;
+	animation: booting-beat 1s ease-in-out infinite;
+}
+.site-wait span:nth-child(2) { animation-delay: 0.14s; }
+.site-wait span:nth-child(3) { animation-delay: 0.28s; }
+.list-site.is-here .site-wait { opacity: 0; pointer-events: none; }
 /* shown at four fifths, on a frame a quarter wider and taller than the
    box, so the whole width of their page fits and there is nothing to
    scroll sideways for. their text lands near this site's own size at
@@ -2554,7 +2579,10 @@ html.inverted .app-shell::before { opacity: 1; }
 	border: 0;
 	transform: scale(0.714);
 	transform-origin: top left;
+	opacity: 0;
+	transition: opacity 0.34s var(--ease);
 }
+.list-site.is-here iframe { opacity: 1; }
 
 .list-drop {
 	width: 100%; min-height: 4.6rem; margin-top: var(--group);
@@ -2623,7 +2651,12 @@ html.inverted .app-shell::before { opacity: 1; }
 .ask-screen { width: min(30rem, 100%); }
 /* the playlist window carries exportify itself, so it wants the room a
    site wants rather than the room a question wants */
-#listScreen.ask-screen { width: min(62rem, 100%); }
+#listScreen.ask-screen {
+	width: min(72rem, 100%);
+	/* the side air comes in so the site gets it instead — a window that
+	   is mostly somebody else's page wants the page, not the margin */
+	padding: var(--group) var(--group) var(--group);
+}
 /* the site on the left and the short matter beside it, level with its
    middle rather than stacked over its top */
 #listScreen .list-body {
@@ -2637,7 +2670,7 @@ html.inverted .app-shell::before { opacity: 1; }
 	flex-direction: column;
 	justify-content: flex-start;
 	gap: var(--group);
-	width: 16rem;
+	width: 17.5rem;
 	min-width: 0;
 	/* off the wall on both sides: against the edge they read as having
 	   fallen out of the window rather than sitting in it */

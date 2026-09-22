@@ -7840,6 +7840,12 @@ const listFrame = document.getElementById('listFrame');
 function wakeListSite() {
     if (listFrame.dataset.woke) return;
     listFrame.dataset.woke = 'yes';
+    /* the dots wait until it is actually there, then it fades in over
+       them — and after eight seconds it is shown either way, since dots
+       spinning forever say less than an empty page does. */
+    const here = () => document.getElementById('listSite').classList.add('is-here');
+    listFrame.addEventListener('load', here, { once: true });
+    window.setTimeout(here, 8000);
     window.setTimeout(() => { listFrame.src = 'https://exportify.net/'; }, 380);
 }
 

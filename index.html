@@ -618,6 +618,10 @@
 
                                 <div class="ask-body list-body">
                                     <div class="list-site" id="listSite">
+                                        <!-- the dots hold the pane while somebody
+                                             else's site starts; the frame fades in
+                                             over them once it is there. -->
+                                        <div class="site-wait" aria-hidden="true"><span></span><span></span><span></span></div>
                                         <iframe id="listFrame" title="exportify" src="about:blank"
                                             referrerpolicy="no-referrer"
                                             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
@@ -627,6 +631,11 @@
                                          in sit beside the site rather than over it:
                                          they are the short part. -->
                                     <div class="list-aside">
+                                        <!-- edit this line freely; nothing reads it -->
+                                        <p class="ask-why list-say">a playlist only has to come in
+                                            once. after that it is in the list below and pressing it
+                                            puts the songs back in the box.</p>
+
                                         <ol class="ask-steps">
                                             <li>
                                                 <span class="ask-step">1</span>
@@ -639,11 +648,6 @@
                                                 <span class="ask-said">export a playlist, then drop the file on the playlist box.</span>
                                             </li>
                                         </ol>
-
-                                        <!-- edit this line freely; nothing reads it -->
-                                        <p class="ask-why list-say">a playlist only has to come in
-                                            once. after that it is in the list below and pressing it
-                                            puts the songs back in the box.</p>
 
                                         <ul class="list-kept" id="listKept" hidden></ul>
                                     </div>
