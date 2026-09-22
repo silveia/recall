@@ -7406,13 +7406,24 @@ async function spotToken() {
                 refresh_token: held.refresh
             })
         });
-        if (!answer.ok) return '';
+        /* A refusal here is the sign-in itself being over — the
+           refresh key is spent, or the app it belongs to is gone. The
+           dead one used to be left sitting in storage, so the page
+           went on saying you were signed in and went on blaming your
+           sign-in for what the borrowed key had done. It is dropped,
+           and the line goes back to offering to sign you in. */
+        if (!answer.ok) { forgetSpotToken(); return ''; }
         const body = await answer.json();
         keepSpotToken(body);
         return body.access_token;
     } catch (error) {
-        return '';
+        return '';   // the network, not the sign-in — it is kept
     }
+}
+
+function forgetSpotToken() {
+    window.localStorage.removeItem(SPOT_TOKEN_KEY);
+    paintSpot();
 }
 
 /* the proof pair. a long random word is kept here and its hash is what
@@ -7556,8 +7567,7 @@ spotGo.addEventListener('click', () => {
 });
 
 spotForget.addEventListener('click', () => {
-    window.localStorage.removeItem(SPOT_TOKEN_KEY);
-    paintSpot();
+    forgetSpotToken();
     saySc('signed out');
 });
 
@@ -7665,12 +7675,28 @@ function tokenIn(data) {
    which the page's own key will do, a hundred at a time, straight from
    here: spotify's api answers a browser directly, so no relay is in
    the way of this part. */
-async function theRest(bit, token, have, say) {
+/* Two keys can be going: your own sign-in, and the one borrowed out of
+   the embed page. They used to be tried as `mine || theirs`, so a stale
+   sign-in meant the borrowed one was never reached, and a rationed
+   borrowed one meant your own was never reached either. Each is given
+   its own go, and which one failed is carried back — blaming a sign-in
+   for what the borrowed key did is what made this look unfixable. */
+async function theRest(bit, keys, have, say) {
+    let last = { more: [], total: 0, why: 'none', whose: '' };
+    for (const { key, whose } of keys) {
+        if (!key) continue;
+        const got = await oneKeyRest(bit, key, have, say);
+        if (got.more.length) return { ...got, whose };
+        last = { ...got, whose };
+    }
+    return last;
+}
+
+async function oneKeyRest(bit, token, have, say) {
     const path = bit.kind === 'album' ? 'albums' : 'playlists';
     const more = [];
     let total = 0;
     let why = '';
-    if (!token) return { more, total, why: 'none' };
 
     for (let at = have; at < 10000; at += 100) {
         if (say) say(`reading the playlist... ${have + more.length} so far`);
@@ -7691,6 +7717,7 @@ async function theRest(bit, token, have, say) {
         if (!answer.ok) {
             why = answer.status === 429 ? 'rationed'
                 : answer.status === 401 || answer.status === 403 ? 'refused'
+                : answer.status === 404 ? 'withheld'
                 : 'stopped';
             break;
         }
@@ -7812,14 +7839,22 @@ async function readPlaylist(bit, say) {
        ask itself is cheap and it comes back with the real length. */
     if (songs.length >= 50 && bit.kind !== 'track') {
         const mine = await spotToken();
-        const { more, total, why } = await theRest(bit, mine || got.token, songs.length, say);
+        const { more, total, why, whose } = await theRest(bit, [
+            { key: mine, whose: 'yours' },
+            { key: got.token, whose: 'borrowed' }
+        ], songs.length, say);
         songs.push(...more);
         if (total && songs.length < total) {
             songs.short = true;
             songs.of = total;
             songs.why = why;
+            songs.whose = whose;
         }
-        if (!total && !more.length) { songs.short = true; songs.why = why; }
+        if (!total && !more.length) {
+            songs.short = true;
+            songs.why = why;
+            songs.whose = whose;
+        }
     }
     return songs;
 }
@@ -8013,16 +8048,21 @@ function renderScratch(songs, said) {
     if (songs.short) {
         const on = spotHeld();
         const have = songs.of ? `${songs.length} of ${songs.of}` : `${songs.length}`;
-        saySc(songs.why === 'rationed'
-            ? `${have} — spotify is rationing the borrowed key. sign in below for the rest`
-            : songs.why === 'refused' && on
-                ? `${have} — spotify would not take that sign-in. sign in again below`
-                : on
-                    ? `${have} — spotify would not part with the rest`
-                    : `${have} — sign in below for the rest`);
-        if (!on || songs.why === 'rationed' || songs.why === 'refused') {
-            spotToggle.classList.add('is-wanted');
-        }
+        const yours = songs.whose === 'yours';
+        saySc(songs.why === 'withheld'
+            ? `${have} — spotify won't hand this playlist to apps at all`
+            : songs.why === 'refused' && yours
+                ? `${have} — your sign-in was refused. sign in again below`
+                : songs.why === 'refused'
+                    ? `${have} — the borrowed key was refused. sign in below for the rest`
+                    : songs.why === 'rationed'
+                        ? `${have} — spotify is rationing the ${yours ? 'sign-in' : 'borrowed key'}. try again in a minute`
+                        : songs.why === 'none'
+                            ? `${have} — no key to ask with. sign in below for the rest`
+                            : on
+                                ? `${have} — spotify would not part with the rest`
+                                : `${have} — sign in below for the rest`);
+        if (!on || songs.why !== 'withheld') spotToggle.classList.add('is-wanted');
     }
     else if (said !== undefined) saySc(said);
 }
