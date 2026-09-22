@@ -7686,8 +7686,16 @@ function tokenIn(data) {
    borrowed one meant your own was never reached either. Each is given
    its own go, and which one failed is carried back — blaming a sign-in
    for what the borrowed key did is what made this look unfixable. */
+/* Only a refusal is worth trying another key for. Being rationed is
+   spotify saying wait, and asking again with a different key is both
+   rude and useless — it was reaching for the borrowed key, being
+   rationed on that too, and reporting the borrowed key as the problem
+   when it was your own that had been told to wait. A withheld playlist
+   is not coming out for any key either. Both stop where they stand. */
+const KEEP_TRYING = new Set(['refused', 'none', 'stopped', 'blocked']);
+
 async function theRest(bit, keys, have, say) {
-    let last = { more: [], total: 0, why: 'none', whose: '' };
+    const failures = [];
     const tried = new Set();
     for (const { get, whose } of keys) {
         // asked for one at a time: the second is only worth the trip
@@ -7697,9 +7705,22 @@ async function theRest(bit, keys, have, say) {
         tried.add(key);
         const got = await oneKeyRest(bit, key, have, say);
         if (got.more.length) return { ...got, whose };
-        last = { ...got, whose };
+        failures.push({ ...got, whose });
+        if (!KEEP_TRYING.has(got.why)) break;
     }
-    return last;
+    return tellingOne(failures);
+}
+
+/* Which failure to repeat back. The last one tried is the least useful
+   of them — it is whatever was left to try after the real problem —
+   and it was the one being shown. A playlist spotify withholds is the
+   thing to say whoever asked; after that, what happened to your own
+   key, because that is the one you can do something about. */
+function tellingOne(failures) {
+    if (!failures.length) return { more: [], total: 0, why: 'none', whose: '' };
+    return failures.find((one) => one.why === 'withheld')
+        || failures.find((one) => one.whose === 'yours' && one.why !== 'none')
+        || failures[failures.length - 1];
 }
 
 async function oneKeyRest(bit, token, have, say) {
@@ -7707,6 +7728,7 @@ async function oneKeyRest(bit, token, have, say) {
     const more = [];
     let total = 0;
     let why = '';
+    let after = 0;
 
     for (let at = have; at < 10000; at += 100) {
         if (say) say(`reading the playlist... ${have + more.length} so far`);
@@ -7729,6 +7751,12 @@ async function oneKeyRest(bit, token, have, say) {
                 : answer.status === 401 || answer.status === 403 ? 'refused'
                 : answer.status === 404 ? 'withheld'
                 : 'stopped';
+            // spotify says how long it wants left alone; it is worth
+            // repeating rather than guessing "a minute" at it
+            if (why === 'rationed') {
+                after = Number(answer.headers && answer.headers.get
+                    ? answer.headers.get('retry-after') : 0) || 0;
+            }
             break;
         }
 
@@ -7748,7 +7776,7 @@ async function oneKeyRest(bit, token, have, say) {
         more.push(...batch);
         if (total && at + 100 >= total) break;
     }
-    return { more, total, why };
+    return { more, total, why, after };
 }
 
 /* the same page already read for us, as plain text. it comes back as a
@@ -7848,7 +7876,7 @@ async function readPlaylist(bit, say) {
        so anything that could be cut short is asked about instead. The
        ask itself is cheap and it comes back with the real length. */
     if (songs.length >= 50 && bit.kind !== 'track') {
-        const { more, total, why, whose } = await theRest(bit, [
+        const { more, total, why, whose, after } = await theRest(bit, [
             { get: () => spotToken(), whose: 'yours' },
             // the one we had was refused: trade it in and go again
             { get: () => spotToken(true), whose: 'yours' },
@@ -7866,11 +7894,13 @@ async function readPlaylist(bit, say) {
             songs.of = total;
             songs.why = why;
             songs.whose = whose;
+            songs.after = after;
         }
         if (!total && !more.length) {
             songs.short = true;
             songs.why = why;
             songs.whose = whose;
+            songs.after = after;
         }
     }
     return songs;
@@ -8064,6 +8094,14 @@ function renderScratch(songs, said) {
        came to look like it had simply stopped working. */
     if (songs.short) {
         const on = spotHeld();
+        /* how long spotify asked to be left alone, in words. it hands
+           back seconds, and a number of seconds past a hundred or so is
+           read more easily as minutes. */
+        const waitWords = (secs) => {
+            if (!secs) return 'a minute';
+            if (secs < 90) return `${secs} seconds`;
+            return `${Math.ceil(secs / 60)} minutes`;
+        };
         const have = songs.of ? `${songs.length} of ${songs.of}` : `${songs.length}`;
         const yours = songs.whose === 'yours';
         saySc(songs.why === 'withheld'
@@ -8073,13 +8111,20 @@ function renderScratch(songs, said) {
                 : songs.why === 'refused'
                     ? `${have} — the borrowed key was refused. sign in below for the rest`
                     : songs.why === 'rationed'
-                        ? `${have} — spotify is rationing the ${yours ? 'sign-in' : 'borrowed key'}. try again in a minute`
+                        ? `${have} — spotify has had enough for now. try again in ${waitWords(songs.after)}`
                         : songs.why === 'none'
                             ? `${have} — no key to ask with. sign in below for the rest`
                             : on
                                 ? `${have} — spotify would not part with the rest`
                                 : `${have} — sign in below for the rest`);
-        if (!on || songs.why !== 'withheld') spotToggle.classList.add('is-wanted');
+        /* the line only asks for attention when signing in is the thing
+           that would help. being rationed is a wait, and a withheld
+           playlist is a no — nagging about either is how it came to be
+           telling people to sign in over and over at something a
+           sign-in could not touch. */
+        if (songs.why === 'refused' || songs.why === 'none' || !on) {
+            spotToggle.classList.add('is-wanted');
+        }
     }
     else if (said !== undefined) saySc(said);
 }
