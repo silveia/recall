@@ -2338,6 +2338,14 @@ html.inverted .app-shell::before { opacity: 1; }
 /* the window that asks where the mp3s go: a name, a strip of places,
    and a press. */
 .folder-screen .ask-body { gap: var(--group); }
+/* the field is a row's worth of `flex: 1` over the clips, where that
+   sets its width. the window is a column, where the same `flex: 1`
+   sets its *height* instead and squashed it to 22px against a --field
+   of 42. here it takes its full width and its own height. */
+.folder-screen #folderName {
+	flex: none;
+	width: 100%;
+}
 .place-strip {
 	display: flex;
 	flex-wrap: wrap;
@@ -2364,8 +2372,10 @@ html.inverted .app-shell::before { opacity: 1; }
 /* the one chosen wears the black, like every live thing here */
 .place-bubble.is-on { color: var(--paper); background: var(--ink); }
 
-/* the same field the new deck is typed into, over on the cards page */
-.folder-screen input, .clip-folder input {
+/* the same field the new deck is typed into, over on the cards page.
+   named by id, because `.ask-screen input` is a thin pill and comes
+   later in the file — on class alone it won. */
+#folderName, #folderNameBar {
 	flex: 1;
 	min-width: 0;
 	height: var(--field);
@@ -2380,7 +2390,7 @@ html.inverted .app-shell::before { opacity: 1; }
 	text-align: center;
 	cursor: var(--cur-bar);
 }
-.clip-folder input::placeholder { color: var(--muted); }
+#folderName::placeholder, #folderNameBar::placeholder { color: var(--muted); }
 
 /* the box beside the clips. it is however wide you dragged it, never
    past half the room, and nothing at all when it's shut. */

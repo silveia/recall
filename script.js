@@ -3151,9 +3151,17 @@ async function folderFor(called, startIn) {
     }
 }
 
-folderName.value = window.localStorage.getItem(FOLDER_KEY) || '';
-folderName.addEventListener('input', () => {
-    window.localStorage.setItem(FOLDER_KEY, folderName.value);
+/* the name is asked in two places — over the clips and in the window —
+   and they are the same name, so each writes the other. */
+const folderNameBar = document.getElementById('folderNameBar');
+const folderFields = [folderName, folderNameBar];
+
+folderFields.forEach((field) => {
+    field.value = window.localStorage.getItem(FOLDER_KEY) || '';
+    field.addEventListener('input', () => {
+        window.localStorage.setItem(FOLDER_KEY, field.value);
+        folderFields.forEach((other) => { if (other !== field) other.value = field.value; });
+    });
 });
 
 /* --- the window that asks where --- */
