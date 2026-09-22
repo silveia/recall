@@ -2493,18 +2493,28 @@ html.inverted .app-shell::before { opacity: 1; }
    box of its own and nothing of ours over it. */
 .list-site {
 	flex: none;
-	height: min(52vh, 26rem);
+	height: min(56vh, 28rem);
 	min-height: 16rem;
 	background: var(--paper);
-	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	overflow: hidden;
 }
+/* shown at four fifths, on a frame a quarter wider and taller than the
+   box, so the whole width of their page fits and there is nothing to
+   scroll sideways for. their text lands near this site's own size at
+   that scale; smaller and it stops being readable.
+
+   the colour comes out of it here rather than in their stylesheet —
+   a page cannot reach inside a frame it does not own, and a filter on
+   the frame itself is the one thing that works from outside. */
 .list-site iframe {
 	display: block;
-	width: 100%;
-	height: 100%;
+	width: 125%;
+	height: 125%;
 	border: 0;
+	transform: scale(0.8);
+	transform-origin: top left;
+	filter: grayscale(1) contrast(1.06);
 }
 
 .list-drop {
@@ -2615,8 +2625,10 @@ html.inverted .app-shell::before { opacity: 1; }
 	flex: none;
 	display: grid;
 	place-items: center;
-	width: 1.5rem;
-	height: 1.5rem;
+	/* a smaller ring around the same figure — at 1.5rem the circle was
+	   doing more talking than the count inside it */
+	width: 1.15rem;
+	height: 1.15rem;
 	aspect-ratio: 1;
 	color: var(--paper);
 	background: var(--ink);
@@ -5144,3 +5156,17 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 /* one that wouldn't keeps its outline, so it can be found afterwards */
 .recording-item.is-packing-failed { border-color: var(--line); border-width: 2px; }
+
+
+/* =========================================================
+   one weight
+   ========================================================= */
+/* nothing here is set bold. the words in the top strip are the titles
+   and they carry themselves on their face and their size; everywhere
+   else bold was saying the same thing twice. bitcount must never be
+   bold at all — its letters are dots and the weight fills the gaps
+   between them — so the strip is left exactly as it is rather than
+   being bolded to match the ask. */
+body, body *, .modal-panel, .modal-panel *, .pop-panel, .pop-panel * {
+	font-weight: 400 !important;
+}

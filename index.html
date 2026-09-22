@@ -600,59 +600,31 @@
                                  one anyway. -->
                             <section class="modal-panel ask-screen" id="listScreen" data-title="playlist" hidden>
                                 <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
-                                <h2 class="modal-title">playlists</h2>
+                                <h2 class="modal-title">exportify</h2>
 
                                 <div class="ask-body">
-                                    <!-- every list brought in so far. pressing one
-                                         puts it in the box on the spot — the steps
-                                         below are only for a playlist that isn't
-                                         here yet. -->
+                                    <!-- the playlists brought in so far; pressing one
+                                         puts it in the box. -->
                                     <ul class="list-kept" id="listKept" hidden></ul>
-
-                                    <p class="ask-why">
-                                        a playlist longer than a hundred songs cannot be read here —
-                                        spotify keeps the rest for apps whose owner pays. exported
-                                        once, the whole thing comes in at any length, in order, with
-                                        the lengths the clips are matched against.
-                                    </p>
 
                                     <ol class="ask-steps">
                                         <li>
                                             <span class="ask-step">1</span>
                                             <span class="ask-said">sign in once in
-                                                <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">a tab of its own</a>.
-                                                spotify's sign-in refuses to be shown inside another
-                                                page, so that part has to happen out there — after it,
-                                                the window below knows you.</span>
+                                                <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">a tab of its own</a>
+                                                — spotify won't show its sign-in inside another page.</span>
                                         </li>
                                         <li>
                                             <span class="ask-step">2</span>
-                                            <span class="ask-said">press export beside the playlist you want. a
-                                                <b>.csv</b> file lands in your downloads.</span>
-                                        </li>
-                                        <li>
-                                            <span class="ask-step">3</span>
-                                            <span class="ask-said">drop that file below, or press to pick it.</span>
+                                            <span class="ask-said">export a playlist below, then drop the file on the playlist box.</span>
                                         </li>
                                     </ol>
 
-                                    <!-- exportify itself, in here. it sends nothing
-                                         that refuses to be framed, so it runs in the
-                                         window rather than in a tab somewhere else.
-                                         what it exports still comes back as a file:
-                                         a page cannot read inside a frame it does not
-                                         own, which is the whole of why the target
-                                         below is still there. -->
                                     <div class="list-site" id="listSite">
                                         <iframe id="listFrame" title="exportify" src="about:blank"
                                             referrerpolicy="no-referrer"
                                             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
                                     </div>
-
-                                    <button class="list-drop" id="listDrop" type="button">
-                                        drop the file here, or press to pick it
-                                    </button>
-                                    <input id="listFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
                                 </div>
                             </section>
 

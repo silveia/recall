@@ -7778,12 +7778,17 @@ const listKept = document.getElementById('listKept');
 
 const listFrame = document.getElementById('listFrame');
 
-/* exportify is only loaded when the window is actually opened, and only
-   once — a plain visit to this site fetches nothing of theirs. */
+/* exportify is loaded when the window is first opened and never again —
+   a plain visit to this site fetches nothing of theirs.
+
+   somebody else's whole site is a lot to start, and starting it in the
+   same breath as the window's own arrival made that arrival stutter. it
+   waits for the animation to finish, so the window opens at full speed
+   and the site fills in behind it. */
 function wakeListSite() {
     if (listFrame.dataset.woke) return;
     listFrame.dataset.woke = 'yes';
-    listFrame.src = 'https://exportify.net/';
+    window.setTimeout(() => { listFrame.src = 'https://exportify.net/'; }, 380);
 }
 
 scratchOpen.addEventListener('click', () => {
@@ -7792,41 +7797,8 @@ scratchOpen.addEventListener('click', () => {
     showScreen(listScreen);
 });
 
-/* the window's own target: pressed, it picks a file; dragged onto, it
-   takes what is dropped. the same reading either way. */
-const listDrop = document.getElementById('listDrop');
-const listFile = document.getElementById('listFile');
-
-listDrop.addEventListener('click', () => listFile.click());
-listFile.addEventListener('change', async () => {
-    const file = listFile.files[0];
-    listFile.value = '';
-    if (await takeListFile(file)) showScreen(homeScreen);
-});
-['dragenter', 'dragover'].forEach((name) => {
-    listDrop.addEventListener(name, (event) => {
-        event.preventDefault();
-        listDrop.classList.add('is-catching');
-    });
-});
-['dragleave', 'drop'].forEach((name) => {
-    listDrop.addEventListener(name, (event) => {
-        event.preventDefault();
-        listDrop.classList.remove('is-catching');
-    });
-});
-listDrop.addEventListener('drop', async (event) => {
-    const moved = event.dataTransfer;
-    if (!moved) return;
-    if (moved.files && moved.files.length) {
-        if (await takeListFile(moved.files[0])) showScreen(homeScreen);
-        return;
-    }
-    const said = moved.getData && moved.getData('text');
-    if (said && /\n/.test(said.trim()) && takeList(said, 'dropped in')) {
-        showScreen(homeScreen);
-    }
-});
+/* the window holds exportify and nothing of ours to drop on: a list
+   comes in by being dropped on the playlist box itself. */
 scratchFile.addEventListener('change', () => {
     takeListFile(scratchFile.files[0]);
     scratchFile.value = '';        // the same file again should still count

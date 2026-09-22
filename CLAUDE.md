@@ -256,15 +256,23 @@ own name, without its extension and with the underscores opened out.
 
 **Exportify itself runs in the window.** Measured with `curl -I`: it
 sends no `x-frame-options` and no `frame-ancestors`, so it can be
-framed. `accounts.spotify.com` sends `x-frame-options: deny` and
-`frame-ancestors 'self' *.spotify.com`, so the **sign-in cannot be** —
-that one time has to happen in a tab of its own, and afterwards the
-frame knows you. The frame is only loaded when the window is first
-opened, so a plain visit fetches nothing of theirs.
+framed. `accounts.spotify.com` sends `x-frame-options: deny`, so the
+**sign-in cannot be** — that once happens in a tab of its own, and
+afterwards the frame knows you.
 
-What it exports still comes back as a file: a page cannot read inside a
-frame it does not own, which is the whole of why the drop target below
-it is still there.
+**A page cannot reach inside a frame it does not own.** So the layout,
+the type and the colours in there are not ours to set. The one thing
+that works from outside is a filter on the frame itself: `grayscale(1)`
+takes the colour out. The rest is scale — the frame is a quarter wider
+and taller than its box and drawn at `0.8`, so their whole width fits
+with nothing to scroll sideways for and their text lands near this
+site's own size.
+
+Its export still arrives as a file, dropped on the playlist box. The
+frame is loaded 380ms after the window opens — starting somebody else's
+whole site in the same breath as the window's arrival made that arrival
+stutter. **Not `requestIdleCallback`**: a busy page may never go idle,
+and it never fired at all in testing.
 
 This is what was asked for instead of the live Spotify picker, and why:
 **the sign-in worked and the reading did not.** Spotify answered 403 —
@@ -748,6 +756,18 @@ the page and reads as the chip having fallen off it. `placeConfirm` now
 holds it inside `.app-content`'s own column, and lines it up on its
 **left** edge when the button sits in the left half. Measured: the page
 starts at x=304 and the chip at 328.
+
+## One weight
+
+Nothing here is set bold. The words in the top strip are the titles and
+carry themselves on their face and their size; everywhere else bold was
+saying the same thing twice. One rule at the end of the stylesheet, with
+`!important`, because thirty class rules set 600 or 700 and each would
+otherwise win.
+
+Bitcount must never be bold — its letters are dots and the weight fills
+the gaps — so the strip is left exactly as it is rather than bolded to
+match.
 
 ## A pill never wraps
 
