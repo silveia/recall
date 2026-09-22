@@ -2312,6 +2312,10 @@ html.inverted .app-shell::before { opacity: 1; }
 .clip-folder {
 	display: flex;
 	flex: none;
+	/* the two that act on every clip at once sit beside the folder they
+	   would act into, rather than up in the bar with the recording */
+	align-items: center;
+	gap: var(--tight);
 	min-width: 0;
 	padding: 0 0 var(--tight);
 }
@@ -2686,20 +2690,19 @@ html.inverted .app-shell::before { opacity: 1; }
 	flex: none;
 	width: 100%;
 	align-self: stretch;
-	/* The line sits between two paddings, the top one longer, which is
-	   how every button here is centred. Worked out from the height
-	   wanted, so it comes to the same size as the two below it.
+	/* The box spaces what it holds itself, and this carried a margin
+	   under it as well — so there was a step above it and two steps
+	   below, and it sat high in its own gap. That was the whole of it,
+	   and none of it was ever the word inside. The margin is gone; the
+	   box's own spacing puts it level between the rule and the list.
 	
-	   --sit is the whole of the vertical aim: raise it and the word goes
-	   down, lower it and the word goes up, and the pill stays the height
-	   it is either way because whatever is added on top comes off the
-	   bottom. The face's own drop was not enough on its own. */
-	--sit: 3px;
-	padding:
-		calc((var(--field) - 1.5rem) / 2 + var(--drop) + var(--sit))
-		min(1.5rem, 10%)
-		calc((var(--field) - 1.5rem) / 2 - var(--drop) - var(--sit));
-	margin-bottom: var(--tight);
+	   The word is centred outright rather than aimed: a fixed height,
+	   nothing above or below, and the line centred in what is left. */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: var(--field);
+	padding: 0 min(1.5rem, 10%);
 }
 /* shut it keeps no outline and no padding — an empty sliver of box
    would read as a mistake. the grip beside it stays put, so it can
