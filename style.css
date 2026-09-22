@@ -5298,13 +5298,22 @@ html.booting .app-shell { opacity: 0; }
 }
 html.booting .booting-mark { display: flex; }
 /* the one thing that waits, in both places something waits: a smiley,
-   turning. it is a glyph rather than a drawing, so it is whatever the
-   body face makes of it and it is black on white like everything. */
+   turning.
+
+   it is drawn rather than typed. as a glyph it was whatever the body
+   face made of it — a heavy mouth, odd eyes — and worse, a glyph does
+   not sit in the middle of its own box: it has side bearings and it
+   stands on a baseline, so turning the box turned the face around a
+   point that wasn't its middle and it wobbled. drawn, the circle is
+   centred in the box by construction and the turn is true.
+
+   the line is `non-scaling-stroke` at 1, so it is the same hair as
+   every outline on the site however big the face is drawn. */
 .spin-face {
 	display: block;
+	width: 2rem;
+	height: 2rem;
 	color: var(--ink);
-	font-size: 2rem;
-	line-height: 1;
 	animation: face-turn 1.6s linear infinite;
 }
 @keyframes face-turn {

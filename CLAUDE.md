@@ -283,7 +283,13 @@ cropped right, and **1058 css pixels** handed to their layout — a
 desktop width, with nothing for it to scroll sideways for.
 
 **A turning smiley holds the pane while it starts**, and the site fades
-in over it on its `load`. Blank white for a second and a half reads as broken
+in over it on its `load`. It is **drawn, not typed**: as a glyph it was
+whatever the body face made of it, and a glyph does not sit in the
+middle of its own box — it has side bearings and stands on a baseline,
+so turning the box turned the face around a point that wasn't its
+middle and it wobbled. Drawn, the circle is centred by construction and
+the turn is true. The line is `non-scaling-stroke` at 1, the same hair
+as every outline here whatever size the face is drawn at. Blank white for a second and a half reads as broken
 rather than as loading. After eight seconds it is shown either way:
 dots spinning forever say less than an empty page does. The step's
 circle is centred on its **first line**, not on the block — centred on
