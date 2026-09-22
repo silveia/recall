@@ -299,6 +299,13 @@ decoded, not even read into memory, only pointed at — so this works
 where the mp3 export cannot, which is exactly the corner it is for (on
 `file://` the mp3 worker won't load at all).
 
+The file is named `.call` — macOS has no idea what that is (`mdls`
+reports a `dyn.…` type), which is the point: nothing else claims it and
+nothing tries to open it. **The mark inside is `RECALLCLIPS1` and does
+not follow the extension.** What is read is the mark, never the name, so
+the `.recall` bundles already saved still come in, and a file renamed to
+anything at all still comes in.
+
 The file is a short header and then the recordings end to end:
 
     RECALLCLIPS1\n

@@ -2842,6 +2842,10 @@ clearClipsButton.addEventListener('click', clearAllClips);
        <the header, as json: everything but the sound>
        <clip><clip><clip>...
 */
+/* the extension is .call; the mark inside the file is not, and must not
+   be changed with it. what is read is the mark, never the name — so the
+   .recall bundles already saved still come in, and a file renamed to
+   anything at all still comes in. */
 const PACK_MARK = 'RECALLCLIPS1';
 
 function buildBundle(stored) {
@@ -2862,7 +2866,7 @@ function buildBundle(stored) {
 }
 
 async function packAllClips() {
-    const named = `recall-clips-${new Date().toISOString().slice(0, 10)}.recall`;
+    const named = `recall-clips-${new Date().toISOString().slice(0, 10)}.call`;
 
     /* where to put it is asked first, before anything is read: the
        picker only opens while the press is still a press, and reading
@@ -2874,7 +2878,7 @@ async function packAllClips() {
         try {
             handle = await window.showSaveFilePicker({
                 suggestedName: named,
-                types: [{ description: 'recall clips', accept: { 'application/octet-stream': ['.recall'] } }]
+                types: [{ description: 'recall clips', accept: { 'application/octet-stream': ['.call'] } }]
             });
         } catch (error) {
             if (error && error.name === 'AbortError') return;   // they changed their mind
