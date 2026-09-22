@@ -2591,7 +2591,9 @@ html.inverted .app-shell::before { opacity: 1; }
 }
 .ask-steps li {
 	display: flex;
-	align-items: flex-start;
+	/* the instructions are a line each, so the circle sits level with the
+	   words rather than hanging off the top of them */
+	align-items: center;
 	gap: var(--tight);
 	min-width: 0;
 }
@@ -2602,12 +2604,21 @@ html.inverted .app-shell::before { opacity: 1; }
 	place-items: center;
 	width: 1.5rem;
 	height: 1.5rem;
-	padding-top: calc(var(--drop-num) * 2);
+	aspect-ratio: 1;
 	color: var(--paper);
 	background: var(--ink);
 	border-radius: 999px;
 	font-family: var(--num-font);
 	font-size: 1rem;
+	/* the figure's own line box, so centring has one thing to centre
+	   rather than a box with the face's own slack in it */
+	line-height: 1;
+	/* vt323 sits a hair low and --drop-num is the lift for it, which is
+	   negative — so as a padding-top it was negative padding, which is
+	   not a thing, and the browser threw it away. The whole correction
+	   had never once applied. Taken off the bottom instead, which is a
+	   positive number and lifts what is centred above it. */
+	padding-bottom: calc(var(--drop-num) * -2);
 }
 .ask-said {
 	min-width: 0;
@@ -2716,7 +2727,8 @@ html.inverted .app-shell::before { opacity: 1; }
 	   how the face is drawn. */
 	font-family: var(--num-font);
 	font-size: 1rem;
-	padding-top: calc(var(--drop-num) * 2);
+	/* negative padding is not a thing; the lift goes on the bottom */
+	padding-bottom: calc(var(--drop-num) * -2);
 }
 /* a song a clip answers to. the number wears the black, the way every
    live thing on this site does — and it has to come back off under the
