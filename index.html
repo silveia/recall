@@ -602,28 +602,31 @@
                                 <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
                                 <h2 class="modal-title">exportify</h2>
 
-                                <div class="ask-body">
-                                    <!-- the playlists brought in so far; pressing one
-                                         puts it in the box. -->
-                                    <ul class="list-kept" id="listKept" hidden></ul>
-
-                                    <ol class="ask-steps">
-                                        <li>
-                                            <span class="ask-step">1</span>
-                                            <span class="ask-said">sign in once in
-                                                <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">a tab of its own</a>
-                                                — spotify won't show its sign-in inside another page.</span>
-                                        </li>
-                                        <li>
-                                            <span class="ask-step">2</span>
-                                            <span class="ask-said">export a playlist below, then drop the file on the playlist box.</span>
-                                        </li>
-                                    </ol>
-
+                                <div class="ask-body list-body">
                                     <div class="list-site" id="listSite">
                                         <iframe id="listFrame" title="exportify" src="about:blank"
                                             referrerpolicy="no-referrer"
                                             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
+                                    </div>
+
+                                    <!-- the steps and the playlists already brought
+                                         in sit beside the site rather than over it:
+                                         they are the short part. -->
+                                    <div class="list-aside">
+                                        <ol class="ask-steps">
+                                            <li>
+                                                <span class="ask-step">1</span>
+                                                <span class="ask-said">sign in once at
+                                                    <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">exportify.net</a>
+                                                    — spotify won't show its sign-in inside another page.</span>
+                                            </li>
+                                            <li>
+                                                <span class="ask-step">2</span>
+                                                <span class="ask-said">export a playlist, then drop the file on the playlist box.</span>
+                                            </li>
+                                        </ol>
+
+                                        <ul class="list-kept" id="listKept" hidden></ul>
                                     </div>
                                 </div>
                             </section>

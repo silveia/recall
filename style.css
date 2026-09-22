@@ -2492,9 +2492,10 @@ html.inverted .app-shell::before { opacity: 1; }
 /* exportify, in the window. it is somebody else's page, so it gets a
    box of its own and nothing of ours over it. */
 .list-site {
-	flex: none;
-	height: min(56vh, 28rem);
-	min-height: 16rem;
+	flex: 1;
+	min-width: 0;
+	height: min(74vh, 36rem);
+	min-height: 18rem;
 	background: var(--paper);
 	border-radius: var(--radius);
 	overflow: hidden;
@@ -2514,7 +2515,6 @@ html.inverted .app-shell::before { opacity: 1; }
 	border: 0;
 	transform: scale(0.8);
 	transform-origin: top left;
-	filter: grayscale(1) contrast(1.06);
 }
 
 .list-drop {
@@ -2584,7 +2584,26 @@ html.inverted .app-shell::before { opacity: 1; }
 .ask-screen { width: min(30rem, 100%); }
 /* the playlist window carries exportify itself, so it wants the room a
    site wants rather than the room a question wants */
-#listScreen.ask-screen { width: min(54rem, 100%); }
+#listScreen.ask-screen { width: min(62rem, 100%); }
+/* the site on the left and the short matter beside it, level with its
+   middle rather than stacked over its top */
+#listScreen .list-body {
+	flex-direction: row;
+	align-items: center;
+	gap: var(--group);
+}
+.list-aside {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	justify-content: center;
+	gap: var(--group);
+	width: 16rem;
+	min-width: 0;
+	/* off the wall on both sides: against the edge they read as having
+	   fallen out of the window rather than sitting in it */
+	padding: 0 0.35rem;
+}
 .ask-body {
 	display: flex;
 	flex-direction: column;
@@ -5170,3 +5189,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 body, body *, .modal-panel, .modal-panel *, .pop-panel, .pop-panel * {
 	font-weight: 400 !important;
 }
+/* except the titles in the top strip, which are the one thing on the
+   site that is meant to shout. asked for twice, knowing bitcount fills
+   its own gaps at this weight. */
+.section-tab { font-weight: 700 !important; }

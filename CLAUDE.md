@@ -35,8 +35,8 @@ refuses to load `mp3-worker.js` at all ("cannot be accessed from origin
   to solid black.
 - Fonts: Amiko for body text, Bitcount Prop Double for the `h1` and the section
   tabs, **VT323 for every number**, Matrix Sans Print for every heading over a
-  panel. Bitcount is never set bold — its letters are dots, and the bold weight
-  fills the gaps between them. Matrix Sans is capitals only; lowercase copy
+  panel. Bitcount fills the gaps between its dots at bold, so it is set bold in
+  exactly one place — the section tabs, by request — and nowhere else. Matrix Sans is capitals only; lowercase copy
   comes out as capitals, which is the point.
 
   **Numbers never get Bitcount.** It draws a `1` as two dense columns of dots
@@ -261,12 +261,14 @@ framed. `accounts.spotify.com` sends `x-frame-options: deny`, so the
 afterwards the frame knows you.
 
 **A page cannot reach inside a frame it does not own.** So the layout,
-the type and the colours in there are not ours to set. The one thing
-that works from outside is a filter on the frame itself: `grayscale(1)`
-takes the colour out. The rest is scale — the frame is a quarter wider
-and taller than its box and drawn at `0.8`, so their whole width fits
-with nothing to scroll sideways for and their text lands near this
-site's own size.
+the type and the colours in there are not ours to set — only scale is.
+The frame is a quarter wider and taller than its box and drawn at `0.8`,
+so their whole width fits with nothing to scroll sideways for and their
+text lands near this site's own size. A `grayscale(1)` filter was tried
+and taken off again: it looks better with its colour.
+
+The site takes the window; the steps and the kept playlists sit in a
+column beside it, level with its middle.
 
 Its export still arrives as a file, dropped on the playlist box. The
 frame is loaded 380ms after the window opens — starting somebody else's
@@ -765,9 +767,9 @@ saying the same thing twice. One rule at the end of the stylesheet, with
 `!important`, because thirty class rules set 600 or 700 and each would
 otherwise win.
 
-Bitcount must never be bold — its letters are dots and the weight fills
-the gaps — so the strip is left exactly as it is rather than bolded to
-match.
+**The section tabs are the exception**, asked for twice and knowingly:
+Bitcount fills its own gaps at 700, and the strip is meant to shout
+anyway. Everywhere else the no-bold rule stands.
 
 ## A pill never wraps
 
