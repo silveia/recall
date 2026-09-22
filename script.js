@@ -7780,6 +7780,29 @@ async function whyRefused(answer) {
     return words ? `${answer.status} ${words}` : `${answer.status}`;
 }
 
+/* The playlist itself, before its songs. Spotify hands back the
+   address of its own track list and how long it really is, and asking
+   this way round is what the tools that manage long playlists do. It
+   also separates two refusals that looked identical from here: the
+   whole playlist being refused, and only its songs being refused. */
+async function playlistItself(bit, token) {
+    const path = bit.kind === 'album' ? 'albums' : 'playlists';
+    try {
+        const answer = await fetch(`https://api.spotify.com/v1/${path}/${bit.id}`,
+            { headers: { authorization: `Bearer ${token}` } });
+        if (!answer.ok) return { ok: false, status: answer.status, said: await whyRefused(answer) };
+        const body = await answer.json();
+        const from = body && body.tracks;
+        return {
+            ok: true,
+            at: (from && from.href ? String(from.href).split('?')[0] : ''),
+            total: (from && Number(from.total)) || 0
+        };
+    } catch (error) {
+        return { ok: false, status: 0, said: '' };
+    }
+}
+
 async function oneKeyRest(bit, token, have, say) {
     const path = bit.kind === 'album' ? 'albums' : 'playlists';
     const more = [];
@@ -7801,13 +7824,24 @@ async function oneKeyRest(bit, token, have, say) {
     ];
     let wording = 0;
 
+    /* asked the way spotify offers it, falling back to the address we
+       would have built ourselves if the playlist will not come out */
+    const whole = await playlistItself(bit, token);
+    const from = (whole.ok && whole.at)
+        ? whole.at
+        : `https://api.spotify.com/v1/${path}/${bit.id}/tracks`;
+    if (whole.ok && whole.total) total = whole.total;
+    if (!whole.ok && whole.status === 403) {
+        // the playlist itself is refused, not merely its songs
+        return { more, total, why: 'offlimits', after: 0, said: whole.said };
+    }
+
     for (let at = have; at < 10000; at += 100) {
         if (say) say(`reading the playlist... ${have + more.length} so far`);
         let answer;
         try {
             answer = await fetch(
-                `https://api.spotify.com/v1/${path}/${bit.id}/tracks`
-                + `?offset=${at}&limit=100&${WORDINGS[wording]}`,
+                `${from}?offset=${at}&limit=100&${WORDINGS[wording]}`,
                 { headers: { authorization: `Bearer ${token}` } }
             );
         } catch (error) {
