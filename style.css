@@ -2820,6 +2820,14 @@ html.inverted .app-shell::before { opacity: 1; }
 	width: 100%;
 	align-self: stretch;
 	height: var(--field);
+	/* A fixed height and a padding on one side leaves a single line of
+	   words sitting wherever the line box lands, which is high. Centred
+	   in what is left, the padding stops being where the words sit and
+	   becomes only the nudge the body face wants — half of it, so twice
+	   the drop is the whole of the drop. */
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
 	margin-bottom: var(--tight);
 }
