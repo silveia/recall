@@ -2686,16 +2686,19 @@ html.inverted .app-shell::before { opacity: 1; }
 	flex: none;
 	width: 100%;
 	align-self: stretch;
-	/* Every button here is centred the same way and has been all along:
-	   the line sits between two paddings, the top one a drop longer than
-	   the bottom. Chasing it with a fixed height and a flex centre was
-	   inventing a second mechanism and getting the lean by doing so. The
-	   paddings are worked out from the height wanted instead, so it comes
-	   to the same size as the two below it by arithmetic. */
+	/* The line sits between two paddings, the top one longer, which is
+	   how every button here is centred. Worked out from the height
+	   wanted, so it comes to the same size as the two below it.
+	
+	   --sit is the whole of the vertical aim: raise it and the word goes
+	   down, lower it and the word goes up, and the pill stays the height
+	   it is either way because whatever is added on top comes off the
+	   bottom. The face's own drop was not enough on its own. */
+	--sit: 3px;
 	padding:
-		calc((var(--field) - 1.5rem) / 2 + var(--drop))
+		calc((var(--field) - 1.5rem) / 2 + var(--drop) + var(--sit))
 		min(1.5rem, 10%)
-		calc((var(--field) - 1.5rem) / 2 - var(--drop));
+		calc((var(--field) - 1.5rem) / 2 - var(--drop) - var(--sit));
 	margin-bottom: var(--tight);
 }
 /* shut it keeps no outline and no padding — an empty sliver of box
