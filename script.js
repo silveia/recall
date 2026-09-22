@@ -7776,7 +7776,7 @@ async function whyRefused(answer) {
     } catch (error) {
         words = '';                     // nothing readable came back
     }
-    words = tidy(String(words || '')).slice(0, 140);
+    words = tidy(String(words || '')).slice(0, 60);
     return words ? `${answer.status} ${words}` : `${answer.status}`;
 }
 
@@ -8199,8 +8199,8 @@ function renderScratch(songs, said) {
            read more easily as minutes. */
         const waitWords = (secs) => {
             if (!secs) return 'a minute';
-            if (secs < 90) return `${secs} seconds`;
-            return `${Math.ceil(secs / 60)} minutes`;
+            if (secs < 90) return `${secs}s`;
+            return `${Math.ceil(secs / 60)} min`;
         };
         const have = songs.of ? `${songs.length} of ${songs.of}` : `${songs.length}`;
         const yours = songs.whose === 'yours';
@@ -8210,27 +8210,26 @@ function renderScratch(songs, said) {
            rather than left as a refusal with no reason on it. */
         const theirs = /^spotify$/i.test(songs.owner || '');
         const noWay = songs.why === 'offlimits' || songs.why === 'withheld';
+        /* Said in as few words as carry it. A chip you have to read
+           twice is worse than a short one taken in at a glance, and the
+           long ones came across as being told off rather than told. */
         saySc(noWay && theirs
-            ? `${have} — spotify makes this playlist and won't give it to any app`
-            : songs.why === 'withheld'
-            ? `${have} — spotify won't hand this playlist to apps at all${
-                songs.said ? `. it says: ${songs.said}` : ''}`
+            ? `${have} — spotify's own playlist, not given to apps`
             : songs.why === 'offlimits' && yours && /premium/i.test(songs.said || '')
-                ? `${have} — your app asks for the playback sdk, which wants premium. `
-                  + `untick it in the dashboard, leave web api only, then sign in again`
-                : songs.why === 'offlimits' && yours
-                    ? `${have} — sign-in fine, playlist refused. spotify: ${songs.said || '403'}`
-                : songs.why === 'offlimits'
-                    ? `${have} — spotify won't allow that playlist. sign in for the rest`
-                    : songs.why === 'expired' && yours
-                        ? `${have} — that sign-in is spent. sign in again`
-                        : songs.why === 'rationed'
-                            ? `${have} — spotify has had enough for now. try again in ${waitWords(songs.after)}`
-                            : songs.why === 'expired' || songs.why === 'none'
-                                ? `${have} — sign in for the rest`
-                                : on
-                                    ? `${have} — spotify would not part with the rest`
-                                    : `${have} — sign in for the rest`);
+                ? `${have} — untick playback sdk in your app, then sign in again`
+                : songs.why === 'withheld'
+                    ? `${have} — not given to apps`
+                    : songs.why === 'offlimits' && yours
+                        ? `${have} — refused (${songs.said || '403'})`
+                        : songs.why === 'offlimits'
+                            ? `${have} — refused. sign in for the rest`
+                            : songs.why === 'expired' && yours
+                                ? `${have} — sign-in expired. sign in again`
+                                : songs.why === 'rationed'
+                                    ? `${have} — too many asks. wait ${waitWords(songs.after)}`
+                                    : on && songs.why !== 'expired' && songs.why !== 'none'
+                                        ? `${have} — spotify kept the rest`
+                                        : `${have} — sign in for the rest`);
         /* the line only asks for attention when signing in is the thing
            that would help. being rationed is a wait, and a withheld
            playlist is a no — nagging about either is how it came to be
