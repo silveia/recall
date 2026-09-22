@@ -7737,6 +7737,7 @@ async function oneKeyRest(bit, token, have, say) {
     let total = 0;
     let why = '';
     let after = 0;
+    let said = '';        // spotify's own words for the refusal
 
     for (let at = have; at < 10000; at += 100) {
         if (say) say(`reading the playlist... ${have + more.length} so far`);
@@ -7772,6 +7773,17 @@ async function oneKeyRest(bit, token, have, say) {
                 after = Number(answer.headers && answer.headers.get
                     ? answer.headers.get('retry-after') : 0) || 0;
             }
+            /* Spotify says why in the body, in its own words, and those
+               words were being thrown away — leaving us to guess at a
+               refusal from its number alone, which is how this went
+               round so many times. Whatever it says is repeated as it
+               said it. */
+            try {
+                const body = await answer.json();
+                said = tidy((body && body.error && body.error.message) || '');
+            } catch (error) {
+                said = '';
+            }
             break;
         }
 
@@ -7791,7 +7803,7 @@ async function oneKeyRest(bit, token, have, say) {
         more.push(...batch);
         if (total && at + 100 >= total) break;
     }
-    return { more, total, why, after };
+    return { more, total, why, after, said };
 }
 
 /* the same page already read for us, as plain text. it comes back as a
@@ -7891,7 +7903,7 @@ async function readPlaylist(bit, say) {
        so anything that could be cut short is asked about instead. The
        ask itself is cheap and it comes back with the real length. */
     if (songs.length >= 50 && bit.kind !== 'track') {
-        const { more, total, why, whose, after } = await theRest(bit, [
+        const { more, total, why, whose, after, said: itsWords } = await theRest(bit, [
             { get: () => spotToken(), whose: 'yours' },
             // the one we had was refused: trade it in and go again
             { get: () => spotToken(true), whose: 'yours' },
@@ -7918,6 +7930,7 @@ async function readPlaylist(bit, say) {
             songs.why = said;
             songs.whose = bywhom;
             songs.after = after;
+            songs.said = itsWords;
         }
     }
     return songs;
@@ -8122,9 +8135,11 @@ function renderScratch(songs, said) {
         const have = songs.of ? `${songs.length} of ${songs.of}` : `${songs.length}`;
         const yours = songs.whose === 'yours';
         saySc(songs.why === 'withheld'
-            ? `${have} — spotify won't hand this playlist to apps at all`
+            ? `${have} — spotify won't hand this playlist to apps at all${
+                songs.said ? `. it says: ${songs.said}` : ''}`
             : songs.why === 'offlimits' && yours
-                ? `${have} — your sign-in is fine; this app isn't allowed this playlist`
+                ? `${have} — sign-in fine, playlist refused${
+                    songs.said ? `. spotify says: ${songs.said}` : ''}`
                 : songs.why === 'offlimits'
                     ? `${have} — spotify won't allow that playlist. sign in for the rest`
                     : songs.why === 'expired' && yours
