@@ -2589,14 +2589,14 @@ html.inverted .app-shell::before { opacity: 1; }
    middle rather than stacked over its top */
 #listScreen .list-body {
 	flex-direction: row;
-	align-items: center;
+	align-items: stretch;
 	gap: var(--group);
 }
 .list-aside {
 	display: flex;
 	flex: none;
 	flex-direction: column;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--group);
 	width: 16rem;
 	min-width: 0;
@@ -2633,9 +2633,11 @@ html.inverted .app-shell::before { opacity: 1; }
 }
 .ask-steps li {
 	display: flex;
-	/* the instructions are a line each, so the circle sits level with the
-	   words rather than hanging off the top of them */
-	align-items: center;
+	/* the circle sits on the *first* line, not on the middle of however
+	   many lines the step runs to — centred on the block it drifted
+	   down the side of a step that wrapped. the offset is measured, and
+	   is half the difference between a line and the circle. */
+	align-items: flex-start;
 	gap: var(--tight);
 	min-width: 0;
 }
@@ -2644,6 +2646,7 @@ html.inverted .app-shell::before { opacity: 1; }
 	flex: none;
 	display: grid;
 	place-items: center;
+	margin-top: 0.03rem;
 	/* a smaller ring around the same figure — at 1.5rem the circle was
 	   doing more talking than the count inside it */
 	width: 1.15rem;

@@ -267,8 +267,11 @@ so their whole width fits with nothing to scroll sideways for and their
 text lands near this site's own size. A `grayscale(1)` filter was tried
 and taken off again: it looks better with its colour.
 
-The site takes the window; the steps and the kept playlists sit in a
-column beside it, level with its middle.
+The site takes the window; the steps, a line of copy and the kept
+playlists sit in a column beside it, starting at the top. The step's
+circle is centred on its **first line**, not on the block — centred on
+the block it drifted down the side of a step that wrapped. Measured:
+0.16px off the first line's middle at `margin-top: 0.03rem`.
 
 Its export still arrives as a file, dropped on the playlist box. The
 frame is loaded 380ms after the window opens — starting somebody else's
