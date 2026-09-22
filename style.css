@@ -2554,15 +2554,6 @@ html.inverted .app-shell::before { opacity: 1; }
 	background: var(--paper);
 	transition: opacity 0.3s var(--ease);
 }
-.site-wait span {
-	width: 0.42rem;
-	height: 0.42rem;
-	background: var(--ink);
-	border-radius: 50%;
-	animation: booting-beat 1s ease-in-out infinite;
-}
-.site-wait span:nth-child(2) { animation-delay: 0.14s; }
-.site-wait span:nth-child(3) { animation-delay: 0.28s; }
 .list-site.is-here .site-wait { opacity: 0; pointer-events: none; }
 /* shown at four fifths, on a frame a quarter wider and taller than the
    box, so the whole width of their page fits and there is nothing to
@@ -5306,21 +5297,21 @@ html.booting .app-shell { opacity: 0; }
 	pointer-events: none;
 }
 html.booting .booting-mark { display: flex; }
-.booting-mark span {
-	width: 0.42rem;
-	height: 0.42rem;
-	background: var(--ink);
-	border-radius: 50%;
-	animation: booting-beat 1s ease-in-out infinite;
+/* the one thing that waits, in both places something waits: a smiley,
+   turning. it is a glyph rather than a drawing, so it is whatever the
+   body face makes of it and it is black on white like everything. */
+.spin-face {
+	display: block;
+	color: var(--ink);
+	font-size: 2rem;
+	line-height: 1;
+	animation: face-turn 1.6s linear infinite;
 }
-.booting-mark span:nth-child(2) { animation-delay: 0.14s; }
-.booting-mark span:nth-child(3) { animation-delay: 0.28s; }
-@keyframes booting-beat {
-	0%, 100% { transform: scale(0.6); }
-	50%      { transform: scale(1); }
+@keyframes face-turn {
+	to { transform: rotate(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-	.booting-mark span { animation: none; }
+	.spin-face { animation: none; }
 	.app-shell { transition: none; }
 }
 

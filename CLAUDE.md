@@ -282,8 +282,8 @@ Measured at a 1008px window: 678px of pane, 34px cropped left, 50px
 cropped right, and **1058 css pixels** handed to their layout — a
 desktop width, with nothing for it to scroll sideways for.
 
-**Three dots hold the pane while it starts**, and the site fades in over
-them on its `load`. Blank white for a second and a half reads as broken
+**A turning smiley holds the pane while it starts**, and the site fades
+in over it on its `load`. Blank white for a second and a half reads as broken
 rather than as loading. After eight seconds it is shown either way:
 dots spinning forever say less than an empty page does. The step's
 circle is centred on its **first line**, not on the block — centred on
@@ -672,8 +672,8 @@ this change is that nothing on the tile shifts.
 
 A hard refresh showed the page in pieces — the columns blank, then the
 clips arriving out of storage a beat later. It is held back now until
-what it draws is there, then faded in as one thing, with three dots
-holding the place meanwhile.
+what it draws is there, then faded in as one thing, with the same
+turning smiley holding the place meanwhile.
 
 **The holding-back is set in the head, not the stylesheet**, so a page
 whose script never runs is never left hidden. The same inline snippet
