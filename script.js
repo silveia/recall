@@ -7654,10 +7654,31 @@ function songsFromPage(html) {
     if (!hit) return { songs: [] };
     try {
         const parsed = JSON.parse(hit[1]);
-        return { songs: songsIn(parsed), token: tokenIn(parsed) };
+        return { songs: songsIn(parsed), token: tokenIn(parsed), owner: ownerIn(parsed) };
     } catch (error) {
         return { songs: [] };
     }
+}
+
+/* Whose playlist it is. The page says so under the name — a person's
+   username, or "Spotify" for the ones spotify makes itself. Worth
+   knowing because those are the ones no app is given, however well it
+   is signed in, so it is the difference between something to fix and
+   something to stop pulling at. */
+function ownerIn(data) {
+    let found = '';
+    const walk = (node) => {
+        if (found || !node || typeof node !== 'object') return;
+        if (Array.isArray(node)) { node.forEach(walk); return; }
+        if ((node.type === 'playlist' || node.type === 'album')
+            && typeof node.subtitle === 'string' && node.subtitle.trim()) {
+            found = tidy(node.subtitle);
+            return;
+        }
+        Object.values(node).forEach(walk);
+    };
+    walk(data);
+    return found;
 }
 
 // the page's own key, wherever spotify has moved it to this month
@@ -7893,7 +7914,10 @@ async function readPlaylist(bit, say) {
                 .then((all) => all.find((one) => one && one.token) || null),
             new Promise((done) => { window.setTimeout(() => done(null), 4000); })
         ]);
-        if (anyKey) got.token = anyKey.token;
+        if (anyKey) {
+            got.token = anyKey.token;
+            if (!got.owner) got.owner = anyKey.owner;
+        }
     }
 
     const songs = got.songs;
@@ -7931,6 +7955,7 @@ async function readPlaylist(bit, say) {
             songs.whose = bywhom;
             songs.after = after;
             songs.said = itsWords;
+            songs.owner = got.owner || '';
         }
     }
     return songs;
@@ -8134,7 +8159,15 @@ function renderScratch(songs, said) {
         };
         const have = songs.of ? `${songs.length} of ${songs.of}` : `${songs.length}`;
         const yours = songs.whose === 'yours';
-        saySc(songs.why === 'withheld'
+        /* spotify's own playlists are the ones it keeps back from apps,
+           and it does not always say so — an empty 403 is all you get.
+           The page itself names the owner, so it can be said outright
+           rather than left as a refusal with no reason on it. */
+        const theirs = /^spotify$/i.test(songs.owner || '');
+        const noWay = songs.why === 'offlimits' || songs.why === 'withheld';
+        saySc(noWay && theirs
+            ? `${have} — spotify makes this playlist and won't give it to any app`
+            : songs.why === 'withheld'
             ? `${have} — spotify won't hand this playlist to apps at all${
                 songs.said ? `. it says: ${songs.said}` : ''}`
             : songs.why === 'offlimits' && yours
