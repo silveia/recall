@@ -323,8 +323,28 @@
                                          they happen to hold. -->
                                     <div class="clip-folder">
                                         <div class="clip-folder-side">
-                                            <button class="scratch-plain" id="packClips" type="button" title="clips out to one file">clips to a file</button>
-                                            <button class="scratch-plain" id="unpackClips" type="button" title="clips in from a file">bring some in</button>
+                                            <!-- a crate with its lid on: the arrow
+                                                 down puts every clip into one file,
+                                                 the arrow up takes them back out.
+                                                 the crate is what tells the pair
+                                                 apart from the tray beside them,
+                                                 which is one clip to a folder. -->
+                                            <button class="square-button" id="packClips" type="button" aria-label="clips out to one file" title="clips out to one file">
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M4 5.5h16v3H4z"/>
+                                                    <path d="M5.5 8.5v10h13v-10"/>
+                                                    <path d="M12 10.6v4.4"/>
+                                                    <path d="M9.9 12.9L12 15l2.1-2.1"/>
+                                                </svg>
+                                            </button>
+                                            <button class="square-button" id="unpackClips" type="button" aria-label="clips in from a file" title="clips in from a file">
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M4 5.5h16v3H4z"/>
+                                                    <path d="M5.5 8.5v10h13v-10"/>
+                                                    <path d="M12 15v-4.4"/>
+                                                    <path d="M9.9 12.7L12 10.6l2.1 2.1"/>
+                                                </svg>
+                                            </button>
                                             <input id="unpackInput" type="file" hidden>
                                         </div>
 
