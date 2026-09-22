@@ -5273,6 +5273,9 @@ body, body *, .modal-panel, .modal-panel *, .pop-panel, .pop-panel * {
    site that is meant to shout. asked for twice, knowing bitcount fills
    its own gaps at this weight. */
 .section-tab { font-weight: 700 !important; }
+/* and a link under the pointer, which has thickened since before this
+   rule existed — the rule was quietly holding it flat */
+a:hover, a:focus-visible { font-weight: 700 !important; }
 
 
 /* =========================================================
