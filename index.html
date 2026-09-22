@@ -354,42 +354,26 @@
                                 <div class="pane-split clip-split" id="clipSplit" role="separator" aria-orientation="vertical" tabindex="0" aria-label="resize the box beside the clips"></div>
                                 <aside class="clip-side" id="clipSide">
                                     <div class="panel-head"><h2>playlist</h2></div>
-                                    <!-- spotify's own page hands over a hundred
-                                         songs and stops. signing in lifts that,
-                                         and nothing here asks for it until a
-                                         playlist actually runs past it — so it
-                                         sits above the field, out of the way,
-                                         in as little room as it can take. -->
-                                    <button class="scratch-plain" id="spotToggle" type="button">sign in to spotify</button>
-                                    <form class="scratch-bar" id="scratchForm">
-                                        <input id="scratchLink" type="text" placeholder="paste a spotify link, or a whole list" aria-label="spotify playlist link">
-                                        <button class="square-button" id="scratchGo" type="submit" aria-label="read the playlist" title="read the playlist">
-                                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                                <path d="M4.5 12h14"/>
-                                                <path d="M13 6.5 18.5 12 13 17.5"/>
-                                            </svg>
-                                        </button>
-                                    </form>
-
-                                    <!-- spotify will not hand a long playlist
-                                         to an app registered on a free account,
-                                         so the words can be brought in instead:
-                                         a list dropped on this box, opened from
-                                         a file, or pasted into the field above.
-                                         nothing is fetched and nothing is
-                                         signed into. -->
+                                    <!-- the songs are carried in as a list
+                                         rather than fetched: dropped on the box
+                                         or picked through the window. nothing
+                                         is looked up and nothing is signed
+                                         into. -->
                                     <input id="scratchFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
-                                    <button class="scratch-plain" id="scratchOpen" type="button">bring in a longer playlist</button>
+                                    <button class="basic-button is-plain scratch-bring" id="scratchOpen" type="button">exportify</button>
 
                                     <div class="clip-side-body"><ol class="scratch-list" id="scratchList"></ol></div>
                                     <p class="scratch-note" id="scratchNote" aria-live="polite"></p>
-                                    <button class="basic-button scratch-all" id="scratchCopyAll" type="button" hidden>copy all</button>
-                                    <!-- the clips are recorded in the playlist's
-                                         own order, so their lengths ought to be
-                                         the songs' lengths. this walks the two
-                                         lists together and names whatever lines
-                                         up. -->
-                                    <button class="basic-button scratch-all scratch-match" id="scratchMatch" type="button" hidden title="line the clips up by length">match the clips</button>
+                                    <!-- the two of them share the width evenly.
+                                         the clips are recorded in the
+                                         playlist's own order, so their lengths
+                                         ought to be the songs' lengths — match
+                                         walks the two lists together and names
+                                         whatever lines up. -->
+                                    <div class="scratch-acts">
+                                        <button class="basic-button scratch-all" id="scratchCopyAll" type="button" hidden>copy all</button>
+                                        <button class="basic-button scratch-all scratch-match" id="scratchMatch" type="button" hidden title="line the clips up by length">match clips</button>
+                                    </div>
                                 </aside>
                             </div>
                         </section>
@@ -573,81 +557,6 @@
                                     <input id="notesKey" type="password" autocomplete="off" spellcheck="false" placeholder="paste the key here" aria-label="anthropic key">
                                     <button class="basic-button is-solid ask-go" id="notesKeySave" type="button">save the key</button>
                                     <button class="scratch-plain ask-forget" id="notesKeyForget" type="button">forget it</button>
-                                </div>
-                            </section>
-
-                            <!-- ============ spotify ============
-                                 a window rather than a drawer in the
-                                 corner of a box: what it asks for takes
-                                 three steps and a address to copy, and
-                                 that is more than a column has room to
-                                 say clearly. -->
-                            <section class="modal-panel ask-screen" id="spotScreen" data-title="spotify" hidden>
-                                <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
-                                <h2 class="modal-title">spotify</h2>
-
-                                <div class="ask-body">
-                                    <p class="ask-why">
-                                        <span class="ask-mark" aria-hidden="true">
-                                            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M6.2 9.1c3.9-1.1 8.2-.8 11.6 1.1M7 12.6c3.2-.9 6.7-.6 9.5.9M7.8 15.9c2.6-.7 5.4-.5 7.7.8" fill="none" stroke="var(--paper)" stroke-width="1.7" stroke-linecap="round"/></svg>
-                                        </span>
-                                        spotify hands this page a hundred songs and stops, however long the playlist is. signing in lifts that. it is only needed for the long ones.
-                                    </p>
-                                    <!-- added once spotify's own dashboard said
-                                         so outright, having cost a long evening
-                                         to find out: the block is on the app,
-                                         not on whoever signs in through it. -->
-                                    <p class="ask-warn">
-                                        spotify blocks an app from the web api unless the account that
-                                        registered the app pays for premium. an id from a free account
-                                        signs in and then reads nothing. dropping a list on the box
-                                        needs none of this.
-                                    </p>
-
-                                    <ol class="ask-steps">
-                                        <li>
-                                            <span class="ask-step">1</span>
-                                            <span class="ask-said">open <b>developer.spotify.com/dashboard</b> and press <b>create app</b>. any name will do.</span>
-                                        </li>
-                                        <li>
-                                            <span class="ask-step">2</span>
-                                            <span class="ask-said">paste this into its <b>redirect uri</b> box, exactly as it reads &mdash; press it to copy:
-                                                <code class="scratch-url" id="spotBack"></code>
-                                                <span class="ask-warn" id="spotWarn" hidden></span>
-                                            </span>
-                                        </li>
-                                        <li>
-                                            <span class="ask-step">3</span>
-                                            <span class="ask-said">copy the app's <b>client id</b> and put it here. it is public &mdash; not a password.</span>
-                                        </li>
-                                    </ol>
-
-                                    <input id="spotId" type="text" placeholder="client id" aria-label="spotify client id" autocomplete="off" spellcheck="false">
-                                    <button class="basic-button is-solid ask-go" id="spotGo" type="button">connect</button>
-                                    <button class="scratch-plain ask-forget" id="spotForget" type="button" hidden>forget it</button>
-
-                                    <!-- which app this page is actually signing
-                                         in through. it is kept in this browser,
-                                         so a second app made later does not
-                                         replace it on its own, and there was no
-                                         way to tell which one was in use. -->
-                                    <p class="spot-using" id="spotUsing" hidden>
-                                        <span id="spotUsingId"></span>
-                                        <button class="scratch-plain" id="spotUsingClear" type="button">forget this id</button>
-                                    </p>
-
-                                    <!-- signed in, the window is a list of your
-                                         own playlists rather than a form: pick
-                                         one and its songs come back in order,
-                                         which is most of what anyone wants from
-                                         here and beats hunting out a link. -->
-                                    <div class="spot-mine" id="spotMine" hidden>
-                                        <div class="spot-mine-head">
-                                            <span>your playlists</span>
-                                            <button class="scratch-plain" id="spotMineAgain" type="button">refresh</button>
-                                        </div>
-                                        <div class="spot-mine-list" id="spotMineList"></div>
-                                    </div>
                                 </div>
                             </section>
 

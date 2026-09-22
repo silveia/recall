@@ -230,6 +230,16 @@ html, body {
    losing it there would mean losing select-all and copy. */
 body { -webkit-user-select: none; user-select: none; }
 input, textarea { -webkit-user-select: text; user-select: text; }
+/* the browser's own blue has no business here — there are two colours on
+   this site and that is not one of them. it keeps its underline, and
+   leans, which is what marks it as somewhere else rather than here. */
+a {
+	color: inherit;
+	font-style: italic;
+	text-decoration: underline;
+	text-underline-offset: 0.16em;
+}
+a:hover { text-decoration-thickness: 2px; }
 /* Words that are there to be read can be picked up and copied —
    paragraphs, list items, headings, the addresses a window asks you to
    go and open. Reading an address off the screen and typing it out by
@@ -849,6 +859,19 @@ html.inverted .app-shell::before { opacity: 1; }
 	border-color: var(--ink);
 }
 .basic-button.is-solid:disabled { cursor: var(--cur-dot); }
+
+/* the other way round: white with the outline, for a way out to
+   somewhere else rather than a thing being committed here. it fills on
+   the way in, like everything else that goes live. */
+.basic-button.is-plain {
+	color: var(--ink);
+	background: var(--paper);
+	border-color: var(--ink);
+}
+.basic-button.is-plain:hover, .basic-button.is-plain:focus-visible {
+	color: var(--paper);
+	background: var(--ink);
+}
 
 /* an empty state fills whatever box it's in and sits dead centre of
    it — never tucked up against the top. every list on the site uses
@@ -2435,12 +2458,26 @@ html.inverted .app-shell::before { opacity: 1; }
 .list-drop {
 	width: 100%; min-height: 4.6rem; margin-top: var(--group);
 	display: grid; place-items: center; padding: 0.8rem;
-	background: none; color: var(--ink);
-	border: 2px dashed var(--ink); border-radius: var(--round);
+	background-color: transparent; color: var(--ink);
+	border: 0; border-radius: var(--round);
 	font: inherit; font-size: 0.8rem; text-align: center; cursor: pointer;
+	/* `dashed` draws whatever dash the browser fancies, which is short and
+	   crowded. drawn as four lines instead, the dash and the gap are ours
+	   to set: one pixel thin, eighteen long, twelve apart. */
+	background-image:
+		repeating-linear-gradient(90deg, var(--ink) 0 18px, transparent 18px 30px),
+		repeating-linear-gradient(90deg, var(--ink) 0 18px, transparent 18px 30px),
+		repeating-linear-gradient(0deg, var(--ink) 0 18px, transparent 18px 30px),
+		repeating-linear-gradient(0deg, var(--ink) 0 18px, transparent 18px 30px);
+	background-size: 100% 1px, 100% 1px, 1px 100%, 1px 100%;
+	background-position: 0 0, 0 100%, 0 0, 100% 0;
+	background-repeat: no-repeat;
+	/* the fill arrives; the dashes need no handling of their own, being
+	   the same ink it fills with — they are simply swallowed by it. */
+	transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
 }
-.list-drop:hover, .list-drop:focus-visible { background: var(--ink); color: var(--paper); }
-.list-drop.is-catching { background: var(--ink); color: var(--paper); border-style: solid; }
+.list-drop:hover, .list-drop:focus-visible,
+.list-drop.is-catching { background-color: var(--ink); color: var(--paper); }
 
 /* a list being dragged over the box: the same dashed catch as the notes
    panel, so it reads as the same gesture */
@@ -2739,6 +2776,29 @@ html.inverted .app-shell::before { opacity: 1; }
 	align-self: stretch;
 	height: var(--field);
 	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
+}
+
+/* the two of them across the bottom, half the width each. one of them
+   is hidden until there is a playlist to act on, and the other takes
+   the whole width while it is — better than a pill sitting at half the
+   box with nothing beside it. */
+.scratch-acts {
+	display: flex;
+	align-items: stretch;
+	gap: var(--tight);
+}
+.scratch-acts .scratch-all {
+	flex: 1 1 0;
+	min-width: 0;
+	align-self: stretch;
+}
+.scratch-acts .scratch-all[hidden] { display: none; }
+
+/* the way out to the exporter, across the top of the box */
+.scratch-bring {
+	width: 100%;
+	align-self: stretch;
+	margin-bottom: var(--tight);
 }
 /* shut it keeps no outline and no padding — an empty sliver of box
    would read as a mistake. the grip beside it stays put, so it can
