@@ -7333,6 +7333,19 @@ const SCRATCH_KEY = 'scratch-playlist';
    hundred. under that, the box works as it always has, signed in or
    not. */
 
+/* The app id this page signs in with. Spotify will not talk to anybody
+   without one, and it is public by design — it names the app, it does
+   not unlock it. Filling this in once, here, is what turns the sign-in
+   into a single press: nobody who uses the page afterwards has to go
+   near the dashboard, because the app has already been registered.
+
+   To fill it: open developer.spotify.com/dashboard, press create app,
+   put this page's address in its redirect uri box, and paste the app's
+   client id between the quotes below. Left empty, the page falls back
+   to asking each person for one of their own, which is the window that
+   used to open every time. */
+const SPOT_BUILT_IN_ID = '';
+
 const SPOT_ID_KEY = 'spotify-client-id';
 const SPOT_TOKEN_KEY = 'spotify-token';
 const SPOT_PROOF_KEY = 'spotify-proof';
@@ -7352,8 +7365,9 @@ function spotReturn() {
     return window.location.origin + window.location.pathname;
 }
 
+/* one of your own if you have given one, otherwise the app's own */
 function spotAppId() {
-    return (window.localStorage.getItem(SPOT_ID_KEY) || '').trim();
+    return (window.localStorage.getItem(SPOT_ID_KEY) || '').trim() || SPOT_BUILT_IN_ID;
 }
 
 function spotHeld() {
@@ -7492,9 +7506,18 @@ function paintSpot() {
     const on = Boolean(held && held.access);
     spotToggle.textContent = on ? 'signed in to spotify' : 'sign in to spotify';
     spotForget.hidden = !on;
-    spotGo.textContent = on ? 'sign in again' : 'connect';
     spotBack.textContent = spotReturn();
-    if (!spotId.value) spotId.value = spotAppId();
+    // only ever your own id; the app's own is not yours to edit or undo
+    const mine = (window.localStorage.getItem(SPOT_ID_KEY) || '').trim();
+    if (!spotId.value && mine) spotId.value = mine;
+
+    /* With an id built in, none of the dashboard is needed — the steps
+       stay for anyone who would rather sign in under an app of their
+       own, but they are no longer the price of pressing the line. */
+    const builtIn = Boolean(SPOT_BUILT_IN_ID) && !mine;
+    const steps = spotScreen.querySelector('.ask-steps');
+    if (steps) steps.hidden = builtIn && !on;
+    spotGo.textContent = on ? 'sign in again' : builtIn ? 'sign in' : 'connect';
 
     /* spotify stopped accepting `localhost` in a redirect address — it
        takes https, or the loopback number, and nothing else. a page
@@ -7510,9 +7533,15 @@ function paintSpot() {
     }
 }
 
-// the quiet line opens the window
+// the quiet line opens the window — or, once there is an id to sign in
+// with, goes straight to spotify and skips the window altogether. the
+// three steps were standing in front of a press that was ready to go.
+// signed in already, it opens the window, where signing out lives.
 spotToggle.addEventListener('click', () => {
     spotToggle.classList.remove('is-wanted');
+    const held = spotHeld();
+    if (held && held.access) { showScreen(spotScreen); return; }
+    if (spotAppId()) { spotSignIn(); return; }
     showScreen(spotScreen);
 });
 
@@ -7825,6 +7854,18 @@ async function copyWords(words, row) {
    just over the copy button — rather than a line of text wedged under
    the field, which pushed the list about every time it changed. */
 let scratchSayTimer = 0;
+let scratchSayHold = 0;      // how long these words asked to stay
+let scratchSayUnder = false; // the pointer is resting on them
+
+/* the clock only runs while nobody is reading. a chip counting off
+   what lined up and what did not is a thing you stop to read, and
+   having it go while you are halfway down it is the one thing it must
+   not do. */
+function scratchSayClock() {
+    window.clearTimeout(scratchSayTimer);
+    if (!scratchSayHold || scratchSayUnder) return;
+    scratchSayTimer = window.setTimeout(() => scratchNote.classList.remove('is-up'), scratchSayHold);
+}
 
 /* it takes itself away after a few seconds. only something still
    happening stays up — pass 0 for that, and whatever comes next will
@@ -7832,30 +7873,58 @@ let scratchSayTimer = 0;
 function saySc(words, hold = 3600) {
     window.clearTimeout(scratchSayTimer);
     if (!words) {
+        scratchSayHold = 0;
         scratchNote.classList.remove('is-up');
         return;
     }
     scratchNote.textContent = words;
     scratchNote.classList.add('is-up');
-    if (hold) scratchSayTimer = window.setTimeout(() => scratchNote.classList.remove('is-up'), hold);
+    scratchSayHold = hold;
+    scratchSayClock();
 }
+
+// resting on it holds it there; leaving starts the few seconds again
+scratchNote.addEventListener('pointerenter', () => {
+    scratchSayUnder = true;
+    window.clearTimeout(scratchSayTimer);
+});
+scratchNote.addEventListener('pointerleave', () => {
+    scratchSayUnder = false;
+    scratchSayClock();
+});
 
 /* one song, as a key — the same song in a playlist twice is the same
-   two words whatever the case of them. */
+   two words whatever the case of them. How long it runs counts too:
+   the same title by the same name on a single and again on the album
+   is two recordings, not one song twice, and treating them as copies
+   of each other is what put a ×2 against songs that were only ever in
+   the playlist once. */
 function songKey(song) {
-    return `${tidy(song.title)}\u0000${tidy(song.by || '')}`.toLowerCase();
+    return `${tidy(song.title)}\u0000${tidy(song.by || '')}\u0000${song.ms || 0}`.toLowerCase();
 }
 
-// how many times each one is in there. a playlist with a song on it
+// where each one sits in there. a playlist with a song on it
 // twice is a playlist with a song on it twice, not a mistake — but it
 // is worth being told, since two clips will answer to the one name.
+// Only worth being told when the copies are apart, though: see below.
 function countSongs(songs) {
     const seen = new Map();
-    songs.forEach((song) => {
+    songs.forEach((song, index) => {
         const key = songKey(song);
-        seen.set(key, (seen.get(key) || 0) + 1);
+        if (!seen.has(key)) seen.set(key, []);
+        seen.get(key).push(index);
     });
     return seen;
+}
+
+/* Copies sitting next to each other are nothing to warn about: they
+   take two clips next to each other and the order settles which is
+   which. It is the scattered ones that are worth a mark, because a
+   clip can answer to the wrong one of those and nothing in the order
+   says otherwise. */
+function copiesAdrift(at) {
+    return Boolean(at) && at.length > 1
+        && at.some((index, n) => n > 0 && index !== at[n - 1] + 1);
 }
 
 function renderScratch(songs, said) {
@@ -7872,7 +7941,8 @@ function renderScratch(songs, said) {
         const at = document.createElement('span');
         at.className = 'scratch-at';
         at.textContent = String(index + 1);
-        if (twiceOver.get(songKey(song)) > 1) row.classList.add('is-twice');
+        const sameAs = twiceOver.get(songKey(song)) || [];
+        if (copiesAdrift(sameAs)) row.classList.add('is-twice');
 
         const words = document.createElement('span');
         words.className = 'scratch-words';
@@ -7886,8 +7956,8 @@ function renderScratch(songs, said) {
         if (row.classList.contains('is-twice')) {
             const twice = document.createElement('span');
             twice.className = 'scratch-twice';
-            twice.textContent = `\u00d7${twiceOver.get(songKey(song))}`;
-            twice.title = 'in the playlist twice';
+            twice.textContent = `\u00d7${sameAs.length}`;
+            twice.title = `in the playlist ${sameAs.length} times, in different places`;
             row.append(twice);
         }
         row.addEventListener('click', (event) => {
@@ -8155,11 +8225,13 @@ function matchClipsToSongs() {
        counts them. */
     const missing = markScratch(claimed);
 
+    /* said as shortly as it can be: the chip has one line across the
+       box to say it in, and anything longer was cut off at the edge. */
     const lined = rows.length - off;
-    const bits = [off ? `${lined} lined up, ${off} off` : `all ${lined} lined up`];
+    const bits = [off ? `${lined} lined up · ${off} off` : `all ${lined} lined up`];
     if (named) bits.push(`${named} named`);
-    else if (byName) bits.push(`${byName} checked by name`);
-    if (missing) bits.push(`${missing} not here yet`);
+    else if (byName) bits.push(`${byName} by name`);
+    if (missing) bits.push(`${missing} to record`);
     saySc(bits.join(' · ') + (off || missing ? '' : ' ✓'));
 }
 

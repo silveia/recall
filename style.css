@@ -230,6 +230,15 @@ html, body {
    losing it there would mean losing select-all and copy. */
 body { -webkit-user-select: none; user-select: none; }
 input, textarea { -webkit-user-select: text; user-select: text; }
+/* Words a window is asking you to act on — an address to open, an id to
+   read back, what went wrong — can be picked up and copied. Reading an
+   address off the screen and typing it out by hand is no way to be
+   asked for anything. The rest of the page stays unselectable, so
+   dragging a card still drags it rather than smearing a selection
+   across it. */
+.ask-why, .ask-said, .ask-warn, .scratch-url, .modal-title, .help-note, #scratchNote {
+	-webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
+}
 
 body {
 	margin: 0;
@@ -2382,23 +2391,30 @@ html.inverted .app-shell::before { opacity: 1; }
 	/* two buttons under it now — copy, and match — so it clears both */
 	bottom: calc(var(--field) * 2 + var(--tight) * 2 + var(--group));
 	z-index: 2;
-	max-width: calc(100% - var(--tight) * 4);
+	max-width: calc(100% - var(--tight) * 2);
 	margin: 0;
-	padding: calc(0.28rem + var(--drop)) 0.7rem calc(0.28rem - var(--drop));
+	padding: calc(0.3rem + var(--drop)) 0.62rem calc(0.3rem - var(--drop));
 	color: var(--paper);
 	background: var(--ink);
-	border-radius: 999px;
-	font-size: 0.72rem;
+	border-radius: 0.8rem;
+	/* A whole report of what lined up and what did not is more than one
+	   line of a pill across this box, and it was being cut off at the
+	   edge rather than shown. It is set a little smaller, given the
+	   width the box can spare, and allowed to run onto a second line —
+	   the corners come in from a pill to a rounded square when it does,
+	   which is the same shape everything else here is drawn as. */
+	font-size: 0.66rem;
+	line-height: 1.35;
 	text-align: center;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	white-space: normal;
+	overflow-wrap: break-word;
 	opacity: 0;
 	transform: translate(-50%, 6px);
 	transition: opacity 0.24s var(--ease), transform 0.24s var(--ease);
 	pointer-events: none;
 }
-.scratch-note.is-up { opacity: 1; transform: translate(-50%, 0); }
+/* it is only there to be rested on once it is up */
+.scratch-note.is-up { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
 /* with no songs there is no copy button under it to clear */
 .clip-side:not(.has-songs) .scratch-note { bottom: var(--tight); }
 
