@@ -238,8 +238,14 @@ a {
 	font-style: italic;
 	text-decoration: underline;
 	text-underline-offset: 0.16em;
+	/* the browser sets its own pointer on a link, which wins over the one
+	   the page hands everything else — so it is said again here */
+	cursor: var(--cur-tap);
 }
-a:hover { text-decoration-thickness: 2px; }
+a:hover, a:focus-visible {
+	font-weight: 700;
+	text-decoration-thickness: 2px;
+}
 /* Words that are there to be read can be picked up and copied —
    paragraphs, list items, headings, the addresses a window asks you to
    go and open. Reading an address off the screen and typing it out by
