@@ -8215,8 +8215,11 @@ function renderScratch(songs, said) {
             : songs.why === 'withheld'
             ? `${have} — spotify won't hand this playlist to apps at all${
                 songs.said ? `. it says: ${songs.said}` : ''}`
-            : songs.why === 'offlimits' && yours
-                ? `${have} — sign-in fine, playlist refused. spotify: ${songs.said || '403'}`
+            : songs.why === 'offlimits' && yours && /premium/i.test(songs.said || '')
+                ? `${have} — your app asks for the playback sdk, which wants premium. `
+                  + `untick it in the dashboard, leave web api only, then sign in again`
+                : songs.why === 'offlimits' && yours
+                    ? `${have} — sign-in fine, playlist refused. spotify: ${songs.said || '403'}`
                 : songs.why === 'offlimits'
                     ? `${have} — spotify won't allow that playlist. sign in for the rest`
                     : songs.why === 'expired' && yours
