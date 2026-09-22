@@ -2765,6 +2765,8 @@ function placeConfirm(button) {
 
     if (spot.left < field.left + field.width / 2) {
         // left edges together, growing rightwards into the room there is
+        // — and unfolding from that corner rather than the far one
+        confirmChip.style.transformOrigin = 'top left';
         const wide = confirmChip.offsetWidth;
         const left = Math.max(bounds.left, Math.min(spot.left, bounds.right - wide));
         let top = spot.bottom + 6;
@@ -2775,6 +2777,7 @@ function placeConfirm(button) {
         confirmChip.style.top = `${Math.round(Math.max(edge, top))}px`;
         return;
     }
+    confirmChip.style.transformOrigin = 'top right';
     placeUnder(confirmChip, button, bounds);
 }
 
@@ -7773,8 +7776,19 @@ async function takeListFile(file) {
 
 const listKept = document.getElementById('listKept');
 
+const listFrame = document.getElementById('listFrame');
+
+/* exportify is only loaded when the window is actually opened, and only
+   once — a plain visit to this site fetches nothing of theirs. */
+function wakeListSite() {
+    if (listFrame.dataset.woke) return;
+    listFrame.dataset.woke = 'yes';
+    listFrame.src = 'https://exportify.net/';
+}
+
 scratchOpen.addEventListener('click', () => {
     paintLists();
+    wakeListSite();
     showScreen(listScreen);
 });
 
@@ -8108,14 +8122,20 @@ let pointerAt = { x: 0, y: 0 };
 
 // the words a thing goes by: what it tells the browser, then what it
 // tells a screen reader, then whatever it actually says
+/* only things you can press. an `aria-label` sits on whole regions as
+   well as on buttons, so climbing to one meant holding option over an
+   empty stretch of the board named the page itself — an answer to a
+   question nobody asked. and a box you type in is not a button: its
+   placeholder is already on screen, saying it again beside the pointer
+   is the same word twice. */
 function whatItDoes(node) {
     const named = node && node.closest
-        && node.closest('[title], [data-said], [aria-label], button, a, input, [role="button"]');
+        && node.closest('button, a, [role="button"], [title], [data-said]');
     if (!named) return '';
+    if (named.matches('input, textarea, select')) return '';
     const said = named.getAttribute('title')
         || named.getAttribute('data-said')
         || named.getAttribute('aria-label')
-        || named.getAttribute('placeholder')
         || named.textContent;
     return tidy(said || '').slice(0, 90);
 }

@@ -254,6 +254,18 @@ nothing is fetched, nothing is signed into, and the exporter is only
 wanted the first time a playlist comes in. The name comes off the file's
 own name, without its extension and with the underscores opened out.
 
+**Exportify itself runs in the window.** Measured with `curl -I`: it
+sends no `x-frame-options` and no `frame-ancestors`, so it can be
+framed. `accounts.spotify.com` sends `x-frame-options: deny` and
+`frame-ancestors 'self' *.spotify.com`, so the **sign-in cannot be** —
+that one time has to happen in a tab of its own, and afterwards the
+frame knows you. The frame is only loaded when the window is first
+opened, so a plain visit fetches nothing of theirs.
+
+What it exports still comes back as a file: a page cannot read inside a
+frame it does not own, which is the whole of why the drop target below
+it is still there.
+
 This is what was asked for instead of the live Spotify picker, and why:
 **the sign-in worked and the reading did not.** Spotify answered 403 —
 a fine key, and it is not allowed this — and three rounds went into that
@@ -789,8 +801,17 @@ on both backgrounds.
 
 **Holding option** names whatever is under the pointer, beside it, in
 the site's own colours (`whatItDoes()` → `title`, then `data-said`, then
-`aria-label`, then `placeholder`, then the text). Nothing new has to be
-registered: anything named properly is covered.
+`aria-label`, then the text). Nothing new has to be registered: anything
+named properly is covered.
+
+**Only things you can press.** It used to climb to any `[aria-label]`,
+and those sit on whole regions as well as on buttons — so holding option
+over an empty stretch of the board named the page itself, an answer to a
+question nobody asked. And a box you type in is not a button: its
+placeholder is already on screen, and saying it again beside the pointer
+is the same word twice. `input`, `textarea` and `select` say nothing
+now, and nothing without a `title`, a `button`, a link or a
+`role="button"` is climbed to at all.
 
 **And the browser's own tooltip gets out of the way while it is held.**
 Resting on the same thing for a second and a half brought the system's

@@ -2252,6 +2252,8 @@ html.inverted .app-shell::before { opacity: 1; }
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 	text-align: left;
 	font-size: 0.9rem;
+	/* it unfolds from the corner it is pinned by, which placeConfirm()
+	   sets — the left one when it lines up on the left */
 	transform-origin: top right;
 	animation: confirm-in 0.22s var(--ease);
 }
@@ -2487,6 +2489,24 @@ html.inverted .app-shell::before { opacity: 1; }
 	cursor: var(--cur-tap);
 }
 
+/* exportify, in the window. it is somebody else's page, so it gets a
+   box of its own and nothing of ours over it. */
+.list-site {
+	flex: none;
+	height: min(52vh, 26rem);
+	min-height: 16rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	overflow: hidden;
+}
+.list-site iframe {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
+}
+
 .list-drop {
 	width: 100%; min-height: 4.6rem; margin-top: var(--group);
 	display: grid; place-items: center; padding: 0.8rem;
@@ -2552,6 +2572,9 @@ html.inverted .app-shell::before { opacity: 1; }
    spotify's sign-in and the sharper reader wear the same shape: a
    line on why, numbered steps, a field and one button. */
 .ask-screen { width: min(30rem, 100%); }
+/* the playlist window carries exportify itself, so it wants the room a
+   site wants rather than the room a question wants */
+#listScreen.ask-screen { width: min(54rem, 100%); }
 .ask-body {
 	display: flex;
 	flex-direction: column;

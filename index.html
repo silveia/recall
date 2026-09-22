@@ -619,10 +619,11 @@
                                     <ol class="ask-steps">
                                         <li>
                                             <span class="ask-step">1</span>
-                                            <span class="ask-said">open
-                                                <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">exportify.net</a>
-                                                and sign in there. it is free, and it reads playlists
-                                                spotify will not hand to this page.</span>
+                                            <span class="ask-said">sign in once in
+                                                <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">a tab of its own</a>.
+                                                spotify's sign-in refuses to be shown inside another
+                                                page, so that part has to happen out there — after it,
+                                                the window below knows you.</span>
                                         </li>
                                         <li>
                                             <span class="ask-step">2</span>
@@ -634,6 +635,19 @@
                                             <span class="ask-said">drop that file below, or press to pick it.</span>
                                         </li>
                                     </ol>
+
+                                    <!-- exportify itself, in here. it sends nothing
+                                         that refuses to be framed, so it runs in the
+                                         window rather than in a tab somewhere else.
+                                         what it exports still comes back as a file:
+                                         a page cannot read inside a frame it does not
+                                         own, which is the whole of why the target
+                                         below is still there. -->
+                                    <div class="list-site" id="listSite">
+                                        <iframe id="listFrame" title="exportify" src="about:blank"
+                                            referrerpolicy="no-referrer"
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
+                                    </div>
 
                                     <button class="list-drop" id="listDrop" type="button">
                                         drop the file here, or press to pick it
