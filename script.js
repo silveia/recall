@@ -7669,6 +7669,8 @@ async function theRest(bit, token, have, say) {
     const path = bit.kind === 'album' ? 'albums' : 'playlists';
     const more = [];
     let total = 0;
+    let why = '';
+    if (!token) return { more, total, why: 'none' };
 
     for (let at = have; at < 10000; at += 100) {
         if (say) say(`reading the playlist... ${have + more.length} so far`);
@@ -7679,9 +7681,19 @@ async function theRest(bit, token, have, say) {
                 { headers: { authorization: `Bearer ${token}` } }
             );
         } catch (error) {
+            why = 'blocked';
             break;   // blocked, or nothing answered
         }
-        if (!answer.ok) break;
+        /* why it stopped, so the box can say something better than
+           nothing. the borrowed key is the one that gets turned away:
+           spotify rations it hard, and a rationed key looks exactly
+           like a working one until it is used. */
+        if (!answer.ok) {
+            why = answer.status === 429 ? 'rationed'
+                : answer.status === 401 || answer.status === 403 ? 'refused'
+                : 'stopped';
+            break;
+        }
 
         const body = await answer.json();
         total = body.total || total;
@@ -7699,7 +7711,7 @@ async function theRest(bit, token, have, say) {
         more.push(...batch);
         if (total && at + 100 >= total) break;
     }
-    return { more, total };
+    return { more, total, why };
 }
 
 /* the same page already read for us, as plain text. it comes back as a
@@ -7777,16 +7789,37 @@ async function readPlaylist(bit, say) {
             : 'nothing would answer — try again in a minute');
     }
 
+    /* The first one back wins the race, and the reader is often it —
+       but the reader hands over a page already turned into words, with
+       no key left in it. Winning with no key meant no way past the
+       embed's own limit, however well the others were doing. So if the
+       winner came without one, the rest are given a moment to finish
+       and their key is borrowed. */
+    if (!got.token && bit.kind !== 'track') {
+        const anyKey = await Promise.race([
+            Promise.all(tries.map((one) => one.catch(() => null)))
+                .then((all) => all.find((one) => one && one.token) || null),
+            new Promise((done) => { window.setTimeout(() => done(null), 4000); })
+        ]);
+        if (anyKey) got.token = anyKey.token;
+    }
+
     const songs = got.songs;
-    /* a hundred exactly is not a playlist that happens to be a hundred
-       long — it is the embed page's own limit, and the rest has to be
-       asked for properly. a token of your own does that; the page's own
-       is tried after it, since it costs nothing and sometimes works. */
-    if (songs.length >= 100 && bit.kind !== 'track') {
+    /* The embed page stops short — at a hundred once, at fifty now, and
+       at whatever it likes next month. Waiting for exactly a hundred
+       meant a playlist cut off at fifty was never asked about at all,
+       so anything that could be cut short is asked about instead. The
+       ask itself is cheap and it comes back with the real length. */
+    if (songs.length >= 50 && bit.kind !== 'track') {
         const mine = await spotToken();
-        const { more } = await theRest(bit, mine || got.token, songs.length, say);
+        const { more, total, why } = await theRest(bit, mine || got.token, songs.length, say);
         songs.push(...more);
-        if (songs.length % 100 === 0) songs.short = true;
+        if (total && songs.length < total) {
+            songs.short = true;
+            songs.of = total;
+            songs.why = why;
+        }
+        if (!total && !more.length) { songs.short = true; songs.why = why; }
     }
     return songs;
 }
@@ -7971,13 +8004,25 @@ function renderScratch(songs, said) {
     scratchMatch.hidden = songs.length === 0;
     clipSide.classList.toggle('has-songs', songs.length > 0);
     /* a playlist past a hundred is cut short by spotify, not by us, and
-       that is the one thing the list itself cannot tell you */
+       that is the one thing the list itself cannot tell you.
+       Which is also worth saying for the right reason: signed in and
+       still cut short is a different thing from not being signed in,
+       and being turned away for asking too often is a third. Saying
+       "sign in for the rest" to somebody already signed in is how this
+       came to look like it had simply stopped working. */
     if (songs.short) {
         const on = spotHeld();
-        saySc(on
-            ? `spotify would only part with the first ${songs.length}`
-            : `that's ${songs.length} of more — sign in below for the rest`);
-        if (!on) spotToggle.classList.add('is-wanted');
+        const have = songs.of ? `${songs.length} of ${songs.of}` : `${songs.length}`;
+        saySc(songs.why === 'rationed'
+            ? `${have} — spotify is rationing the borrowed key. sign in below for the rest`
+            : songs.why === 'refused' && on
+                ? `${have} — spotify would not take that sign-in. sign in again below`
+                : on
+                    ? `${have} — spotify would not part with the rest`
+                    : `${have} — sign in below for the rest`);
+        if (!on || songs.why === 'rationed' || songs.why === 'refused') {
+            spotToggle.classList.add('is-wanted');
+        }
     }
     else if (said !== undefined) saySc(said);
 }
