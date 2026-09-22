@@ -7344,7 +7344,7 @@ const SCRATCH_KEY = 'scratch-playlist';
    client id between the quotes below. Left empty, the page falls back
    to asking each person for one of their own, which is the window that
    used to open every time. */
-const SPOT_BUILT_IN_ID = '';
+const SPOT_BUILT_IN_ID = '78e5dee1d78f49ef8f50191cad1ce815';
 
 const SPOT_ID_KEY = 'spotify-client-id';
 const SPOT_TOKEN_KEY = 'spotify-token';
