@@ -251,7 +251,7 @@ a:hover, a:focus-visible {
    go and open. Reading an address off the screen and typing it out by
    hand is no way to be asked for anything. */
 p, li, dt, dd, h1, h2, h3, h4, h5, h6, code, pre, blockquote, figcaption,
-.ask-why, .ask-said, .ask-warn, .scratch-url {
+.ask-why, .ask-said {
 	-webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
 }
 /* Anything you press or drag keeps its hands off the selection, whatever
@@ -2375,49 +2375,6 @@ html.inverted .app-shell::before { opacity: 1; }
 .clip-side-body::-webkit-scrollbar { display: none; }
 .clip-side-body { scrollbar-width: none; }
 
-/* the link goes in the bar at the top, and what comes back fills the
-   box under it */
-/* the arrow lives inside the field rather than beside it — the same
-   move the notes box makes with its picture button. one thing on the
-   row instead of two, and the field gets the width back. */
-.scratch-bar {
-	position: relative;
-	display: flex;
-	flex: none;
-	min-width: 0;
-}
-/* the mark alone, no outline round it: inside a field that already has
-   one, a second ring was one shape too many and read as a button
-   stuck on rather than part of the row */
-.scratch-bar .square-button {
-	position: absolute;
-	top: 50%;
-	right: 0.55rem;
-	margin-top: -0.7rem;
-	width: 1.4rem;
-	height: 1.4rem;
-	background: none;
-	border: 0;
-	border-radius: 0;
-}
-.scratch-bar .square-button svg { width: 100%; height: 100%; }
-.scratch-bar .square-button:hover { color: var(--ink); transform: translateX(2px); }
-.scratch-bar .square-button { transition: transform 0.18s var(--ease); }
-.scratch-bar input {
-	flex: 1;
-	min-width: 0;
-	height: var(--field);
-	padding: 0 2.2rem 0 0.9rem;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	color: var(--ink);
-	font: inherit;
-	font-size: 0.85rem;
-	text-overflow: ellipsis;
-}
-.scratch-bar input::placeholder { color: var(--ink); opacity: 1; }
-.scratch-bar .square-button { flex: none; }
 /* a chip down in the corner, just over the copy button. as a line of
    text under the field it shoved the whole list down every time it had
    something to say, and it was the first thing you saw in a box whose
@@ -2465,19 +2422,14 @@ html.inverted .app-shell::before { opacity: 1; }
 	width: 100%; min-height: 4.6rem; margin-top: var(--group);
 	display: grid; place-items: center; padding: 0.8rem;
 	background-color: transparent; color: var(--ink);
-	border: 0; border-radius: var(--round);
-	font: inherit; font-size: 0.8rem; text-align: center; cursor: pointer;
-	/* `dashed` draws whatever dash the browser fancies, which is short and
-	   crowded. drawn as four lines instead, the dash and the gap are ours
-	   to set: one pixel thin, eighteen long, twelve apart. */
-	background-image:
-		repeating-linear-gradient(90deg, var(--ink) 0 18px, transparent 18px 30px),
-		repeating-linear-gradient(90deg, var(--ink) 0 18px, transparent 18px 30px),
-		repeating-linear-gradient(0deg, var(--ink) 0 18px, transparent 18px 30px),
-		repeating-linear-gradient(0deg, var(--ink) 0 18px, transparent 18px 30px);
-	background-size: 100% 1px, 100% 1px, 1px 100%, 1px 100%;
-	background-position: 0 0, 0 100%, 0 0, 100% 0;
-	background-repeat: no-repeat;
+	/* Four drawn lines let the dash be any length wanted, and cannot turn
+	   a corner — they ran straight past where the radius curves, and each
+	   corner met at a different point in the dash. A real dashed border
+	   follows the curve and comes out even at all four, which is worth
+	   more here than choosing the dash myself. */
+	border: 1px dashed var(--ink);
+	border-radius: var(--radius);
+	font: inherit; font-size: 0.8rem; text-align: center; cursor: var(--cur-tap);
 	/* the fill arrives; the dashes need no handling of their own, being
 	   the same ink it fills with — they are simply swallowed by it. */
 	transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
@@ -2488,43 +2440,6 @@ html.inverted .app-shell::before { opacity: 1; }
 /* a list being dragged over the box: the same dashed catch as the notes
    panel, so it reads as the same gesture */
 .clip-side.is-catching { outline: 2px dashed var(--ink); outline-offset: -6px; }
-
-/* which app the page is signing in through, said plainly */
-.spot-using {
-	display: flex; align-items: baseline; justify-content: space-between;
-	gap: var(--tight); margin: var(--tight) 0 0;
-	font-size: 0.7rem; word-break: break-all;
-}
-.spot-using span { font-family: var(--num-font); font-size: 0.85rem; }
-
-/* signed in, the spotify window lists your own playlists to pick from.
-   white with an outline like everything else; the one under the pointer
-   inverts, the way a live thing does here. */
-.spot-mine { margin-top: var(--group); }
-.spot-mine-head {
-	display: flex; align-items: baseline; justify-content: space-between;
-	gap: var(--tight); margin-bottom: var(--tight);
-	font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase;
-}
-.spot-mine-list {
-	display: flex; flex-direction: column;
-	max-height: 42vh; overflow-y: auto;
-	border: 1px solid var(--ink); border-radius: var(--round);
-}
-.spot-pick {
-	display: flex; align-items: baseline; gap: var(--tight);
-	width: 100%; padding: 0.42rem 0.6rem;
-	background: none; border: 0; border-bottom: 1px solid var(--ink);
-	font: inherit; font-size: 0.8rem; color: var(--ink);
-	text-align: left; cursor: pointer;
-}
-.spot-pick:last-child { border-bottom: 0; }
-.spot-pick:hover, .spot-pick:focus-visible { background: var(--ink); color: var(--paper); }
-.spot-pick .spot-pick-name {
-	flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.spot-pick .spot-pick-count { flex: none; font-family: var(--num-font); font-size: 0.9rem; }
-.spot-mine-said { padding: 0.6rem; font-size: 0.75rem; text-align: center; }
 
 .scratch-list {
 	display: flex;
@@ -2615,7 +2530,10 @@ html.inverted .app-shell::before { opacity: 1; }
 	background: var(--ink);
 	border-radius: 999px;
 	font-family: var(--num-font);
-	font-size: 1rem;
+	/* smaller than the words beside it: a figure in this face at the same
+	   size as the body carries more ink than a count needs, and left the
+	   circle looking filled rather than worn */
+	font-size: 0.82rem;
 	/* the figure's own line box, so centring has one thing to centre
 	   rather than a box with the face's own slack in it */
 	line-height: 1;
@@ -2631,14 +2549,6 @@ html.inverted .app-shell::before { opacity: 1; }
 	font-size: 0.82rem;
 	line-height: 1.55;
 }
-.ask-said .scratch-url { display: block; margin-top: var(--tight); }
-.ask-warn {
-	display: block;
-	margin-top: var(--tight);
-	font-size: 0.78rem;
-	font-weight: 700;
-}
-.ask-warn[hidden] { display: none; }
 .ask-screen input {
 	width: 100%;
 	height: var(--field);
@@ -2654,49 +2564,6 @@ html.inverted .app-shell::before { opacity: 1; }
 .ask-go { align-self: stretch; height: var(--field); padding: calc(var(--drop) * 2) 1.5rem 0; }
 .ask-forget { align-self: center; }
 
-.scratch-key {
-	display: flex;
-	flex: none;
-	flex-direction: column;
-	gap: var(--tight);
-	min-width: 0;
-}
-.scratch-key[hidden] { display: none; }
-.scratch-say { margin: 0; font-size: 0.72rem; line-height: 1.5; text-align: center; }
-/* the address they have to hand spotify, set apart so it can be read
-   off in one go */
-.scratch-url {
-	padding: calc(0.3rem + var(--drop)) 0.6rem calc(0.3rem - var(--drop));
-	background: var(--ink);
-	color: var(--paper);
-	border-radius: var(--radius);
-	font-family: var(--head-font);
-	font-size: 0.7rem;
-	text-align: center;
-	overflow-wrap: anywhere;
-	cursor: var(--cur-tap);
-}
-.scratch-key input {
-	width: 100%;
-	height: var(--field);
-	padding: 0 0.9rem;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	color: var(--ink);
-	font: inherit;
-	font-size: 0.8rem;
-	text-overflow: ellipsis;
-}
-.scratch-key input::placeholder { color: var(--ink); opacity: 1; }
-.scratch-key-row {
-	display: flex;
-	flex: none;
-	flex-direction: column;
-	align-items: center;
-	gap: var(--tight);
-}
-.scratch-connect { align-self: stretch; height: var(--field); padding: calc(var(--drop) * 2) 1.5rem 0; }
 
 /* one song. the whole row is the copy button — there is nothing else
    to press on it, so a separate mark beside the words would only be a
@@ -2819,22 +2686,16 @@ html.inverted .app-shell::before { opacity: 1; }
 	flex: none;
 	width: 100%;
 	align-self: stretch;
-	height: var(--field);
-	/* A fixed height and a padding on one side leaves a single line of
-	   words sitting wherever the line box lands, which is high. Centred
-	   in what is left, the padding stops being where the words sit and
-	   becomes only the nudge the body face wants — half of it, so twice
-	   the drop is the whole of the drop. */
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	/* Centring a line of words centres its line box, and a line box
-	   carries the face's leading above and below the letters — unevenly,
-	   which is the lean. Pinned to the letters themselves there is
-	   nothing uneven left to centre, and the padding goes back to being
-	   the one small nudge the face asks for. */
-	line-height: 1;
-	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
+	/* Every button here is centred the same way and has been all along:
+	   the line sits between two paddings, the top one a drop longer than
+	   the bottom. Chasing it with a fixed height and a flex centre was
+	   inventing a second mechanism and getting the lean by doing so. The
+	   paddings are worked out from the height wanted instead, so it comes
+	   to the same size as the two below it by arithmetic. */
+	padding:
+		calc((var(--field) - 1.5rem) / 2 + var(--drop))
+		min(1.5rem, 10%)
+		calc((var(--field) - 1.5rem) / 2 - var(--drop));
 	margin-bottom: var(--tight);
 }
 /* shut it keeps no outline and no padding — an empty sliver of box
