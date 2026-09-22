@@ -244,6 +244,29 @@ a path into it — it searches the whole thing for the longest array of
 objects that look like songs. Leave it that way; a rename in the middle
 of their JSON then costs nothing.
 
+## Every playlist you bring in is kept
+
+One import per playlist, and then never again. Each one is kept under
+its own name (`scratch-lists`, newest first, one entry per name — the
+same playlist again is a longer version of it, not a second copy), and
+the window lists them all. Pressing one **swaps the songs on the spot**:
+nothing is fetched, nothing is signed into, and the exporter is only
+wanted the first time a playlist comes in. The name comes off the file's
+own name, without its extension and with the underscores opened out.
+
+This is what was asked for instead of the live Spotify picker, and why:
+**the sign-in worked and the reading did not.** Spotify answered 403 —
+a fine key, and it is not allowed this — and three rounds went into that
+before the whole flow was taken out on 21 Sep. Spotify's own editorial
+playlists are permanently out of reach for an app whose owner doesn't
+pay; a reader's own playlists may not be, but that path has already cost
+three rounds and cannot be tested from here.
+
+**`closeModal()` hid every window but this one.** It was written before
+`listScreen` existed and never grew the line — so the playlist window
+was only ever hidden by the next window opening over it. Any new window
+has to be added in both places: `showScreen` and `closeModal`.
+
 ## Every clip into a folder
 
 `download every clip` writes the mp3s straight into a folder — not
@@ -272,6 +295,16 @@ was typed, since a folder name can't hold them. The field centres its
 name: a short one left-aligned in a full-width box reads as something
 forgotten in the corner of it. Nothing typed at all
 means straight into the place itself.
+
+**A folder is sorted by name, so the name has to carry the order.** The
+files go in bottom-first — which is the order they were recorded, and
+the order the numbers down the list read — but Finder shows a folder
+alphabetically all the same, so `01 `, `02 ` at the front is what makes
+the two agree. Padded, so 2 sorts before 10. The tag inside carries the
+same number (`TRCK`), so a music player plays them in order too, and the
+title and artist in the tag stay clean either way. Verified on twelve
+clips: written 01–12 bottom-first, and sorting those names gives the
+same list back.
 
 Two clips can carry the same name — the same song twice on a playlist,
 or two turns of one speaker — and a folder holds one of each, so

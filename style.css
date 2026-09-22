@@ -2426,6 +2426,67 @@ html.inverted .app-shell::before { opacity: 1; }
 /* where the exported file is dropped. a big plain target rather than a
    button pretending to be one, and it inverts while something is over
    it the way a live thing does here. */
+/* the lists already brought in, newest first. pressing one swaps the
+   songs in the box; the cross beside it forgets that one. */
+.list-kept {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+	max-height: 14rem;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	list-style: none;
+	scrollbar-width: none;
+}
+.list-kept::-webkit-scrollbar { display: none; }
+.list-kept[hidden] { display: none; }
+.list-kept li { display: flex; align-items: center; gap: var(--tight); }
+
+.list-pick {
+	display: flex;
+	flex: 1;
+	align-items: baseline;
+	gap: var(--tight);
+	min-width: 0;
+	height: var(--field);
+	padding: calc(var(--drop) * 2) 0.9rem 0;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font: inherit;
+	text-align: left;
+	cursor: var(--cur-tap);
+	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.list-pick strong {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-weight: 600;
+}
+/* a number, so it wears the number face */
+.list-pick small { flex: none; font-family: var(--num-font); font-size: 1rem; }
+.list-pick:hover { color: var(--paper); background: var(--ink); }
+/* the one in the box wears the black, the way every live thing does */
+.list-pick.is-on { color: var(--paper); background: var(--ink); }
+
+.list-forget {
+	flex: none;
+	width: 1.5rem;
+	height: 1.5rem;
+	padding: 0;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	font-size: 1.1rem;
+	line-height: 1;
+	cursor: var(--cur-tap);
+}
+
 .list-drop {
 	width: 100%; min-height: 4.6rem; margin-top: var(--group);
 	display: grid; place-items: center; padding: 0.8rem;

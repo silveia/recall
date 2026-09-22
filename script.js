@@ -1075,6 +1075,7 @@ function closeModal() {
         makerScreen.hidden = true;
         studyScreen.hidden = true;
         notesScreen.hidden = true;
+        listScreen.hidden = true;
         keyScreen.hidden = true;
         returnNotesPanel();
     }, MODAL_EXIT_MS);
@@ -3194,8 +3195,8 @@ async function downloadAllClips(folder) {
         try {
             // a cropped clip goes out cropped here too
             const mp3 = await blobToMp3(record.blob, clipSpan(record, record.durationMs / 1000),
-                                       splitName(record.name));
-            const called = freeName(taken, clipFileName(record));
+                                       { ...splitName(record.name), track: done + 1 });
+            const called = freeName(taken, clipFileName(record, done + 1, clips.length));
             if (folder) {
                 // straight into the folder you chose, no download at all
                 const file = await folder.getFileHandle(called, { create: true });
@@ -3342,7 +3343,13 @@ const FILE_NAME_TWINS = {
     '|': '\u2223',   // divides
 };
 
-function clipFileName(record) {
+/* a folder is sorted by name, so the name has to carry the order or the
+   folder does not keep it — the files go in bottom-first, and finder
+   shows them alphabetically all the same. the number at the front is
+   what makes the two agree, padded so 2 sorts before 10. the tag inside
+   carries the same number, so a music player plays them in order too;
+   the title and the artist in the tag stay clean either way. */
+function clipFileName(record, at, total) {
     // the mark is for telling the two apart, not for a file name — on
     // disk it reads as the dash anyone would have written
     const named = splitName(record.name);
@@ -3354,7 +3361,16 @@ function clipFileName(record) {
         .replace(/[\x00-\x1f\x7f]/g, '')
         .replace(/^\.+/, '')
         .trim();
-    return `${safe || `clip-${record.number}`}.mp3`;
+    const called = safe || `clip-${record.number}`;
+    if (!at) return `${called}.mp3`;
+    const wide = String(total || at).length;
+    return `${String(at).padStart(wide, '0')} ${called}.mp3`;
+}
+
+// where a clip sits counting up from the bottom, as the row shows it
+function clipPlace(record) {
+    const row = recordingList.querySelector(`[data-clip-id="${record.id}"] .clip-number`);
+    return row ? Number(row.textContent) || 0 : 0;
 }
 
 /* --- webm/opus -> mp3, only when a clip is downloaded --- */
@@ -3385,6 +3401,8 @@ function id3Tag(tags) {
     };
     put('TIT2', tags.title);
     put('TPE1', tags.artist);
+    // so a player orders them the way the list does, not alphabetically
+    put('TRCK', tags.track ? String(tags.track) : '');
     if (!frames.length) return new Uint8Array(0);
 
     const total = frames.length;
@@ -3767,11 +3785,12 @@ function addRecording(record, alreadySaved, atEnd) {
         // line box happens to put it
         download.classList.add('is-working');
         try {
-            const mp3 = await blobToMp3(record.blob, clipSpan(record, totalSeconds), splitName(record.name));
+            const mp3 = await blobToMp3(record.blob, clipSpan(record, totalSeconds),
+                                       { ...splitName(record.name), track: clipPlace(record) });
             const href = URL.createObjectURL(mp3);
             const a = document.createElement('a');
             a.href = href;
-            a.download = clipFileName(record);
+            a.download = clipFileName(record, clipPlace(record), clipCount);
             a.click();
             window.setTimeout(() => URL.revokeObjectURL(href), 10000);
         } catch (error) {
@@ -7600,14 +7619,118 @@ function loadScratch() {
         const saved = JSON.parse(window.localStorage.getItem(SCRATCH_KEY));
         if (!saved || !Array.isArray(saved.songs)) return;
         renderScratch(saved.songs, '');
+        // whichever kept list these songs are, so the window shows it as on
+        const same = savedLists().find((one) => one.songs.length === saved.songs.length
+            && one.songs[0] && saved.songs[0] && one.songs[0].title === saved.songs[0].title);
+        if (same) currentList = same.name;
     } catch (error) {
         // nothing kept, or it didn't read
     }
 }
 
+/* --- every list you have brought in, kept --- */
+
+/* one import per playlist, and then never again. each one is kept under
+   its own name and the window lists them all; pressing one swaps the
+   songs on the spot, with nothing fetched and nothing to sign into.
+   the only time the exporter is wanted is the first time a playlist is
+   brought in. */
+const LISTS_KEY = 'scratch-lists';
+
+function savedLists() {
+    try {
+        const kept = JSON.parse(window.localStorage.getItem(LISTS_KEY));
+        return Array.isArray(kept) ? kept.filter((one) => one && Array.isArray(one.songs)) : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function keepLists(lists) {
+    try {
+        window.localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+        return true;
+    } catch (error) {
+        // the browser's store is full. the list on screen is still fine;
+        // it just won't be there to pick next time.
+        saySc('no room to keep that one');
+        return false;
+    }
+}
+
+// the name a file goes by, without the machinery on the end of it
+function listName(from) {
+    return tidy(String(from || '')
+        .replace(/\.[a-z0-9]{1,5}$/i, '')
+        .replace(/[_]+/g, ' ')) || 'playlist';
+}
+
+/* newest first, one entry per name — bringing the same playlist in
+   again is a longer version of it, not a second copy. */
+function rememberList(name, songs) {
+    const called = listName(name);
+    const lists = savedLists().filter((one) => one.name !== called);
+    lists.unshift({ name: called, songs, when: Date.now() });
+    keepLists(lists);
+    return called;
+}
+
+function forgetList(name) {
+    keepLists(savedLists().filter((one) => one.name !== name));
+    if (currentList === name) currentList = '';
+    paintLists();
+}
+
+let currentList = '';
+
+/* the list of lists, inside the window. it is drawn from what is kept
+   rather than held anywhere, so removing one needs no bookkeeping. */
+function paintLists() {
+    const lists = savedLists();
+    listKept.innerHTML = '';
+    listKept.hidden = lists.length === 0;
+
+    lists.forEach((one) => {
+        const row = document.createElement('li');
+
+        const pick = document.createElement('button');
+        pick.className = 'list-pick';
+        pick.type = 'button';
+        pick.title = 'put this one in the box';
+        if (one.name === currentList) pick.classList.add('is-on');
+
+        const name = document.createElement('strong');
+        name.textContent = one.name;
+        const many = document.createElement('small');
+        many.textContent = `${one.songs.length}`;
+        pick.append(name, many);
+        pick.addEventListener('click', () => {
+            currentList = one.name;
+            renderScratch(one.songs, '');
+            keepScratch(one.songs);
+            paintLists();
+            showScreen(homeScreen);
+            saySc(`${one.name} — ${one.songs.length} songs`);
+        });
+
+        const drop = document.createElement('button');
+        drop.className = 'list-forget';
+        drop.type = 'button';
+        drop.textContent = '×';
+        drop.title = 'forget this one';
+        drop.addEventListener('click', (event) => {
+            event.stopPropagation();
+            forgetList(one.name);
+        });
+
+        row.append(pick, drop);
+        listKept.append(row);
+    });
+}
+
 /* A list carried in: dropped on the box, or picked through the window.
    Nothing is looked up, so nothing can be refused. */
-function takeList(text, how) {
+function takeList(text, how, called) {
     const songs = songsFromList(text);
     if (!songs.length) {
         saySc('no songs I could read in that');
@@ -7615,6 +7738,8 @@ function takeList(text, how) {
     }
     renderScratch(songs, '');
     keepScratch(songs);
+    currentList = rememberList(called || `playlist ${savedLists().length + 1}`, songs);
+    paintLists();
     saySc(`${songs.length} ${how}`);
     return true;
 }
@@ -7626,14 +7751,20 @@ const scratchOpen = document.getElementById('scratchOpen');
 async function takeListFile(file) {
     if (!file) return false;
     try {
-        return takeList(await file.text(), 'read in');
+        // the file's own name is what the playlist goes by afterwards
+        return takeList(await file.text(), 'read in', file.name);
     } catch (error) {
         saySc('could not read that file');
         return false;
     }
 }
 
-scratchOpen.addEventListener('click', () => showScreen(listScreen));
+const listKept = document.getElementById('listKept');
+
+scratchOpen.addEventListener('click', () => {
+    paintLists();
+    showScreen(listScreen);
+});
 
 /* the window's own target: pressed, it picks a file; dragged onto, it
    takes what is dropped. the same reading either way. */

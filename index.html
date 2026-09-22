@@ -600,9 +600,15 @@
                                  one anyway. -->
                             <section class="modal-panel ask-screen" id="listScreen" data-title="playlist" hidden>
                                 <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
-                                <h2 class="modal-title">exportify</h2>
+                                <h2 class="modal-title">playlists</h2>
 
                                 <div class="ask-body">
+                                    <!-- every list brought in so far. pressing one
+                                         puts it in the box on the spot — the steps
+                                         below are only for a playlist that isn't
+                                         here yet. -->
+                                    <ul class="list-kept" id="listKept" hidden></ul>
+
                                     <p class="ask-why">
                                         a playlist longer than a hundred songs cannot be read here —
                                         spotify keeps the rest for apps whose owner pays. exported
