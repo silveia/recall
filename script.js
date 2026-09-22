@@ -7342,9 +7342,16 @@ const SCRATCH_KEY = 'scratch-playlist';
    To fill it: open developer.spotify.com/dashboard, press create app,
    put this page's address in its redirect uri box, and paste the app's
    client id between the quotes below. Left empty, the page falls back
-   to asking each person for one of their own, which is the window that
-   used to open every time. */
-const SPOT_BUILT_IN_ID = '78e5dee1d78f49ef8f50191cad1ce815';
+   to asking each person for one of their own.
+
+   One catch, and it is spotify's: an app is blocked from the web api
+   unless the account that registered it pays for premium. The app is
+   fine, the sign-in is fine, and every read comes back refused. So an
+   id is only worth putting here if it came from an account with
+   premium — the account signing in afterwards does not need it. Until
+   then a list brought in by hand is the way this box gets a playlist
+   longer than the embed will part with. */
+const SPOT_BUILT_IN_ID = '';
 
 const SPOT_ID_KEY = 'spotify-client-id';
 const SPOT_TOKEN_KEY = 'spotify-token';
@@ -8486,7 +8493,9 @@ function renderScratch(songs, said) {
            long ones came across as being told off rather than told. */
         saySc(noWay && theirs
             ? `${have} — spotify's own playlist, not given to apps`
-            : songs.why === 'withheld'
+            : /premium/i.test(songs.said || '')
+                ? `${have} — spotify blocks the api unless the app's owner pays`
+                : songs.why === 'withheld'
                     ? `${have} — not given to apps`
                     : songs.why === 'offlimits' && yours
                         ? `${have} — refused (${songs.said || '403'})`
