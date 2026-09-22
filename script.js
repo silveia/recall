@@ -2746,8 +2746,36 @@ function placeUnder(panel, button, bounds) {
     panel.style.top = `${Math.round(Math.max(edge, top))}px`;
 }
 
+/* the chip is wider than most of the buttons that raise it, and
+   `placeUnder` lines their right edges up — so a button near the left
+   of the page threw the chip out over the black bar, which is not part
+   of the page and reads as the chip having fallen off it. it is held
+   inside the page's own column instead, and lines up on its left edge
+   rather than its right when the button sits in the left half. */
 function placeConfirm(button) {
-    placeUnder(confirmChip, button);
+    const page = document.querySelector('.app-content');
+    if (!page) {
+        placeUnder(confirmChip, button);
+        return;
+    }
+    const field = page.getBoundingClientRect();
+    const edge = 8;
+    const bounds = { left: field.left + edge, right: field.right - edge };
+    const spot = button.getBoundingClientRect();
+
+    if (spot.left < field.left + field.width / 2) {
+        // left edges together, growing rightwards into the room there is
+        const wide = confirmChip.offsetWidth;
+        const left = Math.max(bounds.left, Math.min(spot.left, bounds.right - wide));
+        let top = spot.bottom + 6;
+        if (top + confirmChip.offsetHeight > window.innerHeight - edge) {
+            top = spot.top - confirmChip.offsetHeight - 6;
+        }
+        confirmChip.style.left = `${Math.round(left)}px`;
+        confirmChip.style.top = `${Math.round(Math.max(edge, top))}px`;
+        return;
+    }
+    placeUnder(confirmChip, button, bounds);
 }
 
 function askConfirm(question, button) {

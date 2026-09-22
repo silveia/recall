@@ -727,6 +727,16 @@ put the two on at once** — that is paying for both.
 mid-swap), so a 900ms timer writes the theme again and takes the classes
 off. Writing it twice can only agree with itself.
 
+## The confirm chip stays on the page
+
+The chip is wider than most of the buttons that raise it, and
+`placeUnder` lines their **right** edges up — so a button near the left
+of the page threw the chip out over the black bar, which is not part of
+the page and reads as the chip having fallen off it. `placeConfirm` now
+holds it inside `.app-content`'s own column, and lines it up on its
+**left** edge when the button sits in the left half. Measured: the page
+starts at x=304 and the chip at 328.
+
 ## A pill never wraps
 
 `.basic-button` is a fixed height, so a label allowed to wrap drops its
