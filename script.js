@@ -7699,7 +7699,7 @@ function tokenIn(data) {
    rationed on that too, and reporting the borrowed key as the problem
    when it was your own that had been told to wait. A withheld playlist
    is not coming out for any key either. Both stop where they stand. */
-const KEEP_TRYING = new Set(['refused', 'none', 'stopped', 'blocked']);
+const KEEP_TRYING = new Set(['expired', 'offlimits', 'none', 'stopped', 'blocked']);
 
 async function theRest(bit, keys, have, say) {
     const failures = [];
@@ -7726,28 +7726,9 @@ async function theRest(bit, keys, have, say) {
 function tellingOne(failures) {
     if (!failures.length) return { more: [], total: 0, why: 'none', whose: '' };
     return failures.find((one) => one.why === 'withheld')
+        || failures.find((one) => one.whose === 'yours' && one.why === 'offlimits')
         || failures.find((one) => one.whose === 'yours' && one.why !== 'none')
         || failures[failures.length - 1];
-}
-
-/* Whether a key is any good at all, asked of the one thing every key
-   can answer: whose it is. A key that can say that and still cannot
-   read a playlist is a key with nothing wrong with it — the playlist
-   is what is being kept back — and sending you round the sign-in again
-   over that is a door that opens onto itself. Which is exactly what it
-   was doing: refused, so the sign-in was thrown away; signed in again,
-   in silence, because spotify had already been asked and said yes;
-   refused again. */
-async function keyIsGood(token) {
-    if (!token) return false;
-    try {
-        const answer = await fetch('https://api.spotify.com/v1/me', {
-            headers: { authorization: `Bearer ${token}` }
-        });
-        return answer.ok;
-    } catch (error) {
-        return false;   // the network, not the key
-    }
 }
 
 async function oneKeyRest(bit, token, have, say) {
@@ -7774,8 +7755,15 @@ async function oneKeyRest(bit, token, have, say) {
            spotify rations it hard, and a rationed key looks exactly
            like a working one until it is used. */
         if (!answer.ok) {
+            /* 401 and 403 are opposite answers and were read as one.
+               401 is the key being no good — expired, revoked, not a
+               key any more. 403 is the key being perfectly good and
+               not allowed this particular thing. Treating a 403 as a
+               dead sign-in is what threw working sign-ins away and
+               sent you round to get another one just like it. */
             why = answer.status === 429 ? 'rationed'
-                : answer.status === 401 || answer.status === 403 ? 'refused'
+                : answer.status === 401 ? 'expired'
+                : answer.status === 403 ? 'offlimits'
                 : answer.status === 404 ? 'withheld'
                 : 'stopped';
             // spotify says how long it wants left alone; it is worth
@@ -7914,20 +7902,13 @@ async function readPlaylist(bit, say) {
         let said = why;
         let bywhom = whose;
 
-        /* Your own key was refused. Before deciding the sign-in is
-           finished, ask the key who it belongs to: if it can answer
-           that, there is nothing wrong with it and this playlist is
-           simply not one this app is given. Throwing away a working
-           sign-in there is what put this in a circle — refused, so the
-           sign-in goes; signed in again without a word, because spotify
-           had already said yes; refused again. */
-        if (!more.length && why === 'refused' && whose === 'yours' && spotHeld()) {
-            if (await keyIsGood(await spotToken())) {
-                said = 'offlimits';
-                bywhom = '';
-            } else {
-                forgetSpotToken();
-            }
+        /* Only a key spotify says is no longer a key gets thrown away,
+           and only after the trade-in above has failed too. A key that
+           is merely not allowed this playlist is kept, because there is
+           nothing wrong with it and a new one would be refused exactly
+           the same. */
+        if (!more.length && why === 'expired' && whose === 'yours' && spotHeld()) {
+            forgetSpotToken();
         }
 
         const shortOf = total && songs.length < total;
@@ -8142,15 +8123,15 @@ function renderScratch(songs, said) {
         const yours = songs.whose === 'yours';
         saySc(songs.why === 'withheld'
             ? `${have} — spotify won't hand this playlist to apps at all`
-            : songs.why === 'offlimits'
-                ? `${have} — your sign-in is fine; spotify won't give this app this playlist`
-                : songs.why === 'refused' && yours
-                    ? `${have} — that sign-in is spent. sign in again`
-                    : songs.why === 'refused'
-                        ? `${have} — sign in for the rest`
+            : songs.why === 'offlimits' && yours
+                ? `${have} — your sign-in is fine; this app isn't allowed this playlist`
+                : songs.why === 'offlimits'
+                    ? `${have} — spotify won't allow that playlist. sign in for the rest`
+                    : songs.why === 'expired' && yours
+                        ? `${have} — that sign-in is spent. sign in again`
                         : songs.why === 'rationed'
                             ? `${have} — spotify has had enough for now. try again in ${waitWords(songs.after)}`
-                            : songs.why === 'none'
+                            : songs.why === 'expired' || songs.why === 'none'
                                 ? `${have} — sign in for the rest`
                                 : on
                                     ? `${have} — spotify would not part with the rest`
@@ -8160,7 +8141,7 @@ function renderScratch(songs, said) {
            playlist is a no — nagging about either is how it came to be
            telling people to sign in over and over at something a
            sign-in could not touch. */
-        if (songs.why === 'refused' || songs.why === 'none'
+        if (songs.why === 'expired' || songs.why === 'none'
             || (!on && songs.why !== 'offlimits' && songs.why !== 'withheld')) {
             spotToggle.classList.add('is-wanted');
         }
