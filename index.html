@@ -379,7 +379,7 @@
                                          nothing is fetched and nothing is
                                          signed into. -->
                                     <input id="scratchFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
-                                    <button class="scratch-plain" id="scratchOpen" type="button">or drop a list here</button>
+                                    <button class="scratch-plain" id="scratchOpen" type="button">bring in a longer playlist</button>
 
                                     <div class="clip-side-body"><ol class="scratch-list" id="scratchList"></ol></div>
                                     <p class="scratch-note" id="scratchNote" aria-live="polite"></p>
@@ -650,6 +650,57 @@
                                     </div>
                                 </div>
                             </section>
+
+                            <!-- ============ bringing a list in ============
+                                 spotify blocks an app from its api unless
+                                 whoever registered the app pays for premium,
+                                 so a playlist past the first hundred cannot be
+                                 fetched here at all. It can be carried in
+                                 though, and this is the window that says how
+                                 and takes it. Exportify is somebody else's
+                                 page, opened in a tab of its own — embedding
+                                 it would fail twice over: spotify refuses to
+                                 draw its login inside anybody's frame, and a
+                                 page from another site is sealed off from this
+                                 one anyway. -->
+                            <section class="modal-panel ask-screen" id="listScreen" data-title="playlist" hidden>
+                                <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                                <h2 class="modal-title">bring in a playlist</h2>
+
+                                <div class="ask-body">
+                                    <p class="ask-why">
+                                        a playlist longer than a hundred songs cannot be read here —
+                                        spotify keeps the rest for apps whose owner pays. exported
+                                        once, the whole thing comes in at any length, in order, with
+                                        the lengths the clips are matched against.
+                                    </p>
+
+                                    <ol class="ask-steps">
+                                        <li>
+                                            <span class="ask-step">1</span>
+                                            <span class="ask-said">open
+                                                <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">exportify.net</a>
+                                                and sign in there. it is free, and it reads playlists
+                                                spotify will not hand to this page.</span>
+                                        </li>
+                                        <li>
+                                            <span class="ask-step">2</span>
+                                            <span class="ask-said">press export beside the playlist you want. a
+                                                <b>.csv</b> file lands in your downloads.</span>
+                                        </li>
+                                        <li>
+                                            <span class="ask-step">3</span>
+                                            <span class="ask-said">drop that file below, or press to pick it.</span>
+                                        </li>
+                                    </ol>
+
+                                    <button class="list-drop" id="listDrop" type="button">
+                                        drop the file here, or press to pick it
+                                    </button>
+                                    <input id="listFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
+                                </div>
+                            </section>
+
 
                             <!-- ============ practice ============ -->
                             <section class="modal-panel study-screen" id="studyScreen" data-title="practice" hidden>

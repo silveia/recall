@@ -1097,6 +1097,7 @@ function showScreen(screen) {
     studyScreen.hidden = screen !== studyScreen;
     notesScreen.hidden = screen !== notesScreen;
     spotScreen.hidden = screen !== spotScreen;
+    listScreen.hidden = screen !== listScreen;
     keyScreen.hidden = screen !== keyScreen;
     // the notes panel is borrowed from the left bar; anything else
     // opening means it is wanted back
@@ -7360,6 +7361,7 @@ const SPOT_WAITING_KEY = 'spotify-waiting';
 
 const spotToggle = document.getElementById('spotToggle');
 const spotScreen = document.getElementById('spotScreen');
+const listScreen = document.getElementById('listScreen');
 const spotBack = document.getElementById('spotBack');
 const spotWarn = document.getElementById('spotWarn');
 const spotId = document.getElementById('spotId');
@@ -8568,15 +8570,52 @@ const scratchFile = document.getElementById('scratchFile');
 const scratchOpen = document.getElementById('scratchOpen');
 
 async function takeListFile(file) {
-    if (!file) return;
+    if (!file) return false;
     try {
-        takeList(await file.text(), 'read in');
+        return takeList(await file.text(), 'read in');
     } catch (error) {
         saySc('could not read that file');
+        return false;
     }
 }
 
-scratchOpen.addEventListener('click', () => scratchFile.click());
+scratchOpen.addEventListener('click', () => showScreen(listScreen));
+
+/* the window's own target: pressed, it picks a file; dragged onto, it
+   takes what is dropped. the same reading either way. */
+const listDrop = document.getElementById('listDrop');
+const listFile = document.getElementById('listFile');
+
+listDrop.addEventListener('click', () => listFile.click());
+listFile.addEventListener('change', async () => {
+    const file = listFile.files[0];
+    listFile.value = '';
+    if (await takeListFile(file)) showScreen(homeScreen);
+});
+['dragenter', 'dragover'].forEach((name) => {
+    listDrop.addEventListener(name, (event) => {
+        event.preventDefault();
+        listDrop.classList.add('is-catching');
+    });
+});
+['dragleave', 'drop'].forEach((name) => {
+    listDrop.addEventListener(name, (event) => {
+        event.preventDefault();
+        listDrop.classList.remove('is-catching');
+    });
+});
+listDrop.addEventListener('drop', async (event) => {
+    const moved = event.dataTransfer;
+    if (!moved) return;
+    if (moved.files && moved.files.length) {
+        if (await takeListFile(moved.files[0])) showScreen(homeScreen);
+        return;
+    }
+    const said = moved.getData && moved.getData('text');
+    if (said && /\n/.test(said.trim()) && takeList(said, 'dropped in')) {
+        showScreen(homeScreen);
+    }
+});
 scratchFile.addEventListener('change', () => {
     takeListFile(scratchFile.files[0]);
     scratchFile.value = '';        // the same file again should still count

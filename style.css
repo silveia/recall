@@ -2429,6 +2429,19 @@ html.inverted .app-shell::before { opacity: 1; }
 /* with no songs there is no copy button under it to clear */
 .clip-side:not(.has-songs) .scratch-note { bottom: var(--tight); }
 
+/* where the exported file is dropped. a big plain target rather than a
+   button pretending to be one, and it inverts while something is over
+   it the way a live thing does here. */
+.list-drop {
+	width: 100%; min-height: 4.6rem; margin-top: var(--group);
+	display: grid; place-items: center; padding: 0.8rem;
+	background: none; color: var(--ink);
+	border: 2px dashed var(--ink); border-radius: var(--round);
+	font: inherit; font-size: 0.8rem; text-align: center; cursor: pointer;
+}
+.list-drop:hover, .list-drop:focus-visible { background: var(--ink); color: var(--paper); }
+.list-drop.is-catching { background: var(--ink); color: var(--paper); border-style: solid; }
+
 /* a list being dragged over the box: the same dashed catch as the notes
    panel, so it reads as the same gesture */
 .clip-side.is-catching { outline: 2px dashed var(--ink); outline-offset: -6px; }
