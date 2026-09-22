@@ -288,8 +288,13 @@ whatever the body face made of it, and a glyph does not sit in the
 middle of its own box — it has side bearings and stands on a baseline,
 so turning the box turned the face around a point that wasn't its
 middle and it wobbled. Drawn, the circle is centred by construction and
-the turn is true. The line is `non-scaling-stroke` at 1, the same hair
-as every outline here whatever size the face is drawn at. Blank white for a second and a half reads as broken
+the turn is true. The ring is `non-scaling-stroke` at 1, the same hair
+as every outline here; the mouth is 1.7 and the eyes are filled bars
+rather than dots, which is what the ☺ it is copying actually looks like
+when you put the two side by side.
+
+It turns **once and then waits** — 360° over the first 62% of 1.5s on an
+ease, then a beat — rather than going round and round at one speed. Blank white for a second and a half reads as broken
 rather than as loading. After eight seconds it is shown either way:
 dots spinning forever say less than an empty page does. The step's
 circle is centred on its **first line**, not on the block — centred on

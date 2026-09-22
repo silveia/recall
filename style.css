@@ -5317,10 +5317,14 @@ html.booting .booting-mark { display: flex; }
 	width: 2rem;
 	height: 2rem;
 	color: var(--ink);
-	animation: face-turn 1.6s linear infinite;
+	/* a turn and then a beat, rather than going round and round at one
+	   speed: it winds up, comes round in one go, and waits. */
+	animation: face-turn 1.5s cubic-bezier(0.62, 0, 0.3, 1) infinite;
 }
 @keyframes face-turn {
-	to { transform: rotate(360deg); }
+	0%   { transform: rotate(0deg); }
+	62%  { transform: rotate(360deg); }
+	100% { transform: rotate(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
 	.spin-face { animation: none; }
