@@ -7391,11 +7391,16 @@ function keepSpotToken(body) {
 /* a token that is good right now. spotify's last an hour, so a stale
    one is quietly traded for a fresh one rather than sending anybody
    back through the sign-in. */
-async function spotToken() {
+/* `force` trades the key in whether or not it looks spent. A key can be
+   dead well before its hour is up — the app behind it deleted, the
+   permission taken back — and it looks perfectly good from here right
+   up until spotify is asked. So a refusal asks for a new one rather
+   than believing the clock. */
+async function spotToken(force) {
     const held = spotHeld();
     if (!held || !held.access) return '';
-    if (Date.now() < held.until - 60000) return held.access;
-    if (!held.refresh) return '';
+    if (!force && Date.now() < held.until - 60000) return held.access;
+    if (!held.refresh) { if (force) forgetSpotToken(); return ''; }
     try {
         const answer = await fetch('https://accounts.spotify.com/api/token', {
             method: 'POST',
@@ -7683,8 +7688,13 @@ function tokenIn(data) {
    for what the borrowed key did is what made this look unfixable. */
 async function theRest(bit, keys, have, say) {
     let last = { more: [], total: 0, why: 'none', whose: '' };
-    for (const { key, whose } of keys) {
-        if (!key) continue;
+    const tried = new Set();
+    for (const { get, whose } of keys) {
+        // asked for one at a time: the second is only worth the trip
+        // once the first has actually been turned away
+        const key = await get();
+        if (!key || tried.has(key)) continue;
+        tried.add(key);
         const got = await oneKeyRest(bit, key, have, say);
         if (got.more.length) return { ...got, whose };
         last = { ...got, whose };
@@ -7838,12 +7848,19 @@ async function readPlaylist(bit, say) {
        so anything that could be cut short is asked about instead. The
        ask itself is cheap and it comes back with the real length. */
     if (songs.length >= 50 && bit.kind !== 'track') {
-        const mine = await spotToken();
         const { more, total, why, whose } = await theRest(bit, [
-            { key: mine, whose: 'yours' },
-            { key: got.token, whose: 'borrowed' }
+            { get: () => spotToken(), whose: 'yours' },
+            // the one we had was refused: trade it in and go again
+            { get: () => spotToken(true), whose: 'yours' },
+            { get: () => got.token, whose: 'borrowed' }
         ], songs.length, say);
         songs.push(...more);
+
+        /* Every way in was refused and one of them was your own. That
+           sign-in is not coming back — the app behind it is gone, or the
+           permission is — so it is dropped rather than left to be
+           offered and refused again on the next playlist. */
+        if (!more.length && why === 'refused' && spotHeld()) forgetSpotToken();
         if (total && songs.length < total) {
             songs.short = true;
             songs.of = total;
