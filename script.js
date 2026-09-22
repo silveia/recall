@@ -8142,6 +8142,103 @@ function copiesAdrift(at) {
         && at.some((index, n) => n > 0 && index !== at[n - 1] + 1);
 }
 
+/* ---- a list pasted in, instead of a link ----
+
+   The words can come from anywhere you already have them. A csv
+   exported from somewhere else is the usual way, and a plain list of
+   lines works too, so a playlist this page cannot read for itself is
+   still a playlist you can lay against the clips. Nothing is fetched
+   and nothing is signed into. */
+
+// one csv line, split on its commas but not the ones inside quotes
+function csvCells(line) {
+    const cells = [];
+    let cell = '';
+    let quoted = false;
+    for (let at = 0; at < line.length; at += 1) {
+        const ch = line[at];
+        if (quoted) {
+            if (ch !== '"') cell += ch;
+            else if (line[at + 1] === '"') { cell += '"'; at += 1; }
+            else quoted = false;
+        } else if (ch === '"') quoted = true;
+        else if (ch === ',') { cells.push(cell); cell = ''; }
+        else cell += ch;
+    }
+    cells.push(cell);
+    return cells.map((one) => one.trim());
+}
+
+/* "3:22", or a bare number of milliseconds, or of seconds. Which of
+   the two a bare number is cannot be told from the number alone, so
+   the column's own name is asked first and a guess is only made when
+   it does not say. */
+function msOf(text, saysMs) {
+    const clock = String(text).match(/^(?:(\d+):)?(\d{1,2}):(\d{2})(?:[.,]\d+)?$/);
+    if (clock) {
+        return ((Number(clock[1] || 0) * 3600) + (Number(clock[2]) * 60)
+            + Number(clock[3])) * 1000;
+    }
+    const plain = Number(String(text).replace(/[^\d.]/g, ''));
+    if (!isFinite(plain) || !plain) return 0;
+    if (saysMs) return Math.round(plain);
+    // no song runs for three thousand of anything, so a figure that
+    // large is milliseconds whatever the column is called
+    return plain > 3600 ? Math.round(plain) : Math.round(plain * 1000);
+}
+
+/* which column holds what. the names differ between one exporter and
+   the next, and are translated in some of them, so they are matched on
+   a word rather than in full. "track name" is looked for before plain
+   "name", since an album and an artist have names too. */
+function columnsOf(head) {
+    const has = (...wants) => head.findIndex((one) => {
+        const low = one.toLowerCase();
+        return wants.some((want) => low.includes(want));
+    });
+    const exact = head.findIndex((one) => /^(track name|title|song)$/i.test(one));
+    return {
+        title: exact !== -1 ? exact : has('track name', 'title', 'song', 'name'),
+        by: has('artist name', 'artist', 'by'),
+        ms: has('duration', 'length', 'time')
+    };
+}
+
+function songsFromList(text) {
+    const lines = String(text).replace(/\r/g, '').split('\n')
+        .map((one) => one.trim()).filter(Boolean);
+    if (!lines.length) return [];
+
+    // a csv, if its first line names the columns rather than holding a song
+    const head = csvCells(lines[0]);
+    const col = columnsOf(head);
+    if (head.length > 1 && col.title !== -1) {
+        const saysMs = col.ms !== -1 && /\bms\b|millisecond/i.test(head[col.ms] || '');
+        return lines.slice(1).map((line) => {
+            const cell = csvCells(line);
+            const title = tidy(cell[col.title] || '');
+            if (!title) return null;
+            return {
+                title,
+                // several artists come back run together on the commas
+                by: tidy(col.by === -1 ? '' : (cell[col.by] || '')).replace(/\s*,\s*/g, ', '),
+                ms: col.ms === -1 ? 0 : msOf(cell[col.ms] || '', saysMs)
+            };
+        }).filter(Boolean);
+    }
+
+    /* plain lines. a number in front is a position in the list, not
+       part of the name, and the dash between a song and whoever made
+       it comes in several widths. */
+    return lines.map((line) => {
+        const bare = line.replace(/^\d+\s*[.)\]]\s*/, '');
+        const parts = bare.split(/\s+[-\u2013\u2014\u00b7|]\s+/);
+        const title = tidy(parts[0] || '');
+        if (!title) return null;
+        return { title, by: tidy(parts.slice(1).join(' - ')), ms: 0 };
+    }).filter(Boolean);
+}
+
 function renderScratch(songs, said) {
     scratchSongs = songs;
     const twiceOver = countSongs(songs);
@@ -8261,6 +8358,24 @@ function loadScratch() {
         // nothing kept, or it didn't read
     }
 }
+
+/* A list pasted into the field is taken as the list itself rather than
+   as something to go and look up. A single line is still a link, so
+   pasting one behaves exactly as it always has. */
+scratchLink.addEventListener('paste', (event) => {
+    const got = event.clipboardData && event.clipboardData.getData('text');
+    if (!got || !/\n/.test(got.trim())) return;
+    event.preventDefault();
+    const songs = songsFromList(got);
+    if (!songs.length) {
+        saySc('no songs I could read in that');
+        return;
+    }
+    scratchLink.value = '';
+    renderScratch(songs, '');
+    keepScratch('', songs);
+    saySc(`${songs.length} pasted in`);
+});
 
 scratchForm.addEventListener('submit', async (event) => {
     event.preventDefault();
