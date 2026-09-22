@@ -268,11 +268,19 @@ text lands near this site's own size. A `grayscale(1)` filter was tried
 and taken off again: it looks better with its colour.
 
 The site takes the window; a line of copy, the steps and the kept
-playlists sit in a column beside it, starting at the top. The window
-keeps only a `--group` of side air rather than a `--gap`, since a window
-that is mostly somebody else's page wants the page, not the margin —
-which leaves exportify **1105 css pixels** of its own at a 1400px
-window, a full desktop width with nothing to scroll sideways for.
+playlists sit in a column beside it, starting at the top.
+
+**The frame is cropped at both edges.** `--site-clip` (34px, about a
+centimetre) comes off each side to take their own margin off, and an
+extra `--site-bar` on the right carries their scrollbar out past the
+pane, where the pane's `overflow: hidden` eats it. Their page still
+scrolls on the wheel; the bar is simply not in sight. None of this
+reaches inside the frame — it is all the frame's own geometry, which is
+the only handle a page has on one it does not own.
+
+Measured at a 1008px window: 678px of pane, 34px cropped left, 50px
+cropped right, and **1058 css pixels** handed to their layout — a
+desktop width, with nothing for it to scroll sideways for.
 
 **Three dots hold the pane while it starts**, and the site fades in over
 them on its `load`. Blank white for a second and a half reads as broken

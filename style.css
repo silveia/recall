@@ -2572,12 +2572,26 @@ html.inverted .app-shell::before { opacity: 1; }
    the colour comes out of it here rather than in their stylesheet —
    a page cannot reach inside a frame it does not own, and a filter on
    the frame itself is the one thing that works from outside. */
+/* somebody else's page, shown small enough to fit and cropped at both
+   edges: `--site-clip` takes their own side margin off, and the extra
+   `--site-bar` on the right carries their scrollbar out past the box,
+   where the box's own `overflow: hidden` eats it. none of this is
+   reaching inside the frame — it is all the frame's own geometry, which
+   is the only handle a page has on one it does not own. */
+.list-site {
+	--site-zoom: 0.72;
+	--site-clip: 34px;     /* about a centimetre off each side */
+	--site-bar: 16px;      /* where their scrollbar sits */
+}
 .list-site iframe {
+	position: absolute;
+	top: 0;
+	left: calc(var(--site-clip) * -1);
 	display: block;
-	width: 140%;
-	height: 140%;
+	width: calc((100% + var(--site-clip) * 2 + var(--site-bar)) / var(--site-zoom));
+	height: calc(100% / var(--site-zoom));
 	border: 0;
-	transform: scale(0.714);
+	transform: scale(var(--site-zoom));
 	transform-origin: top left;
 	opacity: 0;
 	transition: opacity 0.34s var(--ease);
@@ -2652,7 +2666,7 @@ html.inverted .app-shell::before { opacity: 1; }
 /* the playlist window carries exportify itself, so it wants the room a
    site wants rather than the room a question wants */
 #listScreen.ask-screen {
-	width: min(72rem, 100%);
+	width: min(63rem, 100%);
 	/* the side air comes in so the site gets it instead — a window that
 	   is mostly somebody else's page wants the page, not the margin */
 	padding: var(--group) var(--group) var(--group);
