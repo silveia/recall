@@ -2429,6 +2429,10 @@ html.inverted .app-shell::before { opacity: 1; }
 /* with no songs there is no copy button under it to clear */
 .clip-side:not(.has-songs) .scratch-note { bottom: var(--tight); }
 
+/* a list being dragged over the box: the same dashed catch as the notes
+   panel, so it reads as the same gesture */
+.clip-side.is-catching { outline: 2px dashed var(--ink); outline-offset: -6px; }
+
 /* which app the page is signing in through, said plainly */
 .spot-using {
 	display: flex; align-items: baseline; justify-content: space-between;

@@ -371,6 +371,16 @@
                                         </button>
                                     </form>
 
+                                    <!-- spotify will not hand a long playlist
+                                         to an app registered on a free account,
+                                         so the words can be brought in instead:
+                                         a list dropped on this box, opened from
+                                         a file, or pasted into the field above.
+                                         nothing is fetched and nothing is
+                                         signed into. -->
+                                    <input id="scratchFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
+                                    <button class="scratch-plain" id="scratchOpen" type="button">or drop a list here</button>
+
                                     <div class="clip-side-body"><ol class="scratch-list" id="scratchList"></ol></div>
                                     <p class="scratch-note" id="scratchNote" aria-live="polite"></p>
                                     <button class="basic-button scratch-all" id="scratchCopyAll" type="button" hidden>copy all</button>

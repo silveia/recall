@@ -8534,19 +8534,65 @@ function loadScratch() {
 /* A list pasted into the field is taken as the list itself rather than
    as something to go and look up. A single line is still a link, so
    pasting one behaves exactly as it always has. */
-scratchLink.addEventListener('paste', (event) => {
-    const got = event.clipboardData && event.clipboardData.getData('text');
-    if (!got || !/\n/.test(got.trim())) return;
-    event.preventDefault();
-    const songs = songsFromList(got);
+function takeList(text, how) {
+    const songs = songsFromList(text);
     if (!songs.length) {
         saySc('no songs I could read in that');
-        return;
+        return false;
     }
     scratchLink.value = '';
     renderScratch(songs, '');
     keepScratch('', songs);
-    saySc(`${songs.length} pasted in`);
+    saySc(`${songs.length} ${how}`);
+    return true;
+}
+
+scratchLink.addEventListener('paste', (event) => {
+    const got = event.clipboardData && event.clipboardData.getData('text');
+    if (!got || !/\n/.test(got.trim())) return;
+    event.preventDefault();
+    takeList(got, 'pasted in');
+});
+
+// a file of them, opened or dropped
+const scratchFile = document.getElementById('scratchFile');
+const scratchOpen = document.getElementById('scratchOpen');
+
+async function takeListFile(file) {
+    if (!file) return;
+    try {
+        takeList(await file.text(), 'read in');
+    } catch (error) {
+        saySc('could not read that file');
+    }
+}
+
+scratchOpen.addEventListener('click', () => scratchFile.click());
+scratchFile.addEventListener('change', () => {
+    takeListFile(scratchFile.files[0]);
+    scratchFile.value = '';        // the same file again should still count
+});
+
+['dragenter', 'dragover'].forEach((name) => {
+    clipSide.addEventListener(name, (event) => {
+        event.preventDefault();
+        clipSide.classList.add('is-catching');
+    });
+});
+['dragleave', 'drop'].forEach((name) => {
+    clipSide.addEventListener(name, (event) => {
+        event.preventDefault();
+        if (name === 'dragleave' && clipSide.contains(event.relatedTarget)) return;
+        clipSide.classList.remove('is-catching');
+    });
+});
+clipSide.addEventListener('drop', (event) => {
+    const moved = event.dataTransfer;
+    if (!moved) return;
+    if (moved.files && moved.files.length) { takeListFile(moved.files[0]); return; }
+    // some things drag as words rather than as a file
+    const said = moved.getData && moved.getData('text');
+    if (said && /\n/.test(said.trim())) takeList(said, 'dropped in');
 });
 
 scratchForm.addEventListener('submit', async (event) => {
