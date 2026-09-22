@@ -7788,17 +7788,38 @@ async function oneKeyRest(bit, token, have, say) {
     let after = 0;
     let said = '';        // spotify's own words for the refusal
 
+    /* The same ask, worded the few ways spotify accepts it. A playlist
+       holds episodes as well as songs, and a version of a song differs
+       from one country to the next — asked without saying so, spotify
+       can refuse the whole thing rather than answer for the part it is
+       sure of. The plain ask is tried first because it is the one that
+       ought to work; the others are only reached on a refusal. */
+    const WORDINGS = [
+        'additional_types=track',
+        'additional_types=track,episode&market=from_token',
+        'additional_types=track,episode'
+    ];
+    let wording = 0;
+
     for (let at = have; at < 10000; at += 100) {
         if (say) say(`reading the playlist... ${have + more.length} so far`);
         let answer;
         try {
             answer = await fetch(
-                `https://api.spotify.com/v1/${path}/${bit.id}/tracks?offset=${at}&limit=100`,
+                `https://api.spotify.com/v1/${path}/${bit.id}/tracks`
+                + `?offset=${at}&limit=100&${WORDINGS[wording]}`,
                 { headers: { authorization: `Bearer ${token}` } }
             );
         } catch (error) {
             why = 'blocked';
             break;   // blocked, or nothing answered
+        }
+        /* refused, and there is another way of asking left: the same
+           offset again, said differently, before giving up on the key */
+        if (answer.status === 403 && wording < WORDINGS.length - 1) {
+            wording += 1;
+            at -= 100;               // the loop's step puts it back
+            continue;
         }
         /* why it stopped, so the box can say something better than
            nothing. the borrowed key is the one that gets turned away:
@@ -7835,7 +7856,8 @@ async function oneKeyRest(bit, token, have, say) {
         total = body.total || total;
         const batch = (body.items || []).map((item) => {
             const song = item.track || item;
-            if (!song || !song.name) return null;
+            // an episode has a name too, but it is not a song
+            if (!song || !song.name || song.type === 'episode') return null;
             return {
                 title: tidy(song.name),
                 by: tidy((song.artists || []).map((one) => one.name).join(', ')),
