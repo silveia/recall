@@ -2806,10 +2806,15 @@ html.inverted .app-shell::before { opacity: 1; }
 }
 .scratch-acts .scratch-all[hidden] { display: none; }
 
-/* the way out to the exporter, across the top of the box */
+/* the way out to the exporter, across the top of the box. the same
+   height and the same give at the sides as the two along the bottom, so
+   the box reads as one set of controls rather than three sizes of pill. */
 .scratch-bring {
+	flex: none;
 	width: 100%;
 	align-self: stretch;
+	height: var(--field);
+	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
 	margin-bottom: var(--tight);
 }
 /* shut it keeps no outline and no padding — an empty sliver of box
