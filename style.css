@@ -230,15 +230,26 @@ html, body {
    losing it there would mean losing select-all and copy. */
 body { -webkit-user-select: none; user-select: none; }
 input, textarea { -webkit-user-select: text; user-select: text; }
-/* Words a window is asking you to act on — an address to open, an id to
-   read back, what went wrong — can be picked up and copied. Reading an
-   address off the screen and typing it out by hand is no way to be
-   asked for anything. The rest of the page stays unselectable, so
-   dragging a card still drags it rather than smearing a selection
-   across it. */
-.ask-why, .ask-said, .ask-warn, .scratch-url, .modal-title, .help-note, #scratchNote {
+/* Words that are there to be read can be picked up and copied —
+   paragraphs, list items, headings, the addresses a window asks you to
+   go and open. Reading an address off the screen and typing it out by
+   hand is no way to be asked for anything. */
+p, li, dt, dd, h1, h2, h3, h4, h5, h6, code, pre, blockquote, figcaption,
+.ask-why, .ask-said, .ask-warn, .scratch-url {
 	-webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
 }
+/* Anything you press or drag keeps its hands off the selection, whatever
+   it is built out of: pressing a card should move the card, not smear a
+   highlight across it. Last word, so it wins over the prose above. */
+button, button *, a, a *, label, label *, summary, summary *,
+[role="button"], [role="button"] *, [draggable="true"], [draggable="true"] *,
+.card-item, .card-item *, .recording-item, .recording-item *,
+.scratch-song, .scratch-song * {
+	-webkit-user-select: none; user-select: none;
+}
+/* bar the one span a double-click hands back for renaming */
+.clip-text.is-editing { -webkit-user-select: text; user-select: text; }
+input, textarea { -webkit-user-select: text; user-select: text; }
 
 body {
 	margin: 0;
