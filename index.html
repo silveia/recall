@@ -314,35 +314,46 @@
                                          inside whatever place you point at the
                                          first time, and after that nothing is
                                          asked again — see folderFor(). -->
+                                    <!-- one row across the top: what carries
+                                         every clip somewhere on the left, the
+                                         folder they land in down the middle,
+                                         and what acts on the lot of them on the
+                                         right. the two sides are given equal
+                                         width so the field sits centred whatever
+                                         they happen to hold. -->
                                     <div class="clip-folder">
+                                        <div class="clip-folder-side">
+                                            <button class="scratch-plain" id="packClips" type="button" title="clips out to one file">clips to a file</button>
+                                            <button class="scratch-plain" id="unpackClips" type="button" title="clips in from a file">bring some in</button>
+                                            <input id="unpackInput" type="file" hidden>
+                                        </div>
+
                                         <input id="folderName" type="text" placeholder="folder name" aria-label="folder name" title="folder for the mp3s" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-                                    <button class="square-button" id="downloadAll" type="button" aria-label="every clip to a folder" title="every clip to a folder">
-                                    <svg class="icon-download" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M12 3.5v10"/>
-                                    <path d="M8.5 10.5l3.5 3.5 3.5-3.5"/>
-                                    <path d="M4.5 16v3.5h15V16"/>
-                                    </svg>
-                                    <!-- shown instead while it's saving the list -->
-                                    <svg class="icon-pause" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
-                                    <path d="M9.5 5.5v13"/>
-                                    <path d="M14.5 5.5v13"/>
-                                    </svg>
-                                    </button>
-                                    <button class="square-button" id="clearClips" type="button" aria-label="bin every clip" title="bin every clip">
-                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <path d="M4.5 6.5h15"/>
-                                    <path d="M10 6.5V4.5h4v2"/>
-                                    <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
-                                    <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
-                                    </svg>
-                                    </button>
+
+                                        <div class="clip-folder-side is-right">
+                                            <button class="square-button" id="downloadAll" type="button" aria-label="every clip to a folder" title="every clip to a folder">
+                                                <svg class="icon-download" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M12 3.5v10"/>
+                                                    <path d="M8.5 10.5l3.5 3.5 3.5-3.5"/>
+                                                    <path d="M4.5 16v3.5h15V16"/>
+                                                </svg>
+                                                <!-- shown instead while it's saving the list -->
+                                                <svg class="icon-pause" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+                                                    <path d="M9.5 5.5v13"/>
+                                                    <path d="M14.5 5.5v13"/>
+                                                </svg>
+                                            </button>
+                                            <button class="square-button" id="clearClips" type="button" aria-label="bin every clip" title="bin every clip">
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M4.5 6.5h15"/>
+                                                    <path d="M10 6.5V4.5h4v2"/>
+                                                    <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
+                                                    <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <ol id="recordingList"></ol>
-                                    <div class="clip-footer">
-                                        <button class="scratch-plain" id="packClips" type="button" title="clips out to one file">clips to a file</button>
-                                        <button class="scratch-plain" id="unpackClips" type="button" title="clips in from a file">bring some in</button>
-                                        <input id="unpackInput" type="file" hidden>
-                                    </div>
                                 </div>
 
 <!-- the spare box beside the clips. it is dragged

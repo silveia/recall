@@ -2310,15 +2310,26 @@ html.inverted .app-shell::before { opacity: 1; }
 /* the folder the mp3s land in, over everything else in the column. it
    wears the same field as the playlist link below it. */
 .clip-folder {
-	display: flex;
+	/* Three columns rather than a row, and the outer two the same width
+	   whatever they hold — a row would let the wider side shove the field
+	   off the middle, and the field is the thing that wants to be centred.
+	   The middle is twice a side, so the field keeps most of the width. */
+	display: grid;
+	grid-template-columns: 1fr minmax(0, 2fr) 1fr;
 	flex: none;
-	/* the two that act on every clip at once sit beside the folder they
-	   would act into, rather than up in the bar with the recording */
 	align-items: center;
 	gap: var(--tight);
 	min-width: 0;
 	padding: 0 0 var(--tight);
 }
+/* what sits either side of the field: out to the walls, in towards it */
+.clip-folder-side {
+	display: flex;
+	align-items: center;
+	gap: var(--tight);
+	min-width: 0;
+}
+.clip-folder-side.is-right { justify-content: flex-end; }
 /* the same field the new deck is typed into, over on the cards page */
 .clip-folder input {
 	flex: 1;
@@ -2336,16 +2347,6 @@ html.inverted .app-shell::before { opacity: 1; }
 	cursor: var(--cur-bar);
 }
 .clip-folder input::placeholder { color: var(--muted); }
-
-/* quiet, and out of the way: two things wanted once in a blue moon,
-   under the list they act on rather than in the bar over it */
-.clip-footer {
-	display: flex;
-	flex: none;
-	justify-content: center;
-	gap: var(--group);
-	padding: var(--tight) 0 calc(var(--tight) * 0.5);
-}
 
 /* the box beside the clips. it is however wide you dragged it, never
    past half the room, and nothing at all when it's shut. */
