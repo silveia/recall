@@ -8346,9 +8346,7 @@ function renderScratch(songs, said) {
            long ones came across as being told off rather than told. */
         saySc(noWay && theirs
             ? `${have} — spotify's own playlist, not given to apps`
-            : songs.why === 'offlimits' && yours && /premium/i.test(songs.said || '')
-                ? `${have} — untick playback sdk in your app, then sign in again`
-                : songs.why === 'withheld'
+            : songs.why === 'withheld'
                     ? `${have} — not given to apps`
                     : songs.why === 'offlimits' && yours
                         ? `${have} — refused (${songs.said || '403'})`
