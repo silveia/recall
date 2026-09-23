@@ -736,6 +736,18 @@ Two shapes, not three: a `large` was two rows tall and has nowhere to
 be. A board saved when it was deeper comes back to row 0, and a tile
 that no longer fits is dropped rather than stacked.
 
+**Nothing may sit on anything else.** `settleBoard()` runs on every
+render — added, dropped, resized, or read back out of storage — and
+gives every tile a place of its own: where it is if that is clear, else
+the first clear place along the row, else the small shape if only a
+single column is free. What cannot be placed at any size is **taken
+off**, because the board cannot hold it. Never while a tile is in the
+air: the carried one is allowed to be over another until it is let go.
+
+Verified: five tiles saved on top of each other come back as the two
+that fit, with none overlapping and the cleaned board saved; an ordinary
+board is left exactly as it was.
+
 **A full row refuses.** `freeSlot` answers with nothing when there is no
 room, where it used to answer with the near end regardless and the tile
 went down on top of whatever was already there — six tiles, fourteen

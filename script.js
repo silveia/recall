@@ -5932,7 +5932,55 @@ function paintBoardDepth() {
     widgetList.style.setProperty('--board-rows', String(boardDepth() + (editingHome ? 1 : 0)));
 }
 
+/* nothing may sit on anything else. the row is one row and it does fill
+   up, so a tile dropped where there is no room can be left with nowhere
+   to go — and two tiles in one slot is not a board, it is a mistake you
+   can see. every tile is given a place of its own here: where it is if
+   that is clear, else the first clear place along the row, else the
+   small shape if only a single column is free. what cannot be placed at
+   all is taken off, because a board cannot hold it.
+
+   it runs on every render, so no path can get round it — added,
+   dropped, resized, or read back out of storage. never while a tile is
+   in the air, though: the carried one is allowed to be over another
+   until it is let go. */
+function settleBoard() {
+    if (boardDrag) return false;
+    const kept = [];
+    let lost = 0;
+
+    homeWidgets.forEach((entry) => {
+        entry.row = 0;
+        const clear = (col, size) => {
+            const want = { ...entry, size, col, row: 0 };
+            return col >= 0 && col + spanOf(want)[0] <= BOARD_COLS
+                && !kept.some((other) => hits(want, other));
+        };
+
+        if (clear(entry.col, entry.size)) {
+            kept.push(entry);
+            return;
+        }
+        for (const size of [entry.size, 'small']) {
+            for (let col = 0; col < BOARD_COLS; col += 1) {
+                if (!clear(col, size)) continue;
+                entry.size = size;
+                entry.col = col;
+                kept.push(entry);
+                return;
+            }
+        }
+        lost += 1;              // the row has no room for it at any size
+    });
+
+    if (!lost) return false;
+    homeWidgets = kept;
+    saveWidgets();
+    return true;
+}
+
 function renderWidgets() {
+    settleBoard();
     widgetList.querySelectorAll('.widget-card').forEach((card) => card.remove());
     // an empty board says nothing — it just stands the add circle out
     // where the tiles would be, so there is something to press
