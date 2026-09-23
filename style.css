@@ -2423,6 +2423,13 @@ html.inverted .app-shell::before { opacity: 1; }
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
 .place-bubble:hover { color: var(--paper); background: var(--ink); }
+/* what the press will do, said plainly */
+.folder-say {
+	margin: 0;
+	padding: 0 0.35rem;
+	font-size: 0.85rem;
+	text-align: center;
+}
 /* the one chosen wears the black, like every live thing here */
 .place-bubble.is-on { color: var(--paper); background: var(--ink); }
 

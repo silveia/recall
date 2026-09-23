@@ -360,10 +360,19 @@ inside it is what opens the picker, since a browser only opens one off a
 press.
 
 **`startIn` is the whole of what a page may say about where on the disk
-it means.** The bubbles set it — `downloads`, `desktop`, `documents`,
-`music` — and it opens the picker on that shelf. The yes itself is the
-browser's to take, and only once: after it the place is remembered and
-never asked again.
+it means.** The bubbles set it — `downloads`, `desktop`, `documents` —
+and it opens the picker on that shelf. The yes itself is the browser's
+to take, and only once per place.
+
+**The folder is made, not chosen.** You hand over the shelf; the page
+calls `getDirectoryHandle(name, { create: true })` and makes the named
+folder inside it. That is not obvious from a name box and a row of
+places, so the window says it in words: *makes a folder called
+Danganronpa in your desktop*.
+
+**The place is remembered per place.** Under one key, picking
+`downloads` and later switching the bubble to `desktop` went on using
+downloads — the bubble looked like it did nothing.
 
 **A page cannot make a folder anywhere it likes, and cannot be told one
 by name — it has to be handed one.** So it is handed one *once*: the

@@ -3238,7 +3238,11 @@ function tidyFolder(typed) {
 /* the folder to write this lot into. 'stop' means they closed the
    picker, which is a no rather than a fallback. */
 async function folderFor(called, startIn) {
-    let parent = await folderHome();
+    /* remembered per place, not once for everything. kept under one key,
+       picking `downloads` and later switching the bubble to `desktop`
+       went on using downloads — the bubble looked like it did nothing. */
+    const where = `parent:${startIn || 'downloads'}`;
+    let parent = await heldHandle(where);
     if (parent && !(await stillAllowed(parent))) parent = null;
 
     if (!parent) {
@@ -3256,7 +3260,7 @@ async function folderFor(called, startIn) {
         } catch (error) {
             return error && error.name === 'AbortError' ? 'stop' : null;
         }
-        await keepFolderHome(parent);
+        await keepHandle(parent, where);
     }
 
     // no name typed: straight into the place itself
@@ -3279,6 +3283,7 @@ folderFields.forEach((field) => {
     field.addEventListener('input', () => {
         window.localStorage.setItem(FOLDER_KEY, field.value);
         folderFields.forEach((other) => { if (other !== field) other.value = field.value; });
+        if (typeof paintPlaces === 'function') paintPlaces();
     });
 });
 
@@ -3289,10 +3294,18 @@ const placeStrip = document.getElementById('placeStrip');
 const folderGo = document.getElementById('folderGo');
 let placeWanted = window.localStorage.getItem(PLACE_KEY) || 'downloads';
 
+const folderSay = document.getElementById('folderSay');
+
+/* the folder is *made*, not chosen, and that is not obvious from a name
+   box and a row of places — so the window says what the press will do. */
 function paintPlaces() {
     placeStrip.querySelectorAll('.place-bubble').forEach((one) => {
         one.classList.toggle('is-on', one.dataset.place === placeWanted);
     });
+    const called = tidyFolder(folderName.value);
+    folderSay.textContent = called
+        ? `makes a folder called ${called} in your ${placeWanted}`
+        : `straight into your ${placeWanted}, in no folder of its own`;
 }
 
 /* the press that sends them. the picker, where one is still wanted,
