@@ -4825,6 +4825,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
    foot of the panel they sat at the bottom of the page, which is a long
    way from a single row of tiles at the top of it. */
 .board-foot {
+	position: relative;    /* the add button hides behind the pen in here */
 	display: flex;
 	flex: none;
 	align-items: center;
@@ -4845,16 +4846,23 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	border-radius: 999px;
 	cursor: var(--cur-tap);
 }
-/* the add button becomes a circle beside it while edit is on */
-.home-panel.is-editing .widget-add {
-	position: static;
-	z-index: 3;
+/* the add button is a circle the same size as the pen, and it lives out
+   of the row's flow — it is *under* the pen when the board is settled
+   and slides out from behind it when arranging starts. in the flow it
+   would have had to appear from nothing, or push the pen sideways
+   before it was wanted. */
+.widget-add {
+	position: absolute;
+	right: calc(2.2rem + var(--tight));
+	top: 50%;
+	z-index: 2;
 	display: grid;
 	place-items: center;
 	width: 2.2rem;
 	height: 2.2rem;
 	padding: 0;
 	border-radius: 999px;
+	translate: 0 -50%;
 }
 .widget-edit svg, .widget-add svg { display: block; }
 .widget-edit, .widget-add {
@@ -4862,7 +4870,8 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 		color 0.28s var(--ease),
 		background-color 0.28s var(--ease),
 		border-color 0.28s var(--ease),
-		transform 0.28s var(--ease);
+		opacity 0.2s var(--ease),
+		transform 0.28s var(--drawer);
 }
 /* the pen while the board is settled, a cross while you're arranging.
    they sit on top of each other and change places by turning, rather
@@ -5052,12 +5061,22 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	pointer-events: none;
 }
 
-/* the add button only means anything while you're arranging */
-.widget-add {
-	flex: none;
-	align-self: flex-start;
+/* the add button only means anything while you're arranging, so at rest
+   it is behind the pen: shifted right by its own width and the gap, and
+   small. pressing edit lets it out. */
+.home-panel:not(.is-editing):not(.is-empty) .widget-add {
+	transform: translateX(calc(2.2rem + var(--tight))) scale(0.55);
+	opacity: 0;
+	pointer-events: none;
 }
-.home-panel:not(.is-editing):not(.is-empty) .widget-add { display: none; }
+/* and out again, said plainly rather than left to the absence of the
+   rule above it */
+.home-panel.is-editing .widget-add,
+.home-panel.is-empty .widget-add {
+	transform: none;
+	opacity: 1;
+	pointer-events: auto;
+}
 .widget-pick { cursor: var(--cur-tap); }
 .widget-pick:hover { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
