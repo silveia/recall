@@ -386,7 +386,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    page faded its panel and then faded the bar and the list inside it
    again — three fades over each other, which is what makes an entrance
    look muddy rather than quick. */
-.home-rail:not([hidden]),
+/* the bar is not in this list: it is always there, on every page, and a
+   bar that rises 6px on every load leaves six pixels of white above
+   itself while it does it. only what the tabs swap animates. */
+.home-panel:not([hidden]),
 .home-body:not([hidden]),
 .recorder-panel:not([hidden]),
 .player-panel:not([hidden]) {
@@ -585,10 +588,20 @@ html.inverted .app-shell::before { opacity: 1; }
 /* the bar writes in white, and everything the board puts in it is a
    white card or a white button — so inside those it writes in ink
    again, or the words and the marks vanish into their own backs. */
+/* the bar keeps its own two colours whichever side the page is on, so a
+   tile on it does too: white card, black words, in the light and in the
+   dark. taking `--paper` and `--ink` instead turned every tile black on
+   a black bar the moment the lights went off. */
 .rail-left .widget-card,
 .rail-left .widget-edit,
 .rail-left .widget-off,
-.rail-left .widget-size { color: var(--ink); }
+.rail-left .widget-size { color: var(--bar); }
+.rail-left .widget-card::before {
+	background: var(--bar-ink);
+	filter: drop-shadow(1px 0 0 var(--bar)) drop-shadow(-1px 0 0 var(--bar))
+		drop-shadow(0 1px 0 var(--bar)) drop-shadow(0 -1px 0 var(--bar));
+}
+.rail-left .widget-edit { background: var(--bar-ink); }
 
 /* and the handles come out while the board is being arranged. said
    again here, against the bar rather than against the panel the board
@@ -955,15 +968,18 @@ html.inverted .app-shell::before { opacity: 1; }
 
 /* home — the first section. empty for now; it's the frame waiting to
    be filled, on the same grid as the cards and audio panels. */
+/* the board moved into the bar, so the home page's own panel holds
+   nothing. it keeps its place in the layout and draws none of itself —
+   an empty bordered box in the middle of the page reads as something
+   having failed to load. */
 .home-panel {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
 	min-height: 0;
-	padding: var(--tight);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
+	padding: 0;
+	background: none;
+	border: 0;
 }
 
 /* section tabs — "cards  audio". the active one is big in the
@@ -4578,8 +4594,8 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	   arranging so a tile can be dropped below everything else */
 	/* smaller, since the bar is narrow and the whole board has to live
 	   in it — the tiles keep their shapes, they just sit closer */
-	grid-template-rows: repeat(var(--board-rows, 1), 5.6rem);
-	grid-auto-rows: 5.6rem;
+	grid-template-rows: repeat(var(--board-rows, 1), 6.5rem);
+	grid-auto-rows: 6.5rem;
 	gap: var(--group);
 	min-height: 0;
 	overflow-y: auto;
@@ -4644,7 +4660,34 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .widget-card[data-size="wide"]  { grid-column: span 2; grid-row: span 1; }
 .widget-card[data-size="large"] { grid-column: span 2; grid-row: span 2; }
 
+/* a tile is a cloud, not a box: rounded at the top and hung with a row
+   of bumps at the foot, the same wave the bar's own edge is cut with.
+
+   it is drawn as a masked layer under the tile's words. a mask cuts the
+   shape but takes the border with it, so the outline is four one-pixel
+   shadows dropped around the masked shape instead — they follow every
+   bump, which a border never could. the words sit above it and are not
+   in the filter, or they would be outlined too. */
+.widget-card::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	background: var(--paper);
+	border-radius: 1.1rem 1.1rem 0 0;
+	--puff:
+		radial-gradient(circle var(--bump) at 50% 0, #000 98%, #0000 100%)
+			0 100% / calc(var(--bump) * 2) var(--bump) repeat-x,
+		linear-gradient(#000 0 0) 0 0 / 100% calc(100% - var(--bump)) no-repeat;
+	-webkit-mask: var(--puff);
+	mask: var(--puff);
+	filter: drop-shadow(1px 0 0 var(--line)) drop-shadow(-1px 0 0 var(--line))
+		drop-shadow(0 1px 0 var(--line)) drop-shadow(0 -1px 0 var(--line));
+}
+.widget-card > * { position: relative; z-index: 1; }
+
 .widget-card {
+	--bump: 10px;
 	position: relative;
 	display: flex;
 	flex-direction: column;
@@ -4657,10 +4700,13 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	   the cross, so the cross centres 2.2px below where the padding
 	   alone would put it. the top gives that back, and the cross ends
 	   up the same distance from the top edge as from the left. */
-	padding: 0.46rem 0.8rem 0.8rem;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
+	padding: 0.46rem 0.8rem 1.35rem;
+	/* the tile is drawn by the layer below rather than by a background
+	   and a border, because its foot is a row of bumps and a border
+	   cannot follow one. see .widget-card::before. */
+	background: none;
+	border: 0;
+	border-radius: 1.1rem;
 	overflow: hidden;
 	text-align: left;
 	/* translate, not transform: dragging and the slide both write transform,
@@ -4734,7 +4780,8 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .rail-left .widget-unit { font-size: 0.7rem; }
 .rail-left .widget-head { font-size: 0.72rem; }
 .rail-left .widget-line { font-size: 0.74rem; }
-.rail-left .widget-body { gap: 0.2rem; }
+.rail-left .widget-body { gap: 0.15rem; }
+.rail-left .widget-head { margin-bottom: 0.1rem; }
 .widget-unit {
 	font-family: var(--font);
 	font-size: 0.8rem;
@@ -4847,10 +4894,23 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 /* the corner switch: a circle standing off the bottom right of the
    page, where the board rarely reaches. it used to be a word on a row
    of its own, which cost the board a whole line of height. */
-.widget-edit {
-	position: absolute;
-	right: 0;
+/* the two corner marks ride at the foot of the bar, not at the foot of
+   whatever it happens to be scrolling — and inside its padding, so the
+   wave never crosses them. */
+.rail-foot {
+	position: sticky;
 	bottom: 0;
+	z-index: 4;
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--tight);
+	margin-top: auto;
+	padding-top: var(--tight);
+}
+.widget-edit {
+	position: static;
 	z-index: 3;
 	display: grid;
 	place-items: center;
@@ -4864,9 +4924,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 /* the add button becomes a circle beside it while edit is on */
 .home-rail.is-editing .widget-add {
-	position: absolute;
-	right: 2.7rem;
-	bottom: 0;
+	position: static;
 	z-index: 3;
 	display: grid;
 	place-items: center;
@@ -4905,6 +4963,11 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	background: var(--ink);
 	border-color: var(--ink);
 }
+/* on the black bar a black button has no edge of its own, so both marks
+   at the foot wear the bar's own white as an outline */
+.rail-foot .widget-add,
+.rail-foot .widget-edit:hover,
+.home-rail.is-editing .rail-foot .widget-edit { border-color: var(--bar-ink); }
 
 
 /* the × sits in the head's first slot rather than floating in the
@@ -4940,7 +5003,8 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	   corner and stands 1.25rem, so its middle is 0.725rem up — which
 	   is where a 1.15rem chip sits when its floor is 0.15rem */
 	right: 1.45rem;
-	bottom: 0.15rem;
+	/* over the bumps, not on them */
+	bottom: calc(var(--bump, 0px) + 0.15rem);
 	display: grid;
 	place-items: center;
 	height: 1.15rem;
@@ -4970,7 +5034,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	position: absolute;
 	z-index: 2;
 	right: 0.1rem;
-	bottom: 0.1rem;
+	bottom: calc(var(--bump, 0px) + 0.1rem);
 	width: 1.25rem;
 	height: 1.25rem;
 	padding: 0;
