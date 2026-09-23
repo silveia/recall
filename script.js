@@ -2052,7 +2052,7 @@ document.addEventListener('click', () => {
    else is somewhere else, and the board settles. */
 document.addEventListener('click', (event) => {
     if (!editingHome) return;
-    if (event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks, #sizePicks, .context-menu')) return;
+    if (event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks, .context-menu')) return;
     setHomeEditing(false);
 });
 
@@ -5517,7 +5517,6 @@ const widgetList = document.getElementById('widgetList');
 const widgetBin = document.getElementById('widgetBin');
 const widgetAdd = document.getElementById('widgetAdd');
 const widgetPicks = document.getElementById('widgetPicks');
-const sizePicks = document.getElementById('sizePicks');
 const sizeList = document.getElementById('sizeList');
 const widgetPickList = document.getElementById('widgetPickList');
 const widgetEdit = document.getElementById('widgetEdit');
@@ -5529,7 +5528,6 @@ const WIDGET_KEY = 'home-widgets';
 /* the board is one row deep, so the page below it is free for whatever
    else goes there. a shape two rows tall has nowhere to be. */
 const WIDGET_SIZES = ['small', 'wide'];
-const SIZE_MARK = { small: '1×1', wide: '2×1', large: '2×2' };
 
 // a name no other tile on the board has, however many of a kind there are
 let widgetKeyCount = 0;
@@ -6028,19 +6026,6 @@ function renderWidgets() {
         body.className = 'widget-body';
         widget.fill(body, entry.size);
 
-        const resize = document.createElement('button');
-        resize.className = 'widget-size';
-        resize.type = 'button';
-        resize.setAttribute('aria-label', `resize ${widget.name}`);
-        // what it says when you hold option — the kind of thing it is,
-        // not which one of them it happens to be
-        resize.title = 'resize widget';
-        resize.textContent = SIZE_MARK[entry.size];
-        resize.addEventListener('click', (event) => {
-            event.stopPropagation();
-            openSizePicks(entry, resize);
-        });
-
         const grip = document.createElement('button');
         grip.className = 'widget-grip';
         grip.type = 'button';
@@ -6051,7 +6036,7 @@ function renderWidgets() {
             + ' stroke-width="2.2" stroke-linecap="round"/></svg>';
         grip.addEventListener('pointerdown', (event) => startWidgetSizing(card, entry, event));
 
-        card.append(head, body, resize, grip);
+        card.append(head, body, grip);
         card.addEventListener('pointerdown', (event) => startWidgetDrag(card, entry, event));
         card.addEventListener('contextmenu', (event) => {
             event.stopPropagation();
@@ -6141,6 +6126,58 @@ function removeWidget(key) {
    so what is inside reflows as it goes — a scale would have stretched
    the words and the corners on the way. everything else on the board
    slides at the same time, as it does for any other move. */
+/* the row read left to right, which is the order growing and pushing
+   both work in. */
+function rowOrder() {
+    return [...homeWidgets].sort((one, two) => one.col - two.col);
+}
+
+/* how many columns the row has spare */
+function rowFree() {
+    return BOARD_COLS - homeWidgets.reduce((used, one) => used + spanOf(one)[0], 0);
+}
+
+/* room for a tile about to grow. the columns come from the neighbour it
+   is growing into — a wide one beside it becomes small, which is the
+   natural reading of pushing into it — then from the neighbour on the
+   other side. with four small ones there is nothing to shorten, so the
+   last tile along goes instead. */
+function roomToGrow(entry, want) {
+    let need = BOARD_SPAN[want][0] - spanOf(entry)[0];
+    if (need <= 0) return true;
+
+    const order = rowOrder();
+    const at = order.indexOf(entry);
+    const beside = [order[at + 1], order[at - 1]].filter(Boolean);
+
+    for (const other of beside) {
+        if (rowFree() >= need) break;
+        if (spanOf(other)[0] > 1) other.size = 'small';
+    }
+
+    // still short: the last one along is taken off, and the one after it
+    while (rowFree() < need) {
+        const left = rowOrder().filter((one) => one !== entry);
+        if (!left.length) return false;
+        const last = left[left.length - 1];
+        homeWidgets = homeWidgets.filter((one) => one !== last);
+    }
+    return true;
+}
+
+/* the row packed left to right in the order it reads. growing is the
+   one move where a gap cannot be kept — the tile has to come from
+   somewhere — so the row closes up rather than leaving tiles to land on
+   each other. */
+function packRow(order) {
+    let col = 0;
+    order.forEach((one) => {
+        one.row = 0;
+        one.col = col;
+        col += spanOf(one)[0];
+    });
+}
+
 function setWidgetSize(key, size) {
     const entry = homeWidgets.find((item) => item.key === key);
     if (!entry || !WIDGET_SIZES.includes(size) || entry.size === size) return;
@@ -6148,11 +6185,10 @@ function setWidgetSize(key, size) {
     const card = widgetList.querySelector(`.widget-card[data-widget-id="${key}"]`);
     const was = card ? card.getBoundingClientRect() : null;
 
+    const order = rowOrder();
+    if (!roomToGrow(entry, size)) return;
     entry.size = size;
-    // a wide shape at the last column would hang off the right edge
-    entry.col = Math.min(entry.col, BOARD_COLS - spanOf(entry)[0]);
-    // it grows down and to the right, so that is the way it pushes
-    makeRoom(homeWidgets, entry, { x: 1, y: 1 });
+    packRow(order.filter((one) => homeWidgets.includes(one)));
     saveWidgets();
     slideBoard(() => renderWidgets());
 
@@ -6194,63 +6230,19 @@ function growInto(card, was, ms) {
 /* the three shapes, offered rather than stepped through. pressing the
    chip used to walk to the next one, which meant two presses to get
    back to where you were and no way to see what the choices were. */
-function openSizePicks(entry, chip) {
-    const wasOpen = !sizePicks.hidden && !sizePicks.classList.contains('is-leaving')
-        && sizePicks.dataset.widgetId === entry.key;
-    closeSizePicks();
-    if (wasOpen) return;
-
-    sizeList.innerHTML = '';
-    WIDGET_SIZES.forEach((size) => {
-        const pick = document.createElement('button');
-        pick.className = 'size-pick' + (size === entry.size ? ' is-on' : '');
-        pick.type = 'button';
-        pick.dataset.size = size;
-        pick.setAttribute('aria-pressed', String(size === entry.size));
-        pick.title = SIZE_MARK[size];
-
-        const shape = document.createElement('span');
-        shape.className = 'size-shape';
-        shape.setAttribute('aria-hidden', 'true');
-        const said = document.createElement('span');
-        said.textContent = SIZE_MARK[size];
-
-        pick.append(shape, said);
-        pick.addEventListener('click', (event) => {
-            event.stopPropagation();
-            closeSizePicks();
-            setWidgetSize(entry.key, size);
-        });
-        sizeList.append(pick);
-    });
-
-    sizePicks.dataset.widgetId = entry.key;
-    sizePicks.classList.remove('is-leaving');
-    sizePicks.hidden = false;
-    placeUnder(sizePicks, chip);
-}
-
-function closeSizePicks() {
-    shutPop(sizePicks);
-    delete sizePicks.dataset.widgetId;
-}
-
-sizePicks.addEventListener('click', (event) => event.stopPropagation());
 
 /* a press anywhere that isn't the board or the buttons that work it puts
    the arranging away, the same as pressing done. */
 document.addEventListener('pointerdown', (event) => {
     if (!editingHome) return;
     const inside = event.target.closest
-        && event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks, #sizePicks');
+        && event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks');
     if (inside) return;
-    closeSizePicks();
     setHomeEditing(false);
 });
 
 function setHomeEditing(on) {
     editingHome = on;
-    if (!on) closeSizePicks();
     homePanel2.classList.toggle('is-editing', on);
     // the spare row under the board is only there while you're arranging
     paintBoardDepth();
@@ -6415,46 +6407,36 @@ function trackWidgetSizing(event) {
     if (size === sizeDrag.size) return;
 
     sizeDrag.size = size;
-    /* the tile takes the shape at once and the board makes room for it
-       as it goes, the same as it does while one is carried */
-    const shadow = homeWidgets.map((one) => (one.key === entry.key ? { ...one, size } : { ...one }));
-    const me = shadow.find((one) => one.key === entry.key);
-    me.col = Math.min(me.col, BOARD_COLS - BOARD_SPAN[size][0]);
-    makeRoom(shadow, me, { x: 1, y: 1 });
-    sizeDrag.shadow = shadow;
-    // where it is right now, mid-flight or not
+    /* only the tile in your hand changes while you pull. the board is
+       not shuffled to show what *might* happen, because on a single row
+       the answer can be that a neighbour is shortened or a tile goes —
+       and a preview that shows one thing and does another is worse than
+       no preview. the row settles on the drop. */
     const was = card.getBoundingClientRect();
     card.dataset.size = size;
-    showRoom(shadow);
-    // shorter than the picker's, because it happens under your hand
     growInto(card, was, 170);
 }
 
 function endWidgetSizing() {
     if (!sizeDrag) return;
-    const { entry, shadow, size } = sizeDrag;
+    const { entry, card, size } = sizeDrag;
     sizeDrag = null;
     window.removeEventListener('pointermove', trackWidgetSizing);
     window.removeEventListener('pointerup', endWidgetSizing);
     window.removeEventListener('pointercancel', endWidgetSizing);
     document.documentElement.classList.remove('sizing');
 
-    if (!shadow || size === entry.size) return;
-    shadow.forEach((one) => {
-        const real = homeWidgets.find((item) => item.key === one.key);
-        if (real) {
-            real.col = one.col;
-            real.row = one.row;
-            if (real.key === entry.key) real.size = one.size;
-        }
-    });
-    saveWidgets();
-    slideBoard(() => renderWidgets());
+    if (size === entry.size) {
+        if (card) card.dataset.size = entry.size;      // pulled and put back
+        return;
+    }
+    // the same road the board takes for any other change of shape
+    setWidgetSize(entry.key, size);
 }
 
 function startWidgetDrag(card, entry, event) {
     if (!editingHome || event.button) return;
-    if (event.target.closest('.widget-off, .widget-size, .widget-grip')) return;
+    if (event.target.closest('.widget-off, .widget-grip')) return;
     event.preventDefault();
     if (boardDrag) endWidgetDrag();
 
@@ -6623,7 +6605,6 @@ function shutPop(panel) {
 
 function closeWidgetPicks() {
     shutPop(widgetPicks);
-    if (typeof sizePicks !== 'undefined' && sizePicks) closeSizePicks();
     widgetAdd.setAttribute('aria-expanded', 'false');
 }
 

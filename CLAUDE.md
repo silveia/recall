@@ -753,6 +753,24 @@ with a `+ 1` for a row to drop into below — `paintBoardDepth` and
 `showRoom` — which made the board's box twice as tall as the row and
 pushed those marks down with it.
 
+**Growing takes its room from a neighbour.** A tile that needs another
+column gets it from the one it is growing into — a wide neighbour
+becomes small, which is the natural reading of pushing into it — then
+from the neighbour on the other side. With four small ones there is
+nothing to shorten, so the last tile along goes instead. The row is then
+packed left to right in the order it reads: growing is the one move
+where a gap cannot be kept, because the columns have to come from
+somewhere.
+
+**The corner drag takes the same road.** It used to build its own
+layout with `makeRoom` and show the board shuffling as you pulled — on
+one row that answer can be "a neighbour is shortened" or "a tile goes",
+and a preview that shows one thing and does another is worse than none.
+Only the tile in your hand changes while you pull; the row settles on
+the drop, through `setWidgetSize` like everything else.
+
+There is **no size chip**. The corner is the way to resize.
+
 **Nothing may sit on anything else.** `settleBoard()` runs on every
 render — added, dropped, resized, or read back out of storage — and
 gives every tile a place of its own: where it is if that is clear, else

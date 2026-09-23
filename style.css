@@ -4142,35 +4142,6 @@ html.inverted .app-shell::before { opacity: 1; }
 
 /* the shapes, drawn at the shape they are. a picture of each says more
    than its numbers do — a 2×2 is obvious as a square and not as a word. */
-/* no panel and no label: the three shapes are the whole of it, and a
-   box around them was a box around a box */
-.pop-sizes {
-	width: auto;
-	padding: 0;
-	background: none;
-	border: 0;
-	box-shadow: none;
-}
-.size-list { display: flex; gap: var(--tight); }
-.size-pick {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 0.35rem;
-	padding: var(--tight);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	color: var(--ink);
-	font: inherit;
-	font-size: 0.7rem;
-	font-family: var(--num-font);
-	cursor: var(--cur-tap);
-	transition: color 0.18s var(--ease), background-color 0.18s var(--ease);
-}
-.size-pick:hover { color: var(--paper); background: var(--ink); }
-/* the one it already is, filled in the way every live state here is */
-.size-pick.is-on { color: var(--paper); background: var(--ink); }
 /* the shape itself, to scale against the others */
 .size-shape {
 	display: block;
@@ -4178,15 +4149,6 @@ html.inverted .app-shell::before { opacity: 1; }
 	border-radius: 3px;
 	background: none;
 }
-.size-pick[data-size="small"] .size-shape { width: 1.1rem; height: 1.1rem; }
-.size-pick[data-size="wide"]  .size-shape { width: 2.4rem; height: 1.1rem; }
-.size-pick[data-size="large"] .size-shape { width: 2.4rem; height: 2.4rem; }
-/* every choice is the same box whatever shape it offers, and a short
-   shape sits in the middle of its own — three boxes of three heights
-   in a row reads as a mistake rather than as a scale */
-.size-list { align-items: stretch; }
-.size-pick { justify-content: center; }
-.size-pick .size-shape { margin: auto 0; }
 /* a plain list, one under the other, every row the same length. as a
    wrapped row of pills each was as wide as its own name, which read as
    a jumble rather than as a list of the same kind of thing. */
@@ -4921,38 +4883,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .widget-off svg { display: block; width: 100%; height: 100%; }
 .widget-off:hover { transform: scale(1.12); }
 
-/* the shape it is, in the bottom corner. it fades up into place with
-   the rest of edit rather than appearing whole. */
-.widget-size {
-	position: absolute;
-	z-index: 2;
-	/* beside the grip and level with it: the grip sits 0.1rem off the
-	   corner and stands 1.25rem, so its middle is 0.725rem up — which
-	   is where a 1.15rem chip sits when its floor is 0.15rem */
-	right: 1.45rem;
-	bottom: 0.15rem;
-	display: grid;
-	place-items: center;
-	height: 1.15rem;
-	padding: 0 0.45rem;
-	/* the numerals ride high in their line, like every other label
-	   here — see --drop */
-	padding-top: calc(var(--drop) * 2);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	font-size: 0.68rem;
-	font-weight: 700;
-	line-height: 1;
-	cursor: var(--cur-tap);
-	opacity: 0;
-	transform: translateY(4px) scale(0.9);
-	pointer-events: none;
-	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease),
-	            color 0.18s var(--ease), background-color 0.18s var(--ease);
-}
-.widget-size:hover { color: var(--paper); background: var(--ink); }
-
 /* the corner you can pull. it is the indicator as much as the handle:
    three strokes in the corner are what say a thing is resizable, and
    the pointer turns diagonal over it to say the same again. */
@@ -4978,13 +4908,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .widget-grip:hover { transform: translate(1px, 1px); }
 
 .home-panel.is-editing .widget-off,
-.home-panel.is-editing .widget-size,
-.home-panel.is-editing .widget-grip {
-	opacity: 1;
-	transform: none;
-	pointer-events: auto;
-}
-.home-panel.is-editing .widget-grip:hover { transform: translate(1px, 1px); }
+.home-panel.is-editing .home-panel.is-editing .widget-grip:hover { transform: translate(1px, 1px); }
 /* while a corner is being pulled the whole board keeps that pointer */
 .sizing, .sizing * { cursor: var(--cur-corner) !important; user-select: none; }
 .home-panel.is-editing .widget-off:hover { transform: scale(1.12); }
@@ -5036,14 +4960,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
    tile was being moved to the end of the page and a reparented element
    has no previous style to move from. */
 .home-panel.is-editing .widget-card.is-dragging .widget-off,
-.home-panel.is-editing .widget-card.is-dragging .widget-size,
-.home-panel.is-editing .widget-card.is-dragging .widget-grip {
-	opacity: 0;
-	transform: scale(0.7);
-	pointer-events: none;
-}
-
-/* held over the bin it shrinks in your hand, so you can see what
+.home-panel.is-editing .widget-card.is-dragging /* held over the bin it shrinks in your hand, so you can see what
    letting go would do before you do it */
 .widget-card.is-going-out {
 	translate: 0 -4px;
