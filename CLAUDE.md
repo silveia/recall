@@ -348,6 +348,29 @@ three rounds and cannot be tested from here.
 was only ever hidden by the next window opening over it. Any new window
 has to be added in both places: `showScreen` and `closeModal`.
 
+## A folder without asking for one
+
+**A page cannot make a folder on the disk.** The only door is the folder
+picker, and that door is a permission prompt about Downloads or the
+Desktop for someone who only wanted a folder of their own songs. There
+is no API for "make a folder in Downloads"; the picker *is* the consent.
+
+So the ordinary way out is a **zip**: everything into one file, which is
+an ordinary download — nothing asked, nothing granted, no picker. Double
+-clicked it becomes a folder named after the zip, which is the folder
+that was wanted in the first place. Type a name, press once, and
+`Danganronpa.zip` lands in downloads.
+
+Stored, not deflated — these are mp3s and already packed, so squeezing
+them again costs seconds and saves nothing. The name goes in as utf-8
+with the flag that says so, or anything but ascii comes out as mojibake
+on the other side. Verified by unzipping what it writes: three entries,
+right names, right sizes, every CRC good, and `unzip -t` clean.
+
+The folder picker is still there, folded away under *or write them
+straight to a folder*, for when writing onto the disk is actually
+wanted.
+
 ## Every clip into a folder
 
 `download every clip` writes the mp3s straight into a folder — not

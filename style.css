@@ -2423,6 +2423,22 @@ html.inverted .app-shell::before { opacity: 1; }
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
 .place-bubble:hover { color: var(--paper); background: var(--ink); }
+/* the other way round, folded away: most of the time the zip is what is
+   wanted, and a picker is a permission prompt for someone who only
+   asked for a folder of their own songs. */
+.folder-other { font-size: 0.85rem; }
+.folder-other summary {
+	padding: 0 0.35rem;
+	text-align: center;
+	cursor: var(--cur-tap);
+	list-style: none;
+}
+.folder-other summary::-webkit-details-marker { display: none; }
+.folder-other summary:hover { text-decoration: underline; }
+.folder-other[open] summary { margin-bottom: var(--group); }
+.folder-other .place-strip { margin-bottom: var(--tight); }
+#folderPick { width: 100%; height: var(--field); padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0; }
+
 /* what the press will do, said plainly */
 .folder-say {
 	margin: 0;

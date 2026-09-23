@@ -691,18 +691,23 @@
                                 <div class="ask-body">
                                     <input id="folderName" type="text" placeholder="folder name" aria-label="folder name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
 
-                                    <div class="place-strip" id="placeStrip" role="group" aria-label="where to keep it">
-                                        <button class="place-bubble" type="button" data-place="downloads">downloads</button>
-                                        <button class="place-bubble" type="button" data-place="desktop">desktop</button>
-                                        <button class="place-bubble" type="button" data-place="documents">documents</button>
-                                    </div>
-
-                                    <!-- what the press will actually do, in words,
-                                         since the folder is made rather than
-                                         chosen and that is not obvious -->
+                                    <!-- what the press will actually do, in words -->
                                     <p class="folder-say" id="folderSay"></p>
 
-                                    <button class="basic-button is-solid ask-go" id="folderGo" type="button">save them there</button>
+                                    <button class="basic-button is-solid ask-go" id="folderGo" type="button">save them</button>
+
+                                    <!-- the other way, for anyone who would rather
+                                         have them written onto the disk and doesn't
+                                         mind being asked for the shelf first -->
+                                    <details class="folder-other">
+                                        <summary>or write them straight to a folder</summary>
+                                        <div class="place-strip" id="placeStrip" role="group" aria-label="where to keep it">
+                                            <button class="place-bubble" type="button" data-place="downloads">downloads</button>
+                                            <button class="place-bubble" type="button" data-place="desktop">desktop</button>
+                                            <button class="place-bubble" type="button" data-place="documents">documents</button>
+                                        </div>
+                                        <button class="basic-button is-plain" id="folderPick" type="button">pick that folder</button>
+                                    </details>
                                 </div>
                             </section>
 

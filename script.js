@@ -3151,6 +3151,97 @@ function showBatchState() {
     downloadAllButton.title = label;
 }
 
+/* --- a folder without asking for one: a zip --- */
+
+/* a page cannot make a folder on the disk. the only door is the folder
+   picker, and that door is a permission prompt about downloads or the
+   desktop, for someone who only wanted a folder of their own songs.
+
+   so: everything into one zip, which is an ordinary download — nothing
+   asked, nothing granted, nothing to open a picker for. double-clicked
+   it becomes a folder named after the zip, which is the folder that was
+   wanted in the first place.
+
+   stored, not deflated: these are mp3s and already packed, so squeezing
+   them again costs seconds and saves nothing. */
+const CRC_TABLE = (() => {
+    const table = new Uint32Array(256);
+    for (let at = 0; at < 256; at += 1) {
+        let value = at;
+        for (let round = 0; round < 8; round += 1) {
+            value = value & 1 ? (value >>> 1) ^ 0xedb88320 : value >>> 1;
+        }
+        table[at] = value >>> 0;
+    }
+    return table;
+})();
+
+function crcOf(bytes) {
+    let crc = 0xffffffff;
+    for (let at = 0; at < bytes.length; at += 1) {
+        crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ bytes[at]) & 0xff];
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+}
+
+function zipWord(value, wide) {
+    const out = new Uint8Array(wide);
+    for (let at = 0; at < wide; at += 1) out[at] = (value >>> (at * 8)) & 0xff;
+    return out;
+}
+
+/* the time a zip carries is a dos one: seconds in twos, and years from
+   1980. nothing reads it closely, but a zip without one looks broken. */
+function dosWhen(when) {
+    const at = when || new Date();
+    const date = ((at.getFullYear() - 1980) << 9) | ((at.getMonth() + 1) << 5) | at.getDate();
+    const time = (at.getHours() << 11) | (at.getMinutes() << 5) | Math.floor(at.getSeconds() / 2);
+    return { date, time };
+}
+
+function zipPiece(parts) {
+    let much = 0;
+    parts.forEach((one) => { much += one.length; });
+    const out = new Uint8Array(much);
+    let at = 0;
+    parts.forEach((one) => { out.set(one, at); at += one.length; });
+    return out;
+}
+
+/* one entry's two headers. the name goes in as utf-8 with the flag that
+   says so, or anything but ascii comes out as mojibake on the other
+   side. */
+function zipEntry(name, bytes, at, when) {
+    const called = new TextEncoder().encode(name);
+    const { date, time } = dosWhen(when);
+    const crc = crcOf(bytes);
+
+    const local = zipPiece([
+        zipWord(0x04034b50, 4), zipWord(20, 2), zipWord(0x0800, 2), zipWord(0, 2),
+        zipWord(time, 2), zipWord(date, 2),
+        zipWord(crc, 4), zipWord(bytes.length, 4), zipWord(bytes.length, 4),
+        zipWord(called.length, 2), zipWord(0, 2), called
+    ]);
+
+    const middle = zipPiece([
+        zipWord(0x02014b50, 4), zipWord(20, 2), zipWord(20, 2), zipWord(0x0800, 2), zipWord(0, 2),
+        zipWord(time, 2), zipWord(date, 2),
+        zipWord(crc, 4), zipWord(bytes.length, 4), zipWord(bytes.length, 4),
+        zipWord(called.length, 2), zipWord(0, 2), zipWord(0, 2),
+        zipWord(0, 2), zipWord(0, 2), zipWord(0, 4), zipWord(at, 4), called
+    ]);
+
+    return { local, middle, much: local.length + bytes.length };
+}
+
+function zipEnd(middles, where, much) {
+    return zipPiece([
+        zipWord(0x06054b50, 4), zipWord(0, 2), zipWord(0, 2),
+        zipWord(middles, 2), zipWord(middles, 2),
+        zipWord(much, 4), zipWord(where, 4), zipWord(0, 2)
+    ]);
+}
+
 /* --- the folder the mp3s go into --- */
 
 /* a page cannot make a folder anywhere it likes, and it cannot be told
@@ -3292,6 +3383,7 @@ folderFields.forEach((field) => {
 const PLACE_KEY = 'clip-folder-place';
 const placeStrip = document.getElementById('placeStrip');
 const folderGo = document.getElementById('folderGo');
+const folderPick = document.getElementById('folderPick');
 let placeWanted = window.localStorage.getItem(PLACE_KEY) || 'downloads';
 
 const folderSay = document.getElementById('folderSay');
@@ -3302,16 +3394,22 @@ function paintPlaces() {
     placeStrip.querySelectorAll('.place-bubble').forEach((one) => {
         one.classList.toggle('is-on', one.dataset.place === placeWanted);
     });
-    const called = tidyFolder(folderName.value);
-    folderSay.textContent = called
-        ? `makes a folder called ${called} in your ${placeWanted}`
-        : `straight into your ${placeWanted}, in no folder of its own`;
+    const called = tidyFolder(folderName.value) || 'clips';
+    folderSay.textContent = `${called}.zip lands in your downloads — open it and `
+        + `there is your ${called} folder, with the songs in it`;
 }
 
 /* the press that sends them. the picker, where one is still wanted,
    opens from here — so it opens off a press, which is the only time a
    browser will open one at all. */
-folderGo.addEventListener('click', async () => {
+folderGo.addEventListener('click', () => {
+    showScreen(homeScreen);
+    downloadAllClips(null);        // no folder: it comes back as one zip
+});
+
+/* the other way, for anyone who would rather have the files written
+   straight onto the disk and doesn't mind being asked for the shelf */
+folderPick.addEventListener('click', async () => {
     const folder = await folderFor(tidyFolder(folderName.value), placeWanted);
     if (folder === 'stop') return;              // they closed the picker
     showScreen(homeScreen);
@@ -3359,13 +3457,9 @@ async function downloadAllClips(folder) {
     }
     if (!clips.length) return;
 
-    /* picking the folder was the asking. it is only the download that
-       has to be agreed to first, because sixty-four files arriving one
-       after another is not something anyone should meet by surprise. */
-    if (!folder) {
-        const sure = await askConfirm(`download ${clips.length} clip${clips.length === 1 ? '' : 's'}? one at a time`, downloadAllButton);
-        if (!sure) return;
-    }
+    /* nothing to agree to any more: with a folder it was the picking, and
+       without one it is a single zip rather than sixty-four files
+       arriving one after another. */
 
     // it stays live — it's the pause button now
     batchRunning = true;
@@ -3374,6 +3468,13 @@ async function downloadAllClips(folder) {
 
     let done = 0;
     const taken = new Set();
+    /* with no folder, everything goes into one zip — the parts are kept
+       and sealed at the end. a zip is an ordinary download, so nothing
+       is asked for and nothing granted. */
+    const zipParts = [];
+    const zipMiddles = [];
+    let zipAt = 0;
+    const inZip = !folder;
     for (const record of clips) {
         while (batchPaused) {
             setRecordStatus(`held at ${done} of ${clips.length}`);
@@ -3401,12 +3502,11 @@ async function downloadAllClips(folder) {
                 await out.write(mp3);
                 await out.close();
             } else {
-                const href = URL.createObjectURL(mp3);
-                const link = document.createElement('a');
-                link.href = href;
-                link.download = called;
-                link.click();
-                window.setTimeout(() => URL.revokeObjectURL(href), 10000);
+                const bytes = new Uint8Array(await mp3.arrayBuffer());
+                const entry = zipEntry(called, bytes, zipAt, new Date());
+                zipParts.push(entry.local, bytes);
+                zipMiddles.push(entry.middle);
+                zipAt += entry.much;
             }
             done += 1;
         } catch (error) {
@@ -3414,14 +3514,25 @@ async function downloadAllClips(folder) {
             if (row) row.classList.add('is-packing-failed');
         }
         if (row) row.classList.remove('is-packing');
-        /* a breath between downloads, because chrome drops a burst of
-           them. writing into a folder is not a download and needs no
-           such thing. */
-        if (!folder) await new Promise((resolve) => window.setTimeout(resolve, 400));
+    }
+
+    // and the zip is sealed and handed over as one file
+    if (inZip && done) {
+        const called = tidyFolder(folderName.value) || 'clips';
+        const middles = zipPiece(zipMiddles);
+        const bundle = new Blob([...zipParts, middles, zipEnd(zipMiddles.length, zipAt, middles.length)],
+                                { type: 'application/zip' });
+        const href = URL.createObjectURL(bundle);
+        const link = document.createElement('a');
+        link.href = href;
+        link.download = `${called}.zip`;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(href), 20000);
     }
     setRecordStatus(done !== clips.length ? `only ${done} of ${clips.length} worked`
         : folder ? `${done} saved into ${folder.name}`
-        : '', done !== clips.length);
+        : `${done} in ${tidyFolder(folderName.value) || 'clips'}.zip — open it for the folder`,
+        done !== clips.length);
     recordingList.querySelectorAll('.is-packing').forEach((row) => row.classList.remove('is-packing'));
     batchRunning = false;
     batchPaused = false;
