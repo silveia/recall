@@ -2467,10 +2467,21 @@ html.inverted .app-shell::before { opacity: 1; }
 /* where the exported file is dropped. a big plain target rather than a
    button pretending to be one, and it inverts while something is over
    it the way a live thing does here. */
-/* the offer to watch the folder the exports land in. quiet until it is
-   on, then it says which folder it is watching. */
-.list-watch { align-self: flex-start; }
-.list-watch.is-on { opacity: 1; font-weight: 700 !important; }
+/* the offer to watch the folder the exports land in: a button like any
+   other, at the foot of the column, and filled in once it is watching
+   the way every live thing here is. */
+.list-watch {
+	align-self: stretch;
+	margin-top: auto;
+	height: var(--field);
+	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
+}
+.list-watch.is-on {
+	color: var(--paper);
+	background: var(--ink);
+	border-color: var(--ink);
+}
+.list-watch.is-on:hover { color: var(--ink); background: var(--paper); }
 
 /* the lists already brought in, newest first. pressing one swaps the
    songs in the box; the cross beside it forgets that one. */
