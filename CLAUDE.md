@@ -671,6 +671,29 @@ in — same half-second either way, staggered 70ms apart. The ripple is
 what makes it read as one thing happening rather than three pictures
 swapping.
 
+## The board lives in the black bar
+
+The widgets sit in the scalloped left bar now, on **every page**, rather
+than on the home page alone — the home panel is left empty behind them.
+Two columns instead of four, since the bar is 19rem: a `wide` tile fills
+the bar and a `large` one fills it two rows deep, which is the same
+shape language at a smaller size. Rows came down from 8.5rem to 5.6rem
+and what is written in the tiles came down with them, or the clock's
+digits wrap and read as a broken row of dashes.
+
+**The bar writes in white and a tile is a white card**, so everything
+the board puts in there — the cards, the pen, the size chip, the cross —
+says `color: var(--ink)` again or it vanishes into its own back.
+
+**The wave is the inner edge, not the outer.** It is 26px wide, centred
+on the bar's edge, so its innermost point is 13px inside — the board
+stops there. A tile riding out over the bumps reads as the bar having
+failed to hold it.
+
+Everything that keyed off `.home-panel` keys off `.home-rail` now, since
+that is the thing holding the tiles; `homePanel2` in the script points
+at the bar.
+
 ## The home board
 
 **As many tiles as you like, and as many of a kind as you like.** Every
@@ -733,11 +756,6 @@ sorting a list, and the reason "you can't move anything down or right"
 was true before. `untangle(anchor)` gives the anchor what it was
 dropped on and pushes anything under it down; nothing is ever pulled
 back up, because a gap you left is a gap you meant.
-
-**The lift and the hard shadow are how a tile sits all the time**, not
-only while the board is being arranged. Edit still changes what a tile
-*does* — the handles, the grab cursor, the body going quiet — but not
-how it looks.
 
 **Nothing is shoved past the foot of the board.** A shoved tile had no
 floor at all: pushed down far enough it slid under the bin, which is how

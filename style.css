@@ -386,7 +386,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    page faded its panel and then faded the bar and the list inside it
    again — three fades over each other, which is what makes an entrance
    look muddy rather than quick. */
-.home-panel:not([hidden]),
+.home-rail:not([hidden]),
 .home-body:not([hidden]),
 .recorder-panel:not([hidden]),
 .player-panel:not([hidden]) {
@@ -567,10 +567,40 @@ html.inverted .app-shell::before { opacity: 1; }
 
    it's simply there on load — no entrance. */
 .rail-left {
+	position: relative;      /* the bin and the two corner marks hang off it */
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
 	contain: layout paint;
+	/* the wave is 26px wide and sits centred on the bar's edge, so its
+	   innermost point is 13px inside it. the board stops there rather
+	   than at the outer edge — a tile riding out over the bumps reads as
+	   the bar having failed to contain it. */
+	padding: var(--tight) calc(var(--tight) + 13px) 3rem var(--tight);
 	color: var(--bar-ink);
 	background: var(--bar);
+	scrollbar-width: none;
 }
+.rail-left::-webkit-scrollbar { display: none; }
+/* the bar writes in white, and everything the board puts in it is a
+   white card or a white button — so inside those it writes in ink
+   again, or the words and the marks vanish into their own backs. */
+.rail-left .widget-card,
+.rail-left .widget-edit,
+.rail-left .widget-off,
+.rail-left .widget-size { color: var(--ink); }
+
+/* and the handles come out while the board is being arranged. said
+   again here, against the bar rather than against the panel the board
+   used to live in. */
+.rail-left.is-editing .widget-off,
+.rail-left.is-editing .widget-size,
+.rail-left.is-editing .widget-grip {
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+}
+.rail-left.is-editing .widget-grip:hover { transform: translate(1px, 1px); }
 /* the right bar is always in. its edge is a column of round dots — a
    real border can only do square dashes, so it's a repeating background. */
 .rail-right {
@@ -920,7 +950,7 @@ html.inverted .app-shell::before { opacity: 1; }
 /* =========================================================
    7. home — section tabs
    ========================================================= */
-.quick-panel, .recorder-panel, .home-panel, .player-panel { width: 100%; }
+.quick-panel, .recorder-panel, .home-rail, .player-panel { width: 100%; }
 .quick-panel { flex: none; }
 
 /* home — the first section. empty for now; it's the frame waiting to
@@ -4534,14 +4564,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
    widget takes one of three shapes across them. the tiles sit straight
    on the page — there is no frame round them, so the only spacing in
    here is the one step the rest of the site uses. */
-.home-panel {
-	position: relative;
-	gap: var(--group);
-	padding: 0;
-	background: none;
-	border: 0;
-	border-radius: 0;
-}
 .widget-list {
 	display: grid;
 	flex: 0 1 auto;
@@ -4551,11 +4573,13 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	   stretching to hold it and everything in them jumped 129px sideways
 	   and back — which is the snap. at minmax(0,1fr) the track holds its
 	   share and the tile simply overflows it while it shrinks. */
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	/* one row per row in use, and a spare one under them while you are
 	   arranging so a tile can be dropped below everything else */
-	grid-template-rows: repeat(var(--board-rows, 1), 8.5rem);
-	grid-auto-rows: 8.5rem;
+	/* smaller, since the bar is narrow and the whole board has to live
+	   in it — the tiles keep their shapes, they just sit closer */
+	grid-template-rows: repeat(var(--board-rows, 1), 5.6rem);
+	grid-auto-rows: 5.6rem;
 	gap: var(--group);
 	min-height: 0;
 	overflow-y: auto;
@@ -4702,6 +4726,15 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	overflow-wrap: anywhere;
 }
 .widget-card[data-size="large"] .widget-big { font-size: 3.25rem; }
+/* in the bar a tile is a little over half the size it was, so what is
+   written in it comes down with it — at the old size the clock's digits
+   wrapped and read as a broken row of dashes */
+.rail-left .widget-big { font-size: 1.7rem; }
+.rail-left .widget-card[data-size="large"] .widget-big { font-size: 2.2rem; }
+.rail-left .widget-unit { font-size: 0.7rem; }
+.rail-left .widget-head { font-size: 0.72rem; }
+.rail-left .widget-line { font-size: 0.74rem; }
+.rail-left .widget-body { gap: 0.2rem; }
 .widget-unit {
 	font-family: var(--font);
 	font-size: 0.8rem;
@@ -4830,7 +4863,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	cursor: var(--cur-tap);
 }
 /* the add button becomes a circle beside it while edit is on */
-.home-panel.is-editing .widget-add {
+.home-rail.is-editing .widget-add {
 	position: absolute;
 	right: 2.7rem;
 	bottom: 0;
@@ -4865,9 +4898,9 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	transition: opacity 0.24s var(--ease), transform 0.32s var(--ease);
 }
 .widget-edit .mark-shut { opacity: 0; transform: rotate(-90deg) scale(0.6); }
-.home-panel.is-editing .widget-edit .mark-pen { opacity: 0; transform: rotate(90deg) scale(0.6); }
-.home-panel.is-editing .widget-edit .mark-shut { opacity: 1; transform: none; }
-.widget-edit:hover, .home-panel.is-editing .widget-edit {
+.home-rail.is-editing .widget-edit .mark-pen { opacity: 0; transform: rotate(90deg) scale(0.6); }
+.home-rail.is-editing .widget-edit .mark-shut { opacity: 1; transform: none; }
+.widget-edit:hover, .home-rail.is-editing .widget-edit {
 	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
@@ -4954,38 +4987,30 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .widget-grip svg { display: block; width: 100%; height: 100%; }
 .widget-grip:hover { transform: translate(1px, 1px); }
 
-.home-panel.is-editing .widget-off,
-.home-panel.is-editing .widget-size,
-.home-panel.is-editing .widget-grip {
+.home-rail.is-editing .widget-off,
+.home-rail.is-editing .widget-size,
+.home-rail.is-editing .widget-grip {
 	opacity: 1;
 	transform: none;
 	pointer-events: auto;
 }
-.home-panel.is-editing .widget-grip:hover { transform: translate(1px, 1px); }
+.home-rail.is-editing .widget-grip:hover { transform: translate(1px, 1px); }
 /* while a corner is being pulled the whole board keeps that pointer */
 .sizing, .sizing * { cursor: var(--cur-corner) !important; user-select: none; }
-.home-panel.is-editing .widget-off:hover { transform: scale(1.12); }
+.home-rail.is-editing .widget-off:hover { transform: scale(1.12); }
 /* the chip takes the bottom corner, so the tile's own words step off it */
-.home-panel.is-editing .widget-face { opacity: 0; }
+.home-rail.is-editing .widget-face { opacity: 0; }
 .widget-face { transition: opacity 0.22s var(--ease); }
-.home-panel.is-editing .widget-body { padding-bottom: 1.2rem; }
+.home-rail.is-editing .widget-body { padding-bottom: 1.2rem; }
 /* in edit a tile is something you move, so nothing inside it answers */
 /* turning edit on lifts the board off the page and turning it off sets it
    back down, so the mode arrives and leaves rather than snapping */
-/* the lift and the hard shadow are how a tile looks all the time now,
-   not only while the board is being arranged. edit still changes what a
-   tile *does* — the handles, the grab cursor, the body going quiet —
-   but not how it sits. */
-.widget-card {
-	translate: 0 -4px;
-	box-shadow: 3px 3px 0 var(--ink);
-}
-.home-panel.is-editing .widget-card {
+.home-rail.is-editing .widget-card {
 	cursor: var(--cur-grab);
 	touch-action: none;
 	user-select: none;
 }
-.home-panel.is-editing .widget-body { pointer-events: none; }
+.home-rail.is-editing .widget-body { pointer-events: none; }
 
 /* nothing shakes. edit shows itself by the handles appearing and the
    tiles taking a grab cursor — a board of jiggling tiles is a lot of
@@ -5012,9 +5037,9 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
    press on a thing that is moving. they used to blink out, because the
    tile was being moved to the end of the page and a reparented element
    has no previous style to move from. */
-.home-panel.is-editing .widget-card.is-dragging .widget-off,
-.home-panel.is-editing .widget-card.is-dragging .widget-size,
-.home-panel.is-editing .widget-card.is-dragging .widget-grip {
+.home-rail.is-editing .widget-card.is-dragging .widget-off,
+.home-rail.is-editing .widget-card.is-dragging .widget-size,
+.home-rail.is-editing .widget-card.is-dragging .widget-grip {
 	opacity: 0;
 	transform: scale(0.7);
 	pointer-events: none;
@@ -5043,7 +5068,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	flex: none;
 	align-self: flex-start;
 }
-.home-panel:not(.is-editing):not(.is-empty) .widget-add { display: none; }
+.home-rail:not(.is-editing):not(.is-empty) .widget-add { display: none; }
 .widget-pick { cursor: var(--cur-tap); }
 .widget-pick:hover { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 

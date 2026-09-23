@@ -5521,7 +5521,10 @@ const sizePicks = document.getElementById('sizePicks');
 const sizeList = document.getElementById('sizeList');
 const widgetPickList = document.getElementById('widgetPickList');
 const widgetEdit = document.getElementById('widgetEdit');
-const homePanel2 = document.getElementById('homePanel');
+/* the board sits in the black bar now, so the marks that used to key
+   off the home panel key off the bar instead — it is the thing that
+   holds the tiles. */
+const homePanel2 = document.getElementById('homeRail');
 
 const WIDGET_KEY = 'home-widgets';
 
@@ -5730,7 +5733,10 @@ function widgetById(id) {
    the board does not close up gaps behind it. that is the whole
    difference between arranging a board and sorting a list. */
 
-const BOARD_COLS = 4;
+/* two across, not four: the board lives in the black bar now, which is
+   19rem wide. a `wide` tile fills the bar and a `large` one fills it and
+   two rows deep, which is the same shape language at a smaller size. */
+const BOARD_COLS = 2;
 const BOARD_SPAN = { small: [1, 1], wide: [2, 1], large: [2, 2] };
 
 function spanOf(entry) {
