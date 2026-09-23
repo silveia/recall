@@ -2571,7 +2571,7 @@ html.inverted .app-shell::before { opacity: 1; }
    is the only handle a page has on one it does not own. */
 .list-site {
 	--site-zoom: 0.72;
-	--site-clip: 34px;     /* about a centimetre off each side */
+	--site-clip: 24px;     /* their own margin, off the left only */
 	--site-bar: 16px;      /* where their scrollbar sits */
 }
 .list-site iframe {
@@ -2579,7 +2579,10 @@ html.inverted .app-shell::before { opacity: 1; }
 	top: 0;
 	left: calc(var(--site-clip) * -1);
 	display: block;
-	width: calc((100% + var(--site-clip) * 2 + var(--site-bar)) / var(--site-zoom));
+	/* cropped on the left and only by the scrollbar on the right: taking
+	   the same slice off both edges ate the export button, which lives
+	   against their right-hand wall */
+	width: calc((100% + var(--site-clip) + var(--site-bar)) / var(--site-zoom));
 	height: calc(100% / var(--site-zoom));
 	border: 0;
 	transform: scale(var(--site-zoom));

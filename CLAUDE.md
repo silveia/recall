@@ -270,17 +270,19 @@ and taken off again: it looks better with its colour.
 The site takes the window; a line of copy, the steps and the kept
 playlists sit in a column beside it, starting at the top.
 
-**The frame is cropped at both edges.** `--site-clip` (34px, about a
-centimetre) comes off each side to take their own margin off, and an
-extra `--site-bar` on the right carries their scrollbar out past the
-pane, where the pane's `overflow: hidden` eats it. Their page still
+**The frame is cropped on the left, and on the right only by the
+scrollbar.** `--site-clip` (24px) comes off the left to take their own
+margin off; the right is over by `--site-bar` alone, which carries their
+scrollbar out past the pane where the `overflow: hidden` eats it. Taking
+the same slice off both edges ate the export button, which lives against
+their right-hand wall. Their page still
 scrolls on the wheel; the bar is simply not in sight. None of this
 reaches inside the frame — it is all the frame's own geometry, which is
 the only handle a page has on one it does not own.
 
-Measured at a 1008px window: 678px of pane, 34px cropped left, 50px
-cropped right, and **1058 css pixels** handed to their layout — a
-desktop width, with nothing for it to scroll sideways for.
+Measured: 678px of pane, 24px cropped left, 16px right, and **997 css
+pixels** handed to their layout — a desktop width, with nothing for it
+to scroll sideways for.
 
 **A turning smiley holds the pane while it starts**, and the site fades
 in over it on its `load`. It is **drawn, not typed**: as a glyph it was
