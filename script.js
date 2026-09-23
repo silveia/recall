@@ -1078,7 +1078,6 @@ function closeModal() {
         listScreen.hidden = true;
         folderScreen.hidden = true;
         bundleScreen.hidden = true;
-        if (typeof stopWatching === 'function') stopWatching();
         keyScreen.hidden = true;
         returnNotesPanel();
     }, MODAL_EXIT_MS);
@@ -3017,10 +3016,14 @@ function sizeSaid(bytes) {
     return `${Math.max(1, Math.round(bytes / 1024))}kb`;
 }
 
+/* what the finder is looking for this time round: the clip bundles, or
+   the playlists exportify writes. */
+let bundleKind = { match: /\.call$/i, title: 'bring clips in', take: null };
+
 async function bundlesIn(folder) {
     const found = [];
     for await (const entry of folder.values()) {
-        if (entry.kind !== 'file' || !/\.call$/i.test(entry.name)) continue;
+        if (entry.kind !== 'file' || !bundleKind.match.test(entry.name)) continue;
         try {
             found.push(await entry.getFile());
         } catch (error) {
@@ -3046,14 +3049,14 @@ function paintBundles(files, where) {
         pick.type = 'button';
 
         const name = document.createElement('strong');
-        name.textContent = file.name.replace(/\.call$/i, '');
+        name.textContent = file.name.replace(/\.[a-z0-9]+$/i, '');
         const much = document.createElement('small');
         much.textContent = sizeSaid(file.size);
         pick.append(name, much);
 
         pick.addEventListener('click', async () => {
             showScreen(homeScreen);
-            await unpackClipsFrom(file);
+            await bundleKind.take(file);
         });
         row.append(pick);
         bundleList.append(row);
@@ -3080,17 +3083,20 @@ async function askForBundleFolder() {
     return folder;
 }
 
-async function openBundles() {
+async function openBundles(kind) {
+    bundleKind = kind;
+    document.querySelector('#bundleScreen .modal-title').textContent = kind.title;
     paintBundles([], null);
     showScreen(bundleScreen);
 
     let folder = await heldHandle('drops');
     if (folder && !(await stillAllowed(folder, 'read').catch(() => false))) folder = null;
     if (!folder) folder = await askForBundleFolder();
+    /* closing the picker means no, and no means no: it used to fall
+       through to the browser's own file window, so shutting one opened
+       another straight after it. */
     if (!folder) {
-        // no folder to look in: the browser's own window is the way left
         showScreen(homeScreen);
-        unpackInput.click();
         return;
     }
     await showBundles(folder);
@@ -3101,9 +3107,38 @@ bundleWhere.addEventListener('click', async () => {
     if (folder) await showBundles(folder);
 });
 
+/* the words under the steps, long and short, swapped by the chip over
+   them. both are the reader's own to write; nothing reads either. */
+const saySwap = document.getElementById('saySwap');
+let sayingShort = false;
+saySwap.addEventListener('click', () => {
+    sayingShort = !sayingShort;
+    // the word stays the same; the underline is what says which is up
+    saySwap.classList.toggle('is-on', sayingShort);
+    ['sayLong', 'stepsLong'].forEach((id) => { document.getElementById(id).hidden = sayingShort; });
+    ['sayShort', 'stepsShort'].forEach((id) => { document.getElementById(id).hidden = !sayingShort; });
+});
+
+const CLIP_BUNDLES = {
+    match: /\.call$/i,
+    title: 'bring clips in',
+    take: (file) => unpackClipsFrom(file)
+};
+
+const PLAYLIST_EXPORTS = {
+    match: /\.(csv|tsv)$/i,
+    title: 'find an export',
+    take: (file) => takeListFile(file)
+};
+
 unpackClips.addEventListener('click', () => {
-    if (window.showDirectoryPicker) openBundles();
+    if (window.showDirectoryPicker) openBundles(CLIP_BUNDLES);
     else unpackInput.click();
+});
+
+document.getElementById('listFind').addEventListener('click', () => {
+    if (window.showDirectoryPicker) openBundles(PLAYLIST_EXPORTS);
+    else scratchFile.click();
 });
 unpackInput.addEventListener('change', () => {
     const file = unpackInput.files && unpackInput.files[0];
@@ -3380,20 +3415,16 @@ folderFields.forEach((field) => {
 
 /* --- the window that asks where --- */
 
-const PLACE_KEY = 'clip-folder-place';
-const placeStrip = document.getElementById('placeStrip');
 const folderGo = document.getElementById('folderGo');
 const folderPick = document.getElementById('folderPick');
-let placeWanted = window.localStorage.getItem(PLACE_KEY) || 'downloads';
+// the picker opens on downloads; the row of places went with the zip,
+// which lands there anyway
+const placeWanted = 'downloads';
 
 const folderSay = document.getElementById('folderSay');
 
-/* the folder is *made*, not chosen, and that is not obvious from a name
-   box and a row of places — so the window says what the press will do. */
+// what the press will do, said as the name is typed
 function paintPlaces() {
-    placeStrip.querySelectorAll('.place-bubble').forEach((one) => {
-        one.classList.toggle('is-on', one.dataset.place === placeWanted);
-    });
     const called = tidyFolder(folderName.value) || 'clips';
     folderSay.textContent = `${called}.zip lands in your downloads — open it and `
         + `there is your ${called} folder, with the songs in it`;
@@ -3416,13 +3447,6 @@ folderPick.addEventListener('click', async () => {
     downloadAllClips(folder);
 });
 
-placeStrip.addEventListener('click', (event) => {
-    const one = event.target.closest('.place-bubble');
-    if (!one) return;
-    placeWanted = one.dataset.place;
-    window.localStorage.setItem(PLACE_KEY, placeWanted);
-    paintPlaces();
-});
 paintPlaces();
 
 /* two clips can carry the same name — the same song twice on a
@@ -8096,6 +8120,15 @@ function fitSite() {
 
 window.addEventListener('resize', fitSite);
 
+/* somewhere to go when the frame has wandered off. it cannot be asked
+   where it is — that is the frame's own business — so it is simply put
+   back at the start, dots and all. */
+document.getElementById('siteBack').addEventListener('click', () => {
+    const site = document.getElementById('listSite');
+    site.classList.remove('is-here');
+    listFrame.src = 'https://exportify.net/';
+});
+
 function wakeListSite() {
     if (listFrame.dataset.woke) return;
     listFrame.dataset.woke = 'yes';
@@ -8103,134 +8136,18 @@ function wakeListSite() {
        them — and after eight seconds it is shown either way, since dots
        spinning forever say less than an empty page does. */
     const here = () => document.getElementById('listSite').classList.add('is-here');
-    listFrame.addEventListener('load', here, { once: true });
+    // every load, not just the first: pressing start over shows the dots
+    // again until whatever comes back has come back
+    listFrame.addEventListener('load', here);
     window.setTimeout(here, 8000);
     window.setTimeout(() => { listFrame.src = 'https://exportify.net/'; }, 380);
 }
-
-/* --- an export, noticed where it lands --- */
-
-/* a page cannot read inside a frame it does not own, and it cannot
-   catch what that frame downloads. but it can be handed the folder the
-   download lands in — and then it can simply look. with the downloads
-   folder granted, exportify's file is picked up where it falls and the
-   songs are in the box a moment later.
-
-   it only ever looks while the window is open, only at `.csv` files,
-   and only at ones written since the looking started. */
-const listWatch = document.getElementById('listWatch');
-let watchFolder = null;
-let watchTimer = 0;
-let watchFrom = 0;
-const watchSeen = new Set();
-
-function paintWatch() {
-    listWatch.textContent = watchFolder
-        ? `watching ${watchFolder.name}`
-        : 'bring exports in by itself';
-    listWatch.classList.toggle('is-on', Boolean(watchFolder));
-}
-
-async function newestExport() {
-    let best = null;
-    for await (const entry of watchFolder.values()) {
-        if (entry.kind !== 'file' || !/\.(csv|tsv|txt)$/i.test(entry.name)) continue;
-        let file;
-        try {
-            file = await entry.getFile();
-        } catch (error) {
-            continue;                       // gone between listing and opening
-        }
-        const mark = `${entry.name}@${file.lastModified}`;
-        if (file.lastModified < watchFrom || watchSeen.has(mark)) continue;
-        if (!best || file.lastModified > best.file.lastModified) best = { file, mark, entry };
-    }
-    return best;
-}
-
-async function lookForExport() {
-    watchTimer = 0;
-    if (!watchFolder || listScreen.hidden) return;
-    try {
-        const found = await newestExport();
-        if (found) {
-            watchSeen.add(found.mark);
-            if (await takeListFile(found.file)) {
-                /* the songs are in the box and kept under their name, so
-                   the file itself has done its job — it is taken off the
-                   disk rather than left in downloads to be wondered about
-                   later. only ever the one just read, and only when the
-                   reading worked. */
-                let gone = false;
-                try {
-                    await watchFolder.removeEntry(found.entry.name);
-                    gone = true;
-                } catch (error) {
-                    // read-only, or it is already gone; the songs are in either way
-                }
-                saySc(`${listName(found.file.name)} brought in${gone ? ' · file tidied away' : ''}`);
-                showScreen(homeScreen);
-            }
-        }
-    } catch (error) {
-        // permission taken back, or the folder went away
-        watchFolder = null;
-        paintWatch();
-        return;
-    }
-    watchTimer = window.setTimeout(lookForExport, 1500);
-}
-
-function startWatching() {
-    if (!watchFolder || watchTimer) return;
-    watchFrom = Date.now();
-    watchTimer = window.setTimeout(lookForExport, 1200);
-}
-
-function stopWatching() {
-    window.clearTimeout(watchTimer);
-    watchTimer = 0;
-}
-
-listWatch.addEventListener('click', async () => {
-    if (watchFolder) {                      // pressing it again stops
-        stopWatching();
-        watchFolder = null;
-        paintWatch();
-        return;
-    }
-    if (!window.showDirectoryPicker) {
-        saySc('this browser cannot be handed a folder');
-        return;
-    }
-    try {
-        // readwrite, so the export can be taken off the disk once it is in
-        watchFolder = await window.showDirectoryPicker({ id: 'recall-drops', mode: 'readwrite', startIn: 'downloads' });
-    } catch (error) {
-        return;                             // they changed their mind
-    }
-    await keepHandle(watchFolder, 'drops');
-    paintWatch();
-    startWatching();
-});
-
-/* it is offered again on a later visit rather than asked for again —
-   the browser forgets the permission between visits, and `values()`
-   asking for it without a press is refused anyway. */
-(async () => {
-    const held = await heldHandle('drops');
-    if (held && await stillAllowed(held, 'readwrite').catch(() => false)) {
-        watchFolder = held;
-    }
-    paintWatch();
-})();
 
 scratchOpen.addEventListener('click', () => {
     paintLists();
     wakeListSite();
     showScreen(listScreen);
     fitSite();
-    startWatching();
 });
 
 /* the window holds exportify and nothing of ours to drop on: a list

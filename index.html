@@ -618,6 +618,12 @@
 
                                 <div class="ask-body list-body">
                                     <div class="list-site" id="listSite">
+                                        <!-- press the wrong thing in there and it
+                                             wanders off to spotify or to nothing at
+                                             all, and a page cannot read a frame it
+                                             does not own to find its way back. this
+                                             puts it back at the start. -->
+                                        <button class="site-back" id="siteBack" type="button" title="back to exportify">start over</button>
                                         <!-- the dots hold the pane while somebody
                                              else's site starts; the frame fades in
                                              over them once it is there. -->
@@ -631,19 +637,25 @@
                                          in sit beside the site rather than over it:
                                          they are the short part. -->
                                     <div class="list-aside">
-                                        <!-- edit this line freely; nothing reads it -->
-                                        <p class="ask-why list-say">wb to another lecture! this feature helps unite souls and bring world peace, for it comes with convenience, specialty, and uniqueness that none other could rival. one must complete a login/registration on an external website in order to prove oneself to the convenience of this exquisite platform. the unspoken external websites instructions r here</p>
+                                        <!-- everything in here is yours to edit; nothing
+                                             reads it. the long one and the short one
+                                             swap with the button above them. -->
+                                        <div class="say-head">
+                                            <button class="say-swap" id="saySwap" type="button">short summary</button>
+                                        </div>
 
-                                        <ol class="ask-steps">
+                                        <p class="ask-why list-say" id="sayLong">wb to another lecture! i have created a feature helps unite souls and bring world peace, as it comes w convenience, specialty, and uniqueness that none other could rival.<br><br>one must complete a login/registration on the external website in order to prove oneself to the exquisiteness and holy presence of this platform.<br><br>the unspoken external website instructions r here</p>
+
+                                        <ol class="ask-steps" id="stepsLong">
                                             <li>
                                                 <span class="ask-step">1</span>
-                                                <span class="ask-said">sign in to
+                                                <span class="ask-said">login to the ultimate
                                                     <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">exportify.net</a>
-                                                    in order to complete this ultimate request laid upon you by the gods</span>
+                                                    in order to complete this request laid upon you by the holy gods</span>
                                             </li>
                                             <li>
                                                 <span class="ask-step">2</span>
-                                                <span class="ask-said">and boom ur done, playlists can be exported into .call files</span>
+                                                <span class="ask-said">if you wish to proceed, humbly select the export button and wait with patience and composure.</span>
                                             </li>
                                             <li>
                                                 <span class="ask-step">3</span>
@@ -651,13 +663,33 @@
                                             </li>
                                         </ol>
 
+                                        <!-- the short way of saying it. sample words —
+                                             write over them whenever you like. -->
+                                        <p class="ask-why list-say" id="sayShort" hidden>a playlist only
+                                            has to come in once. after that it is in the list below and
+                                            pressing it puts the songs back in the box.</p>
+
+                                        <ol class="ask-steps" id="stepsShort" hidden>
+                                            <li>
+                                                <span class="ask-step">1</span>
+                                                <span class="ask-said">sign in at exportify.net, in its own tab.</span>
+                                            </li>
+                                            <li>
+                                                <span class="ask-step">2</span>
+                                                <span class="ask-said">press export beside the playlist you want.</span>
+                                            </li>
+                                            <li>
+                                                <span class="ask-step">3</span>
+                                                <span class="ask-said">press find an export and pick it out of the list.</span>
+                                            </li>
+                                        </ol>
+
                                         <ul class="list-kept" id="listKept" hidden></ul>
 
-                                        <!-- with the downloads folder granted, an
-                                             export is noticed where it lands and
-                                             brought in by itself. last in the
-                                             column, and pushed to the foot of it. -->
-                                        <button class="basic-button is-plain list-watch" id="listWatch" type="button">bring exports in by itself</button>
+                                        <!-- the exports it can find, listed here rather
+                                             than by the browser. last in the column and
+                                             pushed to the foot of it. -->
+                                        <button class="basic-button is-plain list-watch" id="listFind" type="button">find an export</button>
                                     </div>
                                 </div>
                             </section>
@@ -699,15 +731,7 @@
                                     <!-- the other way, for anyone who would rather
                                          have them written onto the disk and doesn't
                                          mind being asked for the shelf first -->
-                                    <details class="folder-other">
-                                        <summary>or write them straight to a folder</summary>
-                                        <div class="place-strip" id="placeStrip" role="group" aria-label="where to keep it">
-                                            <button class="place-bubble" type="button" data-place="downloads">downloads</button>
-                                            <button class="place-bubble" type="button" data-place="desktop">desktop</button>
-                                            <button class="place-bubble" type="button" data-place="documents">documents</button>
-                                        </div>
-                                        <button class="basic-button is-plain" id="folderPick" type="button">pick that folder</button>
-                                    </details>
+                                    <button class="folder-other" id="folderPick" type="button">or pick a folder to export to</button>
                                 </div>
                             </section>
 

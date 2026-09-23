@@ -2423,21 +2423,22 @@ html.inverted .app-shell::before { opacity: 1; }
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
 .place-bubble:hover { color: var(--paper); background: var(--ink); }
-/* the other way round, folded away: most of the time the zip is what is
+/* the other way round, said small: most of the time the zip is what is
    wanted, and a picker is a permission prompt for someone who only
    asked for a folder of their own songs. */
-.folder-other { font-size: 0.85rem; }
-.folder-other summary {
-	padding: 0 0.35rem;
-	text-align: center;
+.folder-other {
+	align-self: center;
+	margin-top: calc(var(--group) * -0.5);
+	padding: 0;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	font: inherit;
+	font-size: 0.78rem;
+	text-decoration: underline;
+	text-underline-offset: 0.16em;
 	cursor: var(--cur-tap);
-	list-style: none;
 }
-.folder-other summary::-webkit-details-marker { display: none; }
-.folder-other summary:hover { text-decoration: underline; }
-.folder-other[open] summary { margin-bottom: var(--group); }
-.folder-other .place-strip { margin-bottom: var(--tight); }
-#folderPick { width: 100%; height: var(--field); padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0; }
 
 /* what the press will do, said plainly */
 .folder-say {
@@ -2544,21 +2545,46 @@ html.inverted .app-shell::before { opacity: 1; }
 /* where the exported file is dropped. a big plain target rather than a
    button pretending to be one, and it inverts while something is over
    it the way a live thing does here. */
-/* the offer to watch the folder the exports land in: a button like any
-   other, at the foot of the column, and filled in once it is watching
-   the way every live thing here is. */
+/* a plain paragraph, not the flex row `.ask-why` is for. that rule is
+   built for a mark beside a line, and a paragraph of several lines
+   dropped into it came out laid sideways. */
+.ask-why.list-say {
+	display: block;
+	text-align: left;
+}
+
+/* the swap sits over the words, against the right wall */
+.say-head {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: calc(var(--group) * -0.5);
+}
+/* as small as a word can be and still be pressed: no pill, no fill.
+   the underline is the whole of what it says — on under the pointer,
+   on while it is the one being shown. */
+.say-swap {
+	padding: 0;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	font: inherit;
+	font-size: 0.62rem;
+	line-height: 1;
+	text-decoration: none;
+	text-underline-offset: 0.18em;
+	cursor: var(--cur-tap);
+}
+.say-swap:hover, .say-swap.is-on { text-decoration: underline; }
+
+/* the finder for the exports: a button like any other, at the foot of
+   the column. */
 .list-watch {
 	align-self: stretch;
 	margin-top: auto;
 	height: var(--field);
 	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
 }
-.list-watch.is-on {
-	color: var(--paper);
-	background: var(--ink);
-	border-color: var(--ink);
-}
-.list-watch.is-on:hover { color: var(--ink); background: var(--paper); }
+
 
 /* the lists already brought in, newest first. pressing one swaps the
    songs in the box; the cross beside it forgets that one. */
@@ -2633,6 +2659,28 @@ html.inverted .app-shell::before { opacity: 1; }
 	border-radius: var(--radius);
 	overflow: hidden;
 }
+
+/* the way back. a page cannot read inside a frame it does not own, so
+   it cannot know where that frame has wandered to — but it can always
+   put it back at the start, which is the only step out of a dead end
+   short of reloading the whole page. */
+.site-back {
+	position: absolute;
+	top: var(--tight);
+	right: var(--tight);
+	z-index: 3;
+	height: 1.6rem;
+	padding: calc(var(--drop) * 2) 0.7rem 0;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font: inherit;
+	font-size: 0.72rem;
+	cursor: var(--cur-tap);
+	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.site-back:hover { color: var(--paper); background: var(--ink); }
 
 /* the pane holds three dots while somebody else's site starts, and the
    site fades in over them once it is there — blank white for a second

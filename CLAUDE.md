@@ -260,6 +260,12 @@ framed. `accounts.spotify.com` sends `x-frame-options: deny`, so the
 **sign-in cannot be** — that once happens in a tab of its own, and
 afterwards the frame knows you.
 
+**There is always a way back.** Press the wrong thing in there and it
+wanders off to Spotify or to nothing at all, and a page cannot read a
+frame it does not own to find out where it went — so `start over` simply
+puts it back at the start, dots and all. Before it existed the only way
+out of a dead end was reloading the whole page.
+
 **A page cannot reach inside a frame it does not own.** So the layout,
 the type and the colours in there are not ours to set — only scale is.
 A `grayscale(1)` filter was tried and taken off again: it looks better
@@ -309,6 +315,12 @@ dots spinning forever say less than an empty page does. The step's
 circle is centred on its **first line**, not on the block — centred on
 the block it drifted down the side of a step that wrapped. Measured:
 0.16px off the first line's middle at `margin-top: 0.03rem`.
+
+**The finder is shared.** One window lists what this page can read out
+of a folder — `.call` bundles for the clips, `.csv` exports for the
+playlists — with `bundleKind` saying which it is looking for this time.
+Closing the picker means no: it used to fall through to the browser's
+own file window, so shutting one opened another straight after it.
 
 Its export still arrives as a file — but it need not be carried by
 hand. **`bring exports in by itself` hands the page the folder the
