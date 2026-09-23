@@ -110,43 +110,7 @@
              and in its own colours. -->
         <div class="say-what" id="sayWhat" aria-hidden="true"></div>
 
-        <!-- the board lives in the black bar, so it is there on every
-             page rather than only on home. it is the same board — the
-             same tiles, the same arranging, the same bin — in a column
-             two wide instead of four. -->
-        <aside class="rail rail-left home-rail" id="homeRail" aria-label="the board">
-            <!-- the corner switch. out of edit the board is
-                 just the board; in edit every tile wobbles,
-                 takes a drag, and shows its two handles. -->
-            <div class="widget-list" id="widgetList"></div>
-            <!-- only while a tile is being carried: drag one
-                 down here and let go to be rid of it -->
-            <div class="widget-bin" id="widgetBin" hidden aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4.5 6.5h15"/>
-                    <path d="M10 6.5V4.5h4v2"/>
-                    <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
-                    <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
-                </svg>
-                <span>let go to remove</span>
-            </div>
-
-            <!-- the two corner marks, kept at the foot of the bar rather
-                 than at the foot of what it is scrolling -->
-            <div class="rail-foot">
-                <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks" aria-label="add a widget" title="add a widget">
-                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-                        <path d="M12 5 V19 M5 12 H19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                </button>
-                <button class="widget-edit" id="widgetEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
-                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-                        <path class="mark-pen" d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-                        <path class="mark-shut" d="M6.6 6.6 L17.4 17.4 M17.4 6.6 L6.6 17.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-                    </svg>
-                </button>
-            </div>
-                        
+        <aside class="rail rail-left" aria-hidden="true">
         </aside>
 
         <div class="app-right">
@@ -169,7 +133,35 @@
                         <!-- home — the first section. blank for now. -->
                         <!-- home is yours to arrange: pick the widgets you
                              want and drag them into whatever order suits. -->
-                        <section class="home-panel" id="homePanel" hidden></section>
+                        <section class="home-panel" id="homePanel" hidden>
+                            <!-- the corner switch. out of edit the board is
+                                 just the board; in edit every tile wobbles,
+                                 takes a drag, and shows its two handles. -->
+                            <div class="widget-list" id="widgetList"></div>
+                            <!-- only while a tile is being carried: drag one
+                                 down here and let go to be rid of it -->
+                            <div class="widget-bin" id="widgetBin" hidden aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4.5 6.5h15"/>
+                                    <path d="M10 6.5V4.5h4v2"/>
+                                    <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
+                                    <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
+                                </svg>
+                                <span>let go to remove</span>
+                            </div>
+
+                            <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks" aria-label="add a widget" title="add a widget">
+                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                    <path d="M12 5 V19 M5 12 H19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                            <button class="widget-edit" id="widgetEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
+                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                    <path class="mark-pen" d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                                    <path class="mark-shut" d="M6.6 6.6 L17.4 17.4 M17.4 6.6 L6.6 17.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                        </section>
 
                         <!-- decks on the left, the open deck's cards on
                              the right. each side is a bar over a list, and

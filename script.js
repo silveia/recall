@@ -5521,15 +5521,14 @@ const sizePicks = document.getElementById('sizePicks');
 const sizeList = document.getElementById('sizeList');
 const widgetPickList = document.getElementById('widgetPickList');
 const widgetEdit = document.getElementById('widgetEdit');
-/* the board sits in the black bar now, so the marks that used to key
-   off the home panel key off the bar instead — it is the thing that
-   holds the tiles. */
-const homePanel2 = document.getElementById('homeRail');
+const homePanel2 = document.getElementById('homePanel');
 
 const WIDGET_KEY = 'home-widgets';
 
 // the three shapes, in the order the size chip walks through them
-const WIDGET_SIZES = ['small', 'wide', 'large'];
+/* the board is one row deep, so the page below it is free for whatever
+   else goes there. a shape two rows tall has nowhere to be. */
+const WIDGET_SIZES = ['small', 'wide'];
 const SIZE_MARK = { small: '1×1', wide: '2×1', large: '2×2' };
 
 // a name no other tile on the board has, however many of a kind there are
@@ -5733,11 +5732,9 @@ function widgetById(id) {
    the board does not close up gaps behind it. that is the whole
    difference between arranging a board and sorting a list. */
 
-/* two across, not four: the board lives in the black bar now, which is
-   19rem wide. a `wide` tile fills the bar and a `large` one fills it and
-   two rows deep, which is the same shape language at a smaller size. */
-const BOARD_COLS = 2;
-const BOARD_SPAN = { small: [1, 1], wide: [2, 1], large: [2, 2] };
+const BOARD_COLS = 4;
+const BOARD_ROWS = 1;
+const BOARD_SPAN = { small: [1, 1], wide: [2, 1] };
 
 function spanOf(entry) {
     return BOARD_SPAN[entry.size] || BOARD_SPAN.wide;
@@ -5757,13 +5754,6 @@ function hits(one, two) {
    side, then up, then down. the axis is whichever of the two the tiles
    are further apart on, so a tile approached square-on from the side
    does not suddenly hop downwards. */
-/* how deep the board may go while something is being pushed about. a
-   shoved tile used to have no floor at all: pushed down far enough it
-   slid under the bin at the foot of the board, which is how a tile
-   could be put in the bin by another tile rather than by being carried
-   there. nothing is shoved past this. */
-let shoveFloor = 0;
-
 function shove(blocker, by, hint) {
     const [bw, bh] = spanOf(blocker);
     const [mw, mh] = spanOf(by);
@@ -5780,37 +5770,26 @@ function shove(blocker, by, hint) {
         ? Math.abs(hint.x) >= Math.abs(hint.y) && hint.x !== 0
         : Math.abs(across) >= Math.abs(down);
 
-    // pushed aside first, and out of the row only if the wall is there
-    const ways = sideways
-        ? [goX > 0 ? 'right' : 'left', 'down', 'up', goX > 0 ? 'left' : 'right']
-        : [goY > 0 ? 'down' : 'up', goX > 0 ? 'right' : 'left', goX > 0 ? 'left' : 'right', goY > 0 ? 'up' : 'down'];
+    /* one row, so there is no out of it: a tile is pushed the way it was
+       come at, and to the other side if that wall is there. */
+    const ways = [goX > 0 ? 'right' : 'left', goX > 0 ? 'left' : 'right'];
 
     for (let at = 0; at < ways.length; at += 1) {
         const col = ways[at] === 'right' ? by.col + mw : ways[at] === 'left' ? by.col - bw : blocker.col;
-        const row = ways[at] === 'down' ? by.row + mh : ways[at] === 'up' ? by.row - bh : blocker.row;
-        if (col < 0 || col + bw > BOARD_COLS || row < 0) continue;
-        if (shoveFloor && row + bh > shoveFloor) continue;
+        if (col < 0 || col + bw > BOARD_COLS) continue;
         blocker.col = col;
-        blocker.row = row;
+        blocker.row = 0;
         return;
     }
 
-    /* hemmed in on every side. under is where it would go, but not past
-       the floor — over the floor it takes the first slot on the board
-       that is free of everything it was pushed by, and if there is none
-       it stays where it is rather than being pushed out of the world. */
-    const under = by.row + mh;
-    if (!shoveFloor || under + bh <= shoveFloor) {
-        blocker.row = under;
+    /* both walls are there. it takes the first place along the row that
+       is clear of what pushed it; if the row has no room at all it stays
+       where it is rather than being pushed out of the world. */
+    for (let col = 0; col + bw <= BOARD_COLS; col += 1) {
+        if (hits({ ...blocker, col, row: 0 }, by)) continue;
+        blocker.col = col;
+        blocker.row = 0;
         return;
-    }
-    for (let row = 0; row + bh <= shoveFloor; row += 1) {
-        for (let col = 0; col + bw <= BOARD_COLS; col += 1) {
-            if (hits({ ...blocker, col, row }, by)) continue;
-            blocker.col = col;
-            blocker.row = row;
-            return;
-        }
     }
 }
 
@@ -5842,27 +5821,35 @@ function untangle(anchor) {
         if (two === anchor) return 1;
         return (one.row - two.row) || (one.col - two.col);
     });
-    const down = [];
+    const along = [];
     order.forEach((entry) => {
+        const [w] = spanOf(entry);
+        entry.row = 0;
         let guard = 0;
-        while (down.some((other) => hits(entry, other)) && guard < 200) {
-            entry.row += 1;
+        // along the row rather than down the board, and wrapped back to
+        // the near end rather than pushed off the far one
+        while (along.some((other) => hits(entry, other)) && guard < 40) {
+            entry.col = entry.col + w > BOARD_COLS - 1 ? 0 : entry.col + 1;
             guard += 1;
         }
-        down.push(entry);
+        along.push(entry);
     });
 }
 
 // the first slot a shape of this size will sit in without disturbing
 // anything, reading left to right and down
+/* the first place along the row a shape of this size will sit without
+   disturbing anything — or nothing at all, when the row is full. it
+   used to answer with the near end regardless, and the tile went down
+   on top of whatever was already there. */
 function freeSlot(width, height) {
-    for (let row = 0; row < 40; row += 1) {
+    for (let row = 0; row < BOARD_ROWS; row += 1) {
         for (let col = 0; col + width <= BOARD_COLS; col += 1) {
             const want = { col, row, size: sizeFor(width, height) };
-            if (!homeWidgets.some((other) => hits(want, other))) return { col, row };
+            if (!homeWidgets.some((other) => hits(want, other))) return { col, row, width };
         }
     }
-    return { col: 0, row: boardDepth() };
+    return null;
 }
 
 function sizeFor(width, height) {
@@ -5903,12 +5890,19 @@ function loadWidgets() {
         : [{ id: 'clock', key: nextWidgetKey('clock'), size: 'small', col: null, row: null },
            { id: 'decks', key: nextWidgetKey('decks'), size: 'wide', col: null, row: null }];
 
-    // anything that never had a place is given the first one that fits
+    /* anything that never had a place is given the first one that fits,
+       and anything that no longer fits — a board saved when it was
+       deeper, or wider tiles than the row can hold — is dropped rather
+       than stacked on top of what is already there. */
     homeWidgets = [];
     taken.forEach((entry) => {
         const [w, h] = spanOf(entry);
-        if (entry.col === null || entry.row === null || entry.col + w > BOARD_COLS) {
-            const spot = freeSlot(w, h);
+        const sits = entry.col !== null && entry.row !== null && entry.col + w <= BOARD_COLS
+            && !homeWidgets.some((other) => hits(entry, other));
+        if (!sits) {
+            const spot = freeSlot(w, h) || freeSlot(...BOARD_SPAN.small);
+            if (!spot) return;                  // the row is full
+            if (spot.width === 1) entry.size = 'small';
             entry.col = spot.col;
             entry.row = spot.row;
         }
@@ -6036,10 +6030,41 @@ function paintWidgets() {
 /* as many as you like, and as many of a kind as you like — two clocks
    is a strange thing to want and none of our business. */
 function addWidget(id) {
-    const spot = freeSlot(...BOARD_SPAN.wide);
-    homeWidgets.push({ id, key: nextWidgetKey(id), size: 'wide', col: spot.col, row: spot.row });
+    /* the wide shape first, and the small one if the row hasn't the
+       room for it. with no room at all nothing is added — a tile put
+       down on a full row lands on top of what is already there. */
+    let size = 'wide';
+    let spot = freeSlot(...BOARD_SPAN.wide);
+    if (!spot) {
+        size = 'small';
+        spot = freeSlot(...BOARD_SPAN.small);
+    }
+    if (!spot) {
+        sayBoardFull();
+        return;
+    }
+    homeWidgets.push({ id, key: nextWidgetKey(id), size, col: spot.col, row: spot.row });
     saveWidgets();
     renderWidgets();
+}
+
+/* the row is one row, so it does fill up. it says so where the press
+   was rather than leaving nothing to have happened. */
+function sayBoardFull() {
+    if (typeof askConfirm !== 'function') return;
+    confirmChipText.textContent = 'the row is full — take one off first';
+    confirmChip.hidden = false;
+    placeConfirm(widgetAdd);
+    confirmChipYes.hidden = true;
+    confirmChipNo.textContent = 'right';
+    const away = () => {
+        confirmChip.hidden = true;
+        confirmChipYes.hidden = false;
+        confirmChipNo.textContent = 'no';
+        confirmChipNo.removeEventListener('click', away);
+    };
+    confirmChipNo.addEventListener('click', away);
+    window.setTimeout(away, 2600);
 }
 
 /* it shrinks into its slot and then goes, rather than blinking out.
@@ -6259,13 +6284,7 @@ function boardIfDropped(entry, col, row) {
     me.col = col;
     me.row = row;
 
-    /* the board may grow for the tile in your hand — that is what the
-       spare row under it is for — but not for the ones it pushes. they
-       keep to the board as it already stands. */
-    const [, mh] = spanOf(me);
-    shoveFloor = Math.max(boardDepth(), row + mh);
     makeRoom(shadow, me, hint);
-    shoveFloor = 0;
     return shadow;
 }
 
@@ -6460,8 +6479,7 @@ function carryOn() {
     const [w] = spanOf(entry);
     const col = Math.max(0, Math.min(BOARD_COLS - w,
         Math.round((boardDrag.atX - cell.box.left) / (cell.width + cell.gap))));
-    const row = Math.max(0, Math.round(
-        (boardDrag.atY - cell.box.top + widgetList.scrollTop) / (cell.height + cell.gap)));
+    const row = 0;      // one row: only which way along it is in question
 
     /* held over the bin, nothing else moves: the board has no business
        shuffling for a tile that is about to be gone */

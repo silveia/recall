@@ -671,46 +671,6 @@ in — same half-second either way, staggered 70ms apart. The ripple is
 what makes it read as one thing happening rather than three pictures
 swapping.
 
-## The board lives in the black bar
-
-The widgets sit in the scalloped left bar now, on **every page**, rather
-than on the home page alone — the home panel is left empty behind them.
-Two columns instead of four, since the bar is 19rem: a `wide` tile fills
-the bar and a `large` one fills it two rows deep, which is the same
-shape language at a smaller size. Rows came down from 8.5rem to 5.6rem
-and what is written in the tiles came down with them, or the clock's
-digits wrap and read as a broken row of dashes.
-
-**A tile is a cloud, not a box.** Rounded at the top and hung with a row
-of bumps at the foot — the same wave the bar's own edge is cut with, at
-the same 10px radius. It is drawn as a masked layer under the tile's
-words: a mask cuts the shape but takes the border with it, so the
-outline is four 1px shadows dropped around the masked shape instead.
-They follow every bump, which a border never could. The words sit above
-the layer and outside the filter, or they would be outlined too.
-
-Keep the mask's circle soft (`#000 98%, #0000 100%`). Hardening it to
-99.5% to sharpen the outline turned the bumps into spikes.
-
-**The bar keeps its own two colours whichever side the page is on**, so
-a tile on it does too: white card, black words, in the light and in the
-dark. Taking `--paper` and `--ink` instead turned every tile black on a
-black bar the moment the lights went off.
-
-**The two corner marks live in a sticky `.rail-foot`**, not absolutely
-at the bottom of whatever the bar is scrolling — and inside its padding,
-so the wave never crosses them. On black they wear `--bar-ink` as an
-outline, or a black button has no edge at all.
-
-**The wave is the inner edge, not the outer.** It is 26px wide, centred
-on the bar's edge, so its innermost point is 13px inside — the board
-stops there. A tile riding out over the bumps reads as the bar having
-failed to hold it.
-
-Everything that keyed off `.home-panel` keys off `.home-rail` now, since
-that is the thing holding the tiles; `homePanel2` in the script points
-at the bar.
-
 ## The home board
 
 **As many tiles as you like, and as many of a kind as you like.** Every
@@ -766,6 +726,22 @@ perfectly fine get lifted and put back — that is the flicker. Measured
 after the change: 0 of 4 neighbours stirred.
 
 
+**One row, four columns, and that is the whole board.** The page below
+it is free for whatever else goes there, which is the point. Nothing can
+be shoved out of the row — `shove` only ever goes sideways, and when
+both walls are there a tile takes the first place along the row that is
+clear of what pushed it. `untangle` walks along rather than down.
+
+Two shapes, not three: a `large` was two rows tall and has nowhere to
+be. A board saved when it was deeper comes back to row 0, and a tile
+that no longer fits is dropped rather than stacked.
+
+**A full row refuses.** `freeSlot` answers with nothing when there is no
+room, where it used to answer with the near end regardless and the tile
+went down on top of whatever was already there — six tiles, fourteen
+overlaps. Adding tries the wide shape, then the small one, then says the
+row is full. Measured after: 4 columns exactly filled, 0 overlaps.
+
 Four columns of slots. Every widget keeps its own `col`/`row`, so it
 stays exactly where it was put and the board does **not** close up gaps
 behind it — that is the whole difference between arranging a board and
@@ -773,6 +749,11 @@ sorting a list, and the reason "you can't move anything down or right"
 was true before. `untangle(anchor)` gives the anchor what it was
 dropped on and pushes anything under it down; nothing is ever pulled
 back up, because a gap you left is a gap you meant.
+
+**The lift and the hard shadow are how a tile sits all the time**, not
+only while the board is being arranged. Edit still changes what a tile
+*does* — the handles, the grab cursor, the body going quiet — but not
+how it looks.
 
 **Nothing is shoved past the foot of the board.** A shoved tile had no
 floor at all: pushed down far enough it slid under the bin, which is how
@@ -839,20 +820,6 @@ then **neither** animation runs.
 whose script never runs is never left hidden. The same inline snippet
 takes the class off after 2.5s whatever happens; `loadStoredClips()`
 takes it off sooner when the store answers.
-
-## The bar does not animate in
-
-`panel-in` is for what the tabs swap. The bar is on every page and
-always there, and a bar that rises 6px on every load leaves six pixels
-of white above itself while it does it — which is what "it slides in
-from below and there's a white cut-out at the top" was. It got into that
-rule by accident, when `.home-panel` was renamed to `.home-rail`
-throughout and the entrance rule came along with it.
-
-**The home page's own panel draws nothing now.** The board moved to the
-bar, so the panel holds nothing, and an empty bordered box in the middle
-of the page reads as something having failed to load. It keeps its place
-in the layout and none of its paint.
 
 ## One entrance for every section
 
