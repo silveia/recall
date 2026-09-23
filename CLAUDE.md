@@ -420,6 +420,12 @@ name: a short one left-aligned in a full-width box reads as something
 forgotten in the corner of it. Nothing typed at all
 means straight into the place itself.
 
+**The whole row turns over while it is packing, marks and all.** The
+grip, the play mark, the crop, the arrow and the cross each name
+`--ink` themselves rather than inheriting it, so the row going black
+left them black on black — buttons you could only find by remembering
+where they were.
+
 **A folder is sorted by name, so the name has to carry the order.** The
 files go in bottom-first — which is the order they were recorded, and
 the order the numbers down the list read — but Finder shows a folder

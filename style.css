@@ -5342,6 +5342,15 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	background: var(--ink);
 	border-color: var(--ink);
 }
+/* every mark on the row turns over with it. these four name `--ink`
+   themselves rather than inheriting, so the row going black left them
+   black on black — a button you could only find by remembering it was
+   there. */
+.recording-item.is-packing .clip-play,
+.recording-item.is-packing .clip-crop,
+.recording-item.is-packing .clip-download,
+.recording-item.is-packing .clip-discard { color: var(--paper); }
+.recording-item.is-packing .clip-handle span { background: var(--paper); }
 .recording-item.is-packing .clip-track { border-color: var(--paper); }
 .recording-item.is-packing .clip-fill { background: var(--paper); }
 .recording-item.is-packing .crop-shade { filter: invert(1); }
