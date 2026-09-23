@@ -736,6 +736,23 @@ Two shapes, not three: a `large` was two rows tall and has nowhere to
 be. A board saved when it was deeper comes back to row 0, and a tile
 that no longer fits is dropped rather than stacked.
 
+**Everything starts 16px under the black strip** — every page and the
+right bar both. It was three different numbers: the pages at 16, the
+bar at 13.6 (it was using `--rail-pad`, which is its *side* inset), and
+the board at 12, because the tiles are lifted 4px and that came off the
+top. The board gives those 4px back in its own negative margin
+(`-4px -8px -8px`), and the bar's top is `--group` like everything else.
+Measured after: 16.0 on all five.
+
+**The board's two marks sit on a row under it**, not pinned to the foot
+of the panel. With the board one row tall at the top of the page, the
+foot of the panel is most of a screen away from the thing they work on.
+
+**One row means no spare row.** Two places still wrote `--board-rows`
+with a `+ 1` for a row to drop into below — `paintBoardDepth` and
+`showRoom` — which made the board's box twice as tall as the row and
+pushed those marks down with it.
+
 **Nothing may sit on anything else.** `settleBoard()` runs on every
 render — added, dropped, resized, or read back out of storage — and
 gives every tile a place of its own: where it is if that is clear, else

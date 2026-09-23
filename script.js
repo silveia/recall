@@ -5929,7 +5929,8 @@ function placeCard(card, entry) {
 /* while you are arranging there is always one spare row under the
    board, so a tile can be dropped below everything else */
 function paintBoardDepth() {
-    widgetList.style.setProperty('--board-rows', String(boardDepth() + (editingHome ? 1 : 0)));
+    // one row, and no spare one under it: there is nowhere below to drop
+    widgetList.style.setProperty('--board-rows', String(BOARD_ROWS));
 }
 
 /* nothing may sit on anything else. the row is one row and it does fill
@@ -6347,9 +6348,7 @@ function showRoom(shadow) {
         const card = widgetList.querySelector(`.widget-card[data-widget-id="${one.key}"]`);
         if (card) placeCard(card, one);
     });
-    widgetList.style.setProperty('--board-rows', String(
-        shadow.reduce((deep, one) => Math.max(deep, one.row + spanOf(one)[1]), 0) + 1
-    ));
+    widgetList.style.setProperty('--board-rows', String(BOARD_ROWS));
 
     cards.forEach((card) => {
         const was = before.get(card.dataset.widgetId);

@@ -150,17 +150,22 @@
                                 <span>let go to remove</span>
                             </div>
 
-                            <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks" aria-label="add a widget" title="add a widget">
-                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-                                    <path d="M12 5 V19 M5 12 H19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </button>
-                            <button class="widget-edit" id="widgetEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
-                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-                                    <path class="mark-pen" d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-                                    <path class="mark-shut" d="M6.6 6.6 L17.4 17.4 M17.4 6.6 L6.6 17.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-                                </svg>
-                            </button>
+                            <!-- right under the board, where the board is: the two of them
+                                 were pinned to the foot of the page, which is a long
+                                 way from a row of tiles at the top of it -->
+                            <div class="board-foot">
+                                <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks" aria-label="add a widget" title="add a widget">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                        <path d="M12 5 V19 M5 12 H19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                                <button class="widget-edit" id="widgetEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                        <path class="mark-pen" d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                                        <path class="mark-shut" d="M6.6 6.6 L17.4 17.4 M17.4 6.6 L6.6 17.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </section>
 
                         <!-- decks on the left, the open deck's cards on

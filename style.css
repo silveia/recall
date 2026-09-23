@@ -580,8 +580,11 @@ html.inverted .app-shell::before { opacity: 1; }
 	/* every inset in here is one value, including the one off the dots */
 	gap: var(--rail-pad);
 	padding: var(--rail-pad);
-	/* starts right under the black bar */
-	padding-top: calc(var(--topbar) + var(--rail-pad));
+	/* starts right under the black bar, at the same distance under it as
+	   the first thing on every page — `--rail-pad` put it at 13.6 while
+	   the pages sat at 16, which is a difference you can see between the
+	   two columns without being able to name it */
+	padding-top: calc(var(--topbar) + var(--group));
 
 	overflow: hidden;   /* the help box scrolls, the bar doesn't */
 }
@@ -4561,12 +4564,16 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	scrollbar-width: none;
-	/* a scrolling box crops whatever leaves it, and in edit the tiles
-	   lift and cast a shadow — both of which left it. the board is
-	   inset by that much and given the same back as negative margin, so
-	   nothing is cut and nothing has moved. */
+	/* a scrolling box crops whatever leaves it, and the tiles lift and
+	   cast a shadow — both of which left it. the board is inset by that
+	   much and given the same back as negative margin, so nothing is cut
+	   and nothing has moved. */
 	padding: 8px;
-	margin: -8px;
+	/* the top gives back 4px less, because the tiles are lifted 4px —
+	   without that the first row rides higher than the first thing on
+	   every other page. measured: 16.0px under the strip on all four,
+	   and in the right bar. */
+	margin: -4px -8px -8px;
 }
 .widget-list::-webkit-scrollbar { display: none; }
 
@@ -4814,10 +4821,19 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 /* the corner switch: a circle standing off the bottom right of the
    page, where the board rarely reaches. it used to be a word on a row
    of its own, which cost the board a whole line of height. */
+/* the board's own two marks, on a row right under it. pinned to the
+   foot of the panel they sat at the bottom of the page, which is a long
+   way from a single row of tiles at the top of it. */
+.board-foot {
+	display: flex;
+	flex: none;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--tight);
+	margin-top: calc(var(--group) * -0.5);
+}
 .widget-edit {
-	position: absolute;
-	right: 0;
-	bottom: 0;
+	position: static;
 	z-index: 3;
 	display: grid;
 	place-items: center;
@@ -4831,9 +4847,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 /* the add button becomes a circle beside it while edit is on */
 .home-panel.is-editing .widget-add {
-	position: absolute;
-	right: 2.7rem;
-	bottom: 0;
+	position: static;
 	z-index: 3;
 	display: grid;
 	place-items: center;
