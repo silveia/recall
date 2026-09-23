@@ -260,11 +260,15 @@ framed. `accounts.spotify.com` sends `x-frame-options: deny`, so the
 **sign-in cannot be** — that once happens in a tab of its own, and
 afterwards the frame knows you.
 
-**There is always a way back.** Press the wrong thing in there and it
-wanders off to Spotify or to nothing at all, and a page cannot read a
-frame it does not own to find out where it went — so `start over` simply
-puts it back at the start, dots and all. Before it existed the only way
-out of a dead end was reloading the whole page.
+**The frame is not allowed to wander.** Press the wrong thing in there
+and it used to go off to Spotify or to a dead link, with no way back
+short of reloading the page — a page cannot ask a frame it does not own
+where it went. So it is stopped from going: a `<meta>` CSP naming
+`frame-src 'self' https://exportify.net` refuses any navigation out of
+exportify and the frame stays where it is. Only `frame-src` is named, so
+nothing else on the page is under a policy it wasn't under before.
+Measured with `securitypolicyviolation`: same origin loads, another
+origin is refused.
 
 **A page cannot reach inside a frame it does not own.** So the layout,
 the type and the colours in there are not ours to set — only scale is.
@@ -959,6 +963,10 @@ the rules: `getComputedStyle(document.documentElement).getPropertyValue('--bar')
 told the whole story in one line.
 
 ## The pointer, and holding option
+
+They are **drawn at 22 in a 26 box**: the viewBox is untouched so every
+mark keeps its proportions, and the hotspot came down with the box so
+the point is still the middle of it.
 
 Every cursor on the site is drawn here as an SVG data URI in `:root`
 (`--dot`, `--tap`, `--bar`, `--wide`, `--tall`, `--grab`, `--held`,

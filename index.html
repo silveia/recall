@@ -3,6 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- the frame in the exportify window may load exportify and nothing
+         else. press the wrong thing in there and it used to wander off to
+         spotify or to a dead link, with no way back short of reloading the
+         whole page — a page cannot ask a frame it does not own where it
+         went. this stops the wandering instead: any navigation out of
+         exportify is refused and the frame stays where it is.
+
+         only `frame-src` is named, so nothing else on the page is under a
+         policy it wasn't under before. -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'self' https://exportify.net;">
     <title>:p</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -618,12 +628,6 @@
 
                                 <div class="ask-body list-body">
                                     <div class="list-site" id="listSite">
-                                        <!-- press the wrong thing in there and it
-                                             wanders off to spotify or to nothing at
-                                             all, and a page cannot read a frame it
-                                             does not own to find its way back. this
-                                             puts it back at the start. -->
-                                        <button class="site-back" id="siteBack" type="button" title="back to exportify">start over</button>
                                         <!-- the dots hold the pane while somebody
                                              else's site starts; the frame fades in
                                              over them once it is there. -->

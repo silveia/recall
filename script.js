@@ -8120,15 +8120,6 @@ function fitSite() {
 
 window.addEventListener('resize', fitSite);
 
-/* somewhere to go when the frame has wandered off. it cannot be asked
-   where it is — that is the frame's own business — so it is simply put
-   back at the start, dots and all. */
-document.getElementById('siteBack').addEventListener('click', () => {
-    const site = document.getElementById('listSite');
-    site.classList.remove('is-here');
-    listFrame.src = 'https://exportify.net/';
-});
-
 function wakeListSite() {
     if (listFrame.dataset.woke) return;
     listFrame.dataset.woke = 'yes';
