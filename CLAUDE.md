@@ -262,10 +262,17 @@ afterwards the frame knows you.
 
 **A page cannot reach inside a frame it does not own.** So the layout,
 the type and the colours in there are not ours to set — only scale is.
-The frame is a quarter wider and taller than its box and drawn at `0.8`,
-so their whole width fits with nothing to scroll sideways for and their
-text lands near this site's own size. A `grayscale(1)` filter was tried
-and taken off again: it looks better with its colour.
+A `grayscale(1)` filter was tried and taken off again: it looks better
+with its colour.
+
+**Their page is always given `--site-wide` (1100px) and nothing else.**
+Scaling a *share* of the pane handed them a narrower viewport on a
+smaller screen, and a responsive layout answers a narrow viewport by
+drawing everything bigger — which was the "zoomed in on a small screen"
+of it. What changes with the window is only how far down that fixed
+1100px is drawn to fit, which `fitSite()` works out on open and on
+resize. Measured at 1400 / 1050 / 820px windows: their viewport stays
+1100px at all three.
 
 The site takes the window; a line of copy, the steps and the kept
 playlists sit in a column beside it, starting at the top.
@@ -312,7 +319,14 @@ a moment later.
 
 A page cannot read inside a frame it does not own or catch what that
 frame downloads — but it can be given the folder, which is the way round
-it. Only `.csv`, only newer than the watch, only while the window is
+it. **And the file is taken off the disk once it is in.** The songs are in
+the box and kept under their name, so the export has done its job;
+leaving it in downloads to be wondered about later is worse than
+removing it. That is why the grant is `readwrite` rather than `read` —
+and if the removal is refused, the songs are in either way and the chip
+simply doesn't claim it tidied up.
+
+Only `.csv`, only newer than the watch, only while the window is
 open, and each file taken once (`name@lastModified`). Pressing the line
 again stops it. The browser forgets the grant between visits, so on a
 later visit it is offered rather than resumed. The

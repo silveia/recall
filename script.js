@@ -7955,6 +7955,23 @@ const listFrame = document.getElementById('listFrame');
    same breath as the window's own arrival made that arrival stutter. it
    waits for the animation to finish, so the window opens at full speed
    and the site fills in behind it. */
+/* their page is always given the same width; what changes with this
+   window is how far down it is drawn to fit. worked out here rather
+   than in a percentage, because a percentage would hand them a
+   different viewport at every window size and a responsive layout
+   answers a narrow viewport by drawing everything bigger. */
+function fitSite() {
+    const site = document.getElementById('listSite');
+    if (!site) return;
+    const wide = parseFloat(getComputedStyle(site).getPropertyValue('--site-wide')) || 1100;
+    const clip = parseFloat(getComputedStyle(site).getPropertyValue('--site-clip')) || 0;
+    const bar = parseFloat(getComputedStyle(site).getPropertyValue('--site-bar')) || 0;
+    const room = site.clientWidth + clip + bar;
+    if (room > 0) site.style.setProperty('--site-fit', String(room / wide));
+}
+
+window.addEventListener('resize', fitSite);
+
 function wakeListSite() {
     if (listFrame.dataset.woke) return;
     listFrame.dataset.woke = 'yes';
@@ -8002,7 +8019,7 @@ async function newestExport() {
         }
         const mark = `${entry.name}@${file.lastModified}`;
         if (file.lastModified < watchFrom || watchSeen.has(mark)) continue;
-        if (!best || file.lastModified > best.file.lastModified) best = { file, mark };
+        if (!best || file.lastModified > best.file.lastModified) best = { file, mark, entry };
     }
     return best;
 }
@@ -8015,7 +8032,19 @@ async function lookForExport() {
         if (found) {
             watchSeen.add(found.mark);
             if (await takeListFile(found.file)) {
-                saySc(`${listName(found.file.name)} brought in`);
+                /* the songs are in the box and kept under their name, so
+                   the file itself has done its job — it is taken off the
+                   disk rather than left in downloads to be wondered about
+                   later. only ever the one just read, and only when the
+                   reading worked. */
+                let gone = false;
+                try {
+                    await watchFolder.removeEntry(found.entry.name);
+                    gone = true;
+                } catch (error) {
+                    // read-only, or it is already gone; the songs are in either way
+                }
+                saySc(`${listName(found.file.name)} brought in${gone ? ' · file tidied away' : ''}`);
                 showScreen(homeScreen);
             }
         }
@@ -8051,7 +8080,8 @@ listWatch.addEventListener('click', async () => {
         return;
     }
     try {
-        watchFolder = await window.showDirectoryPicker({ id: 'recall-drops', mode: 'read', startIn: 'downloads' });
+        // readwrite, so the export can be taken off the disk once it is in
+        watchFolder = await window.showDirectoryPicker({ id: 'recall-drops', mode: 'readwrite', startIn: 'downloads' });
     } catch (error) {
         return;                             // they changed their mind
     }
@@ -8065,7 +8095,7 @@ listWatch.addEventListener('click', async () => {
    asking for it without a press is refused anyway. */
 (async () => {
     const held = await heldHandle('drops');
-    if (held && await stillAllowed(held, 'read').catch(() => false)) {
+    if (held && await stillAllowed(held, 'readwrite').catch(() => false)) {
         watchFolder = held;
     }
     paintWatch();
@@ -8075,6 +8105,7 @@ scratchOpen.addEventListener('click', () => {
     paintLists();
     wakeListSite();
     showScreen(listScreen);
+    fitSite();
     startWatching();
 });
 

@@ -2640,7 +2640,15 @@ html.inverted .app-shell::before { opacity: 1; }
    reaching inside the frame — it is all the frame's own geometry, which
    is the only handle a page has on one it does not own. */
 .list-site {
-	--site-zoom: 0.72;
+	/* the width their page is *always* given, whatever this window is.
+	   scaling a share of the pane meant a smaller screen handed them a
+	   narrower viewport, and a responsive layout answers a narrower
+	   viewport by drawing everything bigger — which is the "zoomed in on
+	   a small screen" of it. they get 1100px and nothing else; what
+	   changes with the window is how far down it is scaled to fit, which
+	   fitSite() works out. */
+	--site-wide: 1100px;
+	--site-fit: 0.72;
 	--site-clip: 24px;     /* their own margin, off the left only */
 	--site-bar: 16px;      /* where their scrollbar sits */
 }
@@ -2652,10 +2660,10 @@ html.inverted .app-shell::before { opacity: 1; }
 	/* cropped on the left and only by the scrollbar on the right: taking
 	   the same slice off both edges ate the export button, which lives
 	   against their right-hand wall */
-	width: calc((100% + var(--site-clip) + var(--site-bar)) / var(--site-zoom));
-	height: calc(100% / var(--site-zoom));
+	width: var(--site-wide);
+	height: calc(100% / var(--site-fit));
 	border: 0;
-	transform: scale(var(--site-zoom));
+	transform: scale(var(--site-fit));
 	transform-origin: top left;
 	opacity: 0;
 	transition: opacity 0.34s var(--ease);
