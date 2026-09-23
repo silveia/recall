@@ -5546,20 +5546,39 @@ const WIDGETS = [
     {
         id: 'clock',
         name: 'time',
-        fill(body, size) {
+        // the two ways it can be read. pressing the tile swaps them.
+        looks: [['digits', 'numbers'], ['hands', 'a face']],
+        fill(body, size, look) {
             const now = new Date();
+            body.innerHTML = '';
+            body.classList.add('is-clock');
+
+            if (look === 'hands') {
+                body.append(clockHands(now));
+                if (size !== 'small') body.append(oneLine(dayWords(now)));
+                return;
+            }
+
+            /* the hour and the minute on their own line, and am or pm
+               under them — beside the figures it dragged the whole
+               reading off centre, since it is the only part that is not
+               in the number face. */
             const told = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
             const half = told.match(/\s*([ap]m)$/);
             const digits = half ? told.slice(0, half.index) : told;
 
-            body.innerHTML = '';
-            body.append(bigReading(digits, half ? half[1] : ''));
+            const read = document.createElement('p');
+            read.className = 'widget-big';
+            read.textContent = digits;
+            body.append(read);
+            if (half) {
+                const under = document.createElement('p');
+                under.className = 'widget-unit clock-half';
+                under.textContent = half[1];
+                body.append(under);
+            }
             if (size === 'small') return;
-            body.append(oneLine(now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' }).toLowerCase()));
-            if (size !== 'large') return;
-            // the large one says how far through the day it is
-            const through = Math.round(((now.getHours() * 60) + now.getMinutes()) / 14.4);
-            body.append(meterBar(through), oneLine(`${through}% through the day`));
+            body.append(oneLine(dayWords(now)));
         }
     },
     {
@@ -5681,6 +5700,52 @@ function bigReading(number, word) {
         line.append(unit);
     }
     return line;
+}
+
+// the day, said the same way wherever it is said
+function dayWords(now) {
+    return now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' }).toLowerCase();
+}
+
+/* a face with hands: a ring, a mark at every hour, and three hands.
+   drawn rather than typed, so it is the same hairline as everything
+   else and it turns about its own middle exactly. No second hand: the
+   board is repainted on the minute, and a second hand that only moved
+   once a minute would be a clock visibly telling the wrong time. */
+function clockHands(now) {
+    const wrap = document.createElement('div');
+    wrap.className = 'clock-hands';
+
+    const hour = (now.getHours() % 12) + now.getMinutes() / 60;
+    const minute = now.getMinutes();
+
+    const hand = (turn, long, wide) => {
+        const x = 50 + long * Math.sin(turn * Math.PI / 180);
+        const y = 50 - long * Math.cos(turn * Math.PI / 180);
+        return `<path d="M50 50 ${x.toFixed(2)} ${y.toFixed(2)}" stroke-width="${wide}"`
+            + ' stroke-linecap="round" vector-effect="non-scaling-stroke"/>';
+    };
+
+    let ticks = '';
+    for (let at = 0; at < 12; at += 1) {
+        const turn = at * 30;
+        const from = at % 3 === 0 ? 34 : 38;
+        const x1 = 50 + from * Math.sin(turn * Math.PI / 180);
+        const y1 = 50 - from * Math.cos(turn * Math.PI / 180);
+        const x2 = 50 + 42 * Math.sin(turn * Math.PI / 180);
+        const y2 = 50 - 42 * Math.cos(turn * Math.PI / 180);
+        ticks += `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}"`
+            + ` stroke-width="${at % 3 === 0 ? 1.6 : 1}" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+    }
+
+    wrap.innerHTML = '<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" aria-hidden="true">'
+        + '<circle cx="50" cy="50" r="47" stroke-width="1" vector-effect="non-scaling-stroke"/>'
+        + ticks
+        + hand(hour * 30, 24, 2)
+        + hand(minute * 6, 34, 1.4)
+        + '<circle cx="50" cy="50" r="2.4" fill="currentColor" stroke="none"/>'
+        + '</svg>';
+    return wrap;
 }
 
 function oneLine(words) {
@@ -5882,6 +5947,7 @@ function loadWidgets() {
                 // so the kind it is no longer says which one it is.
                 key: entry.key || nextWidgetKey(entry.id),
                 size: WIDGET_SIZES.includes(entry.size) ? entry.size : 'wide',
+                look: typeof entry.look === 'string' ? entry.look : null,
                 col: Number.isInteger(entry.col) ? entry.col : null,
                 row: Number.isInteger(entry.row) ? entry.row : null
             }))
@@ -6024,7 +6090,7 @@ function renderWidgets() {
 
         const body = document.createElement('div');
         body.className = 'widget-body';
-        widget.fill(body, entry.size);
+        widget.fill(body, entry.size, entry.look);
 
         const grip = document.createElement('button');
         grip.className = 'widget-grip';
@@ -6038,6 +6104,16 @@ function renderWidgets() {
 
         card.append(head, body, grip);
         card.addEventListener('pointerdown', (event) => startWidgetDrag(card, entry, event));
+
+        /* a press that stays put is a press, not a carry: it asks the
+           tile how else it can be read. a few pixels of travel while
+           clicking is still a click, which is the same allowance the
+           clip bars make. */
+        card.addEventListener('click', (event) => {
+            if (editingHome || event.target.closest('.widget-off, .widget-grip')) return;
+            event.stopPropagation();
+            openLookPicks(entry, card);
+        });
         card.addEventListener('contextmenu', (event) => {
             event.stopPropagation();
             showContextMenu(event, { type: 'widget', id: entry.key });
@@ -6057,9 +6133,61 @@ function paintWidgets() {
     widgetList.querySelectorAll('.widget-card').forEach((card) => {
         const entry = homeWidgets.find((one) => one.key === card.dataset.widgetId);
         const widget = entry && widgetById(entry.id);
-        if (widget) widget.fill(card.querySelector('.widget-body'), card.dataset.size);
+        if (widget) widget.fill(card.querySelector('.widget-body'), card.dataset.size, entry.look);
     });
 }
+
+/* --- the other ways a widget can be read --- */
+
+/* pressing a tile — pressing, not carrying — asks it how else it can
+   be read. only a widget that says it has `looks` answers; the rest do
+   nothing, because a popup that opens on nothing is worse than a tile
+   that simply sits there. */
+const lookPicks = document.getElementById('lookPicks');
+const lookList = document.getElementById('lookList');
+
+function openLookPicks(entry, card) {
+    const widget = widgetById(entry.id);
+    if (!widget || !widget.looks || widget.looks.length < 2) return;
+
+    const wasOpen = !lookPicks.hidden && lookPicks.dataset.widgetId === entry.key;
+    closeLookPicks();
+    if (wasOpen) return;
+
+    lookList.innerHTML = '';
+    widget.looks.forEach(([name, said]) => {
+        const pick = document.createElement('button');
+        pick.className = 'option-pick widget-pick';
+        pick.type = 'button';
+        pick.textContent = said;
+        if ((entry.look || widget.looks[0][0]) === name) pick.classList.add('is-on');
+        pick.addEventListener('click', (event) => {
+            event.stopPropagation();
+            entry.look = name;
+            saveWidgets();
+            paintWidgets();
+            closeLookPicks();
+        });
+        lookList.append(pick);
+    });
+
+    lookPicks.dataset.widgetId = entry.key;
+    lookPicks.classList.remove('is-leaving');
+    lookPicks.hidden = false;
+    placeUnder(lookPicks, card);
+}
+
+function closeLookPicks() {
+    shutPop(lookPicks);
+    delete lookPicks.dataset.widgetId;
+}
+
+lookPicks.addEventListener('click', (event) => event.stopPropagation());
+document.addEventListener('pointerdown', (event) => {
+    if (lookPicks.hidden) return;
+    if (event.target.closest('#lookPicks, .widget-card')) return;
+    closeLookPicks();
+});
 
 /* as many as you like, and as many of a kind as you like — two clocks
    is a strange thing to want and none of our business. */

@@ -4676,6 +4676,35 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	font-size: 0.8rem;
 	font-weight: 600;
 }
+/* the clock reads down the middle: the figures, the half under them,
+   and the day under that. beside the figures the half dragged the whole
+   reading off centre, being the one part not in the number face. */
+.widget-body.is-clock {
+	align-items: center;
+	text-align: center;
+}
+.widget-body.is-clock .widget-big { justify-content: center; }
+.clock-half {
+	margin: -0.15rem 0 0;
+	line-height: 1;
+}
+
+/* the face, when it is read with hands rather than figures */
+.clock-hands {
+	display: grid;
+	place-items: center;
+	width: 100%;
+	min-height: 0;
+	flex: 1;
+}
+.clock-hands svg {
+	display: block;
+	width: auto;
+	height: 100%;
+	max-width: 100%;
+	aspect-ratio: 1;
+}
+
 .widget-line {
 	margin: 0;
 	font-size: 0.8rem;
@@ -4994,6 +5023,27 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	opacity: 1;
 	pointer-events: auto;
 }
+/* the list of ways a widget can be read. same as the add list: no
+   panel around it, just the column of pills. */
+.pop-looks {
+	width: 9rem;
+	padding: 0;
+	background: none;
+	border: 0;
+	box-shadow: none;
+}
+.look-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+}
+.look-list .option-pick {
+	justify-content: center;
+	width: 100%;
+	max-width: none;
+}
+.widget-pick.is-on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+
 .widget-pick { cursor: var(--cur-tap); }
 .widget-pick:hover { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
