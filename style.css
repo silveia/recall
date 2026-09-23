@@ -4647,11 +4647,15 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .widget-bin svg { display: block; flex: none; }
 
 /* where a tile will land, left behind while it is in the air */
+/* the slot a tile would land in. it wears the tile's own corner and,
+   on the black bar, the bar's own white — a black dashed line on black
+   is no line at all. */
 .widget-ghost {
 	border: 1px dashed var(--line);
-	border-radius: var(--radius);
+	border-radius: 1.1rem;
 	pointer-events: none;
 }
+.rail-left .widget-ghost { border-color: var(--bar-ink); }
 
 /* the three shapes. a square says one number, a wide one says three,
    and the big one has room for the whole story — which is why every
