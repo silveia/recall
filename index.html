@@ -643,7 +643,7 @@
                                             </li>
                                             <li>
                                                 <span class="ask-step">2</span>
-                                                <span class="ask-said">and boom ur done, playlists can be exported and directly come back here</span>
+                                                <span class="ask-said">and boom ur done, playlists can be exported into .call files</span>
                                             </li>
                                             <li>
                                                 <span class="ask-step">3</span>
@@ -662,6 +662,22 @@
                                 </div>
                             </section>
 
+
+                            <!-- ============ bringing clips in ============
+                                 the browser's own file window is somebody
+                                 else's furniture and shows everything on the
+                                 disk. this one is ours and shows the clip
+                                 files and nothing else. -->
+                            <section class="modal-panel ask-screen" id="bundleScreen" data-title="clips" hidden>
+                                <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                                <h2 class="modal-title">bring clips in</h2>
+
+                                <div class="ask-body">
+                                    <ul class="bundle-list" id="bundleList"></ul>
+                                    <p class="bundle-say" id="bundleSay"></p>
+                                    <button class="basic-button is-plain bundle-where" id="bundleWhere" type="button">look somewhere else</button>
+                                </div>
+                            </section>
 
                             <!-- ============ where the mp3s go ============
                                  a name, a place, and a press. the place

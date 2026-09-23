@@ -1077,6 +1077,7 @@ function closeModal() {
         notesScreen.hidden = true;
         listScreen.hidden = true;
         folderScreen.hidden = true;
+        bundleScreen.hidden = true;
         if (typeof stopWatching === 'function') stopWatching();
         keyScreen.hidden = true;
         returnNotesPanel();
@@ -1100,6 +1101,7 @@ function showScreen(screen) {
     notesScreen.hidden = screen !== notesScreen;
     listScreen.hidden = screen !== listScreen;
     folderScreen.hidden = screen !== folderScreen;
+    bundleScreen.hidden = screen !== bundleScreen;
     keyScreen.hidden = screen !== keyScreen;
     // the notes panel is borrowed from the left bar; anything else
     // opening means it is wanted back
@@ -2995,7 +2997,114 @@ async function unpackClipsFrom(file) {
 packClips.addEventListener('click', () => {
     packAllClips().catch((error) => setRecordStatus(`could not save them — ${error.message}`, true));
 });
-unpackClips.addEventListener('click', () => unpackInput.click());
+/* --- the clip files, listed here rather than by the browser --- */
+
+/* the browser's own file window is somebody else's furniture and shows
+   every kind of thing on the disk. given a folder, this page can list
+   what it can actually read — the `.call` bundles — in its own window,
+   and one press brings one in.
+
+   the folder is remembered under its own key, and the browser forgets
+   the permission between visits, so the first press each visit is the
+   one that asks. */
+const bundleScreen = document.getElementById('bundleScreen');
+const bundleList = document.getElementById('bundleList');
+const bundleSay = document.getElementById('bundleSay');
+const bundleWhere = document.getElementById('bundleWhere');
+
+function sizeSaid(bytes) {
+    if (bytes >= 1048576) return `${Math.round(bytes / 1048576)}mb`;
+    return `${Math.max(1, Math.round(bytes / 1024))}kb`;
+}
+
+async function bundlesIn(folder) {
+    const found = [];
+    for await (const entry of folder.values()) {
+        if (entry.kind !== 'file' || !/\.call$/i.test(entry.name)) continue;
+        try {
+            found.push(await entry.getFile());
+        } catch (error) {
+            // gone between the listing and the opening
+        }
+    }
+    return found.sort((a, b) => b.lastModified - a.lastModified);
+}
+
+function paintBundles(files, where) {
+    bundleList.innerHTML = '';
+    if (!files.length) {
+        bundleSay.textContent = where
+            ? `nothing in ${where} that this page can read`
+            : 'pick the folder your clip file is in';
+        return;
+    }
+    bundleSay.textContent = `in ${where}`;
+    files.forEach((file) => {
+        const row = document.createElement('li');
+        const pick = document.createElement('button');
+        pick.className = 'bundle-one';
+        pick.type = 'button';
+
+        const name = document.createElement('strong');
+        name.textContent = file.name.replace(/\.call$/i, '');
+        const much = document.createElement('small');
+        much.textContent = sizeSaid(file.size);
+        pick.append(name, much);
+
+        pick.addEventListener('click', async () => {
+            showScreen(homeScreen);
+            await unpackClipsFrom(file);
+        });
+        row.append(pick);
+        bundleList.append(row);
+    });
+}
+
+async function showBundles(folder) {
+    try {
+        paintBundles(await bundlesIn(folder), folder.name);
+    } catch (error) {
+        paintBundles([], null);
+    }
+}
+
+async function askForBundleFolder() {
+    if (!window.showDirectoryPicker) return null;
+    let folder;
+    try {
+        folder = await window.showDirectoryPicker({ id: 'recall-drops', mode: 'read', startIn: 'downloads' });
+    } catch (error) {
+        return null;                        // they changed their mind
+    }
+    await keepHandle(folder, 'drops');
+    return folder;
+}
+
+async function openBundles() {
+    paintBundles([], null);
+    showScreen(bundleScreen);
+
+    let folder = await heldHandle('drops');
+    if (folder && !(await stillAllowed(folder, 'read').catch(() => false))) folder = null;
+    if (!folder) folder = await askForBundleFolder();
+    if (!folder) {
+        // no folder to look in: the browser's own window is the way left
+        showScreen(homeScreen);
+        unpackInput.click();
+        return;
+    }
+    await showBundles(folder);
+}
+
+bundleWhere.addEventListener('click', async () => {
+    const folder = await askForBundleFolder();
+    if (folder) await showBundles(folder);
+});
+
+unpackClips.addEventListener('click', () => {
+    if (window.showDirectoryPicker) openBundles();
+    else unpackInput.click();
+});
 unpackInput.addEventListener('change', () => {
     const file = unpackInput.files && unpackInput.files[0];
     unpackInput.value = '';   // the same file can be picked again

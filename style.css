@@ -2335,6 +2335,60 @@ html.inverted .app-shell::before { opacity: 1; }
 	min-width: 0;
 }
 .clip-folder-side.is-right { justify-content: flex-end; }
+/* the clip files found, each one a row to press. the browser's own file
+   window shows every kind of thing on the disk; this shows the ones this
+   page can actually read and nothing else. */
+.bundle-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+	max-height: 18rem;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	list-style: none;
+	scrollbar-width: none;
+}
+.bundle-list::-webkit-scrollbar { display: none; }
+.bundle-list:empty { display: none; }
+
+.bundle-one {
+	display: flex;
+	align-items: baseline;
+	gap: var(--tight);
+	width: 100%;
+	min-width: 0;
+	height: var(--field);
+	padding: calc(var(--drop) * 2) 0.9rem 0;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font: inherit;
+	text-align: left;
+	cursor: var(--cur-tap);
+	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.bundle-one:hover { color: var(--paper); background: var(--ink); }
+.bundle-one strong {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+/* a size is a number, so it wears the number face */
+.bundle-one small { flex: none; font-family: var(--num-font); font-size: 1rem; }
+
+.bundle-say {
+	margin: 0;
+	padding: 0 0.35rem;
+	font-size: 0.85rem;
+	text-align: center;
+}
+.bundle-say:empty { display: none; }
+.bundle-where { align-self: stretch; height: var(--field); padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0; }
+
 /* the window that asks where the mp3s go: a name, a strip of places,
    and a press. */
 .folder-screen .ask-body { gap: var(--group); }

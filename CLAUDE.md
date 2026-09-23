@@ -424,6 +424,14 @@ The file is a short header and then the recordings end to end:
     <the header, as json: everything but the sound>
     <clip><clip><clip>...
 
+**The picker is ours.** The browser's own file window is somebody
+else's furniture and shows every kind of thing on the disk; given a
+folder, this page can list what it can actually read — the `.call`
+bundles, newest first, with their sizes — in a window of its own, and
+one press brings one in. `look somewhere else` points it at a different
+folder. Where the browser won't hand over a folder at all, it falls back
+to the browser's own window.
+
 Coming back in, each recording is a `slice` of the file on disk, which
 the browser keeps as a file until something asks for the bytes — so a
 200MB bundle never becomes 200MB of memory. A clip whose id is already
