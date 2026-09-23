@@ -835,6 +835,13 @@ pointing at, which changed the answer.
 as negative margin, which is what gives the edit-mode lift and shadow
 room. Any "clipping at the edge" on this board is that.
 
+**A press is not a carry.** A tile only moves in edit mode, so a plain
+click anywhere else is free to mean something: it opens the tile's
+`looks` list, if it has one. The clock's are `numbers` and `a face`,
+kept per tile in its own entry. The face carries no second hand — the
+board repaints on the minute, and a second hand that moved once a
+minute is a clock visibly telling the wrong time.
+
 ## The mark lands in the middle, and the word holds still
 
 A tick or a cross on the tile you pressed. The word used to **slide down
