@@ -5303,6 +5303,21 @@ html.booting .app-shell { opacity: 0; }
 	pointer-events: none;
 }
 html.booting .booting-mark { display: flex; }
+/* it only shows itself if the wait is actually a wait. on a quick load
+   the page was ready before the eye had settled, and the face flashed
+   up in the middle of the screen for a frame — which is worse than no
+   face at all. nothing for the first third of a second. */
+/* written out rather than with var(--ease): a custom property inside a
+   two-animation shorthand takes the whole declaration down with it if
+   it doesn't resolve, and then neither animation runs at all. */
+.booting-mark .spin-face {
+	opacity: 0;
+	animation: face-turn 1.5s cubic-bezier(0.62, 0, 0.3, 1) infinite,
+		face-arrive 0.2s cubic-bezier(0.33, 0, 0, 1) 0.34s forwards;
+}
+@keyframes face-arrive {
+	to { opacity: 1; }
+}
 /* the one thing that waits, in both places something waits: a smiley,
    turning.
 

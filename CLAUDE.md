@@ -688,6 +688,14 @@ clips arriving out of storage a beat later. It is held back now until
 what it draws is there, then faded in as one thing, with the same
 turning smiley holding the place meanwhile.
 
+**The face only shows if the wait is a wait.** On a quick load the page
+was ready before the eye had settled and it flashed up in the middle of
+the screen for a frame, which is worse than no face at all — so it is
+held at nothing for the first 0.34s and fades in after. Write that
+delay's easing out in full: a `var()` inside a two-animation shorthand
+takes the whole declaration down with it if it doesn't resolve, and
+then **neither** animation runs.
+
 **The holding-back is set in the head, not the stylesheet**, so a page
 whose script never runs is never left hidden. The same inline snippet
 takes the class off after 2.5s whatever happens; `loadStoredClips()`
