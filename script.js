@@ -5751,6 +5751,13 @@ function hits(one, two) {
    side, then up, then down. the axis is whichever of the two the tiles
    are further apart on, so a tile approached square-on from the side
    does not suddenly hop downwards. */
+/* how deep the board may go while something is being pushed about. a
+   shoved tile used to have no floor at all: pushed down far enough it
+   slid under the bin at the foot of the board, which is how a tile
+   could be put in the bin by another tile rather than by being carried
+   there. nothing is shoved past this. */
+let shoveFloor = 0;
+
 function shove(blocker, by, hint) {
     const [bw, bh] = spanOf(blocker);
     const [mw, mh] = spanOf(by);
@@ -5776,12 +5783,29 @@ function shove(blocker, by, hint) {
         const col = ways[at] === 'right' ? by.col + mw : ways[at] === 'left' ? by.col - bw : blocker.col;
         const row = ways[at] === 'down' ? by.row + mh : ways[at] === 'up' ? by.row - bh : blocker.row;
         if (col < 0 || col + bw > BOARD_COLS || row < 0) continue;
+        if (shoveFloor && row + bh > shoveFloor) continue;
         blocker.col = col;
         blocker.row = row;
         return;
     }
-    // hemmed in on every side: it goes under
-    blocker.row = by.row + mh;
+
+    /* hemmed in on every side. under is where it would go, but not past
+       the floor — over the floor it takes the first slot on the board
+       that is free of everything it was pushed by, and if there is none
+       it stays where it is rather than being pushed out of the world. */
+    const under = by.row + mh;
+    if (!shoveFloor || under + bh <= shoveFloor) {
+        blocker.row = under;
+        return;
+    }
+    for (let row = 0; row + bh <= shoveFloor; row += 1) {
+        for (let col = 0; col + bw <= BOARD_COLS; col += 1) {
+            if (hits({ ...blocker, col, row }, by)) continue;
+            blocker.col = col;
+            blocker.row = row;
+            return;
+        }
+    }
 }
 
 /* the one being carried keeps the slot it was given; everything it
@@ -6228,7 +6252,14 @@ function boardIfDropped(entry, col, row) {
     const hint = { x: Math.sign(col - entry.col), y: Math.sign(row - entry.row) };
     me.col = col;
     me.row = row;
+
+    /* the board may grow for the tile in your hand — that is what the
+       spare row under it is for — but not for the ones it pushes. they
+       keep to the board as it already stands. */
+    const [, mh] = spanOf(me);
+    shoveFloor = Math.max(boardDepth(), row + mh);
     makeRoom(shadow, me, hint);
+    shoveFloor = 0;
     return shadow;
 }
 

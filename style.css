@@ -4972,12 +4972,18 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 /* in edit a tile is something you move, so nothing inside it answers */
 /* turning edit on lifts the board off the page and turning it off sets it
    back down, so the mode arrives and leaves rather than snapping */
+/* the lift and the hard shadow are how a tile looks all the time now,
+   not only while the board is being arranged. edit still changes what a
+   tile *does* — the handles, the grab cursor, the body going quiet —
+   but not how it sits. */
+.widget-card {
+	translate: 0 -4px;
+	box-shadow: 3px 3px 0 var(--ink);
+}
 .home-panel.is-editing .widget-card {
 	cursor: var(--cur-grab);
 	touch-action: none;
 	user-select: none;
-	translate: 0 -4px;
-	box-shadow: 3px 3px 0 var(--ink);
 }
 .home-panel.is-editing .widget-body { pointer-events: none; }
 

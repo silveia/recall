@@ -734,6 +734,22 @@ was true before. `untangle(anchor)` gives the anchor what it was
 dropped on and pushes anything under it down; nothing is ever pulled
 back up, because a gap you left is a gap you meant.
 
+**The lift and the hard shadow are how a tile sits all the time**, not
+only while the board is being arranged. Edit still changes what a tile
+*does* — the handles, the grab cursor, the body going quiet — but not
+how it looks.
+
+**Nothing is shoved past the foot of the board.** A shoved tile had no
+floor at all: pushed down far enough it slid under the bin, which is how
+a tile could be binned by *another tile* rather than by being carried
+there. `shoveFloor` is set for the length of a drop — the board may grow
+for the tile in your hand, which is what the spare row is for, but not
+for the ones it pushes. Over the floor a hemmed-in tile takes the first
+free slot on the board instead, and if there is none it stays put rather
+than being pushed out of the world. Measured: a column of three, the top
+one dropped on the bottom one — the displaced tile went to row 3 before
+and moves sideways now, with nothing past the depth.
+
 **Tiles get out of the way in the direction they were pushed.** `shove`
 takes the drag's own travel as the hint — come at a tile from the left
 and it moves right, from above and it moves down; at the wall it goes
