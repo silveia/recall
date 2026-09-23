@@ -303,7 +303,19 @@ circle is centred on its **first line**, not on the block — centred on
 the block it drifted down the side of a step that wrapped. Measured:
 0.16px off the first line's middle at `margin-top: 0.03rem`.
 
-Its export still arrives as a file, dropped on the playlist box. The
+Its export still arrives as a file — but it need not be carried by
+hand. **`bring exports in by itself` hands the page the folder the
+download lands in**, and then it simply looks: every 1.5s while the
+window is open, for a `.csv` written since the looking started. What
+exportify drops is picked up where it falls and the songs are in the box
+a moment later.
+
+A page cannot read inside a frame it does not own or catch what that
+frame downloads — but it can be given the folder, which is the way round
+it. Only `.csv`, only newer than the watch, only while the window is
+open, and each file taken once (`name@lastModified`). Pressing the line
+again stops it. The browser forgets the grant between visits, so on a
+later visit it is offered rather than resumed. The
 frame is loaded 380ms after the window opens — starting somebody else's
 whole site in the same breath as the window's arrival made that arrival
 stutter. **Not `requestIdleCallback`**: a busy page may never go idle,

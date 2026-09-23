@@ -1077,6 +1077,7 @@ function closeModal() {
         notesScreen.hidden = true;
         listScreen.hidden = true;
         folderScreen.hidden = true;
+        if (typeof stopWatching === 'function') stopWatching();
         keyScreen.hidden = true;
         returnNotesPanel();
     }, MODAL_EXIT_MS);
@@ -3072,21 +3073,25 @@ function openHomeDb() {
     return homeDbPromise;
 }
 
-async function keepFolderHome(handle) {
+async function keepHandle(handle, called) {
     try {
         const db = await openHomeDb();
         const tx = db.transaction(HOME_STORE, 'readwrite');
-        tx.objectStore(HOME_STORE).put(handle, 'parent');
+        tx.objectStore(HOME_STORE).put(handle, called);
     } catch (error) {
         // it will just ask again next time
     }
 }
 
-async function folderHome() {
+function keepFolderHome(handle) {
+    return keepHandle(handle, 'parent');
+}
+
+async function heldHandle(called) {
     try {
         const db = await openHomeDb();
         return await new Promise((resolve) => {
-            const request = db.transaction(HOME_STORE, 'readonly').objectStore(HOME_STORE).get('parent');
+            const request = db.transaction(HOME_STORE, 'readonly').objectStore(HOME_STORE).get(called);
             request.onsuccess = () => resolve(request.result || null);
             request.onerror = () => resolve(null);
         });
@@ -3095,11 +3100,15 @@ async function folderHome() {
     }
 }
 
+function folderHome() {
+    return heldHandle('parent');
+}
+
 // may we still write there? asked of the browser, which asks the reader
 // only if it has to — and only while a press is still a press.
-async function stillAllowed(handle) {
+async function stillAllowed(handle, mode) {
     try {
-        const asked = { mode: 'readwrite' };
+        const asked = { mode: mode || 'readwrite' };
         if (await handle.queryPermission(asked) === 'granted') return true;
         return await handle.requestPermission(asked) === 'granted';
     } catch (error) {
@@ -7849,10 +7858,115 @@ function wakeListSite() {
     window.setTimeout(() => { listFrame.src = 'https://exportify.net/'; }, 380);
 }
 
+/* --- an export, noticed where it lands --- */
+
+/* a page cannot read inside a frame it does not own, and it cannot
+   catch what that frame downloads. but it can be handed the folder the
+   download lands in — and then it can simply look. with the downloads
+   folder granted, exportify's file is picked up where it falls and the
+   songs are in the box a moment later.
+
+   it only ever looks while the window is open, only at `.csv` files,
+   and only at ones written since the looking started. */
+const listWatch = document.getElementById('listWatch');
+let watchFolder = null;
+let watchTimer = 0;
+let watchFrom = 0;
+const watchSeen = new Set();
+
+function paintWatch() {
+    listWatch.textContent = watchFolder
+        ? `watching ${watchFolder.name}`
+        : 'bring exports in by itself';
+    listWatch.classList.toggle('is-on', Boolean(watchFolder));
+}
+
+async function newestExport() {
+    let best = null;
+    for await (const entry of watchFolder.values()) {
+        if (entry.kind !== 'file' || !/\.(csv|tsv|txt)$/i.test(entry.name)) continue;
+        let file;
+        try {
+            file = await entry.getFile();
+        } catch (error) {
+            continue;                       // gone between listing and opening
+        }
+        const mark = `${entry.name}@${file.lastModified}`;
+        if (file.lastModified < watchFrom || watchSeen.has(mark)) continue;
+        if (!best || file.lastModified > best.file.lastModified) best = { file, mark };
+    }
+    return best;
+}
+
+async function lookForExport() {
+    watchTimer = 0;
+    if (!watchFolder || listScreen.hidden) return;
+    try {
+        const found = await newestExport();
+        if (found) {
+            watchSeen.add(found.mark);
+            if (await takeListFile(found.file)) {
+                saySc(`${listName(found.file.name)} brought in`);
+                showScreen(homeScreen);
+            }
+        }
+    } catch (error) {
+        // permission taken back, or the folder went away
+        watchFolder = null;
+        paintWatch();
+        return;
+    }
+    watchTimer = window.setTimeout(lookForExport, 1500);
+}
+
+function startWatching() {
+    if (!watchFolder || watchTimer) return;
+    watchFrom = Date.now();
+    watchTimer = window.setTimeout(lookForExport, 1200);
+}
+
+function stopWatching() {
+    window.clearTimeout(watchTimer);
+    watchTimer = 0;
+}
+
+listWatch.addEventListener('click', async () => {
+    if (watchFolder) {                      // pressing it again stops
+        stopWatching();
+        watchFolder = null;
+        paintWatch();
+        return;
+    }
+    if (!window.showDirectoryPicker) {
+        saySc('this browser cannot be handed a folder');
+        return;
+    }
+    try {
+        watchFolder = await window.showDirectoryPicker({ id: 'recall-drops', mode: 'read', startIn: 'downloads' });
+    } catch (error) {
+        return;                             // they changed their mind
+    }
+    await keepHandle(watchFolder, 'drops');
+    paintWatch();
+    startWatching();
+});
+
+/* it is offered again on a later visit rather than asked for again —
+   the browser forgets the permission between visits, and `values()`
+   asking for it without a press is refused anyway. */
+(async () => {
+    const held = await heldHandle('drops');
+    if (held && await stillAllowed(held, 'read').catch(() => false)) {
+        watchFolder = held;
+    }
+    paintWatch();
+})();
+
 scratchOpen.addEventListener('click', () => {
     paintLists();
     wakeListSite();
     showScreen(listScreen);
+    startWatching();
 });
 
 /* the window holds exportify and nothing of ours to drop on: a list
