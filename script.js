@@ -11,7 +11,7 @@
    8. context menu
    9. keyboard
    10. wiring    (includes deck codes — copy one out, paste one in)
-   11. start     (its body runs at the very bottom of the file)
+   11. start     (called once the home widgets are wired, in section 15)
    12. capture, sensing, recording   (the audio section)
          status · sensing box · change detection
          clip storage · mp3 export · clip rows
@@ -19,9 +19,10 @@
    13. player    (songs off your own disk, and the bar's short copy)
    14. the bar's own three   (clock · storage · recently binned)
    15. home widgets   (the home page, yours to arrange)
-   16. notes → cards  (the left bar; reads notes, or asks claude)
-   17. scratch        (the box beside the clips — a spotify playlist,
-                       spelled out, every song copyable)
+   16. notes → cards  (under the deck; reads notes, or asks claude)
+   17. scratch        (the playlist box beside the clips)
+   18. option, and what things do
+   19. chat
    ============================================================ */
 
 /* ---------- 1. elements ---------- */
@@ -32,18 +33,13 @@ const modalVeil = document.getElementById('modalVeil');
 const makerScreen = document.getElementById('makerScreen');
 const studyScreen = document.getElementById('studyScreen');
 const notesScreen = document.getElementById('notesScreen');
+const listScreen = document.getElementById('listScreen');
 
 // sections
 const sectionTabs = document.getElementById('sectionTabs');
 const audioPanel = document.getElementById('audioPanel');
-// the chat page, named up here with the others: renderSections runs
-// before the chat section further down has been reached, and `typeof`
-// on a const still in its dead zone throws rather than answering
 const chatPanel = document.getElementById('chatPanel');
 let chatSplitter = null;
-// section 19 declares the rest of the chat's own things, further down
-// the file than this runs. landing straight on /chat would otherwise
-// wake it before it exists.
 let chatReady = false;
 
 // decks
@@ -125,23 +121,13 @@ let recentQuestions = [];
 let currentCard;
 let waitingForContinue = false;
 let editingCardIndex = null;
-/* the answers this card is allowed to be mixed up with, while it's
-   being written. empty means "anything in the deck". */
 let pendingOptions = new Set();
 let editingDeckId = null;
-/* everything binned in the last week, oldest first. ctrl+z walks back
-   down it, and the bar lists the newest few. it is a real bin, held in
-   its own database: a clip or a song keeps its audio in here, which is
-   the only way one can come back after a refresh. nothing leaves until
-   it is a week old, put back, or the bin is emptied by hand. */
 let deletedStack = [];
-/* whatever ctrl+z has taken back out of the bin, newest last. it is
-   only the path back down — anything binned fresh empties it. */
 let redoStack = [];
 const BIN_DB = 'recall-bin';
 const BIN_STORE = 'binned';
 const BIN_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
-let binDbPromise = null;
 
 let audioContext = null;
 let analyser = null;
@@ -149,7 +135,6 @@ let levelFrame = null;
 let levelData = null;
 const MIN_CLIP_MS = 2000;   // clips shorter than this are thrown away
 let clipCount = 0;
-let changeArmed = false;    // a change was seen, waiting for it to settle
 let lastCutAt = 0;
 let recorderReady = false;
 
@@ -158,6 +143,29 @@ function activeDeck() {
 }
 
 /* ---------- 3. storage ---------- */
+
+const dbOpening = {};
+
+function openDb(name, store, keyed) {
+    dbOpening[name] = dbOpening[name] || new Promise((resolve, reject) => {
+        const request = window.indexedDB.open(name, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, keyed ? { keyPath: 'id' } : undefined);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+    return dbOpening[name];
+}
+
+function readAll(db, store) {
+    return new Promise((resolve, reject) => {
+        const request = db.transaction(store, 'readonly').objectStore(store).getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+    });
+}
 
 function saveDecks() {
     paintWidgets();
@@ -188,29 +196,7 @@ function loadDecks() {
     }
 }
 
-/* --- a page per section, in the address bar ---
-
-   Every section has its own link: morie.top/cards, morie.top/audio.
-   Github pages serves files and nothing else, so `/cards` is not a
-   path it knows — which is what the little `cards/index.html` beside
-   this one is for. Each of them does one thing: send the browser on to
-   `app.html?go=cards`, which the lines below read and then tidy out of
-   the address bar again.
-
-   The site itself is `app.html` rather than the root, because the root
-   is a page of its own.
-
-   What comes off the path: any file name, any trailing slash, and a
-   trailing section name — all three, because the address bar is
-   rewritten to `/cards` and a reload lands back here with that on it.
-   Stripping only the file name was enough until it wasn't: a browser
-   holding a stale copy of this file next to a fresh `cards/index.html`
-   built `/app.html/cards`, and every press after it added another
-   piece. A root worked out from a path has to survive being handed its
-   own answer back.
-
-   Worked out once, before anything is written to the address bar: a
-   replaceState would otherwise move the ground this stands on. */
+/* --- a page per section, in the address bar --- */
 const SITE_ROOT = window.location.pathname
     .replace(/\/[^/]*\.html$/, '')
     .replace(/\/+$/, '')
@@ -218,17 +204,10 @@ const SITE_ROOT = window.location.pathname
 
 const isSection = (id) => sections.some((section) => section.id === id);
 
-/* with the slash on the end, because that is the real file: /cards/
-   is cards/index.html, and /cards without it is answered by github
-   with a redirect — one more hop, and the address changing under you
-   on every refresh. */
 function sectionLink(id) {
     return `${SITE_ROOT}/${id}/`;
 }
 
-/* opened as a file rather than served, the browser refuses to be told
-   a path at all — and that throw would take the section swap with it.
-   The address bar is the one part of this that is allowed to fail. */
 function writeLink(how, id) {
     try {
         window.history[how]({ section: id }, '', sectionLink(id));
@@ -237,9 +216,6 @@ function writeLink(how, id) {
     }
 }
 
-/* where the reader actually is, in order of how plainly they said it:
-   the `?go=` a redirect left, then the path itself (for a browser that
-   was handed /cards directly), then whatever they were last on. */
 function askedForSection() {
     const asked = new URLSearchParams(window.location.search).get('go');
     if (isSection(asked)) return asked;
@@ -253,9 +229,6 @@ function loadSection() {
     if (isSection(saved)) activeSectionId = saved;
     const asked = askedForSection();
     if (asked) activeSectionId = asked;
-    /* the link is written whichever way they arrived, so the address
-       bar says the same thing as the page under it — and the `?go=`
-       the redirect needed is gone the moment it has been read. */
     writeLink('replaceState', activeSectionId);
 }
 
@@ -268,9 +241,6 @@ window.addEventListener('popstate', (event) => {
     renderSections();
 });
 
-/* nothing on this site wants the browser guessing at what you meant —
-   no autocomplete list, no autocorrect, no capitalising the first
-   letter of a lowercase site, no red squiggles under a kaomoji. */
 function stopGuessing(field) {
     field.autocomplete = 'off';
     field.spellcheck = false;
@@ -281,9 +251,6 @@ function stopGuessing(field) {
 
 /* ---------- 4. sections ---------- */
 
-// the swap happens on the click — waiting for the old panels to leave
-// first just read as lag. the new ones come in from the side you're
-// heading instead, staggered, so it's smooth without costing anything.
 function switchSection(id) {
     if (isModalOpen()) showScreen(homeScreen);   // tabs work from anywhere
     if (id === activeSectionId) return;
@@ -302,8 +269,6 @@ function switchSection(id) {
         const from = before[index];
         const to = after[index];
         if (!from.height || !to.height) return;
-        // only the size, and only in place: each tab holds its quarter
-        // of the strip, so the word grows and shrinks where it stands
         const scale = from.height / to.height;
         if (Math.abs(scale - 1) < 0.01) return;
         tab.animate(
@@ -324,18 +289,10 @@ function renderSections() {
     audioPanel.hidden = activeSectionId !== 'audio';
     playerPanel.hidden = activeSectionId !== 'player';
     chatPanel.hidden = activeSectionId !== 'chat';
-    /* the chat is the one page that is talking to somewhere else. it
-       only starts listening once it is looked at, and it keeps
-       listening after — a message that arrived while you were on
-       another page should be there when you come back. */
     if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
-    /* the sensing window is fixed to the screen and lives outside every
-       panel — hiding the page it belongs to does not take it with it */
     if (activeSectionId !== 'audio' && typeof openSensing === 'function') openSensing(false);
 
-    /* the grips could not be measured while their panel was hidden, so
-       whichever has just come on screen is worked out now */
     const shown = {
         cards: [deckSplit, notesSplit],
         audio: [typeof clipSplitter !== 'undefined' && clipSplitter],
@@ -344,8 +301,6 @@ function renderSections() {
     }[activeSectionId] || [];
     shown.forEach((one) => { if (one) one.reclamp(); });
 
-    // one tab per section; whichever is active grows, the rest shrink.
-    // tabs are only built once so the size change can animate.
     if (!sectionTabs.children.length) {
         sections.forEach((section) => {
             const tab = document.createElement('button');
@@ -371,8 +326,6 @@ function refreshShareForActiveDeck() {
     if (!sharePanel.hidden) refreshShareCode();
 }
 
-// a deck's "look" is one of eight outline shapes. it starts off derived
-// from the deck's id so two decks rarely match, and right-click cycles it.
 const LOOK_COUNT = 8;
 
 const DECK_SHAPES = [
@@ -399,8 +352,6 @@ function lookFor(deck) {
     return sum % LOOK_COUNT;
 }
 
-// the deck entries under the deck bar — same face as the smiley wears,
-// plus the name, the card count and how long the deck is
 let deckCardsShape = '';
 let deckArrivalTimer = 0;
 
@@ -409,8 +360,6 @@ function deckCardsShapeNow() {
 }
 
 function renderDeckCards() {
-    // rebuilding replays every entry's arrival animation, so when only
-    // the selection moved, just move the highlight
     const shape = deckCardsShapeNow();
     if (shape === deckCardsShape && deckListSlot.children.length === decks.length) {
         [...deckListSlot.children].forEach((entry) => {
@@ -462,44 +411,22 @@ function renderDeckCards() {
     });
 }
 
-// the picked deck, spelled out card by card. editing happens in
-// place — the row's own two fields — so nothing leaves the page.
 let editingStageIndex = null;
 let editingStageField = 'question';   // which line of it took the caret
 
 /* --- a draggable divider between two panes --- */
 
-/* both the cards page and the player page are a pair of columns with a
-   grip between them. the width is kept as a percentage rather than
-   pixels, so the two keep their proportions when the window changes.
-   whatever the grip is told to size, the other side's own min-width is
-   the floor it can never push past — without that, dragging kept going
-   and shoved the far column out under the side bar. */
 function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOther,
                      down, skinAt = 68, max = 75, fallback = 50, onDrag }) {
     if (!split || !body || !other) return null;
 
-    /* the same grip, turned on its side. a column of boxes is divided
-       the same way a row is — the only difference is which way the
-       measuring runs and which end of the cursor is read. */
     const across = (box) => (down ? box.height : box.width);
     const near = (box) => (down ? box.top : box.left);
     const far = (box) => (down ? box.bottom : box.right);
     const along = (event) => (down ? event.clientY : event.clientX);
 
-    /* everything between the two panes, which is the grip and nothing
-       else — no row or column with a grip in it has a gap of its own.
-
-       it used to be worked out by subtracting the two panes from the
-       whole, which is right only once both have been laid out. on a
-       hard refresh they have not: both measured as nothing, the grip
-       came out as the entire width, the ceiling fell to zero and the
-       box shut itself the moment the page loaded. the grip is asked
-       directly now, and never counted as less than its full size. */
     const between = () => Math.max(across(split.getBoundingClientRect()), gripWidth());
 
-    /* the gap the grip is worth at full size. a hidden panel measures
-       as nothing, and --group is a rem either way. */
     let fullGrip = 0;
     const gripWidth = () => {
         if (!fullGrip) {
@@ -514,60 +441,29 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
     const ceiling = () => {
         const box = body.getBoundingClientRect();
         if (!across(box)) return max;
-        /* the far pane's floor: either a share of the row it always
-           keeps, or its own smallest size in the stylesheet */
         const floor = keepOther
             ? across(box) * keepOther / 100
             : parseFloat(window.getComputedStyle(other)[down ? 'minHeight' : 'minWidth']) || 0;
         return Math.max(0, Math.min(max, (across(box) - between() - floor) / across(box) * 100));
     };
 
-    /* the grip is the gap between two panes, so it is only worth its
-       full size once there is a pane beside it worth that much. it
-       grows with the pane, pixel for pixel, and is nothing when the
-       pane is nothing — which is what keeps the pane still open lying
-       evenly in its row without the gap arriving all at once. */
-    /* it narrows the whole way. nothing snaps: the pane gets smaller
-       and smaller under the grip and reaches nothing when the grip
-       does, which is the only way a drag feels like a drag. the grip
-       stays where it is at nothing, so it can always be pulled back. */
     const set = (percent) => {
         const width = Math.max(0, Math.min(ceiling(), percent));
         body.style.setProperty(variable, `${width}%`);
         if (pane) pane.classList.toggle('is-shut', width <= 0);
 
-        /* a hidden panel measures as nothing, and nothing is not a
-           width — worked out from it, the grip and the padding both
-           came out at none, which is why the box opened a hair out of
-           line and only straightened once it had been dragged. with
-           nothing to measure, the stylesheet's own values stand until
-           the section is actually on screen. */
         const room = across(body.getBoundingClientRect());
         if (room) {
             const full = gripWidth();
             const open = room * width / 100;
             const grip = Math.min(full, open);
             split.style.setProperty('--grip', `${grip}px`);
-            /* a pane with padding of its own can't be narrower than
-               that padding, so it comes in with the pane rather than
-               all at once. */
-            /* full by the time the pane can hold it: twice its own
-               padding, plus its outline — so skinAt follows whatever
-               padding the pane is actually wearing */
             if (pane) pane.style.setProperty('--skin', String(Math.min(1, open / skinAt)));
-            // too thin to aim at on its own: it borrows a strip of the
-            // margin beside it to be pressed on
             split.classList.toggle('is-tight', grip < 10);
         }
         return width;
     };
 
-    /* what the pane is set to. `|| fallback` was wrong here: a pane
-       dragged all the way shut IS zero, and zero is falsy — so every
-       shut pane reported itself as the fallback instead. grabbing its
-       grip then measured the slack against a size it did not have, and
-       the box sprang open to 44% a few hundred pixels above the cursor
-       on the first pixel of the drag. */
     const now = () => {
         const set = parseFloat(body.style.getPropertyValue(variable));
         return Number.isFinite(set) ? set : fallback;
@@ -595,12 +491,6 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
         split.classList.add('is-dragging');
         document.documentElement.classList.add(down ? 'splitting-down' : 'splitting');
 
-        /* where in the grip you took hold of it. without this the pane
-           jumps on the first press so that the cursor becomes the
-           divider — which on a grip as tall as this one is a visible
-           lurch before the drag has even started. the offset is taken
-           once here and carried through, so the grip stays under the
-           part of it you grabbed. */
         const slack = (atPointer(event) || 0) - now();
 
         const drag = (move) => {
@@ -629,8 +519,6 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
         const on = down ? 'ArrowDown' : 'ArrowRight';
         if (event.key !== back && event.key !== on) return;
         event.preventDefault();
-        // the arrows move the divider, not the number: back is smaller
-        // for the near pane and bigger for the far one
         const way = (event.key === back ? -2 : 2) * (fromRight ? -1 : 1);
         remember(set(now() + way));
     });
@@ -657,9 +545,6 @@ const deckSplit = wireSplit({
     onDrag: () => { if (!sharePanel.hidden) placeSharePanel(); }
 });
 
-/* and the same grip laid across the column on the right: the notes
-   tool over the deck it writes into. same rules — it shrinks the whole
-   way, and the grip is the gap between the two. */
 const notesSplit = wireSplit({
     split: document.getElementById('notesSplit'),
     body: cardSide,
@@ -668,8 +553,6 @@ const notesSplit = wireSplit({
     variable: '--notes-row',
     key: 'notes-row',
     down: true,
-    // the notes tool sits under the deck now, so it is the far pane and
-    // its height is measured up from the bottom edge
     fromRight: true,
     // it wears a --tight all round rather than the clip box's --group
     skinAt: 36,
@@ -692,9 +575,6 @@ window.addEventListener('resize', () => {
 
 /* --- dragging a deck up or down the list --- */
 
-/* the whole entry is the grip — there's no handle to aim at — so a
-   press only becomes a drag once it's travelled a few pixels. under
-   that it's still a click, and the deck just gets picked. */
 let deckWasDragged = false;
 
 const DECK_LIFT_SLACK = 4;   // px of travel before a press counts as a drag
@@ -713,8 +593,6 @@ function armDeckLift(entry, event) {
         if (Math.abs(move.clientY - startY) < DECK_LIFT_SLACK) return;
         stop();
         deckWasDragged = true;
-        // the lift wants a press, and this is a move — it only reads
-        // the button, the pointer and where the cursor is right now
         startLift(deckLiftConfig(), entry, {
             button: 0,
             pointerId: move.pointerId,
@@ -733,9 +611,6 @@ function armDeckLift(entry, event) {
     window.addEventListener('pointercancel', stop);
 }
 
-// the entries are the order now, so the decks array is read back off
-// them. the shape is rewritten too, or the next render would see a
-// different order and rebuild the list you just sorted by hand.
 function settleDeckOrder() {
     const order = [...deckListSlot.querySelectorAll('.deck-card')]
         .map((entry) => decks.find((deck) => deck.id === entry.dataset.deckId))
@@ -746,8 +621,6 @@ function settleDeckOrder() {
     renderDecks();
     saveDecks();
 
-    // the click that ends the drag fires after this, so the guard has
-    // to outlive it by a beat
     window.setTimeout(() => { deckWasDragged = false; }, 0);
 }
 
@@ -758,8 +631,6 @@ function renderStage() {
     armedDeleteRow = null;   // the rows it pointed at are about to go
     deckCardList.innerHTML = '';
     if (total === 0) {
-        // a line of context over the face, so an empty deck says what
-        // to do about it rather than just sitting there
         deckCardList.innerHTML =
             '<li class="empty-message">'
             + '<span class="empty-words">'
@@ -777,84 +648,51 @@ function renderStage() {
         item.className = `stage-card${index === editingStageIndex ? ' editing' : ''}`;
         item.dataset.cardIndex = index;
 
-        // three lines to drag it by, on every row
-        const handle = document.createElement('button');
-        handle.className = 'card-handle';
-        handle.type = 'button';
-        handle.setAttribute('aria-label', `reorder ${card.question}, use arrow keys`);
-        handle.innerHTML = '<span></span><span></span><span></span>';
-        handle.addEventListener('pointerdown', (event) => startLift(cardLiftConfig(), item, event));
-        handle.addEventListener('keydown', (event) => {
-            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-            event.preventDefault();
-            moveRow(cardLiftConfig(), item, event.key === 'ArrowUp' ? -1 : 1);
-            handle.focus();
+        item.append(rowGrip(item, 'card-handle', `reorder ${card.question}, use arrow keys`, cardLiftConfig));
+
+        const text = stageWords(item, card);
+
+        const actions = document.createElement('span');
+        actions.className = 'stage-card-actions';
+
+        const cancel = document.createElement('button');
+        cancel.className = 'stage-card-cancel';
+        cancel.type = 'button';
+        cancel.textContent = '×';
+        cancel.tabIndex = -1;
+        cancel.setAttribute('aria-label', `keep ${card.question}`);
+        cancel.title = 'keep it';
+        cancel.addEventListener('click', (event) => {
+            event.stopPropagation();
+            disarmStageDelete();
         });
-        item.append(handle);
 
-        {
-            const text = stageWords(item, card);
+        const remove = document.createElement('button');
+        remove.className = 'stage-card-action';
+        remove.type = 'button';
+        remove.innerHTML = '<span class="mark-bin">×</span><span class="mark-yes"></span>';
+        remove.setAttribute('aria-label', `delete ${card.question}`);
+        remove.title = 'delete — ctrl+z brings it back';
+        let pressed = 0;
+        const act = () => (armedDeleteRow === item ? deleteStageCard(rowIndex(item)) : armStageDelete(item));
+        remove.addEventListener('pointerdown', (event) => {
+            if (event.button) return;
+            event.stopPropagation();
+            event.preventDefault();
+            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+            pressed = Date.now();
+            act();
+        });
+        remove.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (Date.now() - pressed < 600) return;
+            act();
+        });
 
-            /* the bin asks on the spot rather than raising a popup: the
-               × turns itself into a tick, and a cancel × appears beside
-               it. the two marks live inside the button so the spin can
-               carry one out and the other in. */
-            const actions = document.createElement('span');
-            actions.className = 'stage-card-actions';
-
-            const cancel = document.createElement('button');
-            cancel.className = 'stage-card-cancel';
-            cancel.type = 'button';
-            cancel.textContent = '×';
-            cancel.tabIndex = -1;
-            cancel.setAttribute('aria-label', `keep ${card.question}`);
-            cancel.title = 'keep it';
-            cancel.addEventListener('click', (event) => {
-                event.stopPropagation();
-                disarmStageDelete();
-            });
-
-            const remove = document.createElement('button');
-            remove.className = 'stage-card-action';
-            remove.type = 'button';
-            remove.innerHTML = '<span class="mark-bin">×</span><span class="mark-yes"></span>';
-            remove.setAttribute('aria-label', `delete ${card.question}`);
-            remove.title = 'delete — ctrl+z brings it back';
-            /* the same press-not-click reason as the words above: with a
-               field open, a click on here landed after the blur had
-               already put the row back, so the first press did nothing
-               visible. the click is kept for the keyboard, and guarded
-               so a mouse press doesn't run it twice. */
-            let pressed = 0;
-            const act = () => {
-                if (armedDeleteRow === item) {
-                    deleteStageCard(rowIndex(item));
-                    return;
-                }
-                armStageDelete(item);
-            };
-            remove.addEventListener('pointerdown', (event) => {
-                if (event.button) return;
-                event.stopPropagation();
-                // the press is taken here rather than let through, so the
-                // field keeps its caret until we say otherwise — and then
-                // the open row is put away by hand, in one press
-                event.preventDefault();
-                if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-                pressed = Date.now();
-                act();
-            });
-            remove.addEventListener('click', (event) => {
-                event.stopPropagation();
-                if (Date.now() - pressed < 600) return;
-                act();
-            });
-
-            actions.append(cancel, remove);
-            item.append(index === editingStageIndex
-                ? buildStageEditor(deck, card, index, editingStageField)
-                : text, actions);
-        }
+        actions.append(cancel, remove);
+        item.append(index === editingStageIndex
+            ? buildStageEditor(deck, card, index, editingStageField)
+            : text, actions);
 
         deckCardList.appendChild(item);
     });
@@ -864,19 +702,11 @@ function renderStage() {
 function stageWords(item, card) {
     const text = document.createElement('span');
     text.className = 'stage-card-text';
-    // each line is tagged the way the create window tags its fields, so
-    // which of the two you're reading is never a guess — and each line
-    // is its own target
     text.append(
         stageLine('Q', 'strong', card.question),
         stageLine('A', 'small', card.answer)
     );
     text.title = 'click a line to edit it';
-    /* on the press, not the click: a click lands after the field you
-       were in has taken its blur and put the row back, so the press
-       would be spent closing the last one instead of opening this one.
-       a drag renumbers the rows, so the row itself is asked for its
-       index. */
     text.addEventListener('pointerdown', (event) => {
         if (event.button) return;
         const line = event.target.closest('.stage-line');
@@ -885,8 +715,6 @@ function stageWords(item, card) {
     return text;
 }
 
-/* one line of a card: its tag, then the words. the tag is the same
-   mark the create window puts beside its fields. */
 function stageLine(tag, kind, words) {
     const line = document.createElement('span');
     line.className = 'stage-line';
@@ -934,8 +762,6 @@ function buildStageEditor(deck, card, index, field) {
     questionLine.append(question);
     answerLine.append(answer);
 
-    // enter commits, escape backs out, and clicking away commits too —
-    // but only once the focus has actually left both fields
     const commit = () => {
         const target = deck.cards[index];
         if (!target) return;
@@ -948,10 +774,6 @@ function buildStageEditor(deck, card, index, field) {
         }
         target.question = nextQuestion;
         target.answer = nextAnswer;
-        /* the row is put back by hand rather than by rebuilding the
-           list: a rebuild drops the × and paints a new one, so it
-           blinked out and in. swapping the editor for the words leaves
-           the button where it is, and its own transition carries it. */
         const item = wrap.closest('.stage-card');
         if (item) {
             wrap.replaceWith(stageWords(item, target));
@@ -987,13 +809,9 @@ function buildStageEditor(deck, card, index, field) {
     });
 
     wrap.append(questionLine, answerLine);
-    // the line you pressed takes the caret — pressing the answer used
-    // to open the question, because the row only knew it was pressed
     const taking = field === 'answer' ? answer : question;
     window.setTimeout(() => {
         taking.focus();
-        // caret at the end, not the whole line selected — clicking a
-        // card is to fix a word, not usually to replace the lot
         const end = taking.value.length;
         taking.setSelectionRange(end, end);
     }, 0);
@@ -1013,9 +831,6 @@ function cardLiftConfig() {
     };
 }
 
-/* the rows are the order now, so the deck's cards are read back off
-   them. renderStage() isn't called — the list is already right, and
-   rebuilding it would throw away the row that just settled. */
 function settleCardOrder() {
     const deck = activeDeck();
     const rows = [...deckCardList.querySelectorAll('.stage-card')];
@@ -1023,8 +838,6 @@ function settleCardOrder() {
     if (order.length !== deck.cards.length) return;
     deck.cards = order;
     rows.forEach((row, index) => { row.dataset.cardIndex = index; });
-    // the entry on the right shows the deck's first question, and that
-    // may well be a different card now
     renderDeckCards();
     renderCards();
     saveDecks();
@@ -1036,8 +849,6 @@ function beginStageEdit(index, field) {
     const card = deck.cards[index];
     if (!card) return;
 
-    // close whatever else was open the slow way, then take this row apart
-    // by hand so its marks stay put long enough to bow out
     if (editingStageIndex !== null) {
         editingStageIndex = null;
         renderStage();
@@ -1058,8 +869,6 @@ function beginStageEdit(index, field) {
     text.replaceWith(buildStageEditor(deck, card, index, field));
 }
 
-/* the row waiting on a yes, if any. only ever one — arming another
-   puts the first one back. */
 let armedDeleteRow = null;
 
 function armStageDelete(item) {
@@ -1094,10 +903,6 @@ function renderDecks() {
     refreshShareForActiveDeck();
 }
 
-/* renaming happens on the entry itself: the button is swapped for a
-   plain row holding the same face and a field, and put back when you
-   are done. a <button> can't hold an input, which is why the whole
-   element is replaced rather than just its name. */
 function beginDeckRename(deck) {
     const entry = deckListSlot.querySelector(`[data-deck-id="${deck.id}"]`);
     if (!entry || entry.classList.contains('is-renaming')) return;
@@ -1122,9 +927,6 @@ function beginDeckRename(deck) {
         finished = true;
         const newName = field.value.trim();
         if (save && newName) deck.name = newName;
-        // an unchanged name leaves the shape identical, and renderDeckCards
-        // skips a rebuild when the shape matches — which would leave this
-        // row in place. clearing it forces the entry back.
         deckCardsShape = '';
         renderDecks();
         saveDecks();
@@ -1145,11 +947,7 @@ function beginDeckRename(deck) {
 
 /* ---------- 6. cards ---------- */
 
-/* home is always there underneath; create and practice are windows
-   laid over it, so "showing" one is really just raising the veil. */
 function isModalOpen() {
-    // one on its way out doesn't count as open — pressing the tile
-    // again mid-exit should bring it back, not toggle it shut twice
     return !modalVeil.hidden && !modalVeil.classList.contains('is-leaving');
 }
 
@@ -1184,8 +982,6 @@ function showScreen(screen) {
         return;
     }
 
-    // catch one that was mid-exit, so a quick tap out and back in picks
-    // straight up rather than waiting for the old one to finish leaving
     window.clearTimeout(modalExitTimer);
     modalVeil.classList.remove('is-leaving');
     modalVeil.hidden = false;
@@ -1197,13 +993,8 @@ function showScreen(screen) {
     bundleScreen.hidden = screen !== bundleScreen;
     keyScreen.hidden = screen !== keyScreen;
     chatScreen.hidden = screen !== chatScreen;
-    // the notes panel is borrowed from the left bar; anything else
-    // opening means it is wanted back
     if (screen !== notesScreen) returnNotesPanel();
 
-    // the tile you pressed still holds the focus, so a space would
-    // press it a second time and shut the window again. the window
-    // takes the focus off it.
     const held = document.activeElement;
     if (held && held !== document.body && !screen.contains(held)) held.blur();
 }
@@ -1246,16 +1037,12 @@ function editCard(index) {
     questionInput.focus();
 }
 
-/* every other answer in the deck, each a switch. the card being edited
-   can't be mixed up with itself, so it isn't offered. */
 function renderOptionPicker() {
     const deck = decks.find((item) => item.id === editingDeckId) || activeDeck();
     const own = editingCardIndex === null ? null : deck.cards[editingCardIndex];
     const answers = [...new Set(deck.cards.map((card) => card.answer))]
         .filter((answer) => answer && answer !== (own ? own.answer : answerInput.value.trim()));
 
-    // only the pills are rebuilt — the line above them is written in
-    // index.html so it can be reworded without coming in here
     optionsPicks.innerHTML = '';
     if (!answers.length) {
         optionsPicks.innerHTML = '<p class="empty-message">no other answers in this deck yet</p>';
@@ -1287,8 +1074,6 @@ function renderOptionPicker() {
     updateOptionCount();
 }
 
-/* the + is the whole control now, so it carries the state itself: it
-   fills in once anything is picked, and says how many on hover */
 function updateOptionCount() {
     const total = pendingOptions.size;
     optionsToggle.classList.toggle('is-on', total > 0);
@@ -1302,10 +1087,6 @@ function closeOptionPicker() {
     optionsToggle.setAttribute('aria-expanded', 'false');
 }
 
-function closeOptionPops() {
-    closeOptionPicker();
-}
-
 function resetCardForm() {
     editingCardIndex = null;
     editingDeckId = null;
@@ -1313,7 +1094,7 @@ function resetCardForm() {
     cardFormNote.textContent = '';
     cardSubmitButton.querySelector('span').textContent = 'add';
     pendingOptions = new Set();
-    closeOptionPops();
+    closeOptionPicker();
     updateOptionCount();
 }
 
@@ -1364,11 +1145,6 @@ function showNextQuestion() {
     answerOptions.classList.remove('is-answered');
     answerOptions.innerHTML = '';
 
-    // three wrong answers borrowed from other cards in the deck — or,
-    // if this card names the ones it wants to be confused with, from
-    // that list instead. a pick can be any size; three are drawn from
-    // it each time. answers that have since been edited away are
-    // dropped, and the rest of the deck tops the three up.
     const deckAnswers = [...new Set(cards.map((card) => card.answer))]
         .filter((answer) => answer !== currentCard.answer);
     const picked = Array.isArray(currentCard.options)
@@ -1381,20 +1157,11 @@ function showNextQuestion() {
             .slice(0, 3 - wrongAnswers.length)
             .forEach((answer) => wrongAnswers.push(answer));
     }
-    /* a deck with four answers or fewer offers the same four every
-       time, so shuffling them only moves them about under you with
-       nothing being hidden. they sort instead, backwards down the
-       alphabet, and the order holds until you write another answer.
-       past four there is something to hide, so they're drawn. */
     const all = [currentCard.answer, ...wrongAnswers];
     const options = deckAnswers.length + 1 > 4
         ? shuffle(all)
         : all.sort((one, two) => two.localeCompare(one));
 
-    /* a small deck can't always find three wrong answers, so the grid
-       takes the shape of however many it has: four fill the quarters,
-       three leave the last to run the whole bottom, two sit side by
-       side, and one takes the lot. */
     answerOptions.dataset.count = String(options.length);
     const wideIndex = options.length === 3 ? 2 : -1;
 
@@ -1403,8 +1170,6 @@ function showNextQuestion() {
         button.className = `answer-button${index === wideIndex ? ' is-wide' : ''}`;
         button.type = 'button';
         button.dataset.answer = option;
-        // the word is its own element so it can slide down and leave
-        // room for the mark above it
         const word = document.createElement('span');
         word.className = 'answer-word';
         word.textContent = option;
@@ -1418,15 +1183,6 @@ function showNextQuestion() {
     });
 }
 
-/* the answer speaks for itself: the right one fills in black either
-   way, so there is nothing left for a line of text to add. right is a
-   stamp and a ring off the tile you pressed; wrong is a knock — the
-   tile flashes over and settles back a size, with the black one beside
-   it saying what it should have been. */
-/* the mark that goes over a word: a tick when you were right, a cross
-   when you weren't. only ever on the tile you pressed — the right
-   answer is shown by being filled in, and a tick on a tile you didn't
-   press only muddles which of the two things just happened. */
 function markAnswer(button, right) {
     const mark = document.createElement('span');
     mark.className = `answer-mark ${right ? 'is-tick' : 'is-cross'}`;
@@ -1477,43 +1233,28 @@ function showContextMenu(event, target) {
     contextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 200)}px`;
     contextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - 100)}px`;
 
+    const item = (label, run) => {
+        const action = document.createElement('button');
+        action.className = 'context-action';
+        action.type = 'button';
+        action.textContent = label;
+        action.addEventListener('click', run);
+        return action;
+    };
+
     if (target.type === 'page') {
-        // the browser's own moves, in the site's own menu. whether back
-        // or forward lead anywhere isn't knowable from in here, so they
-        // are always offered and simply do nothing at the ends.
         [
             ['back', () => window.history.back()],
             ['forward', () => window.history.forward()],
             ['reload', () => window.location.reload()]
-        ].forEach(([label, run]) => {
-            const action = document.createElement('button');
-            action.className = 'context-action';
-            action.type = 'button';
-            action.textContent = label;
-            action.addEventListener('click', () => {
-                hideContextMenu();
-                run();
-            });
-            contextMenu.append(action);
-        });
+        ].forEach(([label, run]) => contextMenu.append(item(label, () => {
+            hideContextMenu();
+            run();
+        })));
     }
 
     if (target.type === 'deck') {
-        const renameButton = document.createElement('button');
-        renameButton.className = 'context-action';
-        renameButton.type = 'button';
-        renameButton.textContent = 'rename';
-        renameButton.addEventListener('click', () => {
-            hideContextMenu();
-            beginDeckRename(target.deck);
-        });
-
-        const deleteDeckButton = document.createElement('button');
-        deleteDeckButton.className = 'context-action';
-        deleteDeckButton.type = 'button';
-        deleteDeckButton.textContent = 'delete';
-        deleteDeckButton.disabled = decks.length === 1;
-        deleteDeckButton.addEventListener('click', () => {
+        const deleteDeckButton = item('delete', () => {
             if (decks.length === 1) return;
             const deletedIndex = decks.findIndex((deck) => deck.id === target.deck.id);
             rememberDeleted({ type: 'deck', item: target.deck, index: deletedIndex });
@@ -1524,62 +1265,49 @@ function showContextMenu(event, target) {
             saveDecks();
             hideContextMenu();
         });
-
-        const lookButton = document.createElement('button');
-        lookButton.className = 'context-action';
-        lookButton.type = 'button';
-        lookButton.textContent = 'new icon';
-        lookButton.addEventListener('click', () => {
-            target.deck.look = (lookFor(target.deck) + 1) % LOOK_COUNT;
-            renderDecks();
-            saveDecks();
-            hideContextMenu();
-        });
-
-        contextMenu.append(renameButton, lookButton, deleteDeckButton);
+        deleteDeckButton.disabled = decks.length === 1;
+        contextMenu.append(
+            item('rename', () => {
+                hideContextMenu();
+                beginDeckRename(target.deck);
+            }),
+            item('new icon', () => {
+                target.deck.look = (lookFor(target.deck) + 1) % LOOK_COUNT;
+                renderDecks();
+                saveDecks();
+                hideContextMenu();
+            }),
+            deleteDeckButton
+        );
     }
 
     if (target.type === 'card') {
-        const editButton = document.createElement('button');
-        editButton.className = 'context-action';
-        editButton.type = 'button';
-        editButton.textContent = 'edit';
-        editButton.addEventListener('click', () => {
-            editCard(target.index);
-            hideContextMenu();
-        });
-
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'context-action';
-        deleteButton.type = 'button';
-        deleteButton.textContent = 'delete';
-        deleteButton.addEventListener('click', () => {
-            rememberDeleted({
-                type: 'card',
-                item: target.deck.cards[target.index],
-                index: target.index,
-                deckId: target.deck.id
-            });
-            target.deck.cards.splice(target.index, 1);
-            renderCards();
-            renderDecks();
-            saveDecks();
-            hideContextMenu();
-        });
-
-        contextMenu.append(editButton, deleteButton);
+        contextMenu.append(
+            item('edit', () => {
+                editCard(target.index);
+                hideContextMenu();
+            }),
+            item('delete', () => {
+                rememberDeleted({
+                    type: 'card',
+                    item: target.deck.cards[target.index],
+                    index: target.index,
+                    deckId: target.deck.id
+                });
+                target.deck.cards.splice(target.index, 1);
+                renderCards();
+                renderDecks();
+                saveDecks();
+                hideContextMenu();
+            })
+        );
     }
 
     if (target.type === 'widget') {
-        const removeButton = document.createElement('button');
-        removeButton.className = 'context-action';
-        removeButton.type = 'button';
-        removeButton.textContent = 'remove';
-        removeButton.addEventListener('click', () => {
+        contextMenu.append(item('remove', () => {
             removeWidget(target.id);
             hideContextMenu();
-        });
-        contextMenu.append(removeButton);
+        }));
     }
 }
 
@@ -1601,9 +1329,6 @@ function quadrantForKey(code) {
     return Object.keys(KEY_QUADRANTS).find((index) => KEY_QUADRANTS[index].includes(code));
 }
 
-/* the keys are quarters of the keyboard, so they have to point at
-   whatever is actually in that quarter of the screen — which is not
-   the dom order once the grid changes shape. */
 function buttonForQuadrant(quadrant) {
     const buttons = [...answerOptions.querySelectorAll('.answer-button')];
     if (!buttons.length) return null;
@@ -1617,22 +1342,8 @@ function buttonForQuadrant(quadrant) {
     return buttons[quadrant];
 }
 
-/* everything that goes without asking first comes back the same way:
-   put the record back where it was, in the page and in storage. */
 function openBinDb() {
-    if (binDbPromise) return binDbPromise;
-    binDbPromise = new Promise((resolve, reject) => {
-        const request = window.indexedDB.open(BIN_DB, 1);
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains(BIN_STORE)) {
-                db.createObjectStore(BIN_STORE, { keyPath: 'id' });
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-    return binDbPromise;
+    return openDb(BIN_DB, BIN_STORE, true);
 }
 
 async function keepBinned(entry) {
@@ -1653,13 +1364,6 @@ async function forgetBinned(id) {
     }
 }
 
-/* one entry goes in the bin and the bar redraws. everything that bins
-   something without asking first comes through here.
-
-   binning something fresh is the end of whatever you had undone — the
-   redo stack is only the walk back up the path you just came down, and
-   a new deletion is a different path. the redo itself is the one caller
-   that says so, since it is putting its own entry back in the bin. */
 function rememberDeleted(entry, fromRedo) {
     entry.id = `bin-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     entry.when = Date.now();
@@ -1675,11 +1379,7 @@ async function loadBinned() {
     let kept = [];
     try {
         const db = await openBinDb();
-        kept = await new Promise((resolve, reject) => {
-            const request = db.transaction(BIN_STORE, 'readonly').objectStore(BIN_STORE).getAll();
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
+        kept = await readAll(db, BIN_STORE);
     } catch (error) {
         kept = [];
     }
@@ -1715,9 +1415,6 @@ function undoLastDelete() {
     paintStorage();
 }
 
-/* the other way along the same path: bin again whatever ctrl+z just put
-   back. it goes through the ordinary binning for each kind, so the thing
-   lands in the bin properly and ctrl+z can bring it back once more. */
 function redoLastUndo() {
     const again = redoStack.pop();
     if (!again) return;
@@ -1784,8 +1481,6 @@ function binnedLabel(entry) {
     return `song · ${entry.item.name}`;
 }
 
-/* newest first, and pressing one puts back that one rather than
-   walking the whole stack back to it */
 /* how long ago, in the roughest terms that are still useful */
 function sinceWhen(when) {
     if (!when) return 'a while ago';
@@ -1808,7 +1503,6 @@ function renderBinned() {
         button.className = 'binned-item';
         button.type = 'button';
         button.textContent = binnedLabel(entry);
-        button.title = 'put this back';
         button.addEventListener('click', () => {
             const at = deletedStack.indexOf(entry);
             if (at === -1) return;
@@ -1863,11 +1557,6 @@ function restoreDeleted(undone) {
 
 /* ---------- 10. wiring ---------- */
 
-// the press. every button gets the squash-and-spring except the icon
-// squares, the deck entries and the tiles, which have their own.
-/* .field-add turns from a plus into a cross on a transform of its own,
-   and the press animation is a transform too — it won the cascade, so
-   the turn only happened once the squash had finished playing */
 const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle, .hint-button, .field-add, .answer-button';
 document.addEventListener('pointerdown', (event) => {
     const button = event.target.closest('button');
@@ -1879,7 +1568,6 @@ document.addEventListener('pointerdown', (event) => {
 document.addEventListener('animationend', (event) => {
     if (event.animationName === 'button-boing') event.target.classList.remove('boing');
 });
-
 
 // decks
 deckForm.addEventListener('submit', (event) => {
@@ -1897,10 +1585,6 @@ deckForm.addEventListener('submit', (event) => {
     renderCards();
     saveDecks();
 });
-
-// --- deck codes ---
-// a deck travels as one string: a tag, then base64url of the json,
-// deflated when the browser can do it (chrome can).
 
 function bytesToCode(bytes) {
     let binary = '';
@@ -1972,15 +1656,7 @@ function closeSharePanel() {
     shareToggle.setAttribute('aria-expanded', 'false');
 }
 
-/* under the button, right edges lined up, but never off the window.
-   the panel is wider than the deck column ever gets, so on a narrow
-   column it simply slides right rather than being cut in half. */
 function placeSharePanel() {
-    // held inside the content column, not merely inside the window —
-    // the side bars are solid, and a panel lying over one reads as a
-    // mistake even though nothing is actually clipping it
-    // the column's own gutter, so the panel stops where the page's
-    // boxes stop rather than running up against the scalloped bar
     const column = appContent.getBoundingClientRect();
     const gutter = 16;
     placeUnder(sharePanel, shareToggle, {
@@ -2010,8 +1686,6 @@ document.getElementById('copyCode').addEventListener('click', async () => {
         await navigator.clipboard.writeText(shareOut.value);
         shareNote.textContent = 'copied ✓ paste it to anyone';
     } catch (error) {
-        // clipboard is blocked on file:// and without focus — the text
-        // is selected either way, so ctrl+c still works
         shareNote.textContent = 'selected — hit ctrl+c / cmd+c';
     }
 });
@@ -2036,8 +1710,6 @@ document.getElementById('loadCode').addEventListener('click', async () => {
     }
 });
 
-// navigation. there's no back arrow — the tile that took you to a
-// screen is the way off it too, so pressing it again lands you home.
 document.getElementById('createCardButton').addEventListener('click', () => {
     if (isModalOpen() && !makerScreen.hidden) {
         showScreen(homeScreen);
@@ -2080,8 +1752,6 @@ cardForm.addEventListener('submit', (event) => {
         return;
     }
     const card = { question, answer };
-    // only carried when there is one; a card without it behaves as it
-    // always has, drawing from the whole deck
     const chosen = [...pendingOptions].filter((option) => option !== answer);
     if (chosen.length) card.options = chosen;
     if (editingCardIndex === null) {
@@ -2096,8 +1766,6 @@ cardForm.addEventListener('submit', (event) => {
     renderCards();
     renderDecks();
     saveDecks();
-    // the list only shows four rows, so a fifth card would land out of
-    // sight. it slides down to whatever you just wrote instead.
     const row = cardList.querySelector(`[data-card-index="${landed}"]`);
     if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     questionInput.focus();
@@ -2121,9 +1789,6 @@ document.addEventListener('contextmenu', (event) => {
         });
         return;
     }
-    // anywhere else on the page gets the site's own menu. a text field
-    // is the exception — its native menu is the only way to paste, and
-    // the share panel exists to have codes pasted into it.
     if (event.target.closest('input, textarea')) {
         hideContextMenu();
         return;
@@ -2138,27 +1803,16 @@ document.addEventListener('click', () => {
     hideContextMenu();
     closeSharePanel();
     disarmStageDelete();
-    closeOptionPops();
+    closeOptionPicker();
     closeWidgetPicks();
 });
 
-/* pressing away from the board is how you finish arranging it. the
-   tiles, the two circles and the picker are all part of it; anything
-   else is somewhere else, and the board settles. */
 document.addEventListener('click', (event) => {
     if (!editingHome) return;
     if (event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks, .context-menu')) return;
     setHomeEditing(false);
 });
 
-/* the backdrop is the way out; a click inside a panel is not.
-
-   `click` alone was not enough: it fires on whatever the press and the
-   release have in common, so starting a drag inside the window and
-   letting go anywhere outside it counted as a click on the backdrop
-   and shut the window — which is exactly what selecting text in a
-   field and overshooting does. The press has to have landed on the
-   backdrop too. */
 let pressedVeil = false;
 modalVeil.addEventListener('pointerdown', (event) => {
     pressedVeil = event.target === modalVeil;
@@ -2181,13 +1835,9 @@ document.addEventListener('click', (event) => {
 
 document.addEventListener('keydown', (event) => {
     const tag = event.target.tagName;
-    // typing owns every key but escape, which still closes the window
-    // — otherwise a field you are in traps you in the create screen
     if ((tag === 'INPUT' || tag === 'TEXTAREA') && event.key !== 'Escape') return;
 
     const pressed = event.key.toLowerCase();
-    // ctrl+shift+z or ctrl+y goes back the other way, whichever hand
-    // you learned it with
     if ((event.ctrlKey || event.metaKey) && (pressed === 'y' || (pressed === 'z' && event.shiftKey))) {
         if (!redoStack.length) return;
         event.preventDefault();
@@ -2209,7 +1859,7 @@ document.addEventListener('keydown', (event) => {
             return;
         }
         if (!optionsPanel.hidden) {
-            closeOptionPops();
+            closeOptionPicker();
             return;
         }
         if (!widgetPicks.hidden) {
@@ -2244,8 +1894,6 @@ document.addEventListener('keydown', (event) => {
 
 /* ---------- 11. start ---------- */
 
-// the body of this runs at the very bottom of the file, once section
-// 12 has declared its elements — renderSections() reads the clip list
 function start() {
     loadDecks();
     loadSection();
@@ -2332,10 +1980,6 @@ function formatDuration(milliseconds) {
 
 /* --- the sensing box --- */
 
-/* how far in the picture is blown up, kept apart from the region's own
-   numbers: it is about seeing what you are doing, not about what gets
-   sampled. it is remembered on its own key and nothing but the reader's
-   hand ever moves it. */
 const ZOOM_KEY = 'sense-zoom';
 let senseZoomAt = 100;      // where the picture is now
 let zoomGoal = 100;         // and where it is heading
@@ -2357,16 +2001,6 @@ function loadZoom() {
     applyZoom();
 }
 
-/* zooming holds one point of the picture still — whatever is under the
-   cursor when you turn the wheel, or the middle of the view when the
-   slider is what moved. without that the picture slides out from under
-   you the moment you go in.
-
-   it travels there rather than arriving: a wheel notch used to be a
-   jump of a tenth, and a jump is the one thing a picture you are aiming
-   at shouldn't do. the point being held still is worked out once, when
-   the gesture starts, and the scroll is written from it on every frame,
-   so the picture grows around the cursor all the way through. */
 function glideZoom(last) {
     zoomFrame = 0;
     const now = performance.now();
@@ -2400,10 +2034,6 @@ function setZoom(next, holdX, holdY) {
     if (Math.abs(wanted - zoomGoal) < 0.01) return;
     zoomGoal = wanted;
 
-    /* the point to hold is taken from where the picture is *now*, and
-       only when a fresh gesture starts — taken again mid-flight it
-       would be read off a half-grown picture and the anchor would
-       wander. */
     if (!zoomHold) {
         const box = previewWrap.getBoundingClientRect();
         const overX = holdX === undefined ? previewWrap.clientWidth / 2 : holdX - box.left;
@@ -2418,26 +2048,11 @@ function setZoom(next, holdX, holdY) {
     if (!zoomFrame) zoomFrame = window.requestAnimationFrame(() => glideZoom());
 }
 
-// the slider writes its own thumb, so the glide must not write it back
-// underneath the hand holding it
 senseZoom.addEventListener('input', () => {
     zoomBySlider = true;
     setZoom(Number(senseZoom.value));
 });
 
-/* the wheel over the picture, the way a picture behaves everywhere else
-   on this machine: **two fingers push it about, a pinch zooms it**.
-
-   it used to zoom on any wheel at all, a fixed eighth per event — and a
-   trackpad sends a burst of events for one flick of two fingers, so a
-   nudge meant to shift the picture an inch threw the zoom from 100 to
-   300. the pinch arrives as a wheel with ctrl held, which is the only
-   thing that tells the two apart; a mouse can hold option or command
-   for the same.
-
-   the zoom is off the size of the delta rather than a fixed step, so a
-   pinch moves it as far as the fingers did — and capped either way,
-   since one notch of a mouse wheel arrives as a hundred at once. */
 previewWrap.addEventListener('wheel', (event) => {
     if (!previewWrap.classList.contains('showing-video')) return;
 
@@ -2458,8 +2073,6 @@ previewWrap.addEventListener('wheel', (event) => {
     event.preventDefault();
     zoomBySlider = false;
     const by = Math.min(1.18, Math.max(0.85, Math.exp(-downY * 0.0075)));
-    // off where it is heading, not where it has got to, so one push of
-    // the fingers adds up instead of fighting the glide already running
     setZoom(zoomGoal * by, event.clientX, event.clientY);
 }, { passive: false });
 
@@ -2481,21 +2094,11 @@ function saveSenseSettings() {
 }
 
 function applySenseSettings() {
-    /* the box is kept inside the frame by moving it, not by shrinking
-       it. the other way round, sliding it towards a wall cut the width
-       down to whatever was left — and sliding back didn't give it
-       returned, because the number had already been written over. the
-       size is what you set; the position gives way. */
     senseSettings.width = Math.max(2, Math.min(100, senseSettings.width));
     senseSettings.height = Math.max(2, Math.min(100, senseSettings.height));
     senseSettings.left = Math.max(0, Math.min(senseSettings.left, 100 - senseSettings.width));
     senseSettings.bottom = Math.max(0, Math.min(senseSettings.bottom, 100 - senseSettings.height));
 
-    /* dragging the box itself writes wherever the pointer was, which is
-       a fraction of a percent with a tail of decimals on it. the number
-       kept is the exact one — nudging the box a hair must not move it —
-       but what is shown is rounded, since nobody is reading the sixth
-       decimal place of 4.0833333333333%. */
     SENSE_KEYS.forEach((key) => {
         senseInputs[key].value = senseSettings[key];
         senseOutputs[key].textContent = key === 'threshold'
@@ -2539,8 +2142,6 @@ window.addEventListener('keydown', (event) => {
 
 senseReset.addEventListener('click', (event) => {
     event.stopPropagation();
-    // the zoom is how you are looking, not what is being watched, so
-    // resetting the region leaves it where you had it
     senseSettings = { ...DEFAULT_SENSE };
     applySenseSettings();
     saveSenseSettings();
@@ -2572,9 +2173,6 @@ document.addEventListener('pointerup', () => { panelDrag = null; });
 
 /* --- pushing the picture about, once it is bigger than its bar --- */
 
-/* zoomed in you are looking through a window at something larger than
-   the window. a press anywhere but on the box itself takes hold of the
-   picture and slides it; the box keeps the press that lands on it. */
 let pushStart = null;
 
 previewWrap.addEventListener('pointerdown', (event) => {
@@ -2609,9 +2207,6 @@ previewWrap.addEventListener('pointermove', (event) => {
 let dragMode = null;
 let dragStart = null;
 
-/* which part of the box the cursor is on. every edge and every corner
-   can be taken hold of, not just the two it used to be, and the grab
-   band shrinks on a small box so a thin strip is still mostly middle. */
 function boxPointerMode(event, box) {
     const sideways = Math.min(12, Math.max(4, box.width / 3));
     const upright = Math.min(12, Math.max(4, box.height / 3));
@@ -2620,15 +2215,7 @@ function boxPointerMode(event, box) {
     const north = event.clientY - box.top <= upright;
     const south = box.bottom - event.clientY <= upright;
 
-    if (north && west) return 'nw';
-    if (north && east) return 'ne';
-    if (south && west) return 'sw';
-    if (south && east) return 'se';
-    if (north) return 'n';
-    if (south) return 's';
-    if (west) return 'w';
-    if (east) return 'e';
-    return 'move';
+    return `${north ? 'n' : south ? 's' : ''}${west ? 'w' : east ? 'e' : ''}` || 'move';
 }
 
 // the cursor says what the press will do before you make it
@@ -2681,23 +2268,14 @@ senseBox.addEventListener('pointermove', (event) => {
         senseSettings.left = clamp(dragStart.left + dx, 0, 100 - senseSettings.width);
         senseSettings.bottom = clamp(dragStart.bottom - dy, 0, 100 - senseSettings.height);
     } else {
-        /* an edge moves that edge and leaves the other three where they
-           are, which for the left and the bottom means the position
-           changes as well as the size. each is held to 2% and to the
-           far edge it is coming towards, so a side can't pass its
-           opposite number. */
-        if (holds('e')) {
-            senseSettings.width = clamp(dragStart.width + dx, 2, 100 - dragStart.left);
-        }
+        if (holds('e')) senseSettings.width = clamp(dragStart.width + dx, 2, 100 - dragStart.left);
         if (holds('w')) {
             const right = dragStart.left + dragStart.width;
             const left = clamp(dragStart.left + dx, 0, right - 2);
             senseSettings.left = left;
             senseSettings.width = right - left;
         }
-        if (holds('n')) {
-            senseSettings.height = clamp(dragStart.height - dy, 2, 100 - dragStart.bottom);
-        }
+        if (holds('n')) senseSettings.height = clamp(dragStart.height - dy, 2, 100 - dragStart.bottom);
         if (holds('s')) {
             const top = dragStart.bottom + dragStart.height;
             const bottom = clamp(dragStart.bottom - dy, 0, top - 2);
@@ -2750,10 +2328,11 @@ function checkForChange() {
 
     let total = 0;
     for (let index = 0; index < sample.length; index += 4) {
-        total += Math.abs(sample[index] - previousSample[index]);
-        total += Math.abs(sample[index + 1] - previousSample[index + 1]);
-        total += Math.abs(sample[index + 2] - previousSample[index + 2]);
+        total += Math.abs(sample[index] - previousSample[index])
+            + Math.abs(sample[index + 1] - previousSample[index + 1])
+            + Math.abs(sample[index + 2] - previousSample[index + 2]);
     }
+
     const pixelCount = sample.length / 4;
     const changeAmount = (total / (pixelCount * 3)) / 255 * 100;
     previousSample = sample;
@@ -2781,8 +2360,6 @@ function clipTotal() {
     return recordingList.querySelectorAll('.recording-item').length;
 }
 
-// keeps the empty line, the bin button and the subtitle in step with
-// however many clips are actually in the list
 function refreshEmptyMessage() {
     const existing = recordingList.querySelector('.empty-message');
     const total = clipTotal();
@@ -2800,41 +2377,21 @@ function refreshEmptyMessage() {
     downloadAllButton.disabled = total === 0;
 }
 
-/* the ask before anything that can't be taken back, or that runs for a
-   while. it's a popup off the button rather than a browser alert —
-   nothing is blocked, and anything that isn't a yes closes it: the
-   button again, a click anywhere else, escape, or just ignoring it. */
 const confirmChip = document.getElementById('confirmChip');
 const confirmChipText = document.getElementById('confirmChipText');
 const confirmChipYes = document.getElementById('confirmChipYes');
 const confirmChipNo = document.getElementById('confirmChipNo');
 let openConfirm = null;   // { button, settle } while one is up
 
-/* it's fixed to the window and put under whichever button asked, rather
-   than being absolutely placed inside one bar. that's what lets a card
-   in the scrolling deck list raise one without the list cutting it off. */
-/* every popup on the site is fixed to the window and put under the
-   button that opened it, rather than absolutely placed inside some bar.
-   that's what lets one open from a row in a scrolling list, or from
-   inside a modal, without either of them cutting it off. */
-/* to the left of the button rather than below it. the add circle sits
-   in a corner with the pen right under it, so a list dropped under the
-   one landed on the other. */
 function placeBeside(panel, button) {
     if (!panel || !button) return;
     const spot = button.getBoundingClientRect();
-    /* its laid-out size, not its drawn one: it arrives on a small
-       scale, and measured mid-animation it reads a few pixels short —
-       which is enough to miss the edge it is being lined up with. */
     const box = { width: panel.offsetWidth, height: panel.offsetHeight };
     const edge = 8;
     const gap = 14;
     let left = spot.left - box.width - gap;
     // no room on that side: fall back to the other
     if (left < edge) left = Math.min(spot.right + gap, window.innerWidth - edge - box.width);
-    /* bottoms in line, growing upward. centred on the button it hung
-       down past the pen underneath, which is the one thing in that
-       corner it must not cover. */
     const top = Math.max(edge, Math.min(
         spot.bottom - box.height,
         window.innerHeight - edge - box.height
@@ -2858,12 +2415,6 @@ function placeUnder(panel, button, bounds) {
     panel.style.top = `${Math.round(Math.max(edge, top))}px`;
 }
 
-/* the chip is wider than most of the buttons that raise it, and
-   `placeUnder` lines their right edges up — so a button near the left
-   of the page threw the chip out over the black bar, which is not part
-   of the page and reads as the chip having fallen off it. it is held
-   inside the page's own column instead, and lines up on its left edge
-   rather than its right when the button sits in the left half. */
 function placeConfirm(button) {
     const page = document.querySelector('.app-content');
     if (!page) {
@@ -2876,8 +2427,6 @@ function placeConfirm(button) {
     const spot = button.getBoundingClientRect();
 
     if (spot.left < field.left + field.width / 2) {
-        // left edges together, growing rightwards into the room there is
-        // — and unfolding from that corner rather than the far one
         confirmChip.style.transformOrigin = 'top left';
         const wide = confirmChip.offsetWidth;
         const left = Math.max(bounds.left, Math.min(spot.left, bounds.right - wide));
@@ -2921,8 +2470,6 @@ function askConfirm(question, button) {
         const yes = () => settle(true);
         const no = () => settle(false);
         const onKey = (event) => { if (event.key === 'Escape') settle(false); };
-        // the button that asked is left alone here — its own click
-        // closes the popup on the way through askConfirm
         const onOutside = (event) => {
             if (confirmChip.contains(event.target)) return;
             if (button && button.contains(event.target)) return;
@@ -2968,28 +2515,6 @@ clearClipsButton.addEventListener('click', clearAllClips);
 
 /* --- carrying the clips to another address --- */
 
-/* the browser's store belongs to one address. clips recorded with the
-   page opened as a file are not there at localhost, and neither lot is
-   there on the site — the page is identical, the store is not, and
-   there is nothing on screen to say so until the list comes up empty.
-
-   so: every clip into one file, and that file back in anywhere else.
-   the recordings themselves are copied byte for byte — they are not
-   re-encoded, decoded, or even read into memory, only pointed at — so
-   this works where the mp3 export cannot, which is exactly the corner
-   this is for.
-
-   the file is a short header and then the recordings end to end:
-
-       RECALLCLIPS1\n
-       <how many bytes of header>\n
-       <the header, as json: everything but the sound>
-       <clip><clip><clip>...
-*/
-/* the extension is .call; the mark inside the file is not, and must not
-   be changed with it. what is read is the mark, never the name — so the
-   .recall bundles already saved still come in, and a file renamed to
-   anything at all still comes in. */
 const PACK_MARK = 'RECALLCLIPS1';
 
 function buildBundle(stored) {
@@ -3012,13 +2537,6 @@ function buildBundle(stored) {
 async function packAllClips() {
     const named = `recall-clips-${new Date().toISOString().slice(0, 10)}.call`;
 
-    /* the asking is the site's own, not the system's. the save picker
-       brought up chrome's window — its own typeface, its own wording,
-       and a warning about editing files that cannot be reworded from
-       here, because a page rewording a permission prompt is the whole
-       trick a permission prompt exists to stop. so there is no picker:
-       the chip asks, and the file goes to downloads like anything else
-       that leaves this page. */
     const sure = await askConfirm('save current yummy fat clips', packClips);
     if (!sure) return;
 
@@ -3041,10 +2559,6 @@ async function packAllClips() {
     setRecordStatus(much);
 }
 
-/* and back in. nothing is read into memory here either: the header is
-   the only part actually looked at, and each recording is a slice of
-   the file on disk, which the browser keeps as a file until something
-   asks for the bytes. */
 async function unpackClipsFrom(file) {
     const head = new TextDecoder().decode(await file.slice(0, 64).arrayBuffer());
     const lines = head.split('\n');
@@ -3064,9 +2578,6 @@ async function unpackClipsFrom(file) {
         return;
     }
 
-    /* ids from the other address can clash with what is already here.
-       a clip that is already in the list is left alone rather than
-       written over, and anything else coming in gets an id of its own. */
     const here = new Set([...recordingList.querySelectorAll('.recording-item')]
         .map((row) => row.dataset.clipId));
 
@@ -3105,14 +2616,6 @@ packClips.addEventListener('click', () => {
 });
 /* --- the clip files, listed here rather than by the browser --- */
 
-/* the browser's own file window is somebody else's furniture and shows
-   every kind of thing on the disk. given a folder, this page can list
-   what it can actually read — the `.call` bundles — in its own window,
-   and one press brings one in.
-
-   the folder is remembered under its own key, and the browser forgets
-   the permission between visits, so the first press each visit is the
-   one that asks. */
 const bundleScreen = document.getElementById('bundleScreen');
 const bundleList = document.getElementById('bundleList');
 const bundleSay = document.getElementById('bundleSay');
@@ -3123,8 +2626,6 @@ function sizeSaid(bytes) {
     return `${Math.max(1, Math.round(bytes / 1024))}kb`;
 }
 
-/* what the finder is looking for this time round: the clip bundles, or
-   the playlists exportify writes. */
 let bundleKind = { match: /\.call$/i, title: 'bring clips in', take: null };
 
 async function bundlesIn(folder) {
@@ -3199,9 +2700,6 @@ async function openBundles(kind) {
     let folder = await heldHandle('drops');
     if (folder && !(await stillAllowed(folder, 'read').catch(() => false))) folder = null;
     if (!folder) folder = await askForBundleFolder();
-    /* closing the picker means no, and no means no: it used to fall
-       through to the browser's own file window, so shutting one opened
-       another straight after it. */
     if (!folder) {
         showScreen(homeScreen);
         return;
@@ -3214,8 +2712,6 @@ bundleWhere.addEventListener('click', async () => {
     if (folder) await showBundles(folder);
 });
 
-/* the words under the steps, long and short, swapped by the chip over
-   them. both are the reader's own to write; nothing reads either. */
 const saySwap = document.getElementById('saySwap');
 let sayingShort = false;
 saySwap.addEventListener('click', () => {
@@ -3250,24 +2746,12 @@ document.getElementById('listFind').addEventListener('click', () => {
 unpackInput.addEventListener('change', () => {
     const file = unpackInput.files && unpackInput.files[0];
     unpackInput.value = '';   // the same file can be picked again
-    if (file) {
-        unpackClipsFrom(file).catch((error) => setRecordStatus(`could not read it — ${error.message}`, true));
-    }
+    if (file) unpackClipsFrom(file).catch((error) => setRecordStatus(`could not read it — ${error.message}`, true));
 });
 
-// every clip as an mp3, oldest first. they go one at a time — chrome
-// drops a burst of downloads, and encoding them all at once would
-// stall the page anyway.
 async function storedClipsInOrder() {
     const db = await openClipDb();
-    const stored = await new Promise((resolve, reject) => {
-        const request = db.transaction(CLIP_STORE, 'readonly').objectStore(CLIP_STORE).getAll();
-        request.onsuccess = () => resolve(request.result || []);
-        request.onerror = () => reject(request.error);
-    });
-    /* the list's own order, and then up it rather than down: the newest
-       clip sits at the bottom, and that is the one you were waiting for
-       when you pressed the button. */
+    const stored = await readAll(db, CLIP_STORE);
     const shown = [...recordingList.querySelectorAll('.recording-item')]
         .map((row) => row.dataset.clipId);
     return stored.sort((a, b) => {
@@ -3278,9 +2762,6 @@ async function storedClipsInOrder() {
     });
 }
 
-/* saving the whole list takes a while, so the button becomes a pause
-   while it runs: hit it again to hold after the clip it's on, and once
-   more to carry on from there. */
 let batchRunning = false;
 let batchPaused = false;
 
@@ -3295,17 +2776,6 @@ function showBatchState() {
 
 /* --- a folder without asking for one: a zip --- */
 
-/* a page cannot make a folder on the disk. the only door is the folder
-   picker, and that door is a permission prompt about downloads or the
-   desktop, for someone who only wanted a folder of their own songs.
-
-   so: everything into one zip, which is an ordinary download — nothing
-   asked, nothing granted, nothing to open a picker for. double-clicked
-   it becomes a folder named after the zip, which is the folder that was
-   wanted in the first place.
-
-   stored, not deflated: these are mp3s and already packed, so squeezing
-   them again costs seconds and saves nothing. */
 const CRC_TABLE = (() => {
     const table = new Uint32Array(256);
     for (let at = 0; at < 256; at += 1) {
@@ -3332,8 +2802,6 @@ function zipWord(value, wide) {
     return out;
 }
 
-/* the time a zip carries is a dos one: seconds in twos, and years from
-   1980. nothing reads it closely, but a zip without one looks broken. */
 function dosWhen(when) {
     const at = when || new Date();
     const date = ((at.getFullYear() - 1980) << 9) | ((at.getMonth() + 1) << 5) | at.getDate();
@@ -3342,17 +2810,12 @@ function dosWhen(when) {
 }
 
 function zipPiece(parts) {
-    let much = 0;
-    parts.forEach((one) => { much += one.length; });
-    const out = new Uint8Array(much);
+    const out = new Uint8Array(parts.reduce((much, one) => much + one.length, 0));
     let at = 0;
     parts.forEach((one) => { out.set(one, at); at += one.length; });
     return out;
 }
 
-/* one entry's two headers. the name goes in as utf-8 with the flag that
-   says so, or anything but ascii comes out as mojibake on the other
-   side. */
 function zipEntry(name, bytes, at, when) {
     const called = new TextEncoder().encode(name);
     const { date, time } = dosWhen(when);
@@ -3386,33 +2849,12 @@ function zipEnd(middles, where, much) {
 
 /* --- the folder the mp3s go into --- */
 
-/* a page cannot make a folder anywhere it likes, and it cannot be told
-   one by name — it has to be handed one. so it is handed one *once*:
-   the place to keep them, remembered, and every download after that
-   makes its own folder inside it from whatever is typed in the box at
-   the top of the clips. nothing is asked again unless the browser
-   forgets the permission, which it does between visits.
-
-   the handle itself is what is kept, not a path — a path is a string a
-   page has no right to open. the browser hands back the same handle
-   and asks the reader once whether it may still write there. */
 const HOME_DB = 'recall-home';
 const HOME_STORE = 'home';
 const FOLDER_KEY = 'clip-folder-name';
-let homeDbPromise = null;
 
 function openHomeDb() {
-    if (homeDbPromise) return homeDbPromise;
-    homeDbPromise = new Promise((resolve, reject) => {
-        const request = window.indexedDB.open(HOME_DB, 1);
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains(HOME_STORE)) db.createObjectStore(HOME_STORE);
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-    return homeDbPromise;
+    return openDb(HOME_DB, HOME_STORE, false);
 }
 
 async function keepHandle(handle, called) {
@@ -3423,10 +2865,6 @@ async function keepHandle(handle, called) {
     } catch (error) {
         // it will just ask again next time
     }
-}
-
-function keepFolderHome(handle) {
-    return keepHandle(handle, 'parent');
 }
 
 async function heldHandle(called) {
@@ -3442,12 +2880,6 @@ async function heldHandle(called) {
     }
 }
 
-function folderHome() {
-    return heldHandle('parent');
-}
-
-// may we still write there? asked of the browser, which asks the reader
-// only if it has to — and only while a press is still a press.
 async function stillAllowed(handle, mode) {
     try {
         const asked = { mode: mode || 'readwrite' };
@@ -3468,12 +2900,7 @@ function tidyFolder(typed) {
         .slice(0, 60);
 }
 
-/* the folder to write this lot into. 'stop' means they closed the
-   picker, which is a no rather than a fallback. */
 async function folderFor(called, startIn) {
-    /* remembered per place, not once for everything. kept under one key,
-       picking `downloads` and later switching the bubble to `desktop`
-       went on using downloads — the bubble looked like it did nothing. */
     const where = `parent:${startIn || 'downloads'}`;
     let parent = await heldHandle(where);
     if (parent && !(await stillAllowed(parent))) parent = null;
@@ -3481,10 +2908,6 @@ async function folderFor(called, startIn) {
     if (!parent) {
         if (!window.showDirectoryPicker) return null;
         try {
-            /* `startIn` is the whole of what a page may say about where
-               on the disk it means — it opens the picker on that shelf.
-               the yes itself is the browser's to take, and only once:
-               after it the place is remembered and never asked again. */
             parent = await window.showDirectoryPicker({
                 id: 'recall-clips',
                 mode: 'readwrite',
@@ -3506,8 +2929,6 @@ async function folderFor(called, startIn) {
     }
 }
 
-/* the name is asked in two places — over the clips and in the window —
-   and they are the same name, so each writes the other. */
 const folderNameBar = document.getElementById('folderNameBar');
 const folderFields = [folderName, folderNameBar];
 
@@ -3524,8 +2945,6 @@ folderFields.forEach((field) => {
 
 const folderGo = document.getElementById('folderGo');
 const folderPick = document.getElementById('folderPick');
-// the picker opens on downloads; the row of places went with the zip,
-// which lands there anyway
 const placeWanted = 'downloads';
 
 const folderSay = document.getElementById('folderSay');
@@ -3537,16 +2956,11 @@ function paintPlaces() {
         + `there is your ${called} folder, with the songs in it`;
 }
 
-/* the press that sends them. the picker, where one is still wanted,
-   opens from here — so it opens off a press, which is the only time a
-   browser will open one at all. */
 folderGo.addEventListener('click', () => {
     showScreen(homeScreen);
     downloadAllClips(null);        // no folder: it comes back as one zip
 });
 
-/* the other way, for anyone who would rather have the files written
-   straight onto the disk and doesn't mind being asked for the shelf */
 folderPick.addEventListener('click', async () => {
     const folder = await folderFor(tidyFolder(folderName.value), placeWanted);
     if (folder === 'stop') return;              // they closed the picker
@@ -3556,10 +2970,6 @@ folderPick.addEventListener('click', async () => {
 
 paintPlaces();
 
-/* two clips can carry the same name — the same song twice on a
-   playlist, or two turns of one speaker — and a folder can only hold
-   one of each. the second one along is numbered rather than written
-   over the first. */
 function freeName(taken, wanted) {
     if (!taken.has(wanted)) {
         taken.add(wanted);
@@ -3588,10 +2998,6 @@ async function downloadAllClips(folder) {
     }
     if (!clips.length) return;
 
-    /* nothing to agree to any more: with a folder it was the picking, and
-       without one it is a single zip rather than sixty-four files
-       arriving one after another. */
-
     // it stays live — it's the pause button now
     batchRunning = true;
     batchPaused = false;
@@ -3599,9 +3005,6 @@ async function downloadAllClips(folder) {
 
     let done = 0;
     const taken = new Set();
-    /* with no folder, everything goes into one zip — the parts are kept
-       and sealed at the end. a zip is an ordinary download, so nothing
-       is asked for and nothing granted. */
     const zipParts = [];
     const zipMiddles = [];
     let zipAt = 0;
@@ -3614,8 +3017,6 @@ async function downloadAllClips(folder) {
         setRecordStatus(folder
             ? `packing ${done + 1} of ${clips.length} into ${folder.name}...`
             : `packing ${done + 1} of ${clips.length}...`);
-        // the one being packed says so in the list itself, so you can
-        // see where down the list it has got to
         const row = recordingList.querySelector(`[data-clip-id="${record.id}"]`);
         if (row) {
             row.classList.add('is-packing');
@@ -3687,22 +3088,9 @@ downloadAllButton.addEventListener('click', async () => {
 
 const CLIP_DB = 'recall-clips';
 const CLIP_STORE = 'clips';
-let clipDbPromise = null;
 
 function openClipDb() {
-    if (clipDbPromise) return clipDbPromise;
-    clipDbPromise = new Promise((resolve, reject) => {
-        const request = window.indexedDB.open(CLIP_DB, 1);
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains(CLIP_STORE)) {
-                db.createObjectStore(CLIP_STORE, { keyPath: 'id' });
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-    return clipDbPromise;
+    return openDb(CLIP_DB, CLIP_STORE, true);
 }
 
 async function saveClip(record) {
@@ -3732,20 +3120,12 @@ async function deleteClip(id) {
 async function loadStoredClips() {
     try {
         const db = await openClipDb();
-        const stored = await new Promise((resolve, reject) => {
-            const request = db.transaction(CLIP_STORE, 'readonly')
-                .objectStore(CLIP_STORE)
-                .getAll();
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
+        const stored = await readAll(db, CLIP_STORE);
 
         stored.forEach((record) => {
             if (record.number > clipCount) clipCount = record.number;
         });
 
-        // whatever you last dragged them into; anything it doesn't know
-        // about is newer, so it goes on top
         const order = savedClipOrder();
         const rank = (record) => {
             const place = order.indexOf(record.id);
@@ -3761,9 +3141,6 @@ async function loadStoredClips() {
 
 /* --- clip names into file names --- */
 
-/* chrome throws away a handful of characters on the way to disk — a name
-   like "3/31" lands as "3_31". swapping each one for a unicode twin that
-   looks the same gets the name through intact. */
 const FILE_NAME_TWINS = {
     '/': '\u2215',   // division slash
     '\\': '\u29f5',  // reverse solidus operator
@@ -3776,15 +3153,7 @@ const FILE_NAME_TWINS = {
     '|': '\u2223',   // divides
 };
 
-/* a folder is sorted by name, so the name has to carry the order or the
-   folder does not keep it — the files go in bottom-first, and finder
-   shows them alphabetically all the same. the number at the front is
-   what makes the two agree, padded so 2 sorts before 10. the tag inside
-   carries the same number, so a music player plays them in order too;
-   the title and the artist in the tag stay clean either way. */
 function clipFileName(record, at, total) {
-    // the mark is for telling the two apart, not for a file name — on
-    // disk it reads as the dash anyone would have written
     const named = splitName(record.name);
     const raw = named.artist
         ? `${named.title} - ${named.artist}`
@@ -3808,12 +3177,6 @@ function clipPlace(record) {
 
 /* --- webm/opus -> mp3, only when a clip is downloaded --- */
 
-/* decoding has to happen here (a worker has no AudioContext), but the
-   encoding is the slow part, so that goes to mp3-worker.js and the page
-   stays responsive while it runs. */
-/* the two things a music player looks for, written into the file
-   itself: an id3v2.3 tag in front of the audio. the text goes in as
-   utf-16 with its mark, so a title in any alphabet survives. */
 function id3Tag(tags) {
     const frames = [];
     const put = (id, words) => {
@@ -3852,10 +3215,6 @@ async function blobToMp3(blob, span, tags) {
     const audio = await context.decodeAudioData(await blob.arrayBuffer());
     context.close();
 
-    /* a cropped clip is exported cropped: the whole thing is decoded,
-       and only the stretch between the marks is handed on. the copies
-       are needed anyway, because the worker takes ownership of whatever
-       it is given. */
     const from = span ? Math.max(0, Math.floor(span.start * audio.sampleRate)) : 0;
     const to = span && span.end ? Math.min(audio.length, Math.ceil(span.end * audio.sampleRate)) : audio.length;
     const cut = (channel) => new Float32Array(audio.getChannelData(channel).subarray(from, to));
@@ -3885,10 +3244,6 @@ async function blobToMp3(blob, span, tags) {
 
 /* --- recordings list --- */
 
-/* a clip can be cropped without being cut: the recording stays whole in
-   storage and the crop is two numbers kept beside it. playing, the
-   duration shown and the mp3 you download all read those two, so the
-   crop can be taken back by dragging the handles out again. */
 function clipStart(record) {
     return record.trim ? record.trim.start : 0;
 }
@@ -3901,16 +3256,8 @@ function clipSpan(record, whole) {
     return { start, end, length: Math.max(0, end - start) };
 }
 
-/* every row on show, by the clip's id — the rows are the only place a
-   record lives once it is drawn, and matching a playlist against them
-   has to reach both. a row takes itself back out when it is discarded. */
 const clipRows = new Map();
 
-/* the clips are recorded downwards — newest on top — so the first one
-   you recorded is the one at the bottom, and that is the one the
-   playlist starts at. the number counts up from there, and is worked
-   out from the rows themselves rather than kept anywhere, so binning
-   one in the middle renumbers everything above it. */
 function numberClips() {
     const rows = [...recordingList.querySelectorAll('.recording-item')];
     rows.forEach((row, index) => {
@@ -3928,16 +3275,11 @@ function addRecording(record, alreadySaved, atEnd) {
     const number = document.createElement('span');
     number.className = 'clip-number';
 
-    /* the mark for a clip whose length doesn't answer any song left in
-       the playlist. it is only ever put there by a match, and the next
-       match takes it away again. */
     const offMark = document.createElement('span');
     offMark.className = 'clip-off';
     offMark.textContent = '!';
     offMark.hidden = true;
 
-    // the clip is only handed to the audio element on first play, so opening
-    // the page with a full list doesn't start a decoder for every row
     let url = null;
     const player = document.createElement('audio');
     player.preload = 'none';
@@ -3990,8 +3332,6 @@ function addRecording(record, alreadySaved, atEnd) {
     trackText.className = 'clip-text';
     trackText.textContent = record.name || `clip ${record.number}`;
 
-    /* the two marks you drag, and the stretch outside them. they live
-       inside the bar, so the bar's own rounding clips them. */
     const shadeLeft = document.createElement('span');
     shadeLeft.className = 'crop-shade is-left';
     const shadeRight = document.createElement('span');
@@ -4003,10 +3343,6 @@ function addRecording(record, alreadySaved, atEnd) {
 
     track.append(fill, shadeLeft, shadeRight, trackText);
 
-    /* the marks hang off a wrapper rather than off the bar: the bar
-       clips whatever leaves it, and the mark at the far end is half
-       outside — clipped, that half stopped taking the pointer, so the
-       end mark could be seen but not dragged. */
     const trackWrap = document.createElement('div');
     trackWrap.className = 'clip-track-wrap';
     trackWrap.append(track, handleStart, handleEnd);
@@ -4015,8 +3351,6 @@ function addRecording(record, alreadySaved, atEnd) {
 
     const isEditing = () => trackText.classList.contains('is-editing');
 
-    // the bar is the whole recording; the crop only says which stretch
-    // of it is played, and where the fill starts and stops
     const paintCrop = () => {
         const { start, end } = clipSpan(record, totalSeconds);
         const from = totalSeconds ? (start / totalSeconds) * 100 : 0;
@@ -4075,7 +3409,6 @@ function addRecording(record, alreadySaved, atEnd) {
         };
 
         const onMouseUp = () => {
-            isDragging = false;
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         };
@@ -4084,10 +3417,6 @@ function addRecording(record, alreadySaved, atEnd) {
         document.addEventListener('mouseup', onMouseUp);
     });
 
-    /* dragging a mark. it writes straight into the record as it moves,
-       so what you hear while dragging is what the crop will be, and it
-       is only written to storage once you let go. the two can't cross,
-       and can't leave less than half a second between them. */
     const GAP = 0.5;
     const dragHandle = (handle, which) => {
         handle.addEventListener('pointerdown', (event) => {
@@ -4167,8 +3496,6 @@ function addRecording(record, alreadySaved, atEnd) {
     player.addEventListener('timeupdate', () => {
         if (!totalSeconds) return;
         const { start, end } = clipSpan(record, totalSeconds);
-        // the tail past the crop is never played: it stops at the mark
-        // and waits at the head, ready to go again
         if (player.currentTime >= end - 0.02) {
             player.pause();
             player.currentTime = start;
@@ -4183,10 +3510,7 @@ function addRecording(record, alreadySaved, atEnd) {
     // label with duration
     const label = document.createElement('span');
     label.className = 'clip-label';
-    label.textContent = `00:00 / ${record.duration}`;
 
-    /* crop: it doesn't cut anything, it shows the two marks and lets you
-       drag them. the clip keeps its whole self either way. */
     const crop = document.createElement('button');
     crop.className = 'clip-crop';
     crop.type = 'button';
@@ -4213,9 +3537,6 @@ function addRecording(record, alreadySaved, atEnd) {
         event.stopPropagation();
         if (download.disabled) return;
         download.disabled = true;
-        // the mark it waits under is drawn by the stylesheet, so it sits
-        // in the middle of the button rather than wherever a glyph's own
-        // line box happens to put it
         download.classList.add('is-working');
         try {
             const mp3 = await blobToMp3(record.blob, clipSpan(record, totalSeconds),
@@ -4254,19 +3575,7 @@ function addRecording(record, alreadySaved, atEnd) {
         rememberClipOrder();
     });
 
-    // three lines, same grip the decks have
-    const handle = document.createElement('button');
-    handle.className = 'clip-handle';
-    handle.type = 'button';
-    handle.setAttribute('aria-label', `reorder clip ${record.number}, use arrow keys`);
-    handle.innerHTML = '<span></span><span></span><span></span>';
-    handle.addEventListener('pointerdown', (event) => liftClip(item, handle, event));
-    handle.addEventListener('keydown', (event) => {
-        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-        event.preventDefault();
-        moveClipRow(item, event.key === 'ArrowUp' ? -1 : 1);
-        handle.focus();
-    });
+    const handle = rowGrip(item, 'clip-handle', `reorder clip ${record.number}, use arrow keys`, clipLiftConfig);
 
     item.append(handle, number, playButton, trackWrap, label, offMark, crop, download, discard, player);
     paintProgress();
@@ -4274,8 +3583,6 @@ function addRecording(record, alreadySaved, atEnd) {
     else recordingList.prepend(item);
     refreshEmptyMessage();
 
-    /* what the matcher needs of this row: how long it plays for after
-       any crop, what it is called, and the two marks it can set. */
     clipRows.set(record.id, {
         record,
         item,
@@ -4294,23 +3601,12 @@ function addRecording(record, alreadySaved, atEnd) {
 
     if (!alreadySaved) saveClip(record);
     if (!alreadySaved) rememberClipOrder();
+
     numberClips();
     paintStorage();
 }
 
 /* --- reordering a list by hand --- */
-
-/* the lift. the row you're holding follows the cursor up and down and
-   nothing else: it can't leave the list, it can't go sideways, and it
-   stays the same row rather than becoming a ghost of one. its own slot
-   in the list is the space, and the other rows shuffle around it.
-
-   it's pointer events rather than html drag and drop because the
-   browser's drag image follows the cursor everywhere on the page, and
-   that's the flying about we don't want.
-
-   two lists use this — the clips and the decks — so the list, the row
-   selector and what to do once it settles all come in from the caller. */
 
 let liftedRow = null;   // the row in your hand, if any
 let lift = null;        // where it was grabbed and how far it's moved
@@ -4319,24 +3615,15 @@ function liftRows(list, selector) {
     return [...list.querySelectorAll(selector)];
 }
 
-/* how a list gives way. the clips are quick and snappy because they're
-   short rows you sort in a hurry; the decks are big tiles, so they take
-   longer and swap nearer the middle of a row — an early swap on a tall
-   tile reads as the list twitching. */
+const LIFT_BASE = { ms: 190, ease: 'cubic-bezier(0.33, 0, 0, 1)', mark: [0.2, 0.8] };
 const LIFT_FEEL = {
-    clips: { ms: 190, ease: 'cubic-bezier(0.33, 0, 0, 1)', mark: [0.2, 0.8], grabCursor: true },
-    decks: { ms: 190, ease: 'cubic-bezier(0.33, 0, 0, 1)', mark: [0.2, 0.8], grabCursor: false },
-    cards: { ms: 190, ease: 'cubic-bezier(0.33, 0, 0, 1)', mark: [0.2, 0.8], grabCursor: true }
+    clips: { ...LIFT_BASE, grabCursor: true },
+    decks: { ...LIFT_BASE, grabCursor: false },
+    cards: { ...LIFT_BASE, grabCursor: true }
 };
 
-// moving a row re-lays the list out in one pass; this then slides every
-// row that shifted from where it was to where it landed, so the gap
-// looks like it travels rather than teleports
 function slideRows(list, selector, feel, rearrange) {
     const rows = liftRows(list, selector);
-    // where each row looks like it is right now — a rect includes
-    // whatever transform is mid-flight, so a swap during a swap picks
-    // up from where the eye left it instead of snapping
     const before = new Map(rows.map((row) => [row, row.getBoundingClientRect().top]));
     rearrange();
     rows.forEach((row) => {
@@ -4356,6 +3643,23 @@ function slideRows(list, selector, feel, rearrange) {
         );
         slide.id = 'row-slide';
     });
+}
+
+// three lines to drag a row by, and the arrow keys for the same
+function rowGrip(item, className, label, config) {
+    const handle = document.createElement('button');
+    handle.className = className;
+    handle.type = 'button';
+    handle.setAttribute('aria-label', label);
+    handle.innerHTML = '<span></span><span></span><span></span>';
+    handle.addEventListener('pointerdown', (event) => startLift(config(), item, event));
+    handle.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        event.preventDefault();
+        moveRow(config(), item, event.key === 'ArrowUp' ? -1 : 1);
+        handle.focus();
+    });
+    return handle;
 }
 
 function moveRow(config, item, step) {
@@ -4395,21 +3699,12 @@ function startLift(config, item, event) {
     document.documentElement.classList.add('sorting-rows');
     if (config.feel.grabCursor) document.documentElement.classList.add('sorting-grab');
 
-    // the moves are followed on the window, not on the handle. capturing
-    // the pointer looks like the tidier way, but the first swap moves
-    // this row in the dom — and moving an element drops the capture, so
-    // the drag went dead the moment the list first gave way.
     window.addEventListener('pointermove', trackLift);
     window.addEventListener('pointerup', endLift);
     window.addEventListener('pointercancel', endLift);
     lift.frame = window.requestAnimationFrame(carryRow);
 }
 
-/* where the rows sit when nothing is moving. offsetTop and offsetHeight
-   are layout, so a row halfway through a slide still measures at the
-   slot it's heading for — which is what the swap should be judged on.
-   reading them per frame would be the lag, so it's measured once here
-   and again only when the order actually changes. */
 function measureSlots() {
     const list = lift.config.list;
     const box = list.getBoundingClientRect();
@@ -4419,15 +3714,9 @@ function measureSlots() {
     lift.rows = liftRows(list, lift.config.selector);
     lift.tops = lift.rows.map((row) => row.offsetTop);
     lift.heights = lift.rows.map((row) => row.offsetHeight);
-    // the top row's own offset is the list's padding — it's how far a
-    // row sits off the wall, and the carried one stops there too
     lift.pad = lift.tops.length ? lift.tops[0] : 0;
 }
 
-// the list is the rows' offset parent, so a slot is its own top plus
-// the list's, less however far the list is scrolled. the 1 is the
-// border. the scroll is read once a frame in carryRow and kept — asking
-// the list for it again after a transform is written forces a layout.
 function slotTop(index) {
     return lift.listTop + 1 - lift.scroll + lift.tops[index];
 }
@@ -4437,9 +3726,6 @@ function trackLift(event) {
     lift.pointerY = event.clientY;
 }
 
-// one frame: scroll if it's held against an end, and if anything has
-// actually changed, put the row under the cursor and give way if it's
-// far enough onto its neighbour
 function carryRow() {
     if (!liftedRow) return;
     const list = lift.config.list;
@@ -4464,9 +3750,6 @@ function carryRow() {
     lift.frame = window.requestAnimationFrame(carryRow);
 }
 
-// the row sits where the cursor holds it, but never past either end of
-// the list. its slot comes from the measurement, so this stays right
-// after the list has reordered or scrolled.
 function placeLifted() {
     const index = lift.rows.indexOf(liftedRow);
     if (index === -1) return;
@@ -4483,16 +3766,11 @@ function placeLifted() {
 }
 
 function shuffleForLifted() {
-    // which way you're going, with a few pixels of slack so a twitch
-    // doesn't flip it back and forth
     if (Math.abs(lift.pointerY - lift.lastY) > 3) {
         lift.heading = lift.pointerY > lift.lastY ? 1 : -1;
         lift.lastY = lift.pointerY;
     }
 
-    // the space goes above the first row the cursor hasn't cleared. the
-    // mark sits near the edge you're coming at, so a row gives way as
-    // soon as you're onto it either way up
     const mark = lift.config.feel.mark[lift.heading > 0 ? 0 : 1];
     let next = null;
     for (let index = 0; index < lift.rows.length; index += 1) {
@@ -4538,10 +3816,6 @@ function endLift() {
 
 /* --- reordering the clips --- */
 
-// the list keeps its own order once you've touched it. it's a list of
-// ids in localStorage rather than a field on each clip — rewriting a
-// record means rewriting its blob, and that's a lot of copying to
-// remember one number.
 const CLIP_ORDER_KEY = 'clip-order';
 
 function clipLiftConfig() {
@@ -4568,30 +3842,15 @@ function rememberClipOrder() {
     }
 }
 
-function liftClip(item, handle, event) {
-    startLift(clipLiftConfig(), item, event);
-}
-
-function moveClipRow(item, step) {
-    moveRow(clipLiftConfig(), item, step);
-}
-
-
 /* --- recording --- */
 
 function pickRecordingType() {
-    const candidates = [
-        'audio/webm;codecs=opus',
-        'audio/webm'
-    ];
-    return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || '';
+    return ['audio/webm;codecs=opus', 'audio/webm'].find((type) => MediaRecorder.isTypeSupported(type)) || '';
 }
 
 function startRecording() {
     if (!activeStream) return;
 
-    // the video track stays on activeStream for the pixel sampling,
-    // but only the audio goes into the clip
     const audioOnly = new MediaStream(activeStream.getAudioTracks());
     const mimeType = pickRecordingType();
     const recorder = new MediaRecorder(audioOnly, mimeType ? { mimeType } : undefined);
@@ -4626,7 +3885,7 @@ function startRecording() {
     recordToggle.textContent = 'stop';
     senseToggle.hidden = false;
 
-    showLiveRow();
+    liveLabel.textContent = '';
     window.clearInterval(timerInterval);
     timerInterval = window.setInterval(() => {
         const elapsed = formatDuration(Date.now() - recordStartTime);
@@ -4653,8 +3912,6 @@ function drawLevel() {
     const height = levelCanvas.height;
     levelContext.clearRect(0, 0, width, height);
 
-    const barHeight = 8;
-    const y = (height - barHeight) / 2;
     levelContext.globalAlpha = 1;
     levelContext.strokeStyle = '#fff';
     levelContext.lineWidth = 1;
@@ -4689,16 +3946,6 @@ function cutClip() {
     startRecording();       // immediately begin the next one
 }
 
-/* --- the clip being recorded right now --- */
-
-function showLiveRow() {
-    liveLabel.textContent = '';
-}
-
-function hideLiveRow() {
-    liveLabel.textContent = '';
-}
-
 /* --- capture --- */
 
 function stopCapture() {
@@ -4707,7 +3954,7 @@ function stopCapture() {
     mediaRecorder = null;
     window.clearInterval(timerInterval);
     timerInterval = null;
-    hideLiveRow();
+    liveLabel.textContent = '';
     window.clearInterval(senseInterval);
     senseInterval = null;
     stopLevelMeter();
@@ -4716,7 +3963,7 @@ function stopCapture() {
     sensePop.classList.remove('is-open');
     senseControls.hidden = true;
     senseToggle.setAttribute('aria-expanded', 'false');
-    if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
+    activeStream.getTracks().forEach((track) => track.stop());
     activeStream = null;
     previewVideo.srcObject = null;
     previousSample = null;
@@ -4724,8 +3971,6 @@ function stopCapture() {
     audioPanel.classList.remove('is-live');
     senseReadout.hidden = true;
     senseReadout.textContent = 'change 0.0';
-    senseControls.hidden = true;
-    senseToggle.setAttribute('aria-expanded', 'false');
     recordToggle.classList.remove('recording');
     recordToggle.textContent = 'record';
     senseToggle.hidden = true;
@@ -4750,7 +3995,6 @@ async function startCapture() {
         return;
     }
 
-
     previewVideo.srcObject = activeStream;
     await previewVideo.play().catch(() => {});
 
@@ -4760,13 +4004,10 @@ async function startCapture() {
     senseReadout.hidden = false;
     triggerCount = 0;
     switchCount.textContent = '0 switches';
-    changeArmed = false;
     previousSample = null;
     applySenseSettings();
 
-    if (activeStream.getAudioTracks().length === 0) {
-        setRecordStatus('no audio — stop, and tick "also share tab audio"', true);
-    }
+    if (activeStream.getAudioTracks().length === 0) setRecordStatus('no audio — stop, and tick "also share tab audio"', true);
 
     activeStream.getVideoTracks()[0].addEventListener('ended', stopCapture);
 
@@ -4783,9 +4024,6 @@ recordToggle.addEventListener('click', (event) => {
     else startCapture();
 });
 
-/* the box beside the clips. it sits on the right, so the divider sizes
-   it from that edge, and the clips keep at least half the room. shut it
-   is nothing at all, and the grip is still there to pull it back. */
 const clipSplitter = wireSplit({
     split: document.getElementById('clipSplit'),
     body: document.querySelector('.audio-body'),
@@ -4811,17 +4049,6 @@ loadSenseSettings();
 applySenseSettings();
 loadZoom();
 recorderReady = true;
-/* and the page comes in, once what it draws from storage is there. the
-   inline snippet in the head takes the class off anyway after two and a
-   half seconds, so a slow store delays this rather than stopping it.
-
-   the type has to be there too. shown before the faces had arrived,
-   every word came up in the browser's own fallback and then jumped into
-   its real face a beat later — a flash of the wrong letters on every
-   refresh. */
-/* asked for by name rather than waiting on `fonts.ready`: this runs
-   before the page is laid out, when nothing has started loading and
-   `ready` would answer at once with nothing there. */
 const typeReady = document.fonts && document.fonts.load
     ? Promise.all(['1em Amiko', '1em "Bitcount Prop Double"', '700 1em "Bitcount Prop Double"',
                    '1em VT323', '1em "Matrix Sans Print"'].map((face) => document.fonts.load(face)))
@@ -4864,11 +4091,6 @@ const playerFill = document.getElementById('playerFill');
 const shuffleToggle = document.getElementById('shuffleToggle');
 const repeatToggle = document.getElementById('repeatToggle');
 
-/* one audio element for the lot — swapping its source is far cheaper
-   than holding one per song, and only one can play at a time anyway. */
-/* the play and pause marks, drawn. as glyphs they came out at whatever
-   size and weight the font felt like, which is most of why the row
-   looked like something off an old stereo. */
 const MARK_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true">'
     + '<path class="mark-play" d="M7 4.5 19.5 12 7 19.5z" fill="currentColor" stroke="currentColor"'
     + ' stroke-width="2.4" stroke-linejoin="round"/></svg>';
@@ -4888,25 +4110,9 @@ let repeatOn = false;
 const TRACK_DB = 'recall-tracks';
 const TRACK_STORE = 'tracks';
 const TRACK_ORDER_KEY = 'track-order';
-let trackDbPromise = null;
 
-/* its own database rather than a second store in the clips one: adding
-   a store means a version bump, and a bad migration would take the
-   recordings with it. */
 function openTrackDb() {
-    if (trackDbPromise) return trackDbPromise;
-    trackDbPromise = new Promise((resolve, reject) => {
-        const request = window.indexedDB.open(TRACK_DB, 1);
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains(TRACK_STORE)) {
-                db.createObjectStore(TRACK_STORE, { keyPath: 'id' });
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-    return trackDbPromise;
+    return openDb(TRACK_DB, TRACK_STORE, true);
 }
 
 async function saveTrack(record) {
@@ -4956,9 +4162,6 @@ function clockFace(seconds) {
     return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
 }
 
-/* a file gives up its length only once something has tried to read it,
-   so each one is loaded into a throwaway element first. a file that
-   won't decode is dropped rather than added as a row that can't play. */
 function readDuration(blob) {
     return new Promise((resolve) => {
         const probe = new Audio();
@@ -4978,8 +4181,6 @@ async function addTrackFiles(files) {
     const picked = [...files].filter((file) => file.type.startsWith('audio/'));
     if (!picked.length) return;
 
-    // a library worth keeping shouldn't be thrown away the first time
-    // the disk gets tight, and the browser only promises that if asked
     if (navigator.storage && navigator.storage.persist) {
         try { await navigator.storage.persist(); } catch (error) { /* not fatal */ }
     }
@@ -5015,7 +4216,6 @@ function setPlayerStatus(text) {
     playerNote.textContent = text || '';
 }
 
-
 /* --- the list --- */
 
 function trackLiftConfig() {
@@ -5032,18 +4232,7 @@ function addTrackRow(record) {
     item.className = 'track-item';
     item.dataset.trackId = record.id;
 
-    const handle = document.createElement('button');
-    handle.className = 'clip-handle track-handle';
-    handle.type = 'button';
-    handle.setAttribute('aria-label', `reorder ${record.name}, use arrow keys`);
-    handle.innerHTML = '<span></span><span></span><span></span>';
-    handle.addEventListener('pointerdown', (event) => startLift(trackLiftConfig(), item, event));
-    handle.addEventListener('keydown', (event) => {
-        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-        event.preventDefault();
-        moveRow(trackLiftConfig(), item, event.key === 'ArrowUp' ? -1 : 1);
-        handle.focus();
-    });
+    const handle = rowGrip(item, 'clip-handle track-handle', `reorder ${record.name}, use arrow keys`, trackLiftConfig);
 
     const play = document.createElement('button');
     play.className = 'clip-play';
@@ -5061,8 +4250,6 @@ function addTrackRow(record) {
     name.textContent = record.name;
     name.title = record.name;
 
-    // a linked row says so, so a recording that has since been binned
-    // isn't a mystery when it won't play
     let mark = null;
     if (record.clipId) {
         mark = document.createElement('span');
@@ -5112,10 +4299,6 @@ function dropTrack(id) {
 
 /* --- playing --- */
 
-/* a linked clip keeps no audio of its own — it points at the recording
-   on the audio page, and the sound is fetched when you press play. two
-   copies of the same minutes would be a waste of the disk quota, and
-   binning the clip should take its entry with it. */
 async function trackAudio(record) {
     if (record.blob) return record.blob;
     if (!record.clipId) return null;
@@ -5202,8 +4385,6 @@ function refreshPlayerState() {
     nowTitle.textContent = current ? current.name : '';
     nowTitle.title = current ? current.name : '';
 
-    // the bar carries the same state in shorter form, and isn't there
-    // at all when there's nothing to say
     railNow.hidden = !current;
     railTitle.textContent = current ? current.name : '';
     railTitle.title = current ? current.name : '';
@@ -5258,7 +4439,6 @@ songPlayer.addEventListener('ended', () => {
     stepTrack(1);
 });
 
-
 /* --- wiring --- */
 
 addTracksButton.addEventListener('click', () => trackInput.click());
@@ -5291,17 +4471,11 @@ repeatToggle.addEventListener('click', () => {
     repeatToggle.setAttribute('aria-pressed', String(repeatOn));
 });
 
-/* everything on the audio page that isn't already in the list. it
-   links rather than copies, so this is safe to press twice. */
 linkClipsButton.addEventListener('click', async () => {
     let clips = [];
     try {
         const db = await openClipDb();
-        clips = await new Promise((resolve, reject) => {
-            const request = db.transaction(CLIP_STORE, 'readonly').objectStore(CLIP_STORE).getAll();
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
+        clips = await readAll(db, CLIP_STORE);
     } catch (error) {
         setPlayerStatus('could not read the clips');
         return;
@@ -5336,9 +4510,6 @@ linkClipsButton.addEventListener('click', async () => {
 
 const volumeMark = document.getElementById('volumeMark');
 
-/* the speaker says how loud it is: shut, then one arc, two, three. the
-   arcs fade and grow into place on their own, so turning the slider
-   reads as the sound opening up rather than four pictures swapping. */
 function paintVolume() {
     const level = Number(playerVolume.value);
     volumeMark.dataset.level = String(
@@ -5346,16 +4517,6 @@ function paintVolume() {
     );
 }
 
-/* the slider slides. a press anywhere along the line used to put the
-   bead there in the same instant — the one movement on this page that
-   happened without happening — so the bead is driven here instead: it
-   is always travelling towards where it has been asked to be, and
-   arrives in about a tenth of a second. under a finger that is short
-   enough to feel attached; across the whole line it reads as a slide.
-
-   the press is taken off the browser (preventDefault) so it can't jump
-   the value out from under the glide. the arrow keys still work the
-   way they always did, and are picked up as a new destination. */
 let volShown = Number(playerVolume.value);
 let volGoal = volShown;
 let volFrame = 0;
@@ -5381,9 +4542,6 @@ function aimVolume(value) {
     if (!volFrame) volFrame = window.requestAnimationFrame(() => glideVolume());
 }
 
-/* where along the line a press landed. the bead is a bead wide, so the
-   run it travels is short by half of one at each end — without that,
-   pressing the very end never quite reaches it. */
 function volumeAt(clientX) {
     const box = playerVolume.getBoundingClientRect();
     const bead = parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.85;
@@ -5396,9 +4554,6 @@ playerVolume.addEventListener('pointerdown', (event) => {
     event.preventDefault();
     playerVolume.focus();
     aimVolume(volumeAt(event.clientX));
-    // the capture keeps the drag on the slider once the pointer has
-    // left it. a pointer it doesn't know about throws rather than
-    // refusing, and that mustn't take the press with it.
     try {
         playerVolume.setPointerCapture(event.pointerId);
     } catch (error) {
@@ -5424,7 +4579,6 @@ playerVolume.addEventListener('input', () => {
 });
 paintVolume();
 
-
 const playerSplitter = wireSplit({
     split: playerSplit,
     body: playerBody,
@@ -5432,8 +4586,6 @@ const playerSplitter = wireSplit({
     pane: document.querySelector('.queue-side'),
     variable: '--queue-col',
     key: 'player-column',
-    // the only one that isn't even: the queue takes a little more, so
-    // the player beside it sits slightly smaller than half
     fallback: 55
 });
 
@@ -5454,11 +4606,7 @@ clearTracksButton.addEventListener('click', async (event) => {
 async function loadStoredTracks() {
     try {
         const db = await openTrackDb();
-        const stored = await new Promise((resolve, reject) => {
-            const request = db.transaction(TRACK_STORE, 'readonly').objectStore(TRACK_STORE).getAll();
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
+        const stored = await readAll(db, TRACK_STORE);
         const order = savedTrackOrder();
         stored.sort((a, b) => {
             const ai = order.indexOf(a.id), bi = order.indexOf(b.id);
@@ -5476,13 +4624,8 @@ loadStoredTracks();
 
 /* ---------- 14. the bar's own three  (clock · storage · binned) ---------- */
 
-/* lowercase, like everything else here. it ticks on the minute rather
-   than every second — nothing on this page needs the seconds, and a
-   number changing in the corner is a distraction. */
 function paintClock() {
     const now = new Date();
-    // the am/pm is set apart from the digits, in the body face. the hour
-    // is padded so the digits never change width on the turn of an hour
     const told = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
     const half = told.match(/\s*([ap]m)$/);
     clockTime.textContent = half ? told.slice(0, half.index) : told;
@@ -5503,9 +4646,6 @@ function startClock() {
     }, toTheMinute);
 }
 
-/* what the clips and the songs are actually costing. the browser gives
-   a quota rather than the disk's own size, and it only updates once a
-   write has settled, so this is refreshed after anything is kept. */
 function roundSize(bytes) {
     if (!bytes) return '0 mb';
     const mb = bytes / 1048576;
@@ -5533,16 +4673,11 @@ async function paintStorage() {
     }
 }
 
-/* the whole page turns over: one filter on the root, so every black
-   becomes white and every white black, and nothing has to be restyled
-   twice. the choice is remembered. */
 const THEME_KEY = 'page-inverted';
 
 let themingTimer = 0;
 let themeReady = false;   // true once the page has settled on load
 
-// the swap itself, and nothing else: one class and the words that go
-// with it. whatever is carrying the move calls this in the middle of it.
 function paintTheme(on) {
     document.documentElement.classList.toggle('inverted', on);
     themeSwap.setAttribute('aria-pressed', String(on));
@@ -5557,39 +4692,21 @@ function paintTheme(on) {
 
 function setInverted(on) {
     const root = document.documentElement;
-    // nothing is animated unless the page is actually changing sides —
-    // the call on load would otherwise turn the moon over at every refresh
     const moved = root.classList.contains('inverted') !== on && themeReady;
     if (!moved) {
         paintTheme(on);
         return;
     }
 
-    /* the browser fades the whole page as one picture where it can —
-       one paint, then the compositor, whatever is on the page. the
-       class goes on first because the copy is taken the moment this is
-       called, and it is what lifts the moon into a picture of its own.
-       see the note beside ::view-transition-old(root). */
     root.classList.add('theming');
     window.clearTimeout(themingTimer);
     const done = () => root.classList.remove('theming', 'fading');
 
     if (typeof document.startViewTransition === 'function') {
         const swap = document.startViewTransition(() => paintTheme(on));
-        /* a transition that is cut short rejects, and a rejection nobody
-           catches is an error in the console every time the lights go
-           on or off. it is cut short whenever the next press comes
-           before this one has finished, and whenever the tab is not
-           being drawn — both of which are fine and neither of which is
-           worth a word. only `finished` is listened to; the rest are
-           swallowed on purpose. */
         swap.ready.catch(() => {});
         swap.updateCallbackDone.catch(() => {});
         swap.finished.then(done, done);
-        /* if the fade never reports back — a tab put in the background
-           mid-swap will do it — the page must not be left half turned
-           with the moon lifted out of it. writing the theme again costs
-           nothing and can only agree with itself. */
         themingTimer = window.setTimeout(() => {
             paintTheme(on);
             done();
@@ -5597,11 +4714,6 @@ function setInverted(on) {
         return;
     }
 
-    /* no view transitions: every element carries the move itself, which
-       is the expensive way and the reason the fast path exists. the
-       moon is turned over by hand here, since there are no snapshots to
-       do it — a half turn the way you're heading, with a dip through
-       the middle so it reads as being flipped rather than spun. */
     root.classList.add('fading');
     themingTimer = window.setTimeout(done, 450);
     paintTheme(on);
@@ -5623,28 +4735,15 @@ themeReady = true;
 
 /* ---------- 15. home widgets ---------- */
 
-/* home is a board rather than a list. every widget takes one of three
-   sizes on a four-column grid — a square, a wide one, or a big one
-   two rows deep — and each writes itself differently at each size, so
-   a small one is a single number and a large one is the whole story.
-
-   nothing is draggable until you turn on edit, in the corner. that's
-   the only mode with handles in it: out of edit the board is just the
-   board, and a widget's own buttons work normally. */
-
 const widgetList = document.getElementById('widgetList');
 const widgetBin = document.getElementById('widgetBin');
 const widgetAdd = document.getElementById('widgetAdd');
 const widgetPicks = document.getElementById('widgetPicks');
 const widgetPickList = document.getElementById('widgetPickList');
 const widgetEdit = document.getElementById('widgetEdit');
-const homePanel2 = document.getElementById('homePanel');
 
 const WIDGET_KEY = 'home-widgets';
 
-// the three shapes, in the order the size chip walks through them
-/* the board is one row deep, so the page below it is free for whatever
-   else goes there. a shape two rows tall has nowhere to be. */
 const WIDGET_SIZES = ['small', 'wide'];
 
 // a name no other tile on the board has, however many of a kind there are
@@ -5654,12 +4753,6 @@ function nextWidgetKey(id) {
     return `${id}-${Date.now().toString(36)}-${widgetKeyCount}`;
 }
 
-/* nothing comes with the board. the widgets you put on it are your own
-   pictures, added with the + — so there is no catalogue here yet. */
-/* each widget says what it's called, the face it wears, and how to
-   fill its body at a given size. fill() is called again whenever
-   anything it shows changes, so it always rebuilds rather than
-   patching. */
 const WIDGETS = [
     {
         id: 'clock',
@@ -5677,10 +4770,6 @@ const WIDGETS = [
                 return;
             }
 
-            /* the hour and the minute on their own line, and am or pm
-               under them — beside the figures it dragged the whole
-               reading off centre, since it is the only part that is not
-               in the number face. */
             const told = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
             const half = told.match(/\s*([ap]m)$/);
             const digits = half ? told.slice(0, half.index) : told;
@@ -5716,27 +4805,6 @@ const WIDGETS = [
                 [cards, cards === 1 ? 'card' : 'cards'],
                 [activeDeck().cards.length, 'open now']
             ]));
-            if (size !== 'large') return;
-
-            // every deck, longest first, each with a bar for its share
-            const most = Math.max(1, ...decks.map((deck) => deck.cards.length));
-            const rows = document.createElement('div');
-            rows.className = 'widget-rows';
-            [...decks]
-                .sort((one, two) => two.cards.length - one.cards.length)
-                .slice(0, 4)
-                .forEach((deck) => {
-                    const row = document.createElement('div');
-                    row.className = 'widget-row';
-                    const name = document.createElement('span');
-                    name.className = 'widget-row-name';
-                    name.textContent = deck.name;
-                    const count = document.createElement('small');
-                    count.textContent = String(deck.cards.length);
-                    row.append(name, meterBar((deck.cards.length / most) * 100), count);
-                    rows.append(row);
-                });
-            body.append(rows);
         }
     },
     {
@@ -5749,7 +4817,7 @@ const WIDGETS = [
                 body.append(oneLine('no cards to practice yet'));
                 return;
             }
-            const room = size === 'small' ? 1 : size === 'wide' ? 2 : 4;
+            const room = size === 'small' ? 1 : 2;
             const lane = document.createElement('div');
             lane.className = 'widget-jumps';
             ready.slice(0, room).forEach((deck) => {
@@ -5797,14 +4865,9 @@ const WIDGETS = [
                 [tracks.length, tracks.length === 1 ? 'song' : 'songs'],
                 [binned, 'in the bin']
             ]));
-            if (size !== 'large') return;
-            body.append(oneLine(storeAmount.textContent), meterBar(parseFloat(storeFill.style.width) || 0));
         }
     }
 ];
-
-/* the pieces every widget builds out of, so a number means the same
-   thing wherever it turns up */
 
 // one reading in the title face, with its word beside it
 function bigReading(number, word) {
@@ -5825,11 +4888,6 @@ function dayWords(now) {
     return now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' }).toLowerCase();
 }
 
-/* a face with hands: a ring, a mark at every hour, and three hands.
-   drawn rather than typed, so it is the same hairline as everything
-   else and it turns about its own middle exactly. No second hand: the
-   board is repainted on the minute, and a second hand that only moved
-   once a minute would be a clock visibly telling the wrong time. */
 function clockHands(now) {
     const wrap = document.createElement('div');
     wrap.className = 'clock-hands';
@@ -5890,28 +4948,11 @@ function tallyRow(pairs) {
     return row;
 }
 
-// the same outlined bar the storage box uses, at whatever percent
-function meterBar(percent) {
-    const bar = document.createElement('span');
-    bar.className = 'widget-meter';
-    const fill = document.createElement('span');
-    fill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
-    bar.append(fill);
-    return bar;
-}
-
 function widgetById(id) {
     return WIDGETS.find((widget) => widget.id === id);
 }
 
-// the clock and the decks to begin with, one square and one wide
-/* --- the board's own arithmetic ---
-
-   home is four columns of slots, and every widget holds a rectangle of
-   them: a square, a wide one, or a big one two rows deep. each widget
-   remembers which slot it starts at, so it stays where it was put —
-   the board does not close up gaps behind it. that is the whole
-   difference between arranging a board and sorting a list. */
+/* --- the board's own arithmetic --- */
 
 const BOARD_COLS = 4;
 const BOARD_ROWS = 1;
@@ -5928,44 +4969,21 @@ function hits(one, two) {
         && one.row < two.row + bh && two.row < one.row + ah;
 }
 
-/* one tile shoves another out of its way, and the way it goes is the
-   way it was pushed: come at it from the left and it moves right, from
-   above and it moves down. if that would take it off the board — a
-   tile at the right wall shoved further right — it tries the other
-   side, then up, then down. the axis is whichever of the two the tiles
-   are further apart on, so a tile approached square-on from the side
-   does not suddenly hop downwards. */
 function shove(blocker, by, hint) {
-    const [bw, bh] = spanOf(blocker);
-    const [mw, mh] = spanOf(by);
+    const [bw] = spanOf(blocker);
+    const [mw] = spanOf(by);
     const across = (blocker.col + bw / 2) - (by.col + mw / 2);
-    const down = (blocker.row + bh / 2) - (by.row + mh / 2);
-
-    /* which way it is being pushed. the way the carried tile has
-       travelled says it best — dropped square on top of another there
-       is nothing in their positions to tell you, and every tile would
-       hop the same way. their centres are the fallback. */
     const goX = hint && hint.x ? hint.x : (across >= 0 ? 1 : -1);
-    const goY = hint && hint.y ? hint.y : (down >= 0 ? 1 : -1);
-    const sideways = hint && (hint.x || hint.y)
-        ? Math.abs(hint.x) >= Math.abs(hint.y) && hint.x !== 0
-        : Math.abs(across) >= Math.abs(down);
+    const right = by.col + mw;
+    const left = by.col - bw;
 
-    /* one row, so there is no out of it: a tile is pushed the way it was
-       come at, and to the other side if that wall is there. */
-    const ways = [goX > 0 ? 'right' : 'left', goX > 0 ? 'left' : 'right'];
-
-    for (let at = 0; at < ways.length; at += 1) {
-        const col = ways[at] === 'right' ? by.col + mw : ways[at] === 'left' ? by.col - bw : blocker.col;
+    for (const col of goX > 0 ? [right, left] : [left, right]) {
         if (col < 0 || col + bw > BOARD_COLS) continue;
         blocker.col = col;
         blocker.row = 0;
         return;
     }
 
-    /* both walls are there. it takes the first place along the row that
-       is clear of what pushed it; if the row has no room at all it stays
-       where it is rather than being pushed out of the world. */
     for (let col = 0; col + bw <= BOARD_COLS; col += 1) {
         if (hits({ ...blocker, col, row: 0 }, by)) continue;
         blocker.col = col;
@@ -5974,8 +4992,6 @@ function shove(blocker, by, hint) {
     }
 }
 
-/* the one being carried keeps the slot it was given; everything it
-   lands on is shoved clear, and anything they land on in turn. */
 function makeRoom(list, mover, hint) {
     let queue = [mover];
     let guard = 0;
@@ -5991,11 +5007,6 @@ function makeRoom(list, mover, hint) {
     }
 }
 
-/* whatever the anchor has just been given, it keeps; anything left
-   lying under it moves down until it is clear. read top to bottom, so
-   the board settles the way it looks rather than the order things
-   happen to be listed in. nothing is pulled back up — a gap you left
-   is a gap you meant. */
 function untangle(anchor) {
     const order = [...homeWidgets].sort((one, two) => {
         if (one === anchor) return -1;
@@ -6007,8 +5018,6 @@ function untangle(anchor) {
         const [w] = spanOf(entry);
         entry.row = 0;
         let guard = 0;
-        // along the row rather than down the board, and wrapped back to
-        // the near end rather than pushed off the far one
         while (along.some((other) => hits(entry, other)) && guard < 40) {
             entry.col = entry.col + w > BOARD_COLS - 1 ? 0 : entry.col + 1;
             guard += 1;
@@ -6017,12 +5026,6 @@ function untangle(anchor) {
     });
 }
 
-// the first slot a shape of this size will sit in without disturbing
-// anything, reading left to right and down
-/* the first place along the row a shape of this size will sit without
-   disturbing anything — or nothing at all, when the row is full. it
-   used to answer with the near end regardless, and the tile went down
-   on top of whatever was already there. */
 function freeSlot(width, height) {
     for (let row = 0; row < BOARD_ROWS; row += 1) {
         for (let col = 0; col + width <= BOARD_COLS; col += 1) {
@@ -6040,10 +5043,6 @@ function sizeFor(width, height) {
     }) || 'wide';
 }
 
-function boardDepth() {
-    return homeWidgets.reduce((deep, entry) => Math.max(deep, entry.row + spanOf(entry)[1]), 0);
-}
-
 let homeWidgets = [];
 let editingHome = false;
 
@@ -6055,14 +5054,10 @@ function loadWidgets() {
         saved = null;
     }
     const taken = Array.isArray(saved)
-        // the first version of this kept a plain list of names, and the
-        // one after it a list of names and sizes with no places
         ? saved.map((entry) => (typeof entry === 'string' ? { id: entry, size: 'wide' } : entry))
             .filter((entry) => entry && widgetById(entry.id))
             .map((entry) => ({
                 id: entry.id,
-                // its own name on the board. a widget can be here twice,
-                // so the kind it is no longer says which one it is.
                 key: entry.key || nextWidgetKey(entry.id),
                 size: WIDGET_SIZES.includes(entry.size) ? entry.size : 'wide',
                 look: typeof entry.look === 'string' ? entry.look : null,
@@ -6072,10 +5067,6 @@ function loadWidgets() {
         : [{ id: 'clock', key: nextWidgetKey('clock'), size: 'small', col: null, row: null },
            { id: 'decks', key: nextWidgetKey('decks'), size: 'wide', col: null, row: null }];
 
-    /* anything that never had a place is given the first one that fits,
-       and anything that no longer fits — a board saved when it was
-       deeper, or wider tiles than the row can hold — is dropped rather
-       than stacked on top of what is already there. */
     homeWidgets = [];
     taken.forEach((entry) => {
         const [w, h] = spanOf(entry);
@@ -6108,25 +5099,10 @@ function placeCard(card, entry) {
     card.style.gridRow = `${entry.row + 1} / span ${h}`;
 }
 
-/* while you are arranging there is always one spare row under the
-   board, so a tile can be dropped below everything else */
 function paintBoardDepth() {
-    // one row, and no spare one under it: there is nowhere below to drop
     widgetList.style.setProperty('--board-rows', String(BOARD_ROWS));
 }
 
-/* nothing may sit on anything else. the row is one row and it does fill
-   up, so a tile dropped where there is no room can be left with nowhere
-   to go — and two tiles in one slot is not a board, it is a mistake you
-   can see. every tile is given a place of its own here: where it is if
-   that is clear, else the first clear place along the row, else the
-   small shape if only a single column is free. what cannot be placed at
-   all is taken off, because a board cannot hold it.
-
-   it runs on every render, so no path can get round it — added,
-   dropped, resized, or read back out of storage. never while a tile is
-   in the air, though: the carried one is allowed to be over another
-   until it is let go. */
 function settleBoard() {
     if (boardDrag) return false;
     const kept = [];
@@ -6165,9 +5141,7 @@ function settleBoard() {
 function renderWidgets() {
     settleBoard();
     widgetList.querySelectorAll('.widget-card').forEach((card) => card.remove());
-    // an empty board says nothing — it just stands the add circle out
-    // where the tiles would be, so there is something to press
-    homePanel2.classList.toggle('is-empty', homeWidgets.length === 0);
+    homePanel.classList.toggle('is-empty', homeWidgets.length === 0);
 
     homeWidgets.forEach((entry) => {
         const widget = widgetById(entry.id);
@@ -6179,10 +5153,6 @@ function renderWidgets() {
         card.dataset.size = entry.size;
         placeCard(card, entry);
 
-        /* the name sits in the middle of the top row with the × beside
-           it. the row is three columns — a slot for the ×, the name,
-           and a slot the same width on the other side — so the name is
-           centred whether or not the × is showing. */
         const head = document.createElement('div');
         head.className = 'widget-head';
 
@@ -6200,8 +5170,6 @@ function renderWidgets() {
 
         const name = document.createElement('h3');
         name.textContent = widget.name;
-        /* the third slot stays empty and keeps its width — it is what
-           holds the name in the middle against the × on the other side */
         const spare = document.createElement('span');
         spare.className = 'widget-face';
         head.append(drop, name, spare);
@@ -6223,10 +5191,6 @@ function renderWidgets() {
         card.append(head, body, grip);
         card.addEventListener('pointerdown', (event) => startWidgetDrag(card, entry, event));
 
-        /* a press that stays put is a press, not a carry: it asks the
-           tile how else it can be read. a few pixels of travel while
-           clicking is still a click, which is the same allowance the
-           clip bars make. */
         card.addEventListener('click', (event) => {
             if (editingHome || event.target.closest('.widget-off, .widget-grip')) return;
             event.stopPropagation();
@@ -6240,12 +5204,8 @@ function renderWidgets() {
     });
 
     paintBoardDepth();
-    // there is no limit: the plus is always there
 }
 
-/* only the bodies, for the things that change under you — the clock on
-   the minute, the tallies after anything is kept or binned. rebuilding
-   the cards instead would drop one mid-drag. */
 function paintWidgets() {
     if (!widgetList) return;
     widgetList.querySelectorAll('.widget-card').forEach((card) => {
@@ -6257,10 +5217,6 @@ function paintWidgets() {
 
 /* --- the other ways a widget can be read --- */
 
-/* pressing a tile — pressing, not carrying — asks it how else it can
-   be read. only a widget that says it has `looks` answers; the rest do
-   nothing, because a popup that opens on nothing is worse than a tile
-   that simply sits there. */
 const lookPicks = document.getElementById('lookPicks');
 const lookList = document.getElementById('lookList');
 
@@ -6307,12 +5263,7 @@ document.addEventListener('pointerdown', (event) => {
     closeLookPicks();
 });
 
-/* as many as you like, and as many of a kind as you like — two clocks
-   is a strange thing to want and none of our business. */
 function addWidget(id) {
-    /* the wide shape first, and the small one if the row hasn't the
-       room for it. with no room at all nothing is added — a tile put
-       down on a full row lands on top of what is already there. */
     let size = 'wide';
     let spot = freeSlot(...BOARD_SPAN.wide);
     if (!spot) {
@@ -6328,10 +5279,7 @@ function addWidget(id) {
     renderWidgets();
 }
 
-/* the row is one row, so it does fill up. it says so where the press
-   was rather than leaving nothing to have happened. */
 function sayBoardFull() {
-    if (typeof askConfirm !== 'function') return;
     confirmChipText.textContent = 'the row is full — take one off first';
     confirmChip.hidden = false;
     placeConfirm(widgetAdd);
@@ -6347,8 +5295,6 @@ function sayBoardFull() {
     window.setTimeout(away, 2600);
 }
 
-/* it shrinks into its slot and then goes, rather than blinking out.
-   nothing else moves — every other tile keeps the place it was put. */
 function removeWidget(key) {
     const card = widgetList.querySelector(`.widget-card[data-widget-id="${key}"]`);
     const done = () => {
@@ -6364,16 +5310,6 @@ function removeWidget(key) {
     window.setTimeout(done, 240);
 }
 
-/* a widget takes the shape it was given, and anything that shape lands
-   on moves down out of its way.
-
-   the tile itself grows into the new shape rather than appearing in
-   it: its own width and height are animated from the old to the new,
-   so what is inside reflows as it goes — a scale would have stretched
-   the words and the corners on the way. everything else on the board
-   slides at the same time, as it does for any other move. */
-/* the row read left to right, which is the order growing and pushing
-   both work in. */
 function rowOrder() {
     return [...homeWidgets].sort((one, two) => one.col - two.col);
 }
@@ -6383,11 +5319,6 @@ function rowFree() {
     return BOARD_COLS - homeWidgets.reduce((used, one) => used + spanOf(one)[0], 0);
 }
 
-/* room for a tile about to grow. the columns come from the neighbour it
-   is growing into — a wide one beside it becomes small, which is the
-   natural reading of pushing into it — then from the neighbour on the
-   other side. with four small ones there is nothing to shorten, so the
-   last tile along goes instead. */
 function roomToGrow(entry, want) {
     let need = BOARD_SPAN[want][0] - spanOf(entry)[0];
     if (need <= 0) return true;
@@ -6411,10 +5342,6 @@ function roomToGrow(entry, want) {
     return true;
 }
 
-/* the row packed left to right in the order it reads. growing is the
-   one move where a gap cannot be kept — the tile has to come from
-   somewhere — so the row closes up rather than leaving tiles to land on
-   each other. */
 function packRow(order) {
     let col = 0;
     order.forEach((one) => {
@@ -6442,14 +5369,6 @@ function setWidgetSize(key, size) {
     growInto(grown, was, 260);
 }
 
-/* a tile growing into its new shape: its own width and height are
-   animated from the old to the new, so what is inside reflows as it
-   goes. a scale would have stretched the words and the corners. */
-/* anything this card is already in the middle of, stopped first. two
-   growths running at once both write width and height, and the loser
-   snaps back — which is what pulling the corner about did, because
-   every shape it passed through started another one. css transitions
-   are left alone; they are not the ones fighting. */
 function stopGrowth(card) {
     if (!card || !card.getAnimations) return;
     card.getAnimations().forEach((one) => {
@@ -6473,12 +5392,6 @@ function growInto(card, was, ms) {
     ], { duration: ms, easing: 'cubic-bezier(0.33, 0, 0, 1)' });
 }
 
-/* the three shapes, offered rather than stepped through. pressing the
-   chip used to walk to the next one, which meant two presses to get
-   back to where you were and no way to see what the choices were. */
-
-/* a press anywhere that isn't the board or the buttons that work it puts
-   the arranging away, the same as pressing done. */
 document.addEventListener('pointerdown', (event) => {
     if (!editingHome) return;
     const inside = event.target.closest
@@ -6489,20 +5402,14 @@ document.addEventListener('pointerdown', (event) => {
 
 function setHomeEditing(on) {
     editingHome = on;
-    homePanel2.classList.toggle('is-editing', on);
-    // the spare row under the board is only there while you're arranging
+    homePanel.classList.toggle('is-editing', on);
     paintBoardDepth();
-    // the button holds two marks and the stylesheet shows one of them
     widgetEdit.setAttribute('aria-pressed', String(on));
     widgetEdit.title = on ? 'stop arranging' : 'arrange the board';
     widgetEdit.setAttribute('aria-label', widgetEdit.title);
     if (!on) closeWidgetPicks();
 }
 
-/* a move on the board: everything is measured, the tiles are placed
-   again, and whatever ended up somewhere else is slid from where it
-   was. the same idea as the lists, but the board moves things sideways
-   too. */
 function slideBoard(rearrange) {
     const cards = [...widgetList.querySelectorAll('.widget-card')];
     const before = new Map(cards.map((card) => [card.dataset.widgetId, card.getBoundingClientRect()]));
@@ -6521,18 +5428,7 @@ function slideBoard(rearrange) {
     });
 }
 
-/* --- carrying a tile about the board ---
-
-   the tile leaves the page and follows the cursor: it is taken out of
-   the board and pinned to the window, at the size it was, so nothing
-   can crop it and no reflow can move it while it is in the air. a
-   dashed outline stays behind in the slot it would land in, and only
-   on letting go is anything actually moved.
-
-   showing the move as it happens — the old way, reordering the list on
-   every pass — is what made this snap about: the board re-laid itself
-   under the cursor, which moved the thing the cursor was pointing at,
-   which changed the answer, over and over. */
+/* --- carrying a tile about the board --- */
 
 let boardDrag = null;
 let boardGhost = null;
@@ -6559,14 +5455,9 @@ function showGhost(entry, col, row) {
     placeCard(boardGhost, { col, row, size: entry.size });
 }
 
-/* what the board would look like if it were let go here: a copy of it
-   with the carried tile in the slot under the cursor and everything
-   else shoved clear. the real list is not touched until the drop. */
 function boardIfDropped(entry, col, row) {
     const shadow = homeWidgets.map((one) => ({ ...one }));
     const me = shadow.find((one) => one.key === entry.key);
-    // how far it has come from where it started, which is the way
-    // everything in its path gets pushed
     const hint = { x: Math.sign(col - entry.col), y: Math.sign(row - entry.row) };
     me.col = col;
     me.row = row;
@@ -6575,9 +5466,6 @@ function boardIfDropped(entry, col, row) {
     return shadow;
 }
 
-/* and it is shown while you carry, rather than after. a board that
-   only rearranges on the drop gives you nothing to aim at — you cannot
-   see whether there is room until it is too late to change your mind. */
 function showRoom(shadow) {
     const cards = [...widgetList.querySelectorAll('.widget-card')];
     const before = new Map(cards.map((card) => [card.dataset.widgetId, card.getBoundingClientRect()]));
@@ -6586,7 +5474,7 @@ function showRoom(shadow) {
         const card = widgetList.querySelector(`.widget-card[data-widget-id="${one.key}"]`);
         if (card) placeCard(card, one);
     });
-    widgetList.style.setProperty('--board-rows', String(BOARD_ROWS));
+    paintBoardDepth();
 
     cards.forEach((card) => {
         const was = before.get(card.dataset.widgetId);
@@ -6609,8 +5497,6 @@ function hideGhost() {
     boardGhost = null;
 }
 
-/* the shape nearest the one you have pulled out. only three exist, so
-   it is whichever is least far from the corner you are holding. */
 function shapeNearest(cols, rows) {
     let best = WIDGET_SIZES[0];
     let near = Infinity;
@@ -6653,11 +5539,6 @@ function trackWidgetSizing(event) {
     if (size === sizeDrag.size) return;
 
     sizeDrag.size = size;
-    /* only the tile in your hand changes while you pull. the board is
-       not shuffled to show what *might* happen, because on a single row
-       the answer can be that a neighbour is shortened or a tile goes —
-       and a preview that shows one thing and does another is worse than
-       no preview. the row settles on the drop. */
     const was = card.getBoundingClientRect();
     card.dataset.size = size;
     growInto(card, was, 170);
@@ -6703,11 +5584,6 @@ function startWidgetDrag(card, entry, event) {
         row: entry.row
     };
 
-    /* pinned to the window, which takes it out of the board's own
-       scrolling without taking it out of the page. moving it to the end
-       of the document did the same job, but a reparented element has no
-       previous style to move from — so its handles blinked out and its
-       shadow appeared whole, with nothing to animate. */
     card.style.width = `${spot.width}px`;
     card.style.height = `${spot.height}px`;
     card.style.left = `${spot.left}px`;
@@ -6733,11 +5609,6 @@ function trackWidgetDrag(event) {
     boardDrag.wantY = event.clientY - boardDrag.grabY;
 }
 
-/* the tile follows the cursor rather than being nailed to it, closing
-   most of the remaining distance each frame. a tile pinned exactly to
-   the pointer has no weight to it — this one lags by a few pixels and
-   catches up whenever you slow down, which is what makes it feel like
-   something being carried. */
 const DRAG_EASE = 0.28;
 
 function carryOn() {
@@ -6748,16 +5619,12 @@ function carryOn() {
     card.style.left = `${boardDrag.atX}px`;
     card.style.top = `${boardDrag.atY}px`;
 
-    // which slot the tile itself is nearest — what you see, not where
-    // the cursor has got to — held inside the board
     const cell = cellSize();
     const [w] = spanOf(entry);
     const col = Math.max(0, Math.min(BOARD_COLS - w,
         Math.round((boardDrag.atX - cell.box.left) / (cell.width + cell.gap))));
     const row = 0;      // one row: only which way along it is in question
 
-    /* held over the bin, nothing else moves: the board has no business
-       shuffling for a tile that is about to be gone */
     const bin = widgetBin.getBoundingClientRect();
     const overBin = boardDrag.wantY + boardDrag.grabY > bin.top
         && boardDrag.wantX + boardDrag.grabX > bin.left
@@ -6777,8 +5644,6 @@ function carryOn() {
         boardDrag.col = col;
         boardDrag.row = row;
         showGhost(entry, col, row);
-        // only when the slot changes, which is a few times a drag
-        // rather than a few times a frame
         boardDrag.shadow = boardIfDropped(entry, col, row);
         showRoom(boardDrag.shadow);
     }
@@ -6787,9 +5652,8 @@ function carryOn() {
 
 function endWidgetDrag() {
     if (!boardDrag) return;
-    const { card, entry, col, row } = boardDrag;
-    const boardDrag2 = boardDrag;
-    window.cancelAnimationFrame(boardDrag2.frame);
+    const { card, entry, col, row, frame, overBin, shadow } = boardDrag;
+    window.cancelAnimationFrame(frame);
     boardDrag = null;
 
     window.removeEventListener('pointermove', trackWidgetDrag);
@@ -6802,25 +5666,17 @@ function endWidgetDrag() {
     widgetBin.classList.remove('is-up', 'is-live');
     window.setTimeout(() => { widgetBin.hidden = true; }, 240);
     card.classList.remove('is-dragging', 'is-going-out');
-
-    if (boardDrag2.overBin) {
-        ['width', 'height', 'left', 'top'].forEach((name) => card.style.removeProperty(name));
+    ['width', 'height', 'left', 'top'].forEach((name) => card.style.removeProperty(name));
+    if (overBin) {
         removeWidget(entry.key);
         return;
     }
 
-    ['width', 'height', 'left', 'top'].forEach((name) => card.style.removeProperty(name));
-
-    /* the board has been showing what this drop would do the whole way
-       here, so the drop is just that made real — nothing rearranges a
-       second time under your hand. */
-    const settled = boardDrag2.shadow || boardIfDropped(entry, col, row);
+    const settled = shadow || boardIfDropped(entry, col, row);
     settled.forEach((one) => {
         const real = homeWidgets.find((item) => item.key === one.key);
-        if (real) {
-            real.col = one.col;
-            real.row = one.row;
-        }
+        if (real) Object.assign(real, { col: one.col, row: one.row });
+
     });
     saveWidgets();
     slideBoard(() => renderWidgets());
@@ -6837,9 +5693,6 @@ function endWidgetDrag() {
     }
 }
 
-/* a popup that is simply hidden blinks off, which reads as a mistake
-   next to one that eased in. it fades and settles back first, and is
-   only hidden once it has. */
 function shutPop(panel) {
     if (!panel || panel.hidden || panel.classList.contains('is-leaving')) return;
     panel.classList.add('is-leaving');
@@ -6869,25 +5722,10 @@ function renderWidgetPicks() {
         });
         widgetPickList.append(pick);
     });
-    // nothing to offer while the catalogue is empty — say so rather than
-    // opening a blank box
-    if (!widgetPickList.children.length) {
-        const none = document.createElement('p');
-        none.className = 'pop-say';
-        none.textContent = 'nothing to add yet.';
-        widgetPickList.append(none);
-    }
 }
 
-/* the function box keeps itself shut. it opens on the heading and
-   stays open until you shut it again — a page load starts it closed,
-   since by then you have usually read it once. */
 const helpToggle = document.getElementById('helpToggle');
 
-/* the state is a class on the box, not the attribute on the button. the
-   attribute is still set, for anything reading the page aloud, but the
-   drawer is opened by the class — a rule that hangs off an attribute on
-   a sibling is a lot of machinery for a box that opens. */
 function setHelpOpen(open) {
     helpBox.classList.toggle('is-open', open);
     helpToggle.setAttribute('aria-expanded', String(open));
@@ -6916,9 +5754,6 @@ widgetAdd.addEventListener('click', (event) => {
 });
 widgetPicks.addEventListener('click', (event) => event.stopPropagation());
 
-/* everything the page does on load, in one place at the very bottom —
-   the widgets read the decks and the clips, so nothing may run until
-   every section above has declared what it owns. */
 startClock();
 paintStorage();
 binnedEmpty.addEventListener('click', (event) => {
@@ -6934,19 +5769,7 @@ start();
 loadWidgets();
 renderWidgets();
 
-/* ---------- 16. notes → cards   (the left bar) ---------- */
-
-/* paste a page of notes — or a photo of one, or a pdf of the whole
-   study guide — and get a deck out of it.
-
-   two ways in, and the first asks nothing of anybody: reading is done
-   here, off the shapes notes are already written in. anything without a
-   shape, and anything that isn't text at all, is what claude is for,
-   which needs a key of the reader's own kept in this browser.
-
-   the panel lives in the left bar and moves into a window when the bar
-   is too narrow to type in. it moves — there is one of it, so there is
-   one of everything in it and nothing to keep in step. */
+/* ---------- 16. notes → cards ---------- */
 
 const notesPanel = document.getElementById('notesPanel');
 const notesSlot = document.getElementById('notesSlot');
@@ -6978,9 +5801,6 @@ let notesBusy = false;
 
 /* --- reading it here, with nobody's help --- */
 
-/* the shapes a line can be a card in. each is tried in turn and the
-   first that bites wins, so a line with both a dash and a colon is
-   split on the dash — the dash is the more deliberate mark. */
 const CARD_SPLITS = [
     /^\s*(?:[-*•]\s*|\d+[.)]\s*)?(.+?)\s+[—–]\s+(.+?)\s*$/,   // term — meaning
     /^\s*(?:[-*•]\s*|\d+[.)]\s*)?(.+?)\s+-\s+(.+?)\s*$/,      // term - meaning
@@ -6993,8 +5813,6 @@ function tidy(words) {
     return String(words).replace(/\s+/g, ' ').replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
 }
 
-/* q:/a: pairs first, since those lines also hold colons and would be
-   read as term: meaning otherwise */
 function readQAPairs(lines) {
     const cards = [];
     for (let index = 0; index < lines.length; index += 1) {
@@ -7011,22 +5829,14 @@ function readQAPairs(lines) {
     return cards;
 }
 
-/* notes written in paragraphs. a block with a heading and lines under
-   it is one card; where every block is a single line they pair off
-   instead, a term and then what it means. */
 function readBlocks(text) {
     const blocks = text
         .split(/\n\s*\n/)
         .map((block) => block.split('\n').map((line) => line.trim()).filter(Boolean))
         .filter((lines) => lines.length);
 
-    /* a heading has to look like one, or every paragraph of prose comes
-       out as a card whose question is its first line. short, and not
-       ending the way a sentence does. */
     const isHeading = (line) => line.length <= 60 && !/[.,;]$/.test(line);
     const deep = blocks.filter((lines) => lines.length > 1 && isHeading(lines[0]));
-    // one block on its own is a paragraph, whatever its first line looks
-    // like. notes laid out as heading-and-body come in more than one.
     if (deep.length && blocks.length > 1) {
         return deep.map((lines) => ({
             question: tidy(lines[0].replace(/[:：]\s*$/, '')),
@@ -7132,19 +5942,13 @@ notesKeep.addEventListener('click', () => {
 
 notesKeepNew.addEventListener('click', () => {
     if (!notesCards.length) return;
-    const deck = {
-        id: `deck-${Date.now()}`,
-        name: notesDeckName || 'from my notes',
-        cards: []
-    };
+    const deck = { id: `deck-${Date.now()}`, name: notesDeckName || 'from my notes', cards: [] };
     decks.push(deck);
+
     activeDeckId = deck.id;
     keepCards(deck);
 });
 
-/* the second, quieter button: read the text as a list here, without
-   asking anybody. it is for a glossary you pasted and want turned over
-   in one go — for anything else the first button is the one. */
 notesRead.addEventListener('click', () => {
     const text = notesInput.value.trim();
     if (!text) {
@@ -7207,8 +6011,6 @@ function renderBits() {
 function asBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        // the data url carries a header this doesn't want; the base64
-        // the api takes is whatever follows the comma
         reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
         reader.onerror = () => reject(new Error(`couldn't read ${file.name}`));
         reader.readAsDataURL(file);
@@ -7233,8 +6035,6 @@ async function holdFiles(files) {
         try {
             notesBitsHeld.push({
                 kind: file.type === 'application/pdf' ? 'pdf' : 'image',
-                // the api takes these four; anything else a browser calls
-                // an image is sent as png and read the same way
                 mediaType: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf'].includes(file.type)
                     ? file.type
                     : 'image/png',
@@ -7247,8 +6047,7 @@ async function holdFiles(files) {
     }
     renderBits();
     if (notesBitsHeld.length) {
-        const count = notesBitsHeld.length;
-        notesNote.textContent = `${count} attached — press make flashcards`;
+        notesNote.textContent = `${notesBitsHeld.length} attached — press make flashcards`;
         warmLocal();
     }
 }
@@ -7272,34 +6071,26 @@ notesInput.addEventListener('paste', (event) => {
     holdFiles(files);
 });
 
+function catchDrops(panel) {
+    ['dragenter', 'dragover'].forEach((name) => panel.addEventListener(name, (event) => {
+        event.preventDefault();
+        panel.classList.add('is-catching');
+    }));
+    ['dragleave', 'drop'].forEach((name) => panel.addEventListener(name, (event) => {
+        event.preventDefault();
+        if (name === 'dragleave' && panel.contains(event.relatedTarget)) return;
+        panel.classList.remove('is-catching');
+    }));
+}
+
 // or dropped anywhere on the panel
-['dragenter', 'dragover'].forEach((name) => {
-    notesPanel.addEventListener(name, (event) => {
-        event.preventDefault();
-        notesPanel.classList.add('is-catching');
-    });
-});
-['dragleave', 'drop'].forEach((name) => {
-    notesPanel.addEventListener(name, (event) => {
-        event.preventDefault();
-        if (name === 'dragleave' && notesPanel.contains(event.relatedTarget)) return;
-        notesPanel.classList.remove('is-catching');
-    });
-});
+catchDrops(notesPanel);
 notesPanel.addEventListener('drop', (event) => {
     if (event.dataTransfer && event.dataTransfer.files.length) holdFiles(event.dataTransfer.files);
 });
 
 /* --- reading the words out of a picture, here --- */
 
-/* a photo of a page can be read without anyone's help: tesseract is an
-   ocr engine that runs in the browser, vendored beside the page the
-   same way the mp3 encoder is. it is loaded the first time a picture
-   needs reading and not before — it is several megabytes, and most
-   visits never touch it.
-
-   what it gives back is the words, not cards. those go into the box,
-   where they are the same as anything else you could have typed. */
 let ocrLoading = null;
 
 function loadOcr() {
@@ -7318,9 +6109,6 @@ function loadOcr() {
 async function readPicture(bit, say) {
     await loadOcr();
     const worker = await window.Tesseract.createWorker('eng', 1, {
-        /* spelled out in full: tesseract reads a short path against the
-           address bar, not the page's <base>, and on /cards that is the
-           wrong folder */
         workerPath: new URL('ocr/worker.min.js', document.baseURI).href,
         corePath: new URL('ocr/', document.baseURI).href,
         langPath: new URL('ocr/', document.baseURI).href,
@@ -7341,16 +6129,6 @@ async function readPicture(bit, say) {
 
 /* --- the model that runs here, with no account and no bill --- */
 
-/* the reader of last resort is not a service: it is a model that comes
-   down once and then lives in this browser. no key, no sign-up, and
-   nothing you paste ever leaves the machine.
-
-   it is smaller than what a company would run for you, so the cards
-   are plainer — but its answer is forced through the same schema the
-   api uses, so it can only fill in questions and answers, never
-   wander off into prose. it runs in a worker: the arithmetic is heavy
-   enough to stiffen the page if it ran on it. */
-
 const LOCAL_MODEL = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
 const LOCAL_SIZE = 'about 1.1gb';
 let localEngine = null;
@@ -7365,9 +6143,6 @@ async function gpuThere() {
     }
 }
 
-/* one engine, made once and kept. the download is the browser's to
-   remember — it caches the weights itself, so the second time this
-   runs there is nothing to fetch and it is ready in a moment. */
 let localSay = null;      // whoever is waiting on it, if anyone
 let localTold = '';       // the last thing the download said
 
@@ -7385,8 +6160,6 @@ async function readyLocal(say) {
         const worker = new Worker('llm-worker.js', { type: 'module' });
         const engine = await webllm.CreateWebWorkerMLCEngine(worker, LOCAL_MODEL, {
             initProgressCallback: (report) => {
-                // the first run is a download; after that it is just the
-                // weights being put on the gpu, which is quick
                 const percent = Math.round((report.progress || 0) * 100);
                 const fetched = /(\d+)MB fetched/.exec(report.text || '');
                 localTold = percent >= 100 || !fetched
@@ -7407,26 +6180,15 @@ async function readyLocal(say) {
     }
 }
 
-/* the download is the slow part and it has nothing to do with what you
-   are about to paste, so it starts the moment it is clear you mean to
-   use it: a photo dropped in, the panel opened wide, or enough typed
-   that this isn't a stray keystroke. by the time the button is pressed
-   it is usually already here. nothing is fetched on a plain visit, and
-   never when a key is saved — that path needs no model at all. */
 let warmed = false;
 
 async function warmLocal() {
     if (warmed || localEngine || localLoading || savedKey()) return;
     if (!(await gpuThere())) return;
     warmed = true;
-    // quietly: whoever presses the button will hear about it, and if
-    // nobody does it simply finishes and waits
     readyLocal(null).catch(() => { warmed = false; });
 }
 
-/* the brief the small model gets. it is shorter and firmer than the
-   one the api gets — a model this size follows a short list of rules
-   further than a long argument. */
 const LOCAL_BRIEF = [
     'you make flashcards out of study material.',
     'read the text and write a card for every fact, term, date, name or step worth remembering.',
@@ -7485,47 +6247,38 @@ function savedKey() {
 function paintKeyState() {
     const key = savedKey();
     notesKeyToggle.textContent = key ? 'sharper reading ✓' : 'sharper reading';
-    // without a key the only reading that can happen is the reading
-    // done here, so the button says what it will actually do
     notesRead.hidden = !key;
 }
 
 notesKeyToggle.addEventListener('click', () => {
     showScreen(keyScreen);
-    if (open) notesKey.focus();
+    notesKey.focus();
 });
 
-/* what a key looks like after a copy has been at it: quotes picked up
-   from a blog post, a "Bearer" someone pasted with it, a line break
-   from a terminal, the non-breaking spaces a pdf leaves behind. */
 function tidyKey(typed) {
     return typed
         .replace(/[\u00a0\u2000-\u200b]/g, ' ')
         .replace(/^\s*(?:bearer|x-api-key|authorization)\s*[:=]?\s*/i, '')
-        // the spaces go before the quotes are looked for, or a quote
-        // with a stray newline behind it is never at the end
         .replace(/\s+/g, '')
         .replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, '')
-        /* and then anything a header cannot carry. a curly quote left
-           in here doesn't make the api say no — it makes fetch itself
-           throw, which came out as "could not reach the api" and sent
-           anyone reading it off to check their wifi. */
         .replace(/[^\x21-\x7e]/g, '')
         .trim();
 }
 
-/* the key is tried before it is kept. the alternative is what happened
-   before: it saved whatever was pasted, and the first anyone heard of a
-   bad one was a refusal in the middle of reading a page of notes. */
+function apiHeaders(key) {
+    return {
+        'content-type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        // the api refuses a call straight from a page without this
+        'anthropic-dangerous-direct-browser-access': 'true'
+    };
+}
+
 async function keyWorks(key) {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: {
-            'content-type': 'application/json',
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true'
-        },
+        headers: apiHeaders(key),
         // the smallest question there is, so this costs a rounding error
         body: JSON.stringify({
             model: 'claude-opus-5',
@@ -7593,9 +6346,6 @@ notesKeyForget.addEventListener('click', () => {
 
 /* --- asking claude --- */
 
-/* the shape the answer has to come back in. asking for json by saying
-   "give me json" is a request; this is the api being told the schema,
-   so what comes back parses or the call fails. */
 const NOTES_SCHEMA = {
     type: 'object',
     properties: {
@@ -7617,10 +6367,6 @@ const NOTES_SCHEMA = {
     additionalProperties: false
 };
 
-/* the brief. the first version of this asked for "one card per idea"
-   and got back a card — a whole page summarised into one. it says now,
-   at length, that the work is to cover the material rather than to sum
-   it up, because that is the thing a model will otherwise do. */
 const NOTES_BRIEF = [
     'you turn study material into flashcards. you are thorough: your job is to cover the material, not to summarise it.',
     '',
@@ -7648,10 +6394,6 @@ const NOTES_BRIEF = [
     'deck_name is two or three lowercase words naming the subject of the material.'
 ].join('\n');
 
-/* long notes go up in pieces. a model asked for forty cards in one
-   breath starts to hurry towards the end of them; a piece at a time
-   keeps the whole of it read at the same care, and the pieces are cut
-   at blank lines so nothing is split mid-thought. */
 const NOTES_PIECE = 6000;
 
 function cutIntoPieces(text, size) {
@@ -7670,44 +6412,18 @@ function cutIntoPieces(text, size) {
     return pieces;
 }
 
-/* the answer is streamed. a long deck takes a while to write and a
-   plain request would be sat on until the last card was done — this
-   way the count climbs while it works, and a slow answer can't run
-   into a timeout on the way. */
 async function askClaude(text, bits, onProgress) {
     const key = savedKey();
     if (!key) throw new Error('no key saved');
 
-    const content = [];
-    // documents and pictures before the words, which is the order the
-    // api reads them best in
-    bits.forEach((bit) => {
-        if (bit.kind === 'pdf') {
-            content.push({
-                type: 'document',
-                source: { type: 'base64', media_type: 'application/pdf', data: bit.data }
-            });
-        } else {
-            content.push({
-                type: 'image',
-                source: { type: 'base64', media_type: bit.mediaType, data: bit.data }
-            });
-        }
-    });
-    content.push({
-        type: 'text',
-        text: text || 'make cards from everything attached.'
-    });
+    const content = bits.map((bit) => (bit.kind === 'pdf'
+        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: bit.data } }
+        : { type: 'image', source: { type: 'base64', media_type: bit.mediaType, data: bit.data } }));
+    content.push({ type: 'text', text: text || 'make cards from everything attached.' });
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: {
-            'content-type': 'application/json',
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01',
-            // the api refuses a call straight from a page without this
-            'anthropic-dangerous-direct-browser-access': 'true'
-        },
+        headers: apiHeaders(key),
         body: JSON.stringify({
             model: 'claude-opus-5',
             max_tokens: 32000,
@@ -7737,8 +6453,6 @@ async function askClaude(text, bits, onProgress) {
     let said = '';
     let stopped = '';
 
-    // server-sent events: blocks separated by a blank line, each a few
-    // lines of which only the data one matters here
     for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -7757,8 +6471,6 @@ async function askClaude(text, bits, onProgress) {
                 }
                 if (event.type === 'content_block_delta' && event.delta && event.delta.type === 'text_delta') {
                     said += event.delta.text;
-                    // the cards are counted as they arrive, off the one
-                    // word that starts each of them
                     if (onProgress) onProgress((said.match(/"question"/g) || []).length);
                 } else if (event.type === 'message_delta' && event.delta && event.delta.stop_reason) {
                     stopped = event.delta.stop_reason;
@@ -7799,14 +6511,6 @@ function setNotesBusy(busy) {
     notesGo.textContent = busy ? 'reading...' : 'make flashcards';
 }
 
-/* the one button. it takes whatever is in the panel — words, photos, a
-   pdf, any mix of them — and comes back with cards.
-
-   every photo and every pdf is read on its own rather than all of them
-   in one go: a page of notes deserves the whole of the model's
-   attention, and one call holding six photos gives each a sixth of it.
-   long text is cut into pieces for the same reason. what comes back is
-   merged and deduped by question. */
 async function makeCards() {
     if (notesBusy) return;
     const text = notesInput.value.trim();
@@ -7815,12 +6519,6 @@ async function makeCards() {
         return;
     }
 
-    /* with nobody's help. the pictures are read here first — the words
-       out of them go in the box beside whatever was typed, where they
-       can be corrected — and then the model that lives in this browser
-       makes the cards. no key, no account, nothing leaves the machine.
-       where there is no gpu to run it on, the list reader is what is
-       left, and it says so. */
     if (!savedKey()) {
         setNotesBusy(true);
         notesDeckName = '';
@@ -7847,11 +6545,6 @@ async function makeCards() {
             if (!gathered.trim()) {
                 renderFound([], 'nothing readable in there');
             } else if (await gpuThere()) {
-                /* anything already written as a pair is a card without
-                   anyone's help, so those go up straight away rather
-                   than the panel sitting empty while the reader comes.
-                   what the model makes of the whole thing replaces
-                   them when it is done. */
                 if (!localEngine) {
                     const quick = readNotes(gathered);
                     if (quick.length) renderFound(quick, `${quick.length} obvious ones — reading the rest...`);
@@ -7871,9 +6564,6 @@ async function makeCards() {
                     : "this browser can't run the reader — notes already in pairs are all it can do here");
             }
         } catch (error) {
-            // the weights want about a gigabyte of the browser's own
-            // room; when there is none, say that rather than the raw
-            // word the browser throws
             notesNote.textContent = /quota/i.test(error.name + error.message)
                 ? 'no room in this browser for the reader — clear some space and try again'
                 : `couldn't read it — ${error.message}`;
@@ -7886,17 +6576,11 @@ async function makeCards() {
     const gathered = [];
     notesDeckName = '';
 
-    /* one run per thing to look at: each picture, each pdf, then the
-       words in pieces. the words ride along with the first picture when
-       there is one, since they are usually about it. */
-    const runs = [];
-    notesBitsHeld.forEach((bit, index) => {
-        runs.push({
-            bits: [bit],
-            text: index === 0 ? text : '',
-            said: bit.kind === 'pdf' ? 'the pdf' : `photo ${index + 1}`
-        });
-    });
+    const runs = notesBitsHeld.map((bit, index) => ({
+        bits: [bit],
+        text: index === 0 ? text : '',
+        said: bit.kind === 'pdf' ? 'the pdf' : `photo ${index + 1}`
+    }));
     if (!notesBitsHeld.length && text) {
         const pieces = cutIntoPieces(text);
         pieces.forEach((piece, index) => {
@@ -7932,27 +6616,17 @@ notesGo.addEventListener('click', makeCards);
 
 /* --- the panel, opened wide --- */
 
-/* it moves rather than being copied: the window holds an empty slot,
-   and the panel goes in and comes back out. */
 function openNotesWide() {
     if (notesScreen.contains(notesPanel)) {
         showScreen(homeScreen);
         return;
     }
-    /* the window has to be on screen before the panel can fly into it —
-       measured while it is still hidden, the far end of the flight is
-       nothing at all and there is no flight. */
     showScreen(notesScreen);
     flyPanel(notesSlot);
     notesInput.focus();
     warmLocal();
 }
 
-/* the panel travels between the page and the window rather than being
-   in one place and then the other. there is still only one of it —
-   moving it is what keeps a single set of state — but it flies, so
-   nothing blinks out of the page. its own width and height are
-   animated, never a scale, which would smear the words. */
 function flyPanel(into) {
     if (!into || into.contains(notesPanel)) return;
     const was = notesPanel.getBoundingClientRect();
@@ -7983,15 +6657,6 @@ paintKeyState();
 
 /* ---------- 17. scratch   (a spotify playlist, spelled out) ---------- */
 
-/* the songs listed out beside the clips, in the playlist's own order,
-   each one a button that copies itself.
-
-   they are carried in rather than fetched — a list dropped on the box
-   or picked through the window. reading a playlist from its own site
-   needed a key that is only handed to apps whose owner pays, so all of
-   that went, along with the relays it leaned on. nothing here reaches
-   the network at all now. */
-
 const scratchNote = document.getElementById('scratchNote');
 const scratchList = document.getElementById('scratchList');
 const scratchCopyAll = document.getElementById('scratchCopyAll');
@@ -7999,33 +6664,21 @@ const scratchMatch = document.getElementById('scratchMatch');
 const clipSide = document.getElementById('clipSide');
 
 const SCRATCH_KEY = 'scratch-playlist';
+let scratchSongs = [];
 
-
-/* the mark between a song and whoever made it. it is ؁ — an arabic
-   sign nobody types and no song title has ever contained — set tight
-   against both, so the two halves can be told apart later without any
-   guessing about which dash was part of a name. a clip named this way
-   downloads with its artist already in the file. */
 const BY_MARK = '\u0601';
 
 function songLine(song) {
     return song.by ? `${song.title}${BY_MARK}${song.by}` : song.title;
 }
 
-/* a clip's name, split on that mark. anything without one is all
-   title, which is what a clip you named yourself will be. */
 function splitName(name) {
     const at = String(name || '').indexOf(BY_MARK);
     if (at === -1) return { title: tidy(name || ''), artist: '' };
-    return {
-        title: tidy(String(name).slice(0, at)),
-        artist: tidy(String(name).slice(at + 1))
-    };
+    return { title: tidy(String(name).slice(0, at)), artist: tidy(String(name).slice(at + 1)) };
+
 }
 
-/* the copy, and the row saying so for a moment. the clipboard is
-   refused on file:// and without focus, so there is a plain fallback
-   that selects the text instead. */
 async function copyWords(words, row) {
     let went = true;
     try {
@@ -8051,26 +6704,16 @@ async function copyWords(words, row) {
     return went;
 }
 
-/* everything the box has to say goes in one chip down in its corner,
-   just over the copy button — rather than a line of text wedged under
-   the field, which pushed the list about every time it changed. */
 let scratchSayTimer = 0;
 let scratchSayHold = 0;      // how long these words asked to stay
 let scratchSayUnder = false; // the pointer is resting on them
 
-/* the clock only runs while nobody is reading. a chip counting off
-   what lined up and what did not is a thing you stop to read, and
-   having it go while you are halfway down it is the one thing it must
-   not do. */
 function scratchSayClock() {
     window.clearTimeout(scratchSayTimer);
     if (!scratchSayHold || scratchSayUnder) return;
     scratchSayTimer = window.setTimeout(() => scratchNote.classList.remove('is-up'), scratchSayHold);
 }
 
-/* it takes itself away after a few seconds. only something still
-   happening stays up — pass 0 for that, and whatever comes next will
-   replace it. */
 function saySc(words, hold = 3600) {
     window.clearTimeout(scratchSayTimer);
     if (!words) {
@@ -8094,20 +6737,10 @@ scratchNote.addEventListener('pointerleave', () => {
     scratchSayClock();
 });
 
-/* one song, as a key — the same song in a playlist twice is the same
-   two words whatever the case of them. How long it runs counts too:
-   the same title by the same name on a single and again on the album
-   is two recordings, not one song twice, and treating them as copies
-   of each other is what put a ×2 against songs that were only ever in
-   the playlist once. */
 function songKey(song) {
     return `${tidy(song.title)}\u0000${tidy(song.by || '')}\u0000${song.ms || 0}`.toLowerCase();
 }
 
-// where each one sits in there. a playlist with a song on it
-// twice is a playlist with a song on it twice, not a mistake — but it
-// is worth being told, since two clips will answer to the one name.
-// Only worth being told when the copies are apart, though: see below.
 function countSongs(songs) {
     const seen = new Map();
     songs.forEach((song, index) => {
@@ -8118,23 +6751,12 @@ function countSongs(songs) {
     return seen;
 }
 
-/* Copies sitting next to each other are nothing to warn about: they
-   take two clips next to each other and the order settles which is
-   which. It is the scattered ones that are worth a mark, because a
-   clip can answer to the wrong one of those and nothing in the order
-   says otherwise. */
 function copiesAdrift(at) {
     return Boolean(at) && at.length > 1
         && at.some((index, n) => n > 0 && index !== at[n - 1] + 1);
 }
 
-/* ---- a list pasted in, instead of a link ----
-
-   The words can come from anywhere you already have them. A csv
-   exported from somewhere else is the usual way, and a plain list of
-   lines works too, so a playlist this page cannot read for itself is
-   still a playlist you can lay against the clips. Nothing is fetched
-   and nothing is signed into. */
+/* ---- a list pasted in, instead of a link ---- */
 
 // one csv line, split on its commas but not the ones inside quotes
 function csvCells(line) {
@@ -8155,28 +6777,15 @@ function csvCells(line) {
     return cells.map((one) => one.trim());
 }
 
-/* "3:22", or a bare number of milliseconds, or of seconds. Which of
-   the two a bare number is cannot be told from the number alone, so
-   the column's own name is asked first and a guess is only made when
-   it does not say. */
 function msOf(text, saysMs) {
     const clock = String(text).match(/^(?:(\d+):)?(\d{1,2}):(\d{2})(?:[.,]\d+)?$/);
-    if (clock) {
-        return ((Number(clock[1] || 0) * 3600) + (Number(clock[2]) * 60)
-            + Number(clock[3])) * 1000;
-    }
+    if (clock) return ((Number(clock[1] || 0) * 3600) + (Number(clock[2]) * 60) + Number(clock[3])) * 1000;
     const plain = Number(String(text).replace(/[^\d.]/g, ''));
     if (!isFinite(plain) || !plain) return 0;
     if (saysMs) return Math.round(plain);
-    // no song runs for three thousand of anything, so a figure that
-    // large is milliseconds whatever the column is called
     return plain > 3600 ? Math.round(plain) : Math.round(plain * 1000);
 }
 
-/* which column holds what. the names differ between one exporter and
-   the next, and are translated in some of them, so they are matched on
-   a word rather than in full. "track name" is looked for before plain
-   "name", since an album and an artist have names too. */
 function columnsOf(head) {
     const has = (...wants) => head.findIndex((one) => {
         const low = one.toLowerCase();
@@ -8213,9 +6822,6 @@ function songsFromList(text) {
         }).filter(Boolean);
     }
 
-    /* plain lines. a number in front is a position in the list, not
-       part of the name, and the dash between a song and whoever made
-       it comes in several widths. */
     return lines.map((line) => {
         const bare = line.replace(/^\d+\s*[.)\]]\s*/, '');
         const parts = bare.split(/\s+[-\u2013\u2014\u00b7|]\s+/);
@@ -8240,7 +6846,8 @@ function renderScratch(songs, said) {
         at.className = 'scratch-at';
         at.textContent = String(index + 1);
         const sameAs = twiceOver.get(songKey(song)) || [];
-        if (copiesAdrift(sameAs)) row.classList.add('is-twice');
+        const adrift = copiesAdrift(sameAs);
+        if (adrift) row.classList.add('is-twice');
 
         const words = document.createElement('span');
         words.className = 'scratch-words';
@@ -8251,7 +6858,7 @@ function renderScratch(songs, said) {
         words.append(name, by);
 
         row.append(at, words);
-        if (row.classList.contains('is-twice')) {
+        if (adrift) {
             const twice = document.createElement('span');
             twice.className = 'scratch-twice';
             twice.textContent = `\u00d7${sameAs.length}`;
@@ -8295,11 +6902,6 @@ function loadScratch() {
 
 /* --- every list you have brought in, kept --- */
 
-/* one import per playlist, and then never again. each one is kept under
-   its own name and the window lists them all; pressing one swaps the
-   songs on the spot, with nothing fetched and nothing to sign into.
-   the only time the exporter is wanted is the first time a playlist is
-   brought in. */
 const LISTS_KEY = 'scratch-lists';
 
 function savedLists() {
@@ -8316,8 +6918,6 @@ function keepLists(lists) {
         window.localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
         return true;
     } catch (error) {
-        // the browser's store is full. the list on screen is still fine;
-        // it just won't be there to pick next time.
         saySc('no room to keep that one');
         return false;
     }
@@ -8330,8 +6930,6 @@ function listName(from) {
         .replace(/[_]+/g, ' ')) || 'playlist';
 }
 
-/* newest first, one entry per name — bringing the same playlist in
-   again is a longer version of it, not a second copy. */
 function rememberList(name, songs) {
     const called = listName(name);
     const lists = savedLists().filter((one) => one.name !== called);
@@ -8348,8 +6946,6 @@ function forgetList(name) {
 
 let currentList = '';
 
-/* the list of lists, inside the window. it is drawn from what is kept
-   rather than held anywhere, so removing one needs no bookkeeping. */
 function paintLists() {
     const lists = savedLists();
     listKept.innerHTML = '';
@@ -8393,8 +6989,6 @@ function paintLists() {
     });
 }
 
-/* A list carried in: dropped on the box, or picked through the window.
-   Nothing is looked up, so nothing can be refused. */
 function takeList(text, how, called) {
     const songs = songsFromList(text);
     if (!songs.length) {
@@ -8412,6 +7006,7 @@ function takeList(text, how, called) {
 // a file of them, opened or dropped
 const scratchFile = document.getElementById('scratchFile');
 const scratchOpen = document.getElementById('scratchOpen');
+const listKept = document.getElementById('listKept');
 
 async function takeListFile(file) {
     if (!file) return false;
@@ -8424,13 +7019,9 @@ async function takeListFile(file) {
     }
 }
 
-const listKept = document.getElementById('listKept');
-
-const listFrame = document.getElementById('listFrame');
+const listFrame
+ = document.getElementById('listFrame');
 const siteBlocked = document.getElementById('siteBlocked');
-/* it lies over the top of their page, so it has to be possible to put
-   it away — pressing the line itself does it, and the link inside is
-   left to do its own job. */
 if (siteBlocked) {
     siteBlocked.addEventListener('click', (event) => {
         if (event.target.closest('a')) return;
@@ -8438,18 +7029,6 @@ if (siteBlocked) {
     });
 }
 
-/* exportify is loaded when the window is first opened and never again —
-   a plain visit to this site fetches nothing of theirs.
-
-   somebody else's whole site is a lot to start, and starting it in the
-   same breath as the window's own arrival made that arrival stutter. it
-   waits for the animation to finish, so the window opens at full speed
-   and the site fills in behind it. */
-/* their page is always given the same width; what changes with this
-   window is how far down it is drawn to fit. worked out here rather
-   than in a percentage, because a percentage would hand them a
-   different viewport at every window size and a responsive layout
-   answers a narrow viewport by drawing everything bigger. */
 function fitSite() {
     const site = document.getElementById('listSite');
     if (!site) return;
@@ -8465,45 +7044,17 @@ window.addEventListener('resize', fitSite);
 function wakeListSite() {
     if (listFrame.dataset.woke) return;
     listFrame.dataset.woke = 'yes';
-    /* the dots wait until it is actually there, then it fades in over
-       them — and after eight seconds it is shown either way, since dots
-       spinning forever say less than an empty page does. */
     const here = () => document.getElementById('listSite').classList.add('is-here');
-    // every load, not just the first: pressing start over shows the dots
-    // again until whatever comes back has come back
     listFrame.addEventListener('load', here);
     window.setTimeout(here, 8000);
     window.setTimeout(() => { listFrame.src = 'https://exportify.net/'; }, 380);
 }
 
-/* **A refused navigation leaves a dead frame, so it is put back.**
-
-   The `<meta>` policy stops the frame wandering off to spotify or to
-   a dead link, which is what it is for — but a refusal is not a
-   no-op: chrome abandons the page that was there and draws its own
-   blocked-content square, and a page cannot reach into a frame it
-   does not own to undo that. So the refusal is listened for instead.
-   The browser reports it to whichever document set the policy, which
-   is this one, and the frame is sent back where it came from.
-
-   **Put back once, and then said out loud.** Reloading on every
-   refusal looked like a fix and was a loop: what the frame is usually
-   trying to reach is spotify's sign-in, and that page is mid-login, so
-   it bounces straight back out again. Three goes later the frame was
-   dead anyway and nothing on screen said why — which is the grey
-   square with a torn-page icon in it.
-
-   Spotify's sign-in **refuses to be framed at all** (`x-frame-options:
-   deny`), so there is nothing to fix in here. It has to happen in a
-   tab, and the line that appears says so and offers one. Sign in
-   there and come back; the frame shares the cookies and knows you. */
 const SITE_RETURNS = 3;
 let sentBack = 0;
 window.addEventListener('securitypolicyviolation', (event) => {
     if (event.violatedDirective !== 'frame-src') return;
     if (!listFrame.dataset.woke) return;
-    // the line goes up on the very first refusal, whether or not there
-    // is a go left: it is the part that actually helps
     siteBlocked.hidden = false;
     if (sentBack >= SITE_RETURNS) return;
     sentBack += 1;
@@ -8520,26 +7071,12 @@ scratchOpen.addEventListener('click', () => {
     siteBlocked.hidden = true;
 });
 
-/* the window holds exportify and nothing of ours to drop on: a list
-   comes in by being dropped on the playlist box itself. */
 scratchFile.addEventListener('change', () => {
     takeListFile(scratchFile.files[0]);
     scratchFile.value = '';        // the same file again should still count
 });
 
-['dragenter', 'dragover'].forEach((name) => {
-    clipSide.addEventListener(name, (event) => {
-        event.preventDefault();
-        clipSide.classList.add('is-catching');
-    });
-});
-['dragleave', 'drop'].forEach((name) => {
-    clipSide.addEventListener(name, (event) => {
-        event.preventDefault();
-        if (name === 'dragleave' && clipSide.contains(event.relatedTarget)) return;
-        clipSide.classList.remove('is-catching');
-    });
-});
+catchDrops(clipSide);
 clipSide.addEventListener('drop', (event) => {
     const moved = event.dataTransfer;
     if (!moved) return;
@@ -8551,25 +7088,11 @@ clipSide.addEventListener('drop', (event) => {
 
 /* --- the playlist, laid against the clips --- */
 
-/* the clips are recorded while the playlist plays, so the two lists are
-   the same list twice: the bottom clip is the first song, and each one
-   above it is the next. what tells them apart is length — a clip is the
-   song it is as long as, to within a second.
-
-   the walk goes up the clips and along the songs together, and only
-   ever forwards. a clip that answers no song left in the playlist is
-   marked and the songs stay where they are, so one stray recording
-   doesn't throw everything above it out of step; a song nobody recorded
-   is simply stepped over on the way to the next one that fits. */
 const MATCH_SLACK = 1;      // seconds either way, and no more
 const MATCH_NAMED = 2;     // and a little more when the name agrees too
 const MATCH_REACH = 12;    // how many songs it will step over to find one
 const MATCH_STEP = 0.6;    // what skipping one of them costs, in seconds of fit
 
-/* the words of a title, worth comparing. what a playlist calls a song
-   and what you called the clip are the same name with different things
-   hung off it — (feat. someone), - remastered 2011, a stray dash — so
-   those come off and what is left is compared as a bag of words. */
 function titleWords(words) {
     return String(words || '')
         .toLowerCase()
@@ -8580,9 +7103,6 @@ function titleWords(words) {
         .filter((word) => word.length > 1);
 }
 
-/* near enough the same name. it is deliberately loose — it is there to
-   tell one song from the others within a dozen of it, not to prove
-   anything. */
 function titleAgrees(name, song) {
     const mine = titleWords(splitName(name).title);
     const theirs = titleWords(song.title);
@@ -8591,30 +7111,13 @@ function titleAgrees(name, song) {
     return shared / Math.min(mine.length, theirs.length) >= 0.6;
 }
 
-// a clip you named yourself is yours. only the ones still going by the
-// number they were given are written over.
 function clipUnnamed(record) {
     return !record.name || /^clip \d+$/.test(record.name.trim());
 }
 
-/* the best song for one clip, somewhere between two points in the
-   playlist. it answers with the one it picked and with the nearest it
-   saw either way, which is what the clip is told when nothing fit.
-
-   `anchor` is where the walk had got to. a song further along than that
-   is a song skipped, and a skip is paid for — a tenth of a second on
-   the score for each one. without that, a clip half a second better
-   answered four songs ahead pulled the whole walk along with it, and
-   every clip above it then looked for its song behind where the walk
-   had already got to and found nothing. that is what "the ones with the
-   right timing are marked too" was. */
 function songFor(row, from, to, anchor, claimed) {
     const seconds = row.seconds();
 
-    /* a clip that already has a name is worth asking. the name is only
-       listened to where it answers something in the stretch being
-       looked at — one you typed yourself agrees with nothing, and a
-       name that agrees with nothing must not veto everything. */
     const own = clipUnnamed(row.record) ? '' : row.record.name;
     const agrees = [];
     if (own) {
@@ -8632,7 +7135,7 @@ function songFor(row, from, to, anchor, claimed) {
         if (claimed && claimed.has(look)) continue;
         const apart = Math.abs((song.ms / 1000) - seconds);
         near = Math.min(near, apart);
-        if (agrees.length && agrees.indexOf(look) === -1) continue;
+        if (agrees.length && !agrees.includes(look)) continue;
         const allowed = agrees.length ? MATCH_NAMED : MATCH_SLACK;
         if (apart > allowed) continue;
         const score = apart + (anchor === null ? 0 : Math.max(0, look - anchor) * MATCH_STEP);
@@ -8651,9 +7154,7 @@ function matchClipsToSongs() {
         .filter(Boolean);
 
     if (!rows.length) return saySc('no clips to match');
-    if (!scratchSongs.some((song) => song.ms)) {
-        return saySc('these songs came without their lengths — read the link again');
-    }
+    if (!scratchSongs.some((song) => song.ms)) return saySc('these songs came without their lengths — read the link again');
 
     const picks = rows.map(() => -1);
     const claimed = new Set();
@@ -8661,16 +7162,6 @@ function matchClipsToSongs() {
     let byName = 0;
     let at = 0;             // how far along the playlist the walk has got
 
-    /* the walk itself, up the clips and along the songs together.
-
-       a match that steps over songs is looked at twice before it is
-       taken: if the clip above it would then find nothing, and would
-       have found something had this one stayed put, the skip is
-       declined and this clip is the one marked instead. one clip that
-       isn't a song at all — an advert, a false start — used to take
-       whatever it happened to be the length of further down the
-       playlist and leave every clip above it looking behind where the
-       walk had got to. that is one lookahead, not a search. */
     rows.forEach((row, index) => {
         const end = Math.min(scratchSongs.length, at + MATCH_REACH);
         const got = songFor(row, at, end, at, claimed);
@@ -8691,12 +7182,6 @@ function matchClipsToSongs() {
         at = got.found + 1;
     });
 
-    /* and a second look for the ones left over. a clip that fits
-       nothing on the way past is often a clip whose song was taken by
-       something before it — an advert, a false start, a turn recorded
-       twice. it is allowed anywhere between the songs its neighbours
-       took, so the order still holds, and only where nobody else has
-       claimed it. nothing is skipped here, so no skip is paid for. */
     rows.forEach((row, index) => {
         if (picks[index] !== -1) return;
         let low = 0;
@@ -8721,9 +7206,6 @@ function matchClipsToSongs() {
     rows.forEach((row, index) => {
         if (picks[index] === -1) {
             off += 1;
-            /* the mark says why, rather than only that. hold option over
-               it, or rest on it — it is the same `title` every other
-               thing on this page is named by. */
             const miss = !Number.isFinite(nearest[index])
                 ? `no songs left for ${clockFace(row.seconds())}`
                 : nearest[index] <= MATCH_SLACK
@@ -8739,14 +7221,8 @@ function matchClipsToSongs() {
         }
     });
 
-    /* and the other way round: which songs nothing answered to. a
-       playlist you are working through has a tail of songs not
-       recorded yet, and the list is where that belongs — the chip only
-       counts them. */
     const missing = markScratch(claimed);
 
-    /* said as shortly as it can be: the chip has one line across the
-       box to say it in, and anything longer was cut off at the edge. */
     const lined = rows.length - off;
     const bits = [off ? `${lined} lined up · ${off} off` : `all ${lined} lined up`];
     if (named) bits.push(`${named} named`);
@@ -8755,10 +7231,6 @@ function matchClipsToSongs() {
     saySc(bits.join(' · ') + (off || missing ? '' : ' ✓'));
 }
 
-/* the songs that got a clip wear the black on their number; the ones
-   that didn't are left plain, which is the point — what is left plain
-   is what is left to record. it says the same in words on the row, for
-   anyone holding option over it. */
 function markScratch(claimed) {
     const rows = [...scratchList.querySelectorAll('.scratch-song')];
     let missing = 0;
@@ -8767,9 +7239,6 @@ function markScratch(claimed) {
         row.classList.toggle('is-got', got);
         row.classList.toggle('is-missing', !got);
 
-        /* the ones with nothing recorded say so outright — a dashed
-           outline and a ring of their own. leaving them plain said it
-           too, but only to someone who knew that plain meant anything. */
         let ring = row.querySelector('.scratch-none');
         if (got && ring) ring.remove();
         if (!got && !ring) {
@@ -8779,8 +7248,6 @@ function markScratch(claimed) {
             row.insertBefore(ring, row.querySelector('.scratch-twice'));
         }
         if (!got) missing += 1;
-
-        const song = scratchSongs[index];
         row.title = got ? 'recorded — press to copy' : 'not recorded — press to copy';
     });
     return missing;
@@ -8802,27 +7269,10 @@ loadScratch();
 
 /* ---------- 18. option, and what things do ---------- */
 
-/* every button on this site already says what it does — in `title`, for
-   the browser's own tooltip, which arrives a second and a half later in
-   the system's colours and nowhere near the pointer.
-
-   holding option says all of them at once, instantly, beside the
-   pointer, in the site's own two colours. nothing else changes: the
-   labels are the ones already there, so anything new is covered by
-   having been named properly in the first place. */
-
 const sayWhat = document.getElementById('sayWhat');
 let optionDown = false;
 let pointerAt = { x: 0, y: 0 };
 
-// the words a thing goes by: what it tells the browser, then what it
-// tells a screen reader, then whatever it actually says
-/* only things you can press. an `aria-label` sits on whole regions as
-   well as on buttons, so climbing to one meant holding option over an
-   empty stretch of the board named the page itself — an answer to a
-   question nobody asked. and a box you type in is not a button: its
-   placeholder is already on screen, saying it again beside the pointer
-   is the same word twice. */
 function whatItDoes(node) {
     const named = node && node.closest
         && node.closest('button, a, [role="button"], [title], [data-said]');
@@ -8835,17 +7285,6 @@ function whatItDoes(node) {
     return tidy(said || '').slice(0, 90);
 }
 
-/* the browser's own tooltip, out of the way.
-
-   holding option already says what a thing does — instantly, beside
-   the pointer, in the site's two colours. rest on the same thing for a
-   second and a half and the system's own yellow box arrives underneath
-   it saying the same words again, in another typeface, somewhere else.
-   two answers to one question.
-
-   a `title` cannot be told not to do that, so it is taken off the one
-   thing under the pointer while option is held and put back the moment
-   it isn't. only ever one element, and it is the one being looked at. */
 let hushed = null;
 
 function hushTitle(named) {
@@ -8878,10 +7317,6 @@ function placeSayWhat() {
     sayWhat.textContent = words;
     sayWhat.classList.add('is-up');
 
-    /* to the right of the pointer, and flipped to the other side rather
-       than hanging off the edge of the window. placed with left and top
-       rather than a transform — the transform is what carries the
-       little nudge it arrives on, and the two would fight. */
     const box = sayWhat.getBoundingClientRect();
     const right = pointerAt.x + 18;
     const left = right + box.width > window.innerWidth - 8
@@ -8904,61 +7339,19 @@ window.addEventListener('keydown', (event) => {
     placeSayWhat();
 });
 
+function letGoOption() {
+    optionDown = false;
+    sayWhat.classList.remove('is-up');
+    sayTitleAgain();
+}
+
 window.addEventListener('keyup', (event) => {
-    if (event.key !== 'Alt') return;
-    optionDown = false;
-    sayWhat.classList.remove('is-up');
-    sayTitleAgain();
+    if (event.key === 'Alt') letGoOption();
 });
-
 // letting go of the window counts as letting go of the key
-window.addEventListener('blur', () => {
-    optionDown = false;
-    sayWhat.classList.remove('is-up');
-    sayTitleAgain();
-});
+window.addEventListener('blur', letGoOption);
 
-
-/* ---------- 19. chat   (the one page that is not only yours) ----------
-
-   Every other page here keeps to this browser. A chat cannot: two
-   people have to meet somewhere, and a page on github pages has no
-   server to be that place.
-
-   **Nothing is set up and nothing is signed up for.** It talks to
-   ntfy.sh, a public notice board anyone may post to and read without a
-   key or an account. Posting is an ordinary `POST`, reading back is an
-   ordinary `GET`, and the live half is an `EventSource`.
-
-   **Plain https, and that is the point.** This was mqtt over a
-   websocket first, and it worked — until it met a machine with a proxy
-   set on it. A websocket goes through the proxy and a proxy that isn't
-   answering doesn't refuse, it waits, so the chat simply never
-   connected. Measured on that machine, same page, same moment: https
-   fetch 200, https post 200, server-sent events open, **websocket
-   error**. Everything here is therefore the three that worked. Don't
-   put a websocket back.
-
-   **The security is terrible, on purpose and by request.** The board
-   is public, so anyone who knows the topic can read every word and
-   post any word. The accounts are the page's own: a name and a
-   password, the password kept as a sha-256 hash in a post on that same
-   public board, and checked here rather than anywhere that could
-   enforce it. It keeps your sister out of your account. It keeps
-   nobody else out of anything. The window says so in as many words.
-
-   **The board forgets after twelve hours**, which is the one real cost
-   of needing nothing set up. So every browser keeps its own copy of
-   what it has seen (`chat-known`) and merges that with what the board
-   still holds — your own history is never lost, and a newcomer gets
-   the last twelve hours. Anything of yours missing from the board is
-   posted again when you open the page, so a chat that is used stays
-   alive and only one left alone for half a day forgets.
-
-   Everything is one of three kinds of post — an account, a room, or a
-   line said — and state is rebuilt by reading them in order. There is
-   no server to hold a shape, so the posts are the shape.
-*/
+/* ---------- 19. chat   (the one page that is not only yours) ---------- */
 
 const chatScreen = document.getElementById('chatScreen');
 const chatWhoLine = document.getElementById('chatWho');
@@ -8990,38 +7383,12 @@ const startNote = document.getElementById('startNote');
 
 [roomNameField, talkSay, chatHandle, startName].forEach((field) => field && stopGuessing(field));
 
-/* the word is masked in css rather than by being a password field, so
-   that chrome doesn't offer to judge it. where that css isn't
-   understood it has to go back to being a real one — a word typed in
-   the clear is worse than a warning. */
-if (chatWord && !(window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc'))) {
-    chatWord.type = 'password';
-}
-
-/* a real password field cannot be copied out of or dragged out of, and
-   this one has to behave the same or the masking is decoration. the
-   dots were draggable straight into the username box, where they
-   landed in the clear. pasting *in* is left alone — that is how a
-   password manager fills a field, and it gives nothing away. */
 if (chatWord) {
-    ['copy', 'cut', 'dragstart'].forEach((kind) => {
-        chatWord.addEventListener(kind, (event) => event.preventDefault());
-    });
+    if (!(window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc'))) chatWord.type = 'password';
+    ['copy', 'cut', 'dragstart'].forEach((kind) => chatWord.addEventListener(kind, (event) => event.preventDefault()));
 }
-
-/* No rule on the password. It guards a thread on a public board, and
-   a page that turns somebody away over a missing digit is pretending
-   to protect something it cannot. Whatever you type is what it is. */
 
 const CHAT_BOARD = 'https://ntfy.sh';
-/* versioned, so what is kept can change shape without every old page
-   arguing with every new one */
-/* **Bumping this is the reset.** There is no way to delete a post from
-   a public board, and no account to close — what there is, is another
-   board. A new name here is an empty one: no accounts, no threads,
-   nobody. The keys below carry the same number so a browser's own copy
-   goes with it rather than being left pointing at people who, on this
-   board, do not exist. The old ones are cleared on sight. */
 const CHAT_ERA = 'v2';
 const CHAT_TOPIC = `morie-top-chat-${CHAT_ERA}`;
 const CHAT_ME = `chat-me-${CHAT_ERA}`;
@@ -9057,9 +7424,6 @@ function saySomethingChat(words) {
     if (chatNote) chatNote.textContent = words || '';
 }
 
-/* a password, badly kept. sha-256 is not what makes this safe — nothing
-   here does — but a hash means the board is not carrying everybody's
-   password in plain sight, which is a low bar worth clearing. */
 async function wordHash(word) {
     const bytes = new TextEncoder().encode(`morie:${word}`);
     const out = await crypto.subtle.digest('SHA-256', bytes);
@@ -9068,25 +7432,7 @@ async function wordHash(word) {
 
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
-/* --- keeping a message to the two people in it ---
-
-   The board is public: everything posted to it can be read by anyone
-   who knows the topic. A room therefore cannot be private, and saying
-   it was would be a lie. A message to one person can be, and is.
-
-   Each account carries a public key. A direct message is sealed with
-   a key the two of you work out between you (ecdh over p-256, then
-   aes-gcm) — so the board carries it, and the board cannot read it.
-   Nor can this page, for anybody else's.
-
-   **What still shows is who spoke to whom, and when.** The names on a
-   direct message are in the open, because something has to say whose
-   it is. Only the words are sealed. The window says so.
-
-   The private key is kept in this browser, and a copy of it wrapped
-   in your own password is posted to the board — which is what lets
-   you sign in somewhere else and still read your own messages. The
-   wrapping is pbkdf2 at 150k rounds; your password never leaves. */
+/* --- keeping a message to the two people in it --- */
 
 const KEY_SHAPE = { name: 'ECDH', namedCurve: 'P-256' };
 const SEAL_SHAPE = { name: 'AES-GCM', length: 256 };
@@ -9130,8 +7476,6 @@ async function unwrapPriv(kept, word) {
     return JSON.parse(new TextDecoder().decode(out));
 }
 
-/* the key the two of you share, worked out from your own private key
-   and their public one. neither of you ever sends it. */
 async function betweenKey(myPrivJwk, theirPubJwk) {
     const mine = await crypto.subtle.importKey('jwk', myPrivJwk, KEY_SHAPE, false, ['deriveKey']);
     const theirs = await crypto.subtle.importKey('jwk', theirPubJwk, KEY_SHAPE, false, []);
@@ -9183,16 +7527,10 @@ function postToBoard(topic, body) {
     return fetch(`${CHAT_BOARD}/${topic}`, { method: 'POST', body: JSON.stringify(body) });
 }
 
-/* every post is one of three kinds, and the state is whatever reading
-   them in order adds up to. `fresh` says whether this is news — a post
-   read back out of history is not something to scroll to. */
 function takePost(post) {
     if (!post || !post.k) return false;
     if (post.k === 'who' && post.name && post.word) {
         const key = post.name.toLowerCase();
-        /* an account posted again carries the same keys; one posted
-           twice by two different people is the first one's, and the
-           second is turned away at the door rather than here. */
         if (!chatPeople[key]) {
             chatPeople[key] = { name: post.name, word: post.word, pub: post.pub || null, keep: post.keep || null };
         } else if (!chatPeople[key].pub && post.pub) {
@@ -9201,9 +7539,6 @@ function takePost(post) {
         }
         return true;
     }
-    /* a sealed message. it is only ours if our name is on it, and it
-       can only be read once we have their key — so it is set aside and
-       opened by `openWhatIsWaiting`, never here. */
     if (post.k === 'dm' && post.id && post.from && post.to) {
         if (!chatMe) return false;
         const mine = chatMe.name.toLowerCase();
@@ -9246,10 +7581,6 @@ async function wakeChat() {
     openWith(whoWasOpen());
 }
 
-/* everything the board still holds, read in order. it is also what
-   `addSomeone` asks before telling anyone that a name doesn't exist —
-   the board may have said it while this page was shut. Returns what
-   it found, or nothing at all if the board wouldn't answer. */
 async function catchUp() {
     try {
         const said = await fetch(`${CHAT_BOARD}/${CHAT_TOPIC}/json?poll=1&since=all`);
@@ -9276,9 +7607,6 @@ async function catchUp() {
     }
 }
 
-/* sealed messages, opened once there is a key for them. a message
-   from somebody whose account hasn't come down yet simply waits — it
-   is not lost, and the next pass will have it. */
 async function openWhatIsWaiting() {
     if (!chatMe || !chatPriv || !chatSealed.length) return false;
     const waiting = chatSealed;
@@ -9301,8 +7629,6 @@ async function openWhatIsWaiting() {
                 .slice(-TALK_KEEP);
             opened = true;
         } catch (error) {
-            // not for us after all, or sealed to a key we have since
-            // replaced. nothing to do but leave it alone.
         }
     }
     chatSealed = stillWaiting;
@@ -9310,22 +7636,14 @@ async function openWhatIsWaiting() {
     return opened;
 }
 
-/* the board forgets after twelve hours. anything this browser knows
-   that the board no longer does is posted again, so a chat that is
-   used keeps itself alive without anyone thinking about it. */
 function sayAgainWhatIsMissing(onBoard) {
     const missing = [];
-    /* your own account, and with it your public key — without it
-       nobody can seal anything to you, so this is the one thing that
-       must never quietly fall off the board. */
     if (chatMe && !onBoard.has(`who:${chatMe.name.toLowerCase()}`)) {
         const me = chatPeople[chatMe.name.toLowerCase()];
         if (me && me.pub) {
             missing.push({ k: 'who', name: me.name, word: me.word, pub: me.pub, keep: me.keep, at: Date.now() });
         }
     }
-    // one at a time, and never in a flood — the board is somebody
-    // else's and a page load is not an emergency
     missing.slice(0, 12).forEach((post, at) => {
         window.setTimeout(() => postToBoard(CHAT_TOPIC, post).catch(() => {}), at * 400);
     });
@@ -9344,8 +7662,6 @@ function listenToBoard() {
         if (!takePost(post)) return;
         keepKnown();
         if (post.k === 'who') paintPeople();
-        /* a sealed one, and possibly the key for an older one: both
-           kinds of news mean having another go at the pile */
         if (post.k === 'dm' || post.k === 'who') {
             openWhatIsWaiting().then((opened) => { if (opened) { paintTalk(); paintPeople(); } });
         }
@@ -9353,14 +7669,7 @@ function listenToBoard() {
     chatStream.addEventListener('error', () => paintChatBar());
 }
 
-/* --- the rooms --- */
-
-/* --- the people you added, and nobody else ---
-
-   The board knows every account posted to it, which is not the same
-   as a list of people you want to hear from. You add someone by the
-   name they signed up with; until you do, there is nothing on this
-   page at all. */
+/* --- the people you added, and nobody else --- */
 
 function paintPeople() {
     roomList.innerHTML = '';
@@ -9376,9 +7685,6 @@ function paintPeople() {
         if (!(them && them.pub)) tap.classList.add('is-waiting');
         if (chatWith === key) tap.classList.add('is-on');
         tap.addEventListener('click', () => openWith(key));
-        /* a person is dropped from the list by right-clicking, the
-           same way a deck is — nothing is deleted anywhere else, and
-           adding them again brings the thread back with them. */
         tap.addEventListener('contextmenu', (event) => {
             event.preventDefault();
             dropSomeone(key);
@@ -9389,10 +7695,6 @@ function paintPeople() {
     paintChatShape();
 }
 
-/* signed out, nobody added, or talking: three states, and one place
-   that decides which is on screen. Signed out used to show neither of
-   the first two, which left the page blank but for a button in the
-   corner — looking for all the world like the chat was broken. */
 function paintChatShape() {
     const ready = Boolean(chatMe);
     chatBody.hidden = !ready || chatFriends.length === 0;
@@ -9404,8 +7706,6 @@ function paintChatShape() {
     startSay.textContent = ready
         ? 'add someone by the username they signed up with. what you two say is sealed to the pair of you.'
         : 'sign in to start. everything you send is sealed to the person you send it to.';
-    // a hidden pane measures as nothing, so the grip is worked out
-    // once the two panes are actually on screen — never before
     if (!chatBody.hidden && chatSplitter) chatSplitter.reclamp();
 }
 
@@ -9417,10 +7717,6 @@ async function addSomeone(typed, complain) {
     if (key === chatMe.name.toLowerCase()) { complain('that is you'); return false; }
     if (chatFriends.includes(key)) { complain('they are already here'); openWith(key); return false; }
 
-    /* the board may have said their name while this page was shut, so
-       it is asked again before anyone is told nobody by that name
-       exists — the answer is usually already here, and this costs one
-       request to be sure. */
     if (!chatPeople[key]) {
         complain('looking…');
         await catchUp();
@@ -9453,8 +7749,6 @@ startAdd.addEventListener('submit', async (event) => {
     if (await addSomeone(startName.value, complain)) startName.value = '';
 });
 
-/* whose thread is open. one place decides it, so the head, the list,
-   the log and the field can never disagree. */
 function openWith(who) {
     chatWith = who && chatFriends.includes(who) ? who : null;
     if (chatWith) window.localStorage.setItem(CHAT_WITH, chatWith);
@@ -9489,9 +7783,6 @@ talkForm.addEventListener('submit', async (event) => {
     await sendSealed(chatWith, words.slice(0, 1200));
 });
 
-/* sealed here, posted sealed, and opened only by the two of you. what
-   goes on the board is the two names, the time, and a box nobody else
-   can open. */
 async function sendSealed(other, words) {
     const them = chatPeople[other];
     if (!them || !them.pub) { saySomethingChat('no key for them yet — they need to open the chat once'); return; }
@@ -9508,9 +7799,6 @@ async function sendSealed(other, words) {
         return;
     }
 
-    /* your own copy goes up now; it is already readable to you, and a
-       line you typed should not wait on somebody else's server to
-       appear. */
     chatDms[other] = [...(chatDms[other] || []), { id: post.id, by: chatMe.name, said: words, at: post.at }]
         .slice(-TALK_KEEP);
     keepKnown();
@@ -9535,9 +7823,6 @@ function paintTalk() {
     said.forEach((one) => {
         const row = document.createElement('article');
         row.className = 'said-row';
-        /* the same person twice in a breath is one person talking, so
-           the second line goes under the first rather than starting
-           again with the face and the name over it */
         const runOn = one.by === lastBy && (one.at || 0) - lastAt < SAME_BREATH;
         if (chatMe && one.by === chatMe.name) row.classList.add('is-mine');
         if (runOn) row.classList.add('is-run-on');
@@ -9564,8 +7849,6 @@ function paintTalk() {
         lastAt = one.at || 0;
     });
 
-    // stay at the bottom if that is where you were; don't yank somebody
-    // out of what they were reading further up
     if (stuck) talkLog.scrollTop = talkLog.scrollHeight;
 }
 
@@ -9593,9 +7876,6 @@ function paintChatBar() {
     chatSetupOpen.hidden = true;
 }
 
-/* the ordinary two words every other sign-in uses. what the page does
-   with a message belongs in the function box, not over a login form —
-   nobody reads a paragraph on the way to typing their name. */
 function paintChatDoor() {
     if (doorBusy) return;      // it is saying what it is doing
     chatDoorTitle.textContent = chatDoorNew ? 'sign up' : 'log in';
@@ -9617,10 +7897,6 @@ chatSwap.addEventListener('click', () => {
     paintChatDoor();
 });
 
-/* the button says what it is doing and cannot be pressed twice while
-   it does it. making an account is three slow things in a row — the
-   board, a key pair, and the wrapping — and in silence it reads as a
-   press that did nothing, which is how you get two accounts. */
 let doorBusy = false;
 function doorWorking(words) {
     doorBusy = Boolean(words);
@@ -9643,12 +7919,6 @@ chatGo.addEventListener('click', async () => {
         if (!chatOn) await wakeChat();
         if (!chatOn) { saySomethingChat('the chat board would not answer'); return; }
 
-        /* **Ask the board before saying a name is free.** The list in
-           hand is whatever had arrived when the page opened, so a name
-           taken since — or taken while this page sat open — looked
-           free, and two people walked off with one name and one of
-           them could not read their own messages. One request, and the
-           answer is current. */
         doorWorking(chatDoorNew ? 'checking the name…' : 'logging in…');
         await catchUp();
 
@@ -9668,8 +7938,6 @@ chatGo.addEventListener('click', async () => {
                 name: called,
                 word: hash,
                 pub: pair.pub,
-                // your own key, locked with your own password, so you
-                // can read your messages on another machine
                 keep: await wrapPriv(pair.priv, word),
                 at: Date.now()
             };
@@ -9678,9 +7946,6 @@ chatGo.addEventListener('click', async () => {
         } else {
             if (!known) { saySomethingChat('no account by that name'); return; }
             if (known.word !== hash) { saySomethingChat('that password is not the one'); return; }
-            /* this browser may never have seen this account. the copy
-               of the key kept on the board is locked with the same
-               password just typed, so it can be opened here and now. */
             if (!chatPriv && known.keep) {
                 doorWorking('unlocking your key…');
                 try {
@@ -9707,10 +7972,6 @@ chatGo.addEventListener('click', async () => {
     }
 });
 
-/* asked first, because it costs something: the key this browser holds
-   goes with it, and the threads it has opened go dark until the
-   password is typed again. the same chip every other undoable-once
-   press on this site uses. */
 chatSignOut.addEventListener('click', async () => {
     if (!await askConfirm('log out?', chatSignOut)) return;
     chatMe = null;
@@ -9728,8 +7989,6 @@ chatSignOut.addEventListener('click', async () => {
     paintChatShape();
 });
 
-/* the rooms take a quarter, the talking the rest — the same grip every
-   other pair of panes here is divided by */
 chatSplitter = wireSplit({
     split: document.getElementById('chatSplit'),
     body: document.getElementById('chatBody'),
@@ -9750,6 +8009,4 @@ if (chatSplitter) {
 chatReady = true;
 paintChatBar();
 paintChatDoor();
-// arrived straight on /chat: renderSections ran before any of this
-// existed, so the waking is done here instead
 if (activeSectionId === 'chat') wakeChat();

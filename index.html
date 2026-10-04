@@ -4,44 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>:p</title>
-
-<!-- the front door. the pages themselves are /home, /cards, /audio,
-     /player and /chat; this is its own page and is meant to stay that
-     way — a few toys to poke at, and nothing to do with the rest.
-
-     it carries the theme: arriving here with the lights off, a white
-     sheet would be the one thing on this site that didn't know.
-
-     **one bit, and only one.** every toy draws on a canvas in whole
-     device pixels, so nothing is ever painted half-way into a pixel —
-     which is where grey comes from. nothing fades either: a fade is
-     grey on its way through. -->
+<!-- the front door. one bit only: every toy draws in whole device pixels, nothing fades -->
 <script>
-(function () {
-    try {
-        if (localStorage.getItem('page-inverted') === 'yes') {
-            document.documentElement.classList.add('inverted');
-        }
-    } catch (error) { /* no storage; the light is the default anyway */ }
-}());
+try {
+    if (localStorage.getItem('page-inverted') === 'yes') document.documentElement.classList.add('inverted');
+} catch (error) { /* no storage; the light is the default anyway */ }
 </script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400&amp;family=Bitcount+Prop+Double:wght@400&amp;family=VT323&amp;display=swap">
 
-<!-- held back until the type is there. shown at once, every word came up
-     in the browser's fallback and jumped into its own face a beat later,
-     which is the flash of odd letters on arriving. a second is the most
-     it waits. -->
+<!-- held back until the type is there, for a second at most -->
 <script>
 (function () {
     var root = document.documentElement;
     root.classList.add('booting');
     var show = function () { root.classList.remove('booting'); };
     setTimeout(show, 1000);
-    // asked for by name: nothing is laid out yet, so `fonts.ready`
-    // alone would answer at once with nothing loaded
+    // asked for by name: nothing is laid out yet, so fonts.ready would answer at once
     if (!document.fonts || !document.fonts.load) return show();
     Promise.all(['1em Amiko', '1em "Bitcount Prop Double"', '1em VT323']
         .map(function (face) { return document.fonts.load(face); })).then(show, show);
@@ -53,10 +34,9 @@
 	:root {
 		--paper: #ffffff;
 		--ink: #000;
-		/* the same pointer as every other page — copied rather than
-		   linked, since style.css would bring the whole app with it */
+		/* copied from style.css, which would bring the whole app with it */
 		--cur-dot: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default;
-			--cur-tap: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, pointer;
+		--cur-tap: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, pointer;
 		--drop: 0.088em;
 	}
 	html.inverted { --paper: #000; --ink: #ffffff; }
@@ -89,7 +69,6 @@
 	}
 	.top > * { pointer-events: auto; }
 	.mark { font-family: 'Bitcount Prop Double', monospace; font-size: 1.6rem; }
-	/* every number is vt323, here as everywhere */
 	.score { font-family: 'VT323', monospace; font-size: 1.9rem; }
 	.enter {
 		color: var(--ink);
@@ -117,7 +96,6 @@
 		border-radius: 999px;
 		white-space: nowrap;
 	}
-	/* live inverts, like everything live on this site */
 	.toys button.on { color: var(--paper); background: var(--ink); }
 
 	.hint {
@@ -216,8 +194,7 @@
         pen.fillRect(0, 0, W, H);
     }
 
-    /* a grid of whole-pixel cells in the room between the top row and
-       the pills, centred. everything below is in device pixels. */
+    // a centred grid of whole-pixel cells between the top row and the pills
     function field(cssCell) {
         const cs = Math.max(2, Math.round(cssCell * dpr));
         const top = TOP * dpr;
@@ -238,8 +215,7 @@
         };
     }
 
-    // a one-pixel outline, drawn as four filled strips so it lands on
-    // whole pixels rather than straddling two
+    // four filled strips, so the outline lands on whole pixels
     function outline(x, y, w, h) {
         const t = dpr;
         pen.fillStyle = ink;
@@ -265,7 +241,6 @@
     }
 
     /* --- snake --- */
-
     const snake = {
         hint: 'arrows or wasd · swipe on a phone',
         start() {
@@ -300,12 +275,12 @@
             }
             const last = this.queue.length ? this.queue[this.queue.length - 1] : this.dir;
             if (last[0] === -dx && last[1] === -dy) return;
-            if (last[0] === dx && last[1] === dy) return;
-            if (this.queue.length < 3) this.queue.push([dx, dy]);
             if (this.waiting) {
                 this.waiting = false;
                 say('');
             }
+            if (last[0] === dx && last[1] === dy) return;
+            if (this.queue.length < 3) this.queue.push([dx, dy]);
         },
         tick(dt) {
             if (!this.alive || this.waiting) return;
@@ -384,7 +359,6 @@
     };
 
     /* --- life --- */
-
     const life = {
         hint: 'drag to draw · space pauses · r for a new soup · c clears',
         start() {
@@ -475,8 +449,7 @@
         }
     };
 
-    /* --- chase: a face that would rather not be caught --- */
-
+    /* --- chase --- */
     const FACES = { calm: '(・ω・)', near: '(°ロ°;)', caught: '(>_<)' };
 
     const chase = {
@@ -590,8 +563,7 @@
         chase.show();
     });
 
-    /* --- draw: a sketchpad of big square pixels --- */
-
+    /* --- draw --- */
     const draw = {
         hint: 'hold and drag · shift rubs out · c clears',
         start() {
@@ -619,8 +591,7 @@
             pen.fillStyle = on ? ink : paper;
             pen.fillRect(f.x + c * f.cs, f.y + r * f.cs, f.cs, f.cs);
         },
-        // every cell between the last point and this one, so a quick
-        // stroke is a line and not a row of dots
+        // bresenham, so a quick stroke is a line and not a row of dots
         line(a, b, on) {
             let { c: x0, r: y0 } = a;
             const { c: x1, r: y1 } = b;
@@ -657,7 +628,6 @@
     };
 
     /* --- picking one, and the loop under all of them --- */
-
     const TOYS = { snake, life, chase, draw };
     let toy = null;
     let name = 'snake';

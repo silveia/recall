@@ -3,19 +3,14 @@
 <head>
 <meta charset="utf-8">
 <title>:p</title>
-<!-- anything that isn't a real file lands here. if the last thing in
-     the address is the name of a section, that is plainly where they
-     meant to go; anything else goes to the front door rather than
-     showing them a page about being lost. -->
+<!-- a section's name at the end goes to that section; anything else to the front door -->
 <meta name="robots" content="noindex">
 <script>
 (function () {
     var pages = ['home', 'cards', 'audio', 'player', 'chat'];
     var parts = location.pathname.split('/').filter(Boolean);
-    var want = parts.length ? parts[parts.length - 1] : '';
-    var root = location.pathname.slice(0, location.pathname.length - parts.join('/').length);
-    var to = pages.indexOf(want) > -1 ? root + want + '/' : root;
-    location.replace(to + location.hash);
+    var want = parts[parts.length - 1];
+    location.replace((pages.indexOf(want) > -1 ? '/' + want + '/' : '/') + location.hash);
 }());
 </script>
 <meta http-equiv="refresh" content="0; url=/">

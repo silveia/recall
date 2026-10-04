@@ -1,14 +1,4 @@
-/* the google faces are linked from the head of the page rather than
-   imported here: an @import is only found once this file has arrived,
-   which put the type a whole round trip late and the page came up in
-   the fallback first. */
-
-/* matrix sans print, by brad neil — a 5×7 dot matrix of separate round
-   dots, the look of a dot-matrix printer or a motorway sign. it is
-   capitals only: lowercase comes out as capitals, which is what the
-   headings want. vendored beside the page rather than loaded from a
-   cdn, the same as the mp3 encoder; the licence sits next to it in
-   matrix-sans-OFL.txt. */
+/* matrix sans print by brad neil — licence in matrix-sans-OFL.txt */
 @font-face {
 	font-family: 'Matrix Sans Print';
 	src: url('matrix-sans-print.woff2') format('woff2');
@@ -29,7 +19,7 @@
    7.  home — section tabs
    8.  home — deck bar
    9.  home — renaming a deck in place
-   10. right bar — the function box
+   10. the function box and the two tiles
    11. create window
    12. practice window
    13. right-click menu
@@ -42,9 +32,11 @@
    20. player — songs off your own disk
    21. create — which answers a card may be mixed up with
    22. the bar's own three — clock, storage, recently binned
-   23. home — the widgets you arrange yourself
-   24. the left bar — notes in, cards out
-   25. chat — rooms, and the talking in them
+   23. home — the board you arrange yourself
+   24. cards — notes in, cards out
+   25. one weight
+   26. coming in
+   27. chat — people, and the talking with them
    ========================================================= */
 
 /* =========================================================
@@ -56,72 +48,42 @@
 	--muted: #8a8a8a;   /* placeholder text only */
 	--hover: #f1f1f1;   /* tinted hover surface */
 	--line: #000;
-	/* the wash the windows lay over the page — the page's own colour,
-	   not a grey, so it reads as the page dimmed rather than a sheet */
 	--veil: rgba(255, 255, 255, 0.72);
-	/* the menu bars keep their fill on both sides of the swap: black in
-	   the light, still black in the dark. in the dark they'd otherwise
-	   flip to a slab of white, so instead an outline separates them
-	   from the page. */
 	--bar: #000;
 	--bar-ink: #ffffff;
-
 	--col: 34rem;      /* max width of the content column */
-	--rail: 19rem;     /* width of both side bars */
-	/* the scalloped edge, as one size. the tile is drawn at 26x44 in
-	   its own viewBox and scaled to these, so changing them is the
-	   whole of making the bumps bigger or smaller — everything that
-	   has to line up with the wave is worked out from them.
-	   --wave-out is how far a crest reaches past --rail: 4/26ths of
-	   the width, which is where the arc's widest point lands. */
+	--rail: 19rem;     /* width of the side bar */
 	--rail-round: 1.6rem;  /* how far in the rounded ends of the bar's boxes reach */
 	--dot-step: 24px;      /* how far apart the dots in the bar's dividers are */
 	--dot-end: 8px;        /* and how far their row stops off the bar's edges */
-	--dash-step: 14px;     /* a dash and its gap, in the line under the top strip over the bar */
-	/* the width is even on purpose: the strip starts half of it back
-	   from --rail, and half of an odd or fractional width lands the
-	   strip's edge between two pixels — drawn as a faint grey hairline
-	   down the whole bar. --wave-out is the same 6/39ths of it the
-	   tile is drawn with, worked out rather than rounded. */
+	--dash-step: 14px;     /* a dash and its gap, under the top strip over the bar */
+	/* keep --wave-w even: half of it is an offset, and a half pixel draws a grey line */
 	--wave-w: 32px;
 	--wave-h: 54px;
-	--wave-out: calc(var(--wave-w) * 6 / 39);
-	/* height of the top bar: exactly one bump, so its underside lands on
-	   the dip between the first bump and the second */
+	--wave-out: calc(var(--wave-w) * 6 / 39);   /* how far a crest reaches past --rail */
 	--topbar: var(--wave-h);
 	--radius: 10px;
 	--field: 42px;     /* height of every control in the deck bar */
 	--card-row: 2.6rem;/* height of one row in the create window's list */
 	--answer-row: 3.7rem;   /* height of one row of practice answers */
-
 	/* the spacing scale. nothing should use a one-off value. */
 	--gap: 2rem;       /* corners, and between separate blocks */
-	--group: 1rem;     /* a control bar and the list it feeds — every
-	                      section uses this, cards, audio and whatever
-	                      comes next */
+	--group: 1rem;
 	--tight: 0.5rem;   /* controls sitting side by side in one bar */
 	--rail-pad: 0.85rem;  /* the side bars are narrow — they run tighter */
-
 	--ease: cubic-bezier(0.22, 1, 0.36, 1);   /* soft, decelerating */
 	--quick: 0.18s;    /* hovers and presses */
 	--slow: 0.4s;      /* things arriving on screen */
-
+	--drawer: cubic-bezier(0.4, 0.05, 0.2, 1);
+	--drop: 0.088em;         /* amiko, the body face */
+	--drop-title: 0.06em;    /* bitcount, the h1 and the tabs */
+	--drop-num: -0.02em;     /* vt323 sits a hair low, so it is lifted */
 	--font: 'Amiko', 'Segoe UI', system-ui, sans-serif;
 	--title-font: 'Bitcount Prop Double', 'Courier New', monospace;
-	/* numbers get their own face. bitcount draws a 1 as two dense
-	   columns of dots and a 0 as an open ring, so any figure with a
-	   zero in it reads as two different fonts side by side — at every
-	   size, because that is how the face is drawn. vt323 is the same
-	   kind of thing, a screen face, and its digits are all one weight. */
 	--num-font: 'VT323', 'Courier New', monospace;
-	/* the face every heading over a panel is set in */
 	--head-font: 'Matrix Sans Print', 'Courier New', monospace;
 }
 
-/* the dark side: paper and ink change places, and that's the whole of
-   it — every surface and every word on the page is written in those
-   two, so nothing needs styling twice. the bars keep their own fill
-   and gain an outline, below. */
 html.inverted {
 	--paper: #000;
 	--ink: #ffffff;
@@ -135,37 +97,6 @@ html.inverted {
    ========================================================= */
 *, *::before, *::after { box-sizing: border-box; }
 
-/* --- the pointer ---
-
-   drawn at 22 in a 26 box: the viewBox is untouched so every mark keeps
-   its proportions, and the hotspot comes down with the box so the point
-   is still the middle of it.
-
-
-   every name in here is prefixed. the first version called the text
-   cursor --bar, which is also the black bar's own colour: the top
-   strip and the rail clock quietly lost their backgrounds and painted
-   as nothing, because `background: var(--bar)` was suddenly a picture
-   and an invalid background is no background at all.
-
-   a thick round dot instead of the system arrow — and the same dot for
-   something you can press. it was that dot inverted, white on black,
-   which read as one dot changing size as the background under it
-   changed rather than as two different marks. the rest say what they
-   do rather than what they are: arrows apart for a divider, four ways
-   for something you can move anywhere, a ring standing off the dot for
-   something you can pick up.
-
-   each one carries a white halo a little over half a pixel — thinner
-   than the 1px lines on the page, so it reads as an edge on the black
-   bar rather than as part of the drawing, so it reads on the
-   black bar as well as on the page without the halo becoming part of
-   the drawing. a stroke straddles its path, so the white one under a
-   black line of weight L is drawn at L + 2; on a filled shape it sits
-   half outside, so it is drawn at twice the halo instead.
-
-   each names the system cursor it stands in for, so nothing is lost if
-   the drawing cannot be loaded. */
 :root {
 	--cur-dot: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default;
 	--cur-tap: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, pointer;
@@ -181,9 +112,6 @@ html.inverted {
 }
 html { cursor: var(--cur-dot); }
 
-/* what the thing under the pointer does, while option is held. it sits
-   to the right of the pointer, out of its way, and never takes a press
-   of its own. */
 .say-what {
 	position: fixed;
 	z-index: 200;
@@ -206,31 +134,6 @@ html { cursor: var(--cur-dot); }
 }
 .say-what.is-up { opacity: 1; transform: none; }
 
-
-/* --- where the words sit in a box ---
-   a line of text is centred on the font's ascent-to-descent band, but
-   the eye centres on the capitals. every face here hangs further below
-   the baseline than it rises above the caps, so centred text comes out
-   sitting high. measured off the fonts themselves: amiko by 0.088 of
-   its size, bitcount by 0.060, matrix sans by nothing at all.
-
-   a box moves its line down by half the difference between its two
-   paddings, so the correction is either added above and taken off
-   below, or — where a fixed-height pill already pins both to nothing —
-   put on the top alone at twice the size. either way the box keeps the
-   height it had. */
-:root {
-	/* a drawer's easing. the one used before was an extreme ease-out —
-	   three quarters of the way open in the first hundred milliseconds
-	   and then a long crawl, which is exactly what "abrupt then slow"
-	   looks like as a number. this one spends its time evenly. */
-	--drawer: cubic-bezier(0.4, 0.05, 0.2, 1);
-	--drop: 0.088em;         /* amiko, the body face */
-	--drop-title: 0.06em;    /* bitcount, the h1 and the tabs */
-	--drop-num: -0.02em;     /* vt323 sits a hair low, so it is lifted */
-}
-
-/* named for anything reading the page aloud, drawn for nobody */
 .sr-only {
 	position: absolute;
 	width: 1px;
@@ -243,56 +146,32 @@ html { cursor: var(--cur-dot); }
 	border: 0;
 }
 
-/* the shell is exactly the window and scrolls inside itself, so the
-   page behind it must never move — without this, dragging up on empty
-   space rubber-bands the whole document and shows the canvas outside
-   it. `none` also stops a list that has hit its end from handing the
-   leftover scroll to the page. */
 html, body {
 	height: 100%;
 	overflow: hidden;
 	overscroll-behavior: none;
 }
 
-/* a page this plain reads a mis-drag as damage, so the words don't
-   take a highlight. the fields you actually type in keep theirs —
-   losing it there would mean losing select-all and copy. */
-body { -webkit-user-select: none; user-select: none; }
-input, textarea { -webkit-user-select: text; user-select: text; }
-/* the browser's own blue has no business here — there are two colours on
-   this site and that is not one of them. it keeps its underline, and
-   leans, which is what marks it as somewhere else rather than here. */
 a {
 	color: inherit;
 	font-style: italic;
 	text-decoration: underline;
 	text-underline-offset: 0.16em;
-	/* the browser sets its own pointer on a link, which wins over the one
-	   the page hands everything else — so it is said again here */
 	cursor: var(--cur-tap);
 }
-a:hover, a:focus-visible {
-	font-weight: 700;
-	text-decoration-thickness: 2px;
-}
-/* Words that are there to be read can be picked up and copied —
-   paragraphs, list items, headings, the addresses a window asks you to
-   go and open. Reading an address off the screen and typing it out by
-   hand is no way to be asked for anything. */
+a:hover, a:focus-visible { text-decoration-thickness: 2px; }
+
 p, li, dt, dd, h1, h2, h3, h4, h5, h6, code, pre, blockquote, figcaption,
 .ask-why, .ask-said {
 	-webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
 }
-/* Anything you press or drag keeps its hands off the selection, whatever
-   it is built out of: pressing a card should move the card, not smear a
-   highlight across it. Last word, so it wins over the prose above. */
+
 button, button *, a, a *, label, label *, summary, summary *,
 [role="button"], [role="button"] *, [draggable="true"], [draggable="true"] *,
 .card-item, .card-item *, .recording-item, .recording-item *,
 .scratch-song, .scratch-song * {
 	-webkit-user-select: none; user-select: none;
 }
-/* bar the one span a double-click hands back for renaming */
 .clip-text.is-editing { -webkit-user-select: text; user-select: text; }
 input, textarea { -webkit-user-select: text; user-select: text; }
 
@@ -304,14 +183,12 @@ body {
 	font-size: 1rem;
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
+	-webkit-user-select: none;
+	user-select: none;
 }
 
 button, input, textarea { font: inherit; color: inherit; }
 
-h2 { font-weight: 700; }
-/* the title face is never set bold: its letters are built out of dots,
-   and the bold weight fills the gaps between them until the shapes
-   run together. every use of it on the page is the plain weight. */
 h1 {
 	margin: 0;
 	font-family: var(--title-font);
@@ -319,27 +196,18 @@ h1 {
 	font-weight: 400;
 	letter-spacing: 0;
 }
-h2 { margin: 0 0 0.75rem; font-size: 1.125rem; }
+h2 { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 700; }
 
 [hidden] { display: none !important; }
 
-/* nothing wears a focus box. the ring the browser draws round a field
-   or a button you've tabbed to reads as a stray second outline on a
-   page where the outline already means something. */
-:focus,
-:focus-visible {
-	outline: none;
-}
+:focus, :focus-visible { outline: none; }
 
 ::selection { color: var(--paper); background: var(--ink); }
 
-/* nothing on the page shows a scrollbar — a gray one would break the
-   two-tone rule anyway. everything still scrolls. */
 .app-content, .rail, .help-box, #recordingList, .sense-controls,
 .deck-list-slot, #cardList, #deckCardList {
 	overscroll-behavior: contain;
 	scrollbar-width: none;
-	-ms-overflow-style: none;
 }
 .app-content::-webkit-scrollbar,
 .rail::-webkit-scrollbar,
@@ -357,28 +225,16 @@ button, summary {
 		border-color var(--quick) var(--ease),
 		transform var(--quick) var(--ease);
 }
-/* the press: a squash on the way down, a springy overshoot on the way
-   back. it runs off a class, not :active, so the whole thing plays
-   even on a quick tap. added on pointerdown in section 10 of script.js */
+
 @keyframes button-boing {
 	0%   { transform: scale(1, 1); }
 	30%  { transform: scale(0.97, 0.95); }
 	100% { transform: scale(1, 1); }
 }
 button.boing { animation: button-boing 0.22s var(--ease); }
-/* icon buttons keep still — a 2px stroke shimmers when it scales, and
-   it only renders crisply if the button lands on a whole pixel, which
-   is why the rows above it have whole-pixel heights */
+
 .square-button:active, .deck-card:active { transform: none; }
 
-/* a deck card is a button, so it picked up the transform transition
-   above — and dragging one carries it by transform. every position
-   write was being eased, so the card trailed the cursor and lurched
-   towards its new slot on each swap before sliding back. nothing else
-   transforms a deck card, so it just sits that one out. */
-.deck-card { transition-property: color, background-color, border-color; }
-
-/* a screen arriving: rises, overshoots a hair, settles */
 @keyframes rise-in {
 	0%   { opacity: 0; transform: translateY(14px) scale(0.985); }
 	60%  { opacity: 1; transform: translateY(-3px) scale(1.004); }
@@ -391,25 +247,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	to   { opacity: 1; transform: none; }
 }
 
-/* a panel arriving when you swap section. it stays where it is and
-   simply comes up — the panels used to fly in from whichever side you
-   were heading, which made a swap read as the whole page moving. the
-   pieces are still staggered, so it arrives rather than blinks. */
 @keyframes panel-in {
 	from { opacity: 0; transform: translateY(6px); }
 	60%  { opacity: 1; }
 	to   { opacity: 1; transform: none; }
 }
 .deck-bar:not([hidden]),
-.home-body:not([hidden]),
-/* whichever panel a section shows arrives the same way, and exactly
-   one thing per section does it.
-
-   before this the list was uneven: the cards page carried a delay with
-   no animation to delay, and the audio
-   page faded its panel and then faded the bar and the list inside it
-   again — three fades over each other, which is what makes an entrance
-   look muddy rather than quick. */
 .home-panel:not([hidden]),
 .home-body:not([hidden]),
 .recorder-panel:not([hidden]),
@@ -417,17 +260,13 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .chat-panel:not([hidden]) {
 	animation: panel-in 0.34s var(--drawer) backwards;
 }
-/* the rail's own box follows a beat behind the page */
 .help-box:not([hidden]) { animation: panel-in 0.34s var(--drawer) 0.06s backwards; }
-#studyQuestion { animation: rise-in 0.34s var(--ease) backwards; }
 
-/* the answer buttons deal themselves out one after another */
 @keyframes deal-in {
 	from { opacity: 0; transform: translateY(10px) rotate(-1.5deg); }
 	to   { opacity: 1; transform: none; }
 }
 
-/* right answer pops, wrong one shakes its head */
 @keyframes pop {
 	0%   { transform: none; }
 	40%  { transform: scale(1.05); }
@@ -441,16 +280,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	80% { transform: translateX(2px); }
 }
 
-/* the deck entries cascade in */
 @keyframes slide-in {
 	from { opacity: 0; transform: translateX(-10px); }
 	to   { opacity: 1; transform: none; }
 }
-/* the cascade is keyed to nth-child, and dragging a deck changes every
-   nth-child it passes — which restarted this animation mid-drag and
-   blanked the card, since it fills backwards from opacity 0. so it only
-   runs on a real rebuild: renderDeckCards() puts .is-arriving on the
-   list and takes it off once the cascade has played. */
+
 .deck-list-slot.is-arriving .deck-card:nth-child(-n+6) { animation: slide-in 0.3s var(--ease) backwards; }
 .deck-list-slot.is-arriving .deck-card:nth-child(1) { animation-delay: 0.02s; }
 .deck-list-slot.is-arriving .deck-card:nth-child(2) { animation-delay: 0.06s; }
@@ -459,33 +293,6 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .deck-list-slot.is-arriving .deck-card:nth-child(5) { animation-delay: 0.18s; }
 .deck-list-slot.is-arriving .deck-card:nth-child(6) { animation-delay: 0.22s; }
 
-/* the size change itself is one layout pass; switchSection() then
-   animates each tab's transform from where it was to where it landed,
-   which reads as a smooth grow/shrink and costs no layout per frame */
-/* the morph pivots on the word's middle, so a tab growing to the big
-   size opens evenly above and below instead of rising off its baseline.
-   switchSection() matches centres to go with it. */
-.section-tab { transform-origin: left center; }
-
-/* each word owns an equal slot of the row, so growing to the active
-   size changes nothing outside its own slot — the dots and the other
-   words stay where they are. the ends anchor outward and anything in
-   between anchors on its middle, which is also where each one grows
-   from, so the word you clicked is the only thing that moves. */
-.topbar .section-tab {
-	flex: 1;
-	min-width: 0;
-	text-align: center;
-	transform-origin: center center;
-	/* centring works on the advance width, and this face carries more
-	   air on a word's right than its left, so the ink landed ~1.6px left
-	   of centre at the big size and ~0.8px at the small one. the same
-	   fraction of the font size either way, so the correction is in em
-	   and holds at both. centred text moves by half its indent. */
-	text-indent: 0.09em;
-}
-
-/* a popup unfolding from the button it hangs off */
 @keyframes drop-in {
 	from { opacity: 0; transform: translateY(-6px) scale(0.97); }
 	to   { opacity: 1; transform: none; }
@@ -493,136 +300,57 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .share-panel:not([hidden]) {
 	animation: drop-in 0.22s var(--ease) backwards;
 }
-.share-panel { transform-origin: top right; }
-
 
 /* =========================================================
    4. app shell — the bars around the page
    ========================================================= */
-/* left bar runs the full height; the top bar starts beside it and
-   spans the right bar, which hangs below it. */
 .app-shell {
 	position: relative;
 	display: flex;
 	height: 100vh;
 	overflow: hidden;
+	transition: opacity 0.34s var(--ease);
 }
 
-/* the scalloped edge is drawn on the shell, not on the bar itself.
-   painting it on the bar forced overflow:visible there, which stopped
-   the bar scrolling and made it paint its whole content height. */
 .app-shell::after {
 	content: '';
 	position: absolute;
 	top: 0;
 	bottom: 0;
 	left: calc(var(--rail) - var(--wave-w) / 2);
-	/* above the bar it carves (2), but under the black strip (4) — at 5
-	   it painted its own white tile into the strip and notched it */
 	z-index: 3;
 	width: var(--wave-w);
 	pointer-events: none;
-	/* two-tone: the page's white fills the tile and the bump is painted
-	   black over it, so the strip carves the bar's straight edge into
-	   the wave rather than only adding bumps to it — otherwise the
-	   rectangle shows through wherever the wave curves back in */
-	/* the carve is the page's own colour, and it is a colour rather than
-	   part of the picture: a second picture for the dark side had to be
-	   swapped in whole, which flashed a rectangle of the old one over
-	   the bar while everything else was still fading. only the bump is
-	   drawn, on nothing, so one picture serves both sides. */
 	background-color: var(--paper);
-	/* the straight back of the bumps is a plain block of the bar's black
-	   laid under the picture, not left to the picture alone: a picture
-	   scaled to size is blended at its own edges, and its left edge
-	   came out as a grey hairline down the whole bar. a flat colour has
-	   no edge to blend. */
 	background-image:
 		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E"),
 		linear-gradient(var(--bar), var(--bar));
 	background-repeat: repeat-y, no-repeat;
 	background-size: var(--wave-w) var(--wave-h), calc(var(--wave-out) + 1px) 100%;
-	/* half a tile up from where the strip ends, so the strip's underside
-	   meets the wave at a **crest** rather than at a trough. Meeting it
-	   at a trough left the carve's white biting 9px into the bar on the
-	   single first row — a 1px nick in the top corner, which is exactly
-	   the sort of thing you see without being able to name. At a crest
-	   the first row under the strip is solid black and the wave flows
-	   down out of it. What is above is behind the strip and never seen. */
-	background-position: 0 calc(var(--topbar) - var(--wave-h) / 2), 0 0;
-	/* **The carve stops at the crest.** The tile is half a tile past
-	   --rail, and its white ran the whole way — over the first 19px of
-	   the page, where it painted out the left outline of every box on
-	   every page. Past the crest it has nothing to carve, so it is cut
-	   off there: --rail + --wave-out, plus a pixel for the arc's edge. */
+	background-position: 0 0;
 	clip-path: inset(0 calc(var(--wave-w) / 2 - var(--wave-out) - 1px) 0 0);
 }
 
-/* in the dark the bar and the page are the same black, so the scallop
-   has no edge to be seen by — the same problem the top strip has, and
-   the same answer: a white line along it.
-
-   it is its own layer rather than a second picture swapped into the
-   one above, because swapping a picture happens all at once: the old
-   rule's note records a rectangle of the old one flashing over the bar
-   while everything else was still fading. this one only fades. */
 .app-shell::before {
 	content: '';
 	position: absolute;
 	top: 0;
 	bottom: 0;
 	left: calc(var(--rail) - var(--wave-w) / 2);
-	/* over the strip that carves the edge, not under it. at the same
-	   level the carve painted last and buried this — which is why it
-	   was in the stylesheet and nowhere on the screen. */
-	/* under the black strip along the top: the strip runs the whole
-	   width, and the strip (later in the page, at the same 4) covers
-	   the first bump, so the edge comes out from under it at a dip. */
 	z-index: 4;
 	width: var(--wave-w);
 	pointer-events: none;
-	opacity: 0;
-	/* the stroke is centred on whatever path it is given, so drawn on
-	   the bump's own edge half of it lands inside the black — which is
-	   why the shape looked a hair different with the lights off. the
-	   arc is nudged half a pixel out, so the line lies against the
-	   black rather than on it and the bump is the same size either
-	   way.
-
-	   the picture is drawn 39 wide and shown at --wave-w (32), so its
-	   stroke shrinks with it — at 1 it came out at 0.82px, visibly
-	   thinner than the 1px line under the top strip it meets. it is
-	   drawn at 39/32 so it lands on 1px. if --wave-w changes, this
-	   number and the half of it the arc is nudged by change with it. */
+	/* stroke 39/32 so it lands on 1px; nudged half of it out — redo if --wave-w changes */
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.61 0 A 37.5 37.5 0 0 1 6.61 66' fill='none' stroke='%23ffffff' stroke-width='1.21875'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: var(--wave-w) var(--wave-h);
-	background-position: 0 calc(var(--topbar) - var(--wave-h) / 2);   /* in step with the carve */
 }
-html.inverted .app-shell::before { opacity: 1; }
-/* **The white edge shows in the light too, and the wave starts with a
-   whole bump at the very top of the window**, the same in both. Over
-   the page the white line lies on white and only the bump shows; over
-   the black strip at the top it is the one thing drawing the wave. The
-   tiles start at a dip at y=0 rather than putting a crest under the
-   strip, so the light and the dark agree to the pixel. */
-.app-shell::before { opacity: 1; }
-.app-shell::before,
-.app-shell::after { background-position-y: 0; }
-/* no fade of its own. the swap is one picture the compositor crosses
-   over (`startViewTransition`), and a half-second opacity transition
-   running underneath it is a second, slower swap of the one edge
-   everybody is looking at — which is exactly what made the bumps
-   change shape on the way across. Only the no-view-transition path
-   fades it, because there it is the only thing moving. */
-html.fading .app-shell::before { transition: opacity 0.4s var(--ease); }
 
 .app-right {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
 	min-width: 0;
-
 }
 
 .rail {
@@ -633,47 +361,17 @@ html.fading .app-shell::before { transition: opacity 0.4s var(--ease); }
 	overflow-y: auto;
 }
 
-/* the bar scrolls its own content; its edge is drawn on the shell */
-/* the left bar is solid black, so the scalloped edge below fills black
-   too — the bumps read as the bar bulging into the page.
-
-   it's simply there on load — no entrance. */
 .rail-left {
 	contain: layout paint;
 	display: flex;
 	flex-direction: column;
 	color: var(--bar-ink);
 	background: var(--bar);
-	/* every inset in here is one value — except the right, which has
-	   the scallop to clear. the wave's trough is 13px inside the bar's
-	   nominal edge, so a plain --rail-pad put the boxes 0.6px off it
-	   and they read as touching the bumps. */
 	gap: var(--rail-pad);
-	padding: var(--rail-pad);
-	padding-right: calc(var(--rail-pad) + var(--wave-w) / 2);
-	/* **The bar does not wait for the strip.** Over the page the strip
-	   is a visible header — tabs on it, white page below — so the page
-	   starting under it reads right. Over the bar it is black on
-	   black, with no line between the two, so reserving its height
-	   left 52px of unbroken nothing above the clock. The bar starts at
-	   the top of the window, and the strip simply passes over it.
-
-	   — undone: the strip runs the whole width now, so the bar starts
-	   under it, a --group below, level with the page's first box. */
-	padding-top: calc(var(--topbar) + var(--group));
+	padding: calc(var(--topbar) + var(--group)) calc(var(--rail-pad) + var(--wave-w) / 2) var(--rail-pad) var(--rail-pad);
 	overflow: hidden;   /* the help box scrolls, the bar doesn't */
 }
 
-/* **The bar is black, so everything in it is drawn the other way
-   round.** Rather than restating a colour on every box inside, the two
-   tokens are swapped for the bar's own subtree and every rule in the
-   stylesheet follows on its own — including the ones that invert on
-   hover, which come out right because they were written in terms of
-   the same two names.
-
-   Only while the page is light. In the dark the page is already this
-   way round and the bar is the same black as everything else, so an
-   override here would put it back to front. */
 html:not(.inverted) .rail-left {
 	--paper: #000;
 	--ink: #ffffff;
@@ -682,34 +380,16 @@ html:not(.inverted) .rail-left {
 	--veil: rgba(0, 0, 0, 0.72);
 }
 
-/* the clock is the one thing that stood out of the old bar by being
-   filled, and it keeps that job by being filled the other way: a white
-   tile in a black column, on both sides of the swap. */
 .rail-left .rail-clock {
+	position: relative;
 	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
-/* the black strip at the very top, beside the left bar. it runs back
-   under the scallop so the bumps bite into it — otherwise it stopped
-   short of the left bar by the width of a bump. */
+
 .topbar {
 	position: absolute;
 	top: 0;
-	/* it starts past the bar, not over it. Running it the whole width
-	   covers the bar's top — and the bar paints *under* it (z-index 2
-	   against 4), so the clock was simply hidden down to the strip's
-	   edge. The bar cannot be raised above it either: the scallop that
-	   carves its edge sits between the two, and the bar over that
-	   would paint the wave out. So the strip keeps to the page, and
-	   the bar fills its own top with the clock instead of leaving it
-	   empty. */
-	/* **It runs the whole width now, over the bar as well**, by
-	   request: one strip across the top of the window. The bar starts
-	   under it (its top padding is the strip's height), and the bumps
-	   go under it too — their first one sits behind the strip, so the
-	   wave comes out from under it at a dip. The note above is the
-	   older layout. */
 	left: 0;
 	right: 0;
 	z-index: 4;
@@ -717,66 +397,25 @@ html:not(.inverted) .rail-left {
 	align-items: center;
 	justify-content: flex-start;
 	height: var(--topbar);
-	/* the words use the whole strip, from just past the left bar to the
-	   far edge of the page, rather than stopping at the content column */
-	/* the words use the whole strip, from the window's own edge */
 	padding-left: var(--gap);
 	padding-right: var(--gap);
 	color: var(--bar-ink);
 	background: var(--bar);
 }
 
-/* in the dark the strip is the same black as the page behind it, so a
-   line along its underside says where it ends. it is white on both
-   sides of the swap — on a white page there is nothing to see, so it
-   never appears or disappears, and has no colour of its own to fade at
-   its own pace.
-
-   it starts past the scalloped strip rather than running the bar's
-   whole width. the bar reaches 13px back under that strip so the two
-   meet without a seam, and a full-width line carried the white out
-   over the black bumps — a stub of white laid across the pattern, and
-   the first bump cut off from the bar above it. there is no end of bar
-   to mark there anyway: the black carries on down the scallop. */
 .topbar::after {
 	content: '';
 	position: absolute;
 	top: 100%;
-	/* **It starts exactly where the bump ends on this row, and not a
-	   pixel either side.** Reaching back further it crossed the bump,
-	   and being white on a white page it showed there and nowhere
-	   else — a nick in the top corner. Starting past the whole scallop
-	   instead left a gap between the line and the wave that showed in
-	   the dark, where both are white.
-
-	   The strip's underside falls on a crest, which is the wave's
-	   widest point, so that x is `--rail + --wave-out`. The strip's
-	   own left edge is half a tile back from `--rail`, hence the two
-	   halves added here. */
-	left: calc(var(--wave-w) / 2 + var(--wave-out));
+	left: calc(var(--rail) - var(--wave-w) / 2 + var(--wave-out));   /* ends on the bump */
 	right: 0;
 	height: 1px;
 	background: var(--bar-ink);
 	pointer-events: none;
 }
-/* the strip is one bump tall and runs the whole width now. over the
-   page the line under it is solid, and it starts exactly at the dip
-   between the first bump and the second — the bar's own edge on that
-   row. over the bar it is a row of dots instead, the same dots as the
-   bar's own dividers, ending as far off that dip as it starts off the
-   window's wall. */
-.topbar::after { left: calc(var(--rail) - var(--wave-w) / 2 + var(--wave-out)); }
 .topbar::before {
 	content: '';
 	position: absolute;
-	/* a dashed line rather than dots, so the strip's edge reads as its
-	   own thing beside the bar's dividers: 8px dashes, one pixel thick
-	   like the solid line it runs into. it runs the whole way from the
-	   window's wall to the dip where the solid line starts, and each
-	   tile is half a gap, a dash, half a gap — so `round` fits a whole
-	   number of them in, the wall and the solid line each sit a half-gap
-	   off the end dashes, and the step from the last dash into the solid
-	   line is the same gap as between any two dashes. */
 	top: 100%;
 	left: 0;
 	width: calc(var(--rail) - var(--wave-w) / 2 + var(--wave-out));
@@ -788,39 +427,24 @@ html:not(.inverted) .rail-left {
 	pointer-events: none;
 }
 
-/* the screen's name, on a white bar directly under the black one. it
-   runs the full window and both side bars pass over its ends, so it
-   only shows across the middle. */
-/* the row was tuned to sit in the content column; in the bar it drops
-   those offsets and takes a few px down off the top instead */
 .topbar .section-tabs {
 	position: relative;
-	/* measured off the glyphs, not the boxes: at this the x-height band
-	   of all four words — the body of the lowercase, which is what the
-	   eye reads as the line — sits on the middle of the bar, big tab
-	   and small alike. what still differs between them is ascenders
-	   and descenders, and no single offset can even those out. */
 	top: 4px;
 	height: auto;
 	margin: 0;
 	padding: 0;
-	/* the row owns the full column and shares it out evenly, so the
-	   ends stay pinned and everything between them redistributes on
-	   its own when a section is added or taken away. the gap is only
-	   a floor, for when the words get wide enough to meet. */
 	flex: 1;
 	justify-content: space-between;
 	gap: 1rem;
 }
-/* every tab holds a quarter of the row whatever size its word is, so
-   the one you pressed grows where it stands instead of shoving the
-   others along the strip */
+
 .topbar .section-tab {
 	flex: 1 1 0;
 	min-width: 0;
 	text-align: center;
+	transform-origin: center center;
+	text-indent: 0.09em;   /* the face carries more air on the right of a word */
 }
-
 
 .app-body {
 	display: flex;
@@ -833,8 +457,6 @@ html:not(.inverted) .rail-left {
 	flex: 1;
 	min-width: 0;
 	overflow-y: auto;
-	/* clears the black bar and the white one under it; the screen's
-	   own gap then sets how far off the line the tabs sit */
 	padding-top: var(--topbar);
 }
 
@@ -861,28 +483,12 @@ html:not(.inverted) .rail-left {
 	min-height: 0;
 	justify-content: flex-start;
 	gap: var(--group);
-	/* one inset on all four sides. it's the narrower step, not the
-	   wider one — the sides used to be twice the top and bottom, and
-	   evening them up by growing the top and bottom cost the boxes
-	   height they needed more than the page needed margin. */
-	/* one inset on all four sides, and it has to stay that way. Half a
-	   step over the first box was tried, on the grounds that the strip
-	   above is already a margin of sorts — and it reads as a mistake,
-	   because every other edge on the page is a --group and the eye
-	   compares them. */
 	padding: var(--group);
-	/* **Except the left, by request.** The bumps already reach 5px into
-	   the page, so a full --group past them read as a white strip
-	   between the bar and the boxes. 4px off the crests was too tight,
-	   so they sit 10px off. */
 	padding-left: calc(var(--wave-out) + 10px);
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
 
-/* create and practice float over the page instead of replacing it.
-   the wash is white rather than a dimmed black — nothing on this site
-   is grey, and the panel's own outline is what separates it. */
 .modal-veil {
 	position: fixed;
 	inset: 0;
@@ -902,9 +508,6 @@ html:not(.inverted) .rail-left {
 	to   { opacity: 1; transform: none; }
 }
 
-/* closing used to be a straight cut — the veil was hidden outright, so
-   there was nothing to animate. it now leaves under its own steam and
-   is only hidden once the way out has played. */
 @keyframes veil-out {
 	from { opacity: 1; }
 	to   { opacity: 0; }
@@ -917,17 +520,13 @@ html:not(.inverted) .rail-left {
 	pointer-events: none;   /* it's on its way out; clicks go through */
 	animation: veil-out 0.26s var(--ease) forwards;
 }
-/* the same 12px and 0.96 it arrived from, over the same 0.32s, on the
-   mirror of the arriving curve — so it leaves exactly the way it came */
+
 .modal-veil.is-leaving .modal-panel {
 	animation: panel-drop 0.32s cubic-bezier(0.7, 0, 0.78, 0) forwards;
 }
-/* each window says what it is, across the top over a rule */
 .modal-title {
 	flex: none;
 	margin: 0;
-	/* the same air under the word as the panel leaves over it, so it
-	   sits in the middle of the band rather than down against the rule */
 	padding-bottom: var(--group);
 	border-bottom: 1px solid var(--line);
 	font-family: var(--head-font);
@@ -943,8 +542,6 @@ html:not(.inverted) .rail-left {
 	gap: var(--group);
 	width: min(34rem, 100%);
 	max-height: 100%;
-	/* less off the top than the sides: the title's own rule sits close
-	   under it, and a full --gap above left the word looking low */
 	padding: var(--group) var(--gap) var(--gap);
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -956,7 +553,6 @@ html:not(.inverted) .rail-left {
 }
 .study-screen { width: min(40rem, 100%); }
 
-/* the way out, in the panel's own corner */
 .modal-close {
 	position: absolute;
 	top: 0.4rem;
@@ -976,17 +572,11 @@ html:not(.inverted) .rail-left {
 }
 .modal-close:hover { color: var(--paper); background: var(--ink); }
 
-
 /* =========================================================
    6. shared pieces — buttons and popups
    ========================================================= */
-
-/* pill button */
 .basic-button {
 	align-self: center;
-	/* the side padding gives way before the words do — a tenth of the
-	   button rather than a fixed step, once a fixed step is more than
-	   the button can spare */
 	padding: calc(0.65rem + var(--drop)) min(1.5rem, 10%) calc(0.65rem - var(--drop));
 	color: var(--paper);
 	background: var(--ink);
@@ -994,21 +584,12 @@ html:not(.inverted) .rail-left {
 	border-radius: 999px;
 	font-weight: 600;
 	cursor: var(--cur-tap);
-	/* a pill is a fixed height, so a label allowed to wrap drops its
-	   second line straight out of the bottom — dragging a pane narrow
-	   cut every one of these through the middle of the words. they keep
-	   to one line and give way at the side instead, which is the same
-	   thing the queue's pills have always done. */
 	min-width: 0;
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
 
-
-/* a filled pill, for the one that commits something. it lived with the
-   upscale page's rules and went out with them — it is worn by the key
-   window and spotify's, which is why it lives here now. */
 .basic-button.is-solid {
 	color: var(--paper);
 	background: var(--ink);
@@ -1016,9 +597,6 @@ html:not(.inverted) .rail-left {
 }
 .basic-button.is-solid:disabled { cursor: var(--cur-dot); }
 
-/* the other way round: white with the outline, for a way out to
-   somewhere else rather than a thing being committed here. it fills on
-   the way in, like everything else that goes live. */
 .basic-button.is-plain {
 	color: var(--ink);
 	background: var(--paper);
@@ -1029,9 +607,6 @@ html:not(.inverted) .rail-left {
 	background: var(--ink);
 }
 
-/* an empty state fills whatever box it's in and sits dead centre of
-   it — never tucked up against the top. every list on the site uses
-   this, so they all read the same when there's nothing in them. */
 .empty-message {
 	display: flex;
 	flex: 1;
@@ -1043,10 +618,7 @@ html:not(.inverted) .rail-left {
 	color: var(--ink);
 	text-align: center;
 }
-/* the face is what the eye lands on, so it is the only thing left in
-   the flow and the box centres it; the two lines are lifted out and
-   hung above. that way the wording can change length — and it has,
-   twice — without dragging the face off centre. */
+
 #deckCardList .empty-message { position: relative; }
 .empty-words {
 	position: absolute;
@@ -1066,37 +638,23 @@ html:not(.inverted) .rail-left {
    7. home — section tabs
    ========================================================= */
 .quick-panel, .recorder-panel, .home-panel, .player-panel, .chat-panel { width: 100%; }
-.quick-panel { flex: none; }
 
-/* home — the first section. empty for now; it's the frame waiting to
-   be filled, on the same grid as the cards and audio panels. */
 .home-panel {
+	position: relative;
 	display: flex;
 	flex: 1;
 	flex-direction: column;
+	gap: var(--group);
 	min-height: 0;
-	padding: var(--tight);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
 }
 
-/* section tabs — "cards  audio". the active one is big in the
-   title font, the others sit small on the same baseline. */
 .section-tabs {
 	contain: layout;   /* the size swap stays inside this row */
 	display: flex;
-	align-items: center;   /* the small word rides the big one's middle,
-	                          not its baseline */
+	align-items: center;
 	gap: 1.25rem;
 	height: 2.25rem;   /* whole pixels — see the note on .square-button */
-	/* 4px down, 4px back off the bottom: the row lands where the small
-	   word wants to be, and the bar below doesn't move */
 	margin: 4px 0 -4px;
-	/* the padding drops the pair halfway between the white bar above
-	   and the record / deck bar below. the 1px clears the font's own
-	   left bearing, so the first letter starts on the button edge
-	   under it. */
 	padding: 1.1rem 0 0 1px;
 }
 
@@ -1110,15 +668,9 @@ html:not(.inverted) .rail-left {
 	font-weight: 400;
 	line-height: 1.1;
 	cursor: var(--cur-tap);
-	/* no transition here on purpose — the only thing that changes is
-	   font-size, and animating that re-lays out the page on every
-	   frame. the size snaps in one pass, and switchSection() animates
-	   the difference with a transform instead. */
+	transform-origin: left center;
 }
-/* the words are only as tall as they are, which left most of the black
-   strip dead to a press — aim a little under a tab and nothing happened.
-   each keeps a pressable area the height of the whole strip, laid over
-   its own slot and nobody else's. */
+
 .section-tab::before {
 	content: '';
 	position: absolute;
@@ -1127,38 +679,20 @@ html:not(.inverted) .rail-left {
 	top: -16px;
 	bottom: -16px;
 }
-.section-tab.active { font-size: 2.25rem; cursor: var(--cur-dot); }
-/* centring the boxes still leaves the small word low — the letters
-   don't fill their line the same way at the two sizes. this lifts it
-   onto the big word's middle. it's `top`, not a transform, so the
-   swap animation in switchSection() has the property to itself. */
-/* and then down again by the face's own share, so the word's capitals
-   sit on the strip's middle rather than its ascent-to-descent band —
-   see --drop-title. in em, so each size is corrected by its own. */
+.section-tab.active {
+	position: relative;
+	top: calc(-3.75px + var(--drop-title));   /* levelled off a 4x screenshot */
+	font-size: 2.25rem;
+	cursor: var(--cur-dot);
+}
+
 .section-tab:not(.active) { position: relative; top: calc(-4px + var(--drop-title)); }
-/* the big word needs ~2px less lift than the small ones to land on the
-   same middle — measured on words without descenders, so a descender is
-   free to hang below the line rather than dragging the word up. */
-/* at -3px the big word sat 0.75px low — 16.00px of air over its ink
-   against 14.50 under, which is small on paper and plain to see at
-   36px. a quarter of a pixel at a time, measured off the rendered
-   pixels each time, lands it at -3.75px: 15.25 above and 15.25 below,
-   dead level. so a fractional `top` does move type here — the note
-   that used to sit in this spot said it could not, and it was wrong.
-   measure the pixels, not the font's metrics.
-   checked on every section's word. `audio` reads high and `player`
-   low because `d` climbs over the capitals and `p` and `y` hang under
-   the line; that is the letters doing what letters do, and correcting
-   it would push the capitals off the middle to flatter the tails. */
-.section-tab.active { position: relative; top: calc(-3.75px + var(--drop-title)); }
 
 /* =========================================================
    8. home — deck bar
    ========================================================= */
 .deck-bar { display: flex; align-items: center; gap: var(--tight); }
 
-
-/* square icon button — the deck smiley, import, export */
 .square-button {
 	display: grid;
 	place-items: center;
@@ -1178,8 +712,6 @@ html:not(.inverted) .rail-left {
 	border-color: var(--ink);
 }
 
-/* min-width:0 or the form can't shrink under the text input's own
-   intrinsic width, and the two icons get shoved out of the column */
 .deck-form { display: flex; flex: 1; min-width: 0; gap: var(--tight); }
 .deck-form input {
 	flex: 1;
@@ -1193,8 +725,6 @@ html:not(.inverted) .rail-left {
 .deck-form input::placeholder { color: var(--muted); }
 .deck-form .basic-button { flex: none; height: var(--field); padding: calc(var(--drop) * 2) 1.1rem 0; }
 
-/* the deck's create button — the same square the share one is, but
-   filled in, since it's the one that commits something */
 .square-button.is-solid {
 	color: var(--paper);
 	background: var(--ink);
@@ -1202,11 +732,8 @@ html:not(.inverted) .rail-left {
 }
 .square-button.is-solid:hover { color: var(--ink); background: var(--paper); }
 
-/* deck codes — a popup hanging off the share button */
 .share-picker { position: relative; z-index: 30; flex: none; }
-/* fixed and placed by placeSharePanel(), for the same reason the
-   confirm chip is: anchored inside the column it gets cut off by the
-   screen's own overflow as soon as the deck side is narrow. */
+
 .share-panel {
 	position: fixed;
 	z-index: 40;
@@ -1221,6 +748,7 @@ html:not(.inverted) .rail-left {
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 	text-align: left;
+	transform-origin: top right;
 }
 .share-panel label { font-weight: 700; font-size: 0.85rem; }
 .share-panel label + .share-row { margin-bottom: 0.5rem; }
@@ -1229,8 +757,6 @@ html:not(.inverted) .rail-left {
 .share-row textarea {
 	flex: 1;
 	min-width: 0;
-	/* exactly two lines tall, so a long code never leaves half a line
-	   showing at the bottom — the rest scrolls */
 	height: calc(2 * 1.4em + 1rem + 2px);
 	padding: 0.5rem 0.7rem;
 	background: var(--paper);
@@ -1246,47 +772,31 @@ html:not(.inverted) .rail-left {
 
 .share-note { min-height: 1.2rem; margin: 0; font-size: 0.8rem; }
 
-/* decks on the left, the picked deck's cards on the right */
 .home-body {
 	display: flex;
 	flex: 1;
 	min-height: 0;
 }
 
-/* each side is a bar over a list. the divider sizes the whole column,
-   so a bar and the list under it always agree on their width. */
 .deck-side, .card-side {
 	display: flex;
 	flex-direction: column;
 	gap: var(--group);
 	min-height: 0;
 }
-/* decks come first, and take whatever the divider gives them */
 .deck-side {
-	/* the width you dragged it to, but it gives way when the window
-	   can't hold both columns — as a fixed width it simply pushed the
-	   card side off the right edge of the page */
 	flex: 0 1 var(--deck-col, 50%);
-	/* no floor of its own — the grip takes it all the way down to
-	   nothing, getting smaller the whole way rather than sticking
-	   and then jumping shut */
 	min-width: 0;
 	overflow: hidden;
 }
-/* the cards take the rest, but never narrower than the two tiles */
 .card-side {
 	flex: 1;
 	min-width: 19rem;
-	/* no gap of its own below the tiles: the grip between the notes
-	   tool and the deck is their gap, the way it is between columns,
-	   and the tiles keep theirs as a margin */
 	gap: 0;
 }
 .card-side > .quick-panel { margin-bottom: var(--group); }
-/* the deck takes whatever the notes tool above it leaves */
 .card-side > .deck-stage { flex: 1; min-height: 0; }
 
-/* the grip laid across a column rather than down a row */
 .pane-split.is-across {
 	width: auto;
 	height: var(--grip, var(--group));
@@ -1308,15 +818,9 @@ html:not(.inverted) .rail-left {
 }
 .splitting-down, .splitting-down * { cursor: var(--cur-tall) !important; user-select: none; }
 
-/* the divider is exactly the gap the two panes used to have between
-   them, so nothing moved — the whole gap is just grabbable now. it
-   shows its line on hover rather than sitting there as furniture. */
 .pane-split {
 	position: relative;
 	flex: none;
-	/* the gap grows with the pane beside it — see wireSplit. shut, the
-	   pane has no gap to sit in, so the grip has no width either and
-	   the pane still open fills its row evenly. */
 	width: var(--grip, var(--group));
 	cursor: var(--cur-wide);
 	touch-action: none;
@@ -1334,28 +838,17 @@ html:not(.inverted) .rail-left {
 .pane-split:hover::after,
 .pane-split:focus-visible::after,
 .pane-split.is-dragging::after { opacity: 1; }
-/* narrow, it still has to be grabbable, so it keeps a strip to press.
-   the strip reaches outward, into the page's own margin, never back
-   over the pane that's still there — over that, a press meant for a
-   row near the edge would start a drag instead. */
+
 .pane-split.is-tight::before {
 	content: '';
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	/* both ways, not outward only. a pane shut against the wall puts
-	   its grip at the very edge, and a strip reaching further out lands
-	   under the side bar, which paints over it — there was nothing left
-	   to take hold of. ten pixels inward is the open pane's padding,
-	   not its contents. */
 	left: -10px;
 	right: -10px;
 }
-/* while it's being dragged nothing else takes the pointer */
 .splitting, .splitting * { cursor: var(--cur-wide) !important; user-select: none; }
-/* every pane with a grip narrows the whole way down to nothing. the
-   words inside give up before the box does — each line ends in an
-   ellipsis rather than pushing the wall out. */
+
 .deck-side, .queue-side, .clip-side { min-width: 0; }
 .deck-card-text, .stage-card-text, .track-name, .clip-text,
 .widget-row-name, .notes-card-text { min-width: 0; }
@@ -1367,7 +860,6 @@ html:not(.inverted) .rail-left {
 	text-overflow: ellipsis;
 }
 
-/* the deck list — a third of the width, the stage takes the rest */
 .deck-list-slot {
 	contain: layout paint;
 	position: relative;
@@ -1386,7 +878,6 @@ html:not(.inverted) .rail-left {
 }
 .deck-list-slot::-webkit-scrollbar { width: 0; }
 
-/* one deck — the smiley's face, then the name and what's in it */
 .deck-card {
 	display: flex;
 	flex: none;
@@ -1399,6 +890,7 @@ html:not(.inverted) .rail-left {
 	border-radius: var(--radius);
 	text-align: left;
 	cursor: var(--cur-tap);
+	transition-property: color, background-color, border-color;   /* a drag moves it by transform */
 }
 .deck-card:hover { color: var(--paper); background: var(--ink); }
 .deck-card.active-deck {
@@ -1408,23 +900,17 @@ html:not(.inverted) .rail-left {
 	cursor: var(--cur-dot);
 }
 
-/* the whole entry is the grip — drag one to move it up or down. it
-   looks no different in your hand: same colours, same cursor. it's
-   lifted off the page, so all it gains is a z-index and its own layer */
 .deck-card.is-lifted {
 	position: relative;
 	z-index: 2;
+	color: var(--ink);
+	background: var(--paper);
 	will-change: transform;
 }
-.deck-card.is-lifted { color: var(--ink); background: var(--paper); }
 .deck-card.active-deck.is-lifted { color: var(--paper); background: var(--ink); }
 
-/* the cursor sweeps over every deck on the way, so while one is in
-   hand the rest stop lighting up under it */
 .sorting-rows .deck-card:not(.active-deck):hover { color: var(--ink); background: var(--paper); }
 
-/* a deck's look — one of eight outline shapes. it takes the row's
-   colour, so it flips to white on the active row. */
 .deck-shape {
 	display: grid;
 	flex: none;
@@ -1433,15 +919,11 @@ html:not(.inverted) .rail-left {
 	height: 28px;
 }
 
-.deck-card-text { min-width: 0; }
 .deck-card-text strong,
 .deck-card-text small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .deck-card-text strong { font-size: 0.95rem; }
 .deck-card-text small { font-size: 0.78rem; }
 
-/* the stage — whichever deck is picked, spelled out card by card.
-   the heading lives inside the frame so the box runs the full height,
-   the same as the deck list beside it */
 .deck-stage {
 	display: flex;
 	flex: 1;
@@ -1455,11 +937,6 @@ html:not(.inverted) .rail-left {
 	border-radius: var(--radius);
 }
 
-/* every panel wears the same head — the deck, the notes tool, the
-   scratch box. one rule for the lot, so the boxes read as a set rather
-   than three things that happen to sit near each other. the sizes were
-   1.5rem, 1rem and 1.05rem before this, which is exactly the sort of
-   thing you see without being able to name. */
 .panel-head {
 	display: flex;
 	flex: none;
@@ -1467,26 +944,13 @@ html:not(.inverted) .rail-left {
 	justify-content: center;
 	gap: 0.75rem;
 	min-width: 0;
-	/* the margin holds the rule off both walls; the padding on top of
-	   it lines the name up with the rows below, so the column reads as
-	   one edge */
 	margin: 0 0.35rem;
-	/* measured off the glyphs, then lifted a touch past even: the word
-	   is capitals with nothing hanging below the line, and a heading
-	   set dead centre by measurement reads low when there are no
-	   descenders under it */
 	padding: 0 0.35rem calc(var(--tight) + 3px);
 	border-bottom: 1px solid var(--line);
 }
 .panel-head h2 {
 	margin: 0;
-	/* its own, so the head never takes its height from whatever line
-	   spacing the box around it happens to use — the help box sets a
-	   double-spaced body, which was inflating its heading's line box by
-	   twelve pixels and nothing else's */
 	line-height: 1.25;
-	/* it has to be allowed to shrink, or a flex item stays at its full
-	   text width and the ellipsis never gets a chance to appear */
 	min-width: 0;
 	overflow: hidden;
 	font-family: var(--head-font);
@@ -1497,12 +961,8 @@ html:not(.inverted) .rail-left {
 	text-overflow: ellipsis;
 }
 
-.stage-head {
-	flex: none;
-}
+.stage-head { flex: none; }
 
-
-/* one card — question above, answer below, the two buttons on the end */
 #deckCardList .stage-card {
 	display: flex;
 	flex: none;
@@ -1520,10 +980,7 @@ html:not(.inverted) .rail-left {
 	min-width: 0;
 	cursor: var(--cur-bar);
 }
-/* a card is two tagged lines, question over answer. each line is the
-   full width of the row, so pressing beside the answer's last word
-   opens the answer — the words used to be the whole target, and the
-   question's line, being the longer one, caught everything. */
+
 .stage-line {
 	display: flex;
 	align-items: baseline;
@@ -1542,11 +999,6 @@ html:not(.inverted) .rail-left {
 .stage-card-text strong { font-size: 0.95rem; font-weight: 600; }
 .stage-card-text small { font-size: 0.8rem; }
 
-/* the fields stand exactly where the text stood — no box appears, the
-   words just become typeable. they keep the question's and answer's own
-   sizes so the row doesn't shift by a pixel when you click it. a long
-   line scrolls sideways inside the field, which an input does on its
-   own once it has nowhere left to grow. */
 .stage-card-edit {
 	display: flex;
 	flex: 1;
@@ -1569,7 +1021,6 @@ html:not(.inverted) .rail-left {
 .stage-card-edit .edit-question { font-size: 0.95rem; font-weight: 600; }
 .stage-card-edit .edit-answer { font-size: 0.8rem; }
 
-/* three lines on the left of a card — the same grip the clips use */
 .card-handle {
 	display: flex;
 	flex: none;
@@ -1598,9 +1049,6 @@ html:not(.inverted) .rail-left {
 	will-change: transform;
 }
 
-/* the bin on the end of a row, and the cancel that appears beside it.
-   the cancel is taken out of the flow so the row doesn't jump when it
-   arrives — it hangs off the left of the pair. */
 .stage-card-actions {
 	position: relative;
 	display: flex;
@@ -1610,16 +1058,12 @@ html:not(.inverted) .rail-left {
 		opacity 0.2s var(--ease),
 		transform 0.26s var(--ease);
 }
-/* typing in a row is not the moment to offer to delete it */
 .stage-card.editing .stage-card-actions {
 	opacity: 0;
 	transform: scale(0.55);
 	pointer-events: none;
 }
 
-/* nothing changes colour here: it swells under the cursor, and turns
-   itself over when you arm it. a full turn rather than a half one, so
-   both marks land upright without a counter-spin. */
 .stage-card-action {
 	position: relative;
 	display: grid;
@@ -1644,9 +1088,6 @@ html:not(.inverted) .rail-left {
 	inset: 0;
 	display: grid;
 	place-items: center;
-	/* each mark carries its own turn: the × winds away and shrinks out
-	   while the tick unwinds in and grows to meet you. nothing rides a
-	   full revolution back to where it began. */
 	transition:
 		opacity 0.26s var(--ease),
 		transform 0.42s cubic-bezier(0.34, 1.3, 0.5, 1);
@@ -1668,8 +1109,6 @@ html:not(.inverted) .rail-left {
 	transform: rotate(0deg) scale(1);
 }
 
-/* the tick is two edges of a box turned 45° — a backwards L — rather
-   than a glyph, so it sits square with the × instead of beside it */
 .stage-card-action .mark-yes::before {
 	content: '';
 	display: block;
@@ -1681,7 +1120,6 @@ html:not(.inverted) .rail-left {
 	transform: rotate(45deg);
 }
 
-
 .stage-card-cancel {
 	position: absolute;
 	top: 50%;
@@ -1691,8 +1129,7 @@ html:not(.inverted) .rail-left {
 	width: 1.75rem;
 	height: 1.75rem;
 	margin-right: 0.1rem;
-	padding: 0;
-	padding-top: 4px;
+	padding: 4px 0 0;
 	color: inherit;
 	background: none;
 	border: 0;
@@ -1716,12 +1153,8 @@ html:not(.inverted) .rail-left {
 /* =========================================================
    9. home — renaming a deck in place
    ========================================================= */
-/* the entry turns into this while you retype its name */
-.deck-card.is-renaming { cursor: var(--cur-dot); }
-/* a row being renamed is live, so it inverts like everything else here
-   — otherwise the white field sat inside a white row and the whole
-   thing was one thin outline inside another, easy to miss */
 .deck-card.is-renaming {
+	cursor: var(--cur-dot);
 	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
@@ -1735,30 +1168,18 @@ html:not(.inverted) .rail-left {
 	border-radius: 6px;
 	font-weight: 600;
 }
+
 /* =========================================================
-   10. right bar — help box and the two tiles
-
-   the tiles are shared by the create/practice pair and the
-   record tile, so all three keep the same height and face.
+   10. the function box and the two tiles
    ========================================================= */
-
-/* fills the blank area above the tiles. it scrolls inside itself, so
-   opening a row never moves the tiles. */
 .help-box {
 	contain: layout paint;
 	display: flex;
 	flex-direction: column;
-	/* as tall as its own words, no more — it only gives way and starts
-	   scrolling if the bar genuinely runs out of room for it */
 	flex: 0 1 auto;
 	min-height: 0;
 	overflow-y: auto;
-	/* double-spaced text carries half a line of air above its first
-	   word, so an even padding reads tight under the last one. the
-	   bottom takes the next step up the scale to make that back —
-	   but only while there are words down there. shut, that step was
-	   just a box with more room below the heading than above it. */
-	padding: var(--tight);
+	padding: var(--tight) var(--rail-round) 0;
 	transition: padding-bottom 0.26s var(--drawer);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
@@ -1766,55 +1187,33 @@ html:not(.inverted) .rail-left {
 	line-height: 2;        /* double spaced */
 	text-align: left;
 }
-/* the heading is a button now, so the band it sits in belongs to that
-   and the words below it live in their own drawer */
+
 .help-head {
 	background: none;
-	/* a button brings a border of its own on every side, which made the
-	   band two pixels taller than the same head everywhere else. only
-	   the one under it is wanted, and .panel-head draws that. */
 	border-width: 0 0 1px;
 	color: inherit;
 	cursor: var(--cur-tap);
+	transition: border-color 0.26s var(--drawer);
 }
-/* the drawer. the rows go from nothing to their own height, which is
-   the one way a height animates without a number being guessed.
 
-   the box and the words in it are not on the same clock. opening, the
-   box unfolds and the words follow it up a beat later, so there is
-   something arriving rather than a shape that is suddenly full.
-   closing, the words go first and quickly — waiting for them to fade
-   while the box is already shutting is what made it feel like a
-   dropped blind. */
 .help-body {
 	display: grid;
 	grid-template-rows: 0fr;
-	/* shutting: a touch quicker than opening, which is how a drawer
-	   behaves and how it reads */
 	transition: grid-template-rows 0.26s var(--drawer);
 }
 .help-box.is-open {
-	/* three times the step under the words: a justified block wants
-	   more room below it than beside it, or it reads as sitting on the
-	   floor of the box */
-	padding-bottom: calc(var(--tight) * 3);
+	padding-bottom: calc(var(--tight) + 1px);
 	transition: padding-bottom 0.34s var(--drawer);
 }
 .help-box.is-open .help-body {
 	grid-template-rows: 1fr;
 	transition: grid-template-rows 0.34s var(--drawer);
 }
-/* the words only fade. they used to slide up as the box grew, which is
-   two movements at once and reads as one of them being late.
 
-   the fade lasts as long as the box's own movement, both ways. going
-   out it used to take half the time the box did, so the words were
-   gone while there was still a drawer closing over nothing — which is
-   the blink you see if you watch it. now they leave at the rate the
-   box shuts, the same as they arrive at the rate it opens. */
 .help-body-inner {
 	overflow: hidden;
 	min-height: 0;
+	margin-bottom: -5px;
 	opacity: 0;
 	transition: opacity 0.26s var(--drawer);
 }
@@ -1823,55 +1222,17 @@ html:not(.inverted) .rail-left {
 	transition: opacity 0.28s var(--drawer) 0.06s;
 }
 
-/* nothing of its own: .panel-head draws this heading, exactly as it
-   draws the deck's, the notes tool's and the scratch box's. the only
-   thing left here is the one way it differs — its rule is the drawer's
-   rule, so it is only there when the drawer is. */
-/* the rule belongs to the words, not to the band above them: it comes
-   and goes on exactly the clock the words do, so the two read as one
-   thing opening rather than a line arriving a beat off. */
 .help-box .help-head { border-bottom-color: transparent; }
-.help-head { transition: border-color 0.26s var(--drawer); }
-.help-box.is-open .help-head { transition: border-color 0.28s var(--drawer) 0.06s; }
+.help-box.is-open .help-head { border-bottom-color: var(--line); transition: border-color 0.28s var(--drawer) 0.06s; }
 
-/* shut there is no rule and nothing under it, so the room the head
-   holds for both is a hole. it comes off the bottom of the head and
-   the bottom of the box — never off the top, which is what fixes the
-   word in place: it sits 8px down whether the drawer is open or shut,
-   and does not move when it opens. */
-/* shut, the rule IS the bottom of the box: the head keeps the room it
-   always keeps, and the box keeps none below it, so the line lands
-   exactly on the edge. the word never moves either way — everything
-   that changes is below it. */
-.help-box:not(.is-open) { padding-bottom: 0; }
-.help-box.is-open .help-head { border-bottom-color: var(--line); }
-/* one paragraph, belonging to whichever page you're on. it sits well
-   clear of the rule, off both walls, and centred like the word above. */
 .help-box .help-note {
 	margin: var(--group) 0 0;
-	/* both edges flush, so the block of words has the same straight
-	   sides the box around it does. the last line is left to its own
-	   length — stretching that one too is what makes justified text
-	   look broken rather than set. */
 	text-align: justify;
 	hyphens: auto;
-	/* the same inset the rule above it has. the head is held off the
-	   walls twice — a 0.35rem margin and a 0.35rem padding — so the
-	   line's ends are in from the box's own padding, and the words have
-	   to start there too or they run past it and look forced into the
-	   box. twice that now, for air at the sides. */
 	padding: 0 0.7rem;
-	/* a justified last line is left to its own length, which in a
-	   column this narrow can leave one word adrift on the left. the
-	   short line sits in the middle instead. */
 	text-align-last: center;
 }
-/* double-spaced lines carry half their leading under the last one,
-   which is five pixels of air at the floor with no counterpart at the
-   sides. it is taken back, so what shows below the words is the box's
-   padding and nothing else. */
-.help-body-inner { margin-bottom: -5px; }
-/* a pair of tiles sitting over the organizer, sharing its width */
+
 .quick-panel {
 	display: flex;
 	flex: none;
@@ -1880,8 +1241,6 @@ html:not(.inverted) .rail-left {
 
 .quick-action {
 	display: flex;
-	/* the pair spans the card column exactly, so the two of them line
-	   up with the organizer underneath */
 	flex: 1;
 	min-width: 9rem;
 	flex-direction: column;
@@ -1889,29 +1248,19 @@ html:not(.inverted) .rail-left {
 	justify-content: center;
 	gap: 0.2rem;
 	min-height: 0;
-	/* nothing but the face and the word in here now, so it centres on
-	   its own — there is no lone icon up top pulling the balance about */
-	/* measured off the ink: 'create' has no descender, so its line box
-	   leaves slack underneath and the pair read 2.7px high. five off the
-	   top drops the centred content by half that. */
 	padding: calc(0.7rem + 5px) 1rem 0.7rem;
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	cursor: var(--cur-tap);
+	transition: transform var(--quick) var(--ease);
 }
 .quick-action.primary { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
-/* hover lifts the tile and wakes its face up — the colours stay put */
-.quick-action { transition: transform var(--quick) var(--ease); }
 .quick-action:hover { transform: translateY(-4px); }
 .quick-action:active { transform: translateY(-1px); }
-.quick-action small { transition: transform 0.25s var(--ease); }
 .quick-action:hover small { animation: face-wiggle 0.5s var(--ease); }
 
-/* the old swing was -6deg then +5deg from an off-centre lift, so it
-   leaned one way. this is the same angle each side, decaying evenly,
-   and about a third smaller overall. */
 @keyframes face-wiggle {
 	0%   { transform: rotate(0deg); }
 	25%  { transform: rotate(-4deg); }
@@ -1919,12 +1268,7 @@ html:not(.inverted) .rail-left {
 	75%  { transform: rotate(-2deg); }
 	100% { transform: rotate(0deg); }
 }
-.quick-action small { transform-origin: center center; }
 
-/* the face rides above the word. it's `order`, not the markup order,
-   because the label should still be read out first — and for that to
-   work the span holding the pair has to be a flex column, which is the
-   one thing it never was. */
 .quick-action .action-text {
 	display: flex;
 	flex-direction: column;
@@ -1937,6 +1281,8 @@ html:not(.inverted) .rail-left {
 	margin: 0;
 	font-size: 1.15rem;
 	line-height: 1.2;
+	transform-origin: center center;
+	transition: transform 0.25s var(--ease);
 }
 .quick-action strong { font-size: 0.95rem; font-weight: 700; }
 .quick-action b { display: none; }
@@ -1944,7 +1290,6 @@ html:not(.inverted) .rail-left {
 /* =========================================================
    11. create window
    ========================================================= */
-
 .form-note:empty { display: none; }
 
 .maker-bar {
@@ -1956,8 +1301,6 @@ html:not(.inverted) .rail-left {
 	width: 100%;
 }
 
-/* the fields, and the one button that acts on them standing up the
-   side of both */
 .maker-entry {
 	display: flex;
 	flex: none;
@@ -1972,50 +1315,31 @@ html:not(.inverted) .rail-left {
 	gap: var(--tight);
 	min-width: 0;
 }
-/* as wide as a field is tall, and as tall as both of them together —
-   the fields keep the size they had. the word runs down it rather than
-   being rotated, so no transform fights the press animation. it needs
-   a tag in the selector to outrank the general button rule further
-   down the file, which is equal on specificity and later in order. */
+
 .maker-bar button.add-upright {
 	flex: none;
 	align-self: stretch;
 	width: var(--field);
 	height: auto;
 	padding: 0;
-	/* centred on both axes by the flexbox rather than by text-align,
-	   which swaps meaning under a vertical writing mode */
 	display: flex;
 	align-items: center;
 	justify-content: center;
 }
-/* the word runs down the button a letter at a time, each one standing
-   up — not the word laid on its side. the only capitals on the site,
-   because three stacked lowercase letters with an ascender in them
-   read as a stack of shapes rather than a word. */
+
 .add-upright span {
 	display: block;
 	writing-mode: vertical-rl;
 	text-orientation: upright;
 	text-transform: uppercase;
-	/* the title face is a dot matrix: at body size the letters thin out
-	   to specks, so it takes a size or two up to read */
 	font-family: var(--title-font);
 	font-size: 1.45rem;
 	font-weight: 400;
-	/* the face carries a lot of air over and under each letter, so the
-	   tracking has to come a long way in before the three read as one
-	   word */
 	letter-spacing: -0.25em;
-	/* the tracking is taken off the back of the last letter too, so the
-	   box ends short of the ink and centring the box left the word a
-	   pixel low. measured, this puts it back on the middle. */
 	position: relative;
 	top: -1px;
 }
 
-/* one line each, the letter sitting inside the box at the left rather
-   than a label stacked above it */
 .maker-field {
 	display: flex;
 	flex: none;
@@ -2048,7 +1372,6 @@ html:not(.inverted) .rail-left {
 .maker-field input::placeholder { color: var(--muted); }
 .maker-bar .basic-button { flex: none; height: var(--field); padding: calc(var(--drop) * 2) 1.5rem 0; }
 
-/* the note sits over the bar's corner, so nothing shifts for it */
 .form-note {
 	position: absolute;
 	right: 0;
@@ -2058,7 +1381,6 @@ html:not(.inverted) .rail-left {
 	font-size: 0.85rem;
 }
 
-/* the two scrolling lists share their frame and scrollbar */
 #cardList, #recordingList {
 	contain: layout paint;
 	width: 100%;
@@ -2076,7 +1398,6 @@ html:not(.inverted) .rail-left {
 #recordingList::-webkit-scrollbar,
 #deckCardList::-webkit-scrollbar { display: none; }
 
-/* it sits inside .deck-stage, so it brings no frame of its own */
 #deckCardList {
 	width: 100%;
 	margin: 0;
@@ -2085,21 +1406,6 @@ html:not(.inverted) .rail-left {
 	list-style: none;
 	text-align: left;
 	scrollbar-width: none;
-}
-
-#cardList {
-	display: flex;
-	/* four rows, always — the window used to stretch to the full screen
-	   as you added, and a box that grows with the deck moves the fields
-	   under your hands. an empty deck keeps the same four rows of room
-	   rather than collapsing and springing open on the first card. */
-	flex: none;
-	flex-direction: column;
-	gap: var(--tight);
-	height: calc((4 * var(--card-row)) + (5 * var(--tight)) + 2px);
-	padding: var(--tight);
-}
-#deckCardList {
 	position: relative;   /* so a row's offsetTop is its slot in here */
 	display: flex;
 	flex: 1;
@@ -2108,16 +1414,30 @@ html:not(.inverted) .rail-left {
 	min-height: 0;
 }
 
-#recordingList { display: flex; flex-direction: column; gap: var(--tight); padding: var(--tight); }
+#cardList {
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	gap: var(--tight);
+	height: calc((4 * var(--card-row)) + (5 * var(--tight)) + 2px);
+	padding: var(--tight);
+}
 
-/* download-all shows a pause while it's working its way down the list */
+#recordingList {
+	position: relative;    /* so a row's offsetTop is its slot in here */
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--tight);
+	min-width: 0;
+	min-height: 0;
+	padding: var(--tight);
+}
+
 .square-button .icon-pause { display: none; }
 .square-button.is-packing .icon-download { display: none; }
 .square-button.is-packing .icon-pause { display: block; }
 
-/* nothing to act on: it keeps the same outline as everything else and
-   simply stops answering — no dashes, and no fade, since a faded black
-   is just grey */
 .square-button:disabled { cursor: var(--cur-dot); }
 .square-button:disabled:hover { color: var(--ink); background: var(--paper); }
 .square-button:disabled:active { transform: none; }
@@ -2162,32 +1482,24 @@ html:not(.inverted) .rail-left {
 	line-height: 1.3;
 	text-align: center;
 	overflow-wrap: anywhere;
+	animation: rise-in 0.34s var(--ease) backwards;
 }
-/* nothing to ask — it's a note, not a question, so it drops the
-   heading weight and most of the size */
+
 #studyQuestion.is-empty {
 	font-size: 1.15rem;
 	font-weight: 400;
 }
 
-/* the four answers fill the rest, so the keyboard quadrants line up
-   with where the buttons actually are */
 .answer-options {
 	display: grid;
 	flex: 1;
 	grid-template-columns: 1fr 1fr;
 	grid-template-rows: 1fr 1fr;
 	gap: var(--tight);
-	/* two rows' worth whatever it holds, so a card with one answer and
-	   a card with four leave the window exactly the same size — it used
-	   to shrink to its rows and the whole window changed height */
 	min-height: calc((2 * var(--answer-row)) + var(--tight));
 	margin: 0;
 }
-/* a small deck can't always find three wrong answers. the area is the
-   same four quarters whatever it finds — the answers grow into it
-   rather than leaving holes: one takes all four, two take a column
-   each, and the third of three runs the whole bottom row. */
+
 .answer-options[data-count="1"] .answer-button {
 	grid-column: 1 / -1;
 	grid-row: 1 / -1;
@@ -2223,9 +1535,7 @@ html:not(.inverted) .rail-left {
 .answer-button:nth-child(3) { animation-delay: 0.12s; }
 .answer-button:nth-child(4) { animation-delay: 0.17s; }
 .answer-button:hover { color: var(--paper); background: var(--ink); }
-/* held down: the tile fills, and that is all it does. it used to squash
-   and spring back under the finger, which read as having answered —
-   the answer isn't taken until you let go of it. */
+
 .answer-button:active:not(.correct):not(.incorrect) {
 	color: var(--paper);
 	background: var(--ink);
@@ -2233,8 +1543,6 @@ html:not(.inverted) .rail-left {
 }
 .answer-button.correct:hover, .answer-button.incorrect:hover { color: inherit; background: inherit; }
 
-/* the right answer fills in black whichever tile you pressed, so the
-   answer is always shown without a word being written */
 .answer-button.correct {
 	color: var(--paper);
 	background: var(--ink);
@@ -2242,12 +1550,6 @@ html:not(.inverted) .rail-left {
 }
 .answer-button.correct:not(.is-right) { animation: pop 0.35s var(--ease); }
 
-/* the mark lands in the middle of the tile and the word does not move
-   at all. it used to slide down to make room overhead, which meant the
-   answer you were reading walked off its line at the moment you were
-   told whether it was right. only the tile you pressed is ever marked —
-   a tick and a cross say which way it went, and the answer itself is
-   shown by being filled in. */
 .answer-word { display: block; }
 
 .answer-mark {
@@ -2258,6 +1560,7 @@ html:not(.inverted) .rail-left {
 	place-items: center;
 	width: 1.35rem;
 	height: 1.35rem;
+	transform: translate(-50%, -50%);
 	pointer-events: none;
 	animation: mark-in 0.3s var(--ease) backwards;
 }
@@ -2265,16 +1568,13 @@ html:not(.inverted) .rail-left {
 	from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
 	to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
-.answer-mark { transform: translate(-50%, -50%); }
 .answer-mark svg { display: block; width: 100%; height: 100%; }
 
-/* the tick is written on, one stroke, left to right */
 .answer-mark.is-tick path {
 	stroke-dasharray: 25;
 	stroke-dashoffset: 25;
 	animation: mark-draw 0.32s cubic-bezier(0.4, 0, 0.2, 1) 0.06s forwards;
 }
-/* the cross is struck on, one bar then the other */
 .answer-mark.is-cross path {
 	stroke-dasharray: 18;
 	stroke-dashoffset: 18;
@@ -2292,9 +1592,6 @@ html:not(.inverted) .rail-left {
 	100% { transform: scale(1); }
 }
 
-/* getting it wrong: a knock rather than a line through it — the tile
-   turns over for a beat, shakes it off and settles back a size, which
-   leaves the black one beside it as the only filled tile on screen */
 .answer-button.incorrect {
 	color: var(--ink);
 	background: var(--paper);
@@ -2310,14 +1607,11 @@ html:not(.inverted) .rail-left {
 	100% { transform: scale(0.97); }
 }
 
-/* once one has been pressed the rest step back a hair, so the tile
-   that answered is the only thing at full size */
 .answer-options.is-answered .answer-button:not(.correct):not(.incorrect) {
 	transform: scale(0.985);
 	transition: transform 0.3s var(--ease);
 }
 
-/* sits over the question's corner — the grid below never moves */
 #studyFeedback:empty { display: none; }
 #studyFeedback {
 	position: absolute;
@@ -2333,8 +1627,6 @@ html:not(.inverted) .rail-left {
    ========================================================= */
 .context-menu {
 	position: fixed;
-	/* over the create and practice windows (50), since a card is
-	   right-clicked from inside one */
 	z-index: 60;
 	width: 11rem;
 	padding: 0.3rem;
@@ -2367,7 +1659,6 @@ html:not(.inverted) .rail-left {
 	min-height: 0;
 }
 
-/* the control row, same shape as the deck bar */
 .audio-bar {
 	position: relative;   /* the confirm popup hangs off it */
 	display: flex;
@@ -2377,17 +1668,11 @@ html:not(.inverted) .rail-left {
 .audio-bar .basic-button { height: var(--field); padding: calc(var(--drop) * 2) 1.4rem 0; }
 .audio-bar .record-status { flex: 1; margin: 0 0 0 0.5rem; }
 
-/* the ask before something that can't be taken back. a popup hanging
-   off the button that started it, the same one the deck menus use. it
-   drops itself after a moment if you ignore it. */
 @keyframes confirm-in {
 	from { opacity: 0; transform: translateY(-6px) scale(0.97); }
 	to   { opacity: 1; transform: none; }
 }
 .confirm-pop {
-	/* fixed and placed by placeConfirm(), so it hangs off the button
-	   that asked wherever that button is — including a row inside the
-	   scrolling deck list, which would otherwise clip it */
 	position: fixed;
 	z-index: 40;
 	display: flex;
@@ -2402,12 +1687,9 @@ html:not(.inverted) .rail-left {
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 	text-align: left;
 	font-size: 0.9rem;
-	/* it unfolds from the corner it is pinned by, which placeConfirm()
-	   sets — the left one when it lines up on the left */
 	transform-origin: top right;
 	animation: confirm-in 0.22s var(--ease);
 }
-/* the two answers share the width under the question */
 .confirm-answers { display: flex; gap: var(--tight); }
 .confirm-answers .chip-button { flex: 1; }
 .chip-button {
@@ -2423,53 +1705,29 @@ html:not(.inverted) .rail-left {
 #confirmChipYes { color: var(--paper); background: var(--ink); }
 #confirmChipYes:hover { color: var(--ink); background: var(--paper); }
 
-/* the button that asked stays lit while the chip is up */
 .square-button.is-armed {
 	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
 
-/* list on the left, everything live on the right */
 .audio-body {
 	display: flex;
 	flex: 1;
-	/* no gap of its own: the grip between the two is the gap, exactly
-	   as it is on the cards page. a --gap either side of it as well
-	   left a canyon between the clips and the box. */
 	gap: 0;
 	min-height: 0;
 }
-/* the clips and the two lines under them. the column is what the grip
-   sizes now, so the lines stay the width of the list they belong to. */
+
 .clip-column {
 	display: flex;
-	/* the whole row until there's something beside it, and then
-	   whatever the box on the right leaves — the clip bars shrink with
-	   it, since each one is the width of its row */
 	flex: 1;
 	flex-direction: column;
 	min-width: 0;
 	min-height: 0;
 }
-#recordingList {
-	position: relative;    /* so a row's offsetTop is its slot in here */
-	flex: 1;
-	min-width: 0;
-	min-height: 0;
-}
 
-/* the folder the mp3s land in, over everything else in the column. it
-   wears the same field as the playlist link below it. */
 .clip-folder {
-	/* Three columns rather than a row, and the outer two the same width
-	   whatever they hold — a row would let the wider side shove the field
-	   off the middle, and the field is the thing that wants to be centred.
-	   The middle is twice a side, so the field keeps most of the width. */
 	display: grid;
-	/* the sides take only what their buttons need and the field takes
-	   everything else, so it runs right up to both pairs. it stays
-	   centred by their being the same pair of buttons wide. */
 	grid-template-columns: auto 1fr auto;
 	flex: none;
 	align-items: center;
@@ -2477,7 +1735,6 @@ html:not(.inverted) .rail-left {
 	min-width: 0;
 	padding: 0 0 var(--tight);
 }
-/* what sits either side of the field: out to the walls, in towards it */
 .clip-folder-side {
 	display: flex;
 	align-items: center;
@@ -2485,9 +1742,7 @@ html:not(.inverted) .rail-left {
 	min-width: 0;
 }
 .clip-folder-side.is-right { justify-content: flex-end; }
-/* the clip files found, each one a row to press. the browser's own file
-   window shows every kind of thing on the disk; this shows the ones this
-   page can actually read and nothing else. */
+
 .bundle-list {
 	display: flex;
 	flex-direction: column;
@@ -2527,7 +1782,6 @@ html:not(.inverted) .rail-left {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
-/* a size is a number, so it wears the number face */
 .bundle-one small { flex: none; font-family: var(--num-font); font-size: 1rem; }
 
 .bundle-say {
@@ -2539,13 +1793,8 @@ html:not(.inverted) .rail-left {
 .bundle-say:empty { display: none; }
 .bundle-where { align-self: stretch; height: var(--field); padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0; }
 
-/* the window that asks where the mp3s go: a name, a strip of places,
-   and a press. */
 .folder-screen .ask-body { gap: var(--group); }
-/* the field is a row's worth of `flex: 1` over the clips, where that
-   sets its width. the window is a column, where the same `flex: 1`
-   sets its *height* instead and squashed it to 22px against a --field
-   of 42. here it takes its full width and its own height. */
+
 .folder-screen #folderName {
 	flex: none;
 	width: 100%;
@@ -2573,9 +1822,7 @@ html:not(.inverted) .rail-left {
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
 .place-bubble:hover { color: var(--paper); background: var(--ink); }
-/* the other way round, said small: most of the time the zip is what is
-   wanted, and a picker is a permission prompt for someone who only
-   asked for a folder of their own songs. */
+
 .folder-other {
 	align-self: center;
 	margin-top: calc(var(--group) * -0.5);
@@ -2590,19 +1837,14 @@ html:not(.inverted) .rail-left {
 	cursor: var(--cur-tap);
 }
 
-/* what the press will do, said plainly */
 .folder-say {
 	margin: 0;
 	padding: 0 0.35rem;
 	font-size: 0.85rem;
 	text-align: center;
 }
-/* the one chosen wears the black, like every live thing here */
 .place-bubble.is-on { color: var(--paper); background: var(--ink); }
 
-/* the same field the new deck is typed into, over on the cards page.
-   named by id, because `.ask-screen input` is a thin pill and comes
-   later in the file — on class alone it won. */
 #folderName, #folderNameBar {
 	flex: 1;
 	min-width: 0;
@@ -2613,15 +1855,11 @@ html:not(.inverted) .rail-left {
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font: inherit;
-	/* centred: a short name left-aligned in a full-width field reads as
-	   a box with something forgotten in the corner of it */
 	text-align: center;
 	cursor: var(--cur-bar);
 }
 #folderName::placeholder, #folderNameBar::placeholder { color: var(--muted); }
 
-/* the box beside the clips. it is however wide you dragged it, never
-   past half the room, and nothing at all when it's shut. */
 .clip-side {
 	position: relative;   /* what the chip in its corner hangs off */
 	display: flex;
@@ -2631,38 +1869,17 @@ html:not(.inverted) .rail-left {
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;
-	/* a box can never be narrower than its own padding and outline, so
-	   with a fixed padding this one jumped from nothing straight to
-	   18px the moment it opened. the padding comes in with it instead
-	   — see --skin in wireSplit — which leaves the outline as the only
-	   floor, and two pixels is not a jump anyone sees. */
-	/* the same step of air all the way round that the deck and the
-	   notes tool wear, so the three boxes read as one set */
-	/* only the sides ramp. the floor --skin is there for is a width
-	   floor — a box can't be narrower than its own side padding and
-	   outline — and ramping the top and bottom with it slid everything
-	   in the box down nine pixels as it was dragged shut. measured:
-	   the buttons held at 749.0 the whole way after this. */
 	padding: var(--tight) calc(var(--tight) * var(--skin, 1));
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
 
-.clip-side-body { flex: 1; min-height: 0; overflow-y: auto; }
+.clip-side-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
 .clip-side-body::-webkit-scrollbar { display: none; }
-.clip-side-body { scrollbar-width: none; }
 
-/* a chip down in the corner, just over the copy button. as a line of
-   text under the field it shoved the whole list down every time it had
-   something to say, and it was the first thing you saw in a box whose
-   point is the songs. */
 .scratch-note {
 	position: absolute;
-	/* centred rather than hung off the right edge: a long one grew
-	   leftwards from a fixed corner, so the chip's own middle wandered
-	   with whatever it had to say */
 	left: 50%;
-	/* two buttons under it now — copy, and match — so it clears both */
 	bottom: calc(var(--field) * 2 + var(--tight) * 2 + var(--group));
 	z-index: 2;
 	max-width: calc(100% - var(--tight) * 2);
@@ -2671,12 +1888,6 @@ html:not(.inverted) .rail-left {
 	color: var(--paper);
 	background: var(--ink);
 	border-radius: 0.8rem;
-	/* A whole report of what lined up and what did not is more than one
-	   line of a pill across this box, and it was being cut off at the
-	   edge rather than shown. It is set a little smaller, given the
-	   width the box can spare, and allowed to run onto a second line —
-	   the corners come in from a pill to a rounded square when it does,
-	   which is the same shape everything else here is drawn as. */
 	font-size: 0.66rem;
 	line-height: 1.35;
 	text-align: center;
@@ -2687,31 +1898,20 @@ html:not(.inverted) .rail-left {
 	transition: opacity 0.24s var(--ease), transform 0.24s var(--ease);
 	pointer-events: none;
 }
-/* it is only there to be rested on once it is up */
 .scratch-note.is-up { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
-/* with no songs there is no copy button under it to clear */
 .clip-side:not(.has-songs) .scratch-note { bottom: var(--tight); }
 
-/* where the exported file is dropped. a big plain target rather than a
-   button pretending to be one, and it inverts while something is over
-   it the way a live thing does here. */
-/* a plain paragraph, not the flex row `.ask-why` is for. that rule is
-   built for a mark beside a line, and a paragraph of several lines
-   dropped into it came out laid sideways. */
 .ask-why.list-say {
 	display: block;
 	text-align: left;
 }
 
-/* the swap sits over the words, against the right wall */
 .say-head {
 	display: flex;
 	justify-content: flex-end;
 	margin-bottom: calc(var(--group) * -0.5);
 }
-/* as small as a word can be and still be pressed: no pill, no fill.
-   the underline is the whole of what it says — on under the pointer,
-   on while it is the one being shown. */
+
 .say-swap {
 	padding: 0;
 	color: var(--ink);
@@ -2726,8 +1926,6 @@ html:not(.inverted) .rail-left {
 }
 .say-swap:hover, .say-swap.is-on { text-decoration: underline; }
 
-/* the finder for the exports: a button like any other, at the foot of
-   the column. */
 .list-watch {
 	align-self: stretch;
 	margin-top: auto;
@@ -2735,9 +1933,6 @@ html:not(.inverted) .rail-left {
 	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
 }
 
-
-/* the lists already brought in, newest first. pressing one swaps the
-   songs in the box; the cross beside it forgets that one. */
 .list-kept {
 	display: flex;
 	flex-direction: column;
@@ -2750,7 +1945,6 @@ html:not(.inverted) .rail-left {
 	scrollbar-width: none;
 }
 .list-kept::-webkit-scrollbar { display: none; }
-.list-kept[hidden] { display: none; }
 .list-kept li { display: flex; align-items: center; gap: var(--tight); }
 
 .list-pick {
@@ -2778,10 +1972,8 @@ html:not(.inverted) .rail-left {
 	text-overflow: ellipsis;
 	font-weight: 600;
 }
-/* a number, so it wears the number face */
 .list-pick small { flex: none; font-family: var(--num-font); font-size: 1rem; }
 .list-pick:hover { color: var(--paper); background: var(--ink); }
-/* the one in the box wears the black, the way every live thing does */
 .list-pick.is-on { color: var(--paper); background: var(--ink); }
 
 .list-forget {
@@ -2797,10 +1989,6 @@ html:not(.inverted) .rail-left {
 	cursor: var(--cur-tap);
 }
 
-/* exportify, in the window. it is somebody else's page, so it gets a
-   box of its own and nothing of ours over it. */
-/* said only once the frame has tried to leave exportify, and laid over
-   the top of it so it cannot be missed */
 .site-blocked {
 	position: absolute;
 	z-index: 3;
@@ -2818,6 +2006,10 @@ html:not(.inverted) .rail-left {
 }
 
 .list-site {
+	--site-wide: 1100px;
+	--site-fit: 0.72;
+	--site-clip: 24px;     /* their own margin, off the left only */
+	--site-bar: 16px;      /* where their scrollbar sits */
 	position: relative;     /* the dots wait in here */
 	flex: 1;
 	min-width: 0;
@@ -2828,9 +2020,6 @@ html:not(.inverted) .rail-left {
 	overflow: hidden;
 }
 
-/* the pane holds three dots while somebody else's site starts, and the
-   site fades in over them once it is there — blank white for a second
-   and a half reads as broken rather than as loading. */
 .site-wait {
 	position: absolute;
 	inset: 0;
@@ -2842,41 +2031,12 @@ html:not(.inverted) .rail-left {
 	transition: opacity 0.3s var(--ease);
 }
 .list-site.is-here .site-wait { opacity: 0; pointer-events: none; }
-/* shown at four fifths, on a frame a quarter wider and taller than the
-   box, so the whole width of their page fits and there is nothing to
-   scroll sideways for. their text lands near this site's own size at
-   that scale; smaller and it stops being readable.
 
-   the colour comes out of it here rather than in their stylesheet —
-   a page cannot reach inside a frame it does not own, and a filter on
-   the frame itself is the one thing that works from outside. */
-/* somebody else's page, shown small enough to fit and cropped at both
-   edges: `--site-clip` takes their own side margin off, and the extra
-   `--site-bar` on the right carries their scrollbar out past the box,
-   where the box's own `overflow: hidden` eats it. none of this is
-   reaching inside the frame — it is all the frame's own geometry, which
-   is the only handle a page has on one it does not own. */
-.list-site {
-	/* the width their page is *always* given, whatever this window is.
-	   scaling a share of the pane meant a smaller screen handed them a
-	   narrower viewport, and a responsive layout answers a narrower
-	   viewport by drawing everything bigger — which is the "zoomed in on
-	   a small screen" of it. they get 1100px and nothing else; what
-	   changes with the window is how far down it is scaled to fit, which
-	   fitSite() works out. */
-	--site-wide: 1100px;
-	--site-fit: 0.72;
-	--site-clip: 24px;     /* their own margin, off the left only */
-	--site-bar: 16px;      /* where their scrollbar sits */
-}
 .list-site iframe {
 	position: absolute;
 	top: 0;
 	left: calc(var(--site-clip) * -1);
 	display: block;
-	/* cropped on the left and only by the scrollbar on the right: taking
-	   the same slice off both edges ate the export button, which lives
-	   against their right-hand wall */
 	width: var(--site-wide);
 	height: calc(100% / var(--site-fit));
 	border: 0;
@@ -2891,23 +2051,14 @@ html:not(.inverted) .rail-left {
 	width: 100%; min-height: 4.6rem; margin-top: var(--group);
 	display: grid; place-items: center; padding: 0.8rem;
 	background-color: transparent; color: var(--ink);
-	/* Four drawn lines let the dash be any length wanted, and cannot turn
-	   a corner — they ran straight past where the radius curves, and each
-	   corner met at a different point in the dash. A real dashed border
-	   follows the curve and comes out even at all four, which is worth
-	   more here than choosing the dash myself. */
 	border: 1px dashed var(--ink);
 	border-radius: var(--radius);
 	font: inherit; font-size: 0.8rem; text-align: center; cursor: var(--cur-tap);
-	/* the fill arrives; the dashes need no handling of their own, being
-	   the same ink it fills with — they are simply swallowed by it. */
 	transition: background-color 0.2s var(--ease), color 0.2s var(--ease);
 }
 .list-drop:hover, .list-drop:focus-visible,
 .list-drop.is-catching { background-color: var(--ink); color: var(--paper); }
 
-/* a list being dragged over the box: the same dashed catch as the notes
-   panel, so it reads as the same gesture */
 .clip-side.is-catching { outline: 2px dashed var(--ink); outline-offset: -6px; }
 
 .scratch-list {
@@ -2918,12 +2069,7 @@ html:not(.inverted) .rail-left {
 	padding: 0;
 	list-style: none;
 }
-/* the quiet second line under the field, the way the notes panel wears
-   its own. it is there before it is needed, and says so louder once a
-   playlist has actually run past the hundred. */
-/* the quiet line over the field. no rule under it and almost no room
-   taken — it is not wanted until a playlist runs past a hundred, and
-   until then it should be possible to not notice it. */
+
 .scratch-plain {
 	align-self: center;
 	margin: 0;
@@ -2939,29 +2085,18 @@ html:not(.inverted) .rail-left {
 	transition: opacity 0.18s var(--ease);
 }
 .scratch-plain:hover { opacity: 1; }
-.scratch-plain[hidden] { display: none; }
-/* once it is wanted it stops being quiet */
 .scratch-plain.is-wanted { opacity: 1; font-weight: 700; }
-/* the line above the field takes the tighter step, not the group one */
 .clip-side > .scratch-plain { margin-bottom: calc(var(--tight) * -0.4); }
 
 .scratch-warn { font-weight: 700; }
-.scratch-warn[hidden] { display: none; }
 
-/* --- the windows that ask you for something ---
-   spotify's sign-in and the sharper reader wear the same shape: a
-   line on why, numbered steps, a field and one button. */
 .ask-screen { width: min(30rem, 100%); }
-/* the playlist window carries exportify itself, so it wants the room a
-   site wants rather than the room a question wants */
+
 #listScreen.ask-screen {
 	width: min(63rem, 100%);
-	/* the side air comes in so the site gets it instead — a window that
-	   is mostly somebody else's page wants the page, not the margin */
 	padding: var(--group) var(--group) var(--group);
 }
-/* the site on the left and the short matter beside it, level with its
-   middle rather than stacked over its top */
+
 #listScreen .list-body {
 	flex-direction: row;
 	align-items: stretch;
@@ -2975,8 +2110,6 @@ html:not(.inverted) .rail-left {
 	gap: var(--group);
 	width: 17.5rem;
 	min-width: 0;
-	/* off the wall on both sides: against the edge they read as having
-	   fallen out of the window rather than sitting in it */
 	padding: 0 0.35rem;
 }
 .ask-body {
@@ -2986,7 +2119,6 @@ html:not(.inverted) .rail-left {
 	min-width: 0;
 	text-align: left;
 }
-/* why it is being asked for at all, with the mark of whose door it is */
 .ask-why {
 	display: flex;
 	align-items: flex-start;
@@ -3008,22 +2140,15 @@ html:not(.inverted) .rail-left {
 }
 .ask-steps li {
 	display: flex;
-	/* the circle sits on the *first* line, not on the middle of however
-	   many lines the step runs to — centred on the block it drifted
-	   down the side of a step that wrapped. the offset is measured, and
-	   is half the difference between a line and the circle. */
 	align-items: flex-start;
 	gap: var(--tight);
 	min-width: 0;
 }
-/* the count, in the number face like every other figure here */
 .ask-step {
 	flex: none;
 	display: grid;
 	place-items: center;
 	margin-top: 0.03rem;
-	/* a smaller ring around the same figure — at 1.5rem the circle was
-	   doing more talking than the count inside it */
 	width: 1.15rem;
 	height: 1.15rem;
 	aspect-ratio: 1;
@@ -3031,18 +2156,8 @@ html:not(.inverted) .rail-left {
 	background: var(--ink);
 	border-radius: 999px;
 	font-family: var(--num-font);
-	/* smaller than the words beside it: a figure in this face at the same
-	   size as the body carries more ink than a count needs, and left the
-	   circle looking filled rather than worn */
 	font-size: 0.82rem;
-	/* the figure's own line box, so centring has one thing to centre
-	   rather than a box with the face's own slack in it */
 	line-height: 1;
-	/* vt323 sits a hair low and --drop-num is the lift for it, which is
-	   negative — so as a padding-top it was negative padding, which is
-	   not a thing, and the browser threw it away. The whole correction
-	   had never once applied. Taken off the bottom instead, which is a
-	   positive number and lifts what is centred above it. */
 	padding-bottom: calc(var(--drop-num) * -2);
 }
 .ask-said {
@@ -3065,10 +2180,6 @@ html:not(.inverted) .rail-left {
 .ask-go { align-self: stretch; height: var(--field); padding: calc(var(--drop) * 2) 1.5rem 0; }
 .ask-forget { align-self: center; }
 
-
-/* one song. the whole row is the copy button — there is nothing else
-   to press on it, so a separate mark beside the words would only be a
-   second thing to aim at. */
 .scratch-song {
 	display: flex;
 	align-items: center;
@@ -3087,26 +2198,17 @@ html:not(.inverted) .rail-left {
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
 .scratch-song:hover { background: var(--ink); color: var(--paper); }
-/* it says so for a moment after you press it, then goes back */
 .scratch-song.is-copied { background: var(--ink); color: var(--paper); }
 .scratch-song .scratch-at {
 	flex: none;
 	display: grid;
 	place-items: center;
-	/* wide enough for three figures without the row squeezing them */
 	min-width: 1.95rem;
-	/* the number face. bitcount draws its 1 as two dense columns of
-	   dots and its 0 as an open ring, so "100" came out as one solid
-	   figure beside two hollow ones — at every size, because that is
-	   how the face is drawn. */
 	font-family: var(--num-font);
 	font-size: 1rem;
-	/* negative padding is not a thing; the lift goes on the bottom */
 	padding-bottom: calc(var(--drop-num) * -2);
 }
-/* a song a clip answers to. the number wears the black, the way every
-   live thing on this site does — and it has to come back off under the
-   hover, which takes the black for the whole row. */
+
 .scratch-song.is-got .scratch-at {
 	color: var(--paper);
 	background: var(--ink);
@@ -3118,8 +2220,6 @@ html:not(.inverted) .rail-left {
 	background: var(--paper);
 }
 
-/* the same song, twice in the playlist. two clips will answer to the
-   one name, so it is worth saying — quietly, at the end of the row. */
 .scratch-twice {
 	flex: none;
 	padding: 0 0.25rem;
@@ -3128,10 +2228,6 @@ html:not(.inverted) .rail-left {
 	line-height: 1;
 }
 
-/* a song nothing has been recorded of. the outline goes dashed — the
-   same thing a slot on the home board does while it is only a place
-   something could go — and the ring says it again at the end of the
-   row, for a list being read down rather than looked at. */
 .scratch-song.is-missing { border-style: dashed; }
 .scratch-none {
 	flex: none;
@@ -3140,7 +2236,6 @@ html:not(.inverted) .rail-left {
 	line-height: 1;
 }
 
-/* the words take the room, so the marks sit against the right wall */
 .scratch-song .scratch-words { flex: 1; min-width: 0; }
 .scratch-song .scratch-words strong,
 .scratch-song .scratch-words small {
@@ -3151,12 +2246,7 @@ html:not(.inverted) .rail-left {
 }
 .scratch-song .scratch-words strong { font-size: 0.82rem; font-weight: 600; }
 .scratch-song .scratch-words small { font-size: 0.72rem; }
-/* a fixed height with the pill's own generous padding leaves the line
-   box taller than what is left for it, so the label is placed from the
-   top rather than centred. the padding goes and the height does the
-   centring, plus the drop every other label gets. */
-/* it spans the box the way the rows above it do, rather than sitting
-   as a pill in the middle of a full-width list */
+
 .scratch-all {
 	flex: none;
 	align-self: stretch;
@@ -3164,10 +2254,6 @@ html:not(.inverted) .rail-left {
 	padding: calc(var(--drop) * 2) min(1.5rem, 10%) 0;
 }
 
-/* the two of them across the bottom, half the width each. one of them
-   is hidden until there is a playlist to act on, and the other takes
-   the whole width while it is — better than a pill sitting at half the
-   box with nothing beside it. */
 .scratch-acts {
 	display: flex;
 	align-items: stretch;
@@ -3178,45 +2264,20 @@ html:not(.inverted) .rail-left {
 	min-width: 0;
 	align-self: stretch;
 }
-.scratch-acts .scratch-all[hidden] { display: none; }
 
-/* the way out to the exporter, across the top of the box. the same
-   height and the same give at the sides as the two along the bottom, so
-   the box reads as one set of controls rather than three sizes of pill. */
 .scratch-bring {
 	flex: none;
 	width: 100%;
 	align-self: stretch;
-	/* The box spaces what it holds itself, and this carried a margin
-	   under it as well — so there was a step above it and two steps
-	   below, and it sat high in its own gap. That was the whole of it,
-	   and none of it was ever the word inside. The margin is gone; the
-	   box's own spacing puts it level between the rule and the list.
-	
-	   The word is centred outright rather than aimed: a fixed height,
-	   nothing above or below, and the line centred in what is left. */
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	height: var(--field);
 	padding: 0 min(1.5rem, 10%);
 }
-/* shut it keeps no outline and no padding — an empty sliver of box
-   would read as a mistake. the grip beside it stays put, so it can
-   always be pulled back out. */
+
 .clip-side.is-shut, .notes-home.is-shut { padding: 0; border-width: 0; }
-/* aiming the sensing box is a window under the gear now, not the page
-   given over to it. it used to hide the clip list and the playlist box
-   and leave the rest of the page standing in an empty room — and the
-   thing you were aiming was a strip three and a quarter rems tall.
 
-   fixed, so nothing under it reflows; over everything, so nothing shows
-   through; and half the window wide, which is room enough to put the
-   box on a name without leaning on the zoom.
-
-   dead centre of the screen, and nowhere else. hung off the gear it
-   landed wherever the gear happened to be that day, which is a
-   different place at every window width and reads as random. */
 .audio-stage {
 	position: fixed;
 	top: 50%;
@@ -3243,8 +2304,6 @@ html:not(.inverted) .rail-left {
 	border-color: var(--line);
 }
 
-/* the recorder sits in the bar between record and the options.
-   idle it's a placeholder; live it's the pulse, level and switch count. */
 .bar-meter { position: relative; flex: 1; min-width: 0; }
 
 .meter-idle,
@@ -3274,15 +2333,11 @@ html:not(.inverted) .rail-left {
 	white-space: nowrap;
 }
 
-/* whichever of the two fits the moment */
 .recorder-panel.is-live .meter-idle { display: none; }
 .recorder-panel:not(.is-live) .live-meter { display: none; }
 
-/* the video only shows while you're aiming the sensing box */
 .preview-wrap:not(.showing-video) { display: none; }
 
-/* a message covers the meter rather than pushing anything down.
-   it's the same box, so the page never moves for it. */
 .record-status {
 	position: absolute;
 	inset: 0;
@@ -3304,9 +2359,6 @@ html:not(.inverted) .rail-left {
 
 /* =========================================================
    15. audio — the video preview
-
-   the video sits in this box so pixels can be sampled, and is only
-   shown while the settings panel is open.
    ========================================================= */
 .preview-wrap {
 	position: relative;
@@ -3329,9 +2381,7 @@ html:not(.inverted) .rail-left {
 	opacity: 0;
 	pointer-events: none;
 }
-/* the stage carries the picture and the sensing box together, so the
-   zoom scales both at once and the box keeps its place on the frame.
-   the wrap around it is what scrolls when the stage outgrows it. */
+
 .preview-stage {
 	position: relative;
 	flex: none;
@@ -3339,27 +2389,19 @@ html:not(.inverted) .rail-left {
 	line-height: 0;
 }
 .preview-wrap.showing-video {
+	height: min(46vh, 22rem);
+	max-height: 60vh;
+	padding: 0;
+	line-height: 0;
 	overflow: auto;
 	overscroll-behavior: contain;
 	scrollbar-width: none;
-	/* the picture can be taller than the bar once it is blown up, but
-	   not so tall it pushes the rest of the page off */
-	max-height: 60vh;
 }
 .preview-wrap.showing-video::-webkit-scrollbar { width: 0; height: 0; }
-/* zoomed in, the picture is something you push about */
 .preview-wrap.is-zoomed { cursor: var(--cur-grab); }
 .preview-wrap.is-zoomed.is-pushing { cursor: var(--cur-held); }
-.preview-wrap.showing-video {
-	/* tall enough to aim in, and it gives way on a short screen rather
-	   than pushing the sliders out of the window */
-	height: min(46vh, 22rem);
-	padding: 0;
-	line-height: 0;
-}
 .preview-wrap.showing-video video { position: static; display: block; width: 100%; opacity: 1; }
-/* the settings sit outside the scrolling picture now, so they hold
-   still while it moves under them */
+
 /* =========================================================
    16. audio — sensing box and its settings
    ========================================================= */
@@ -3370,10 +2412,6 @@ html:not(.inverted) .rail-left {
 	z-index: 4;
 	cursor: var(--cur-move);
 	touch-action: none;
-	/* sits over arbitrary video, so it's a white frame with a black
-	   outline either side — readable on any footage. thin, because it
-	   is a mark on the picture rather than a thing in its own right,
-	   and the edges are what you grab. */
 	border: 1px solid var(--paper);
 	box-shadow: 0 0 0 1px var(--ink), inset 0 0 0 1px var(--ink);
 	background: rgba(255, 255, 255, 0.16);
@@ -3382,9 +2420,6 @@ html:not(.inverted) .rail-left {
 
 .sense-box.is-triggered { background: rgba(255, 255, 255, 0.5); }
 
-/* the controls are their own block under the picture, inside the same
-   window — separate from it, but opened and closed with it. no outline
-   of its own: a box inside a box, one step in from the wall. */
 .sense-controls {
 	display: flex;
 	flex: none;
@@ -3407,13 +2442,7 @@ html:not(.inverted) .rail-left {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
 }
-/* the sliders — the sensing box's and the player's volume, which
-   wear the same black-and-white face rather than the browser's blue */
-/* the sliders. each pair below has to name the pseudo-element on both
-   halves: written as `.a input, .b input::-webkit-slider-thumb` the
-   first half matches the whole input, so the thumb's size and fill
-   landed on the field itself — a 16px black square with no track and
-   nothing to take hold of. that is why these could not be dragged. */
+
 .sense-controls input[type="range"],
 .now-volume input[type="range"] {
 	width: 100%;
@@ -3424,7 +2453,6 @@ html:not(.inverted) .rail-left {
 	appearance: none;
 	cursor: var(--cur-tap);
 }
-/* a hairline to run along, and a white bead to take hold of */
 .sense-controls input[type="range"]::-webkit-slider-runnable-track,
 .now-volume input[type="range"]::-webkit-slider-runnable-track {
 	height: 2px;
@@ -3438,7 +2466,6 @@ html:not(.inverted) .rail-left {
 	appearance: none;
 	width: 0.85rem;
 	height: 0.85rem;
-	/* half the bead, less half the track, so it rides on the line */
 	margin-top: -0.365rem;
 	background: var(--paper);
 	border: 1px solid var(--ink);
@@ -3460,7 +2487,6 @@ html:not(.inverted) .rail-left {
 	border-radius: 999px;
 }
 
-/* the change/trigger numbers, only shown while the settings are open */
 .sense-readout {
 	display: none;
 	margin: 0;
@@ -3468,8 +2494,6 @@ html:not(.inverted) .rail-left {
 	font-size: 0.85rem;
 	font-variant-numeric: tabular-nums;
 }
-.preview-wrap.showing-video ~ .sense-readout { display: none; }
-
 
 .text-button {
 	align-self: center;
@@ -3494,13 +2518,7 @@ html:not(.inverted) .rail-left {
 
 /* =========================================================
    17. audio — saved clips
-
-   one row per clip: play, scrubber, label, discard. the
-   native audio element is kept in the dom for playback only,
-   since its own controls can't be recolored.
    ========================================================= */
-/* the clip list fills its column now, so it no longer needs a cap —
-   and it always holds at least the empty line */
 #recordingList:empty { display: none; }
 
 .recording-item {
@@ -3513,8 +2531,6 @@ html:not(.inverted) .rail-left {
 }
 .recording-item audio { display: none; }
 
-/* three lines to grab, the same grip the deck rows have. the list
-   scrolls itself if you drag a clip against either end. */
 .clip-handle {
 	display: flex;
 	flex: none;
@@ -3535,13 +2551,10 @@ html:not(.inverted) .rail-left {
 	height: 1px;
 	background: var(--line);
 }
-/* while a row is in hand, nothing else on the page takes the drag —
-   no text selecting itself as the cursor sweeps past */
+
 .sorting-rows, .sorting-rows * { user-select: none; }
 .sorting-grab { cursor: var(--cur-held); }
 
-/* the row in your hand: it's picked up off the page, so it outlines
-   itself. its slot stays behind as the space it would drop into. */
 .recording-item.is-lifted {
 	position: relative;
 	z-index: 2;
@@ -3549,11 +2562,9 @@ html:not(.inverted) .rail-left {
 	outline: 1px solid var(--line);
 	outline-offset: -1px;
 	cursor: var(--cur-held);
-	will-change: transform;   /* its own layer — the list isn't repainted
-	                             every time it moves a pixel */
+	will-change: transform;
 }
 
-/* play / pause */
 .clip-play {
 	display: grid;
 	place-items: center;
@@ -3570,10 +2581,8 @@ html:not(.inverted) .rail-left {
 	line-height: 1;
 	cursor: var(--cur-tap);
 }
-/* playing reads off the glyph alone now — there's no ring to fill */
 .is-playing .clip-play { color: var(--ink); }
 
-/* scrubber */
 .clip-track {
 	position: relative;
 	flex: 1;
@@ -3585,8 +2594,7 @@ html:not(.inverted) .rail-left {
 	overflow: hidden;
 	cursor: var(--cur-tap);
 }
-/* the fill is placed as well as sized: a cropped clip starts its fill
-   at the first mark rather than at the left end of the bar */
+
 .clip-fill {
 	position: absolute;
 	top: 0;
@@ -3596,8 +2604,6 @@ html:not(.inverted) .rail-left {
 	background: var(--ink);
 }
 
-/* sits over the fill; difference blending flips it black-on-white
-   and white-on-black as the bar sweeps past */
 .clip-text {
 	position: absolute;
 	top: 50%;
@@ -3612,7 +2618,6 @@ html:not(.inverted) .rail-left {
 	pointer-events: none;
 }
 
-/* double-click puts just this one span back in the event path */
 .clip-text.is-editing {
 	user-select: text;
 	pointer-events: auto;
@@ -3620,10 +2625,6 @@ html:not(.inverted) .rail-left {
 	outline: none;
 }
 
-/* which one this is, counting up from the bottom of the list — the
-   order the songs were recorded in. a number, so it is VT323, and it
-   is fixed width so the rows don't shift as the count runs into two
-   figures. */
 .clip-number {
 	flex: none;
 	width: 1.1rem;
@@ -3640,8 +2641,6 @@ html:not(.inverted) .rail-left {
 	font-variant-numeric: tabular-nums;
 }
 
-/* the clip whose length answers no song left in the playlist. it sits
-   against the length, which is the thing it is disagreeing with. */
 .clip-off {
 	flex: none;
 	width: 0.6rem;
@@ -3651,10 +2650,8 @@ html:not(.inverted) .rail-left {
 	text-align: center;
 	user-select: none;
 }
-.clip-off[hidden] { display: none; }
 .recording-item .clip-label { margin-top: 2px; }
 
-/* download and discard */
 .clip-download, .clip-discard {
 	flex: none;
 	width: 1rem;
@@ -3667,17 +2664,9 @@ html:not(.inverted) .rail-left {
 	line-height: 1;
 	cursor: var(--cur-tap);
 }
-.clip-download { font-size: 0.9rem; margin-top: 3px; }
+.clip-download { position: relative; font-size: 0.9rem; margin-top: 3px; }
 .clip-discard { font-size: 1.1rem; margin-top: 1px; }
 
-/* while a clip is being packed the arrow is swapped for a mark that
-   waits. it's drawn rather than typed: the dot glyph that used to stand
-   in here sat wherever its own line box put it, which was nowhere near
-   the middle of the button. */
-.clip-download { position: relative; }
-/* the 3px above is a nudge for the arrow's own glyph; the mark is drawn
-   in the middle of the button, so while it waits the button sits where
-   the row puts it */
 .clip-download.is-working { color: transparent; margin-top: 0; }
 .clip-download.is-working::after {
 	content: '';
@@ -3696,9 +2685,6 @@ html:not(.inverted) .rail-left {
 	50%      { transform: scale(1); }
 }
 
-/* crop: two marks on the bar you drag to say where the clip starts and
-   stops. nothing is cut — the recording keeps its whole self, and
-   dragging the marks back to the ends undoes it. */
 .clip-crop {
 	flex: none;
 	display: grid;
@@ -3716,8 +2702,6 @@ html:not(.inverted) .rail-left {
 .recording-item.is-trimmed .clip-crop { color: var(--ink); }
 .recording-item.is-cropping .clip-crop { transform: scale(1.1); }
 
-/* the marks and the stretch outside them only show while you're at it,
-   or while a crop is in place */
 .crop-handle, .crop-shade { display: none; }
 .recording-item.is-cropping .crop-handle,
 .recording-item.is-cropping .crop-shade,
@@ -3727,8 +2711,6 @@ html:not(.inverted) .rail-left {
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	/* hatched rather than filled: the stretch is still there, it just
-	   isn't played — and a flat black would read as the fill */
 	background-image: repeating-linear-gradient(
 		-45deg,
 		var(--ink) 0 1px,
@@ -3766,7 +2748,6 @@ html:not(.inverted) .rail-left {
 	border-color: var(--paper);
 }
 
-/* the blinking dot standing in for the play button */
 .clip-pulse {
 	flex: none;
 	width: 1.5rem;
@@ -3781,7 +2762,6 @@ html:not(.inverted) .rail-left {
 	50% { opacity: 0.35; }
 }
 
-/* the bar marches while the clip fills up */
 .clip-fill.live {
 	width: 100%;
 	background: repeating-linear-gradient(
@@ -3799,15 +2779,10 @@ html:not(.inverted) .rail-left {
 /* =========================================================
    19. small screens
    ========================================================= */
-/* the bar is the one fixed column on the page, so the first thing a
-   narrow window takes is its width — not its contents */
 @media (max-width: 1000px) {
 	:root { --rail: 15rem; }
 }
 
-/* narrower than both columns can hold, they stop being columns: the
-   list sits over the thing it feeds, and the divider has nothing left
-   to size. the cards page and the player both take this shape. */
 @media (max-width: 900px) {
 	.home-body, .player-body { flex-direction: column; gap: var(--group); }
 	.deck-side, .card-side, .queue-side, .stage-side {
@@ -3819,18 +2794,12 @@ html:not(.inverted) .rail-left {
 	.pane-split { display: none; }
 }
 
-/* narrower than the bar and a page can sit side by side. the bar lies
-   down under the content rather than disappearing — it holds the
-   clock, what the page does and what it is costing, and all of that
-   was lost with it before. */
 @media (max-width: 760px) {
 	.app-shell { flex-direction: column; }
 	.app-right { order: 1; min-height: 0; }
 	.rail-left {
 		order: 2;
 		flex: none;
-		/* at most a third, so the page above it still has room — the
-		   help box scrolls inside whatever is left */
 		max-height: 38%;
 		padding-top: var(--rail-pad);
 	}
@@ -3842,9 +2811,6 @@ html:not(.inverted) .rail-left {
 	#homeScreen { padding-left: var(--group); }   /* no bumps to sit against */
 }
 
-/* five words share the strip, each holding a fifth of it, so the big
-   one has to come down to size sooner than it used to rather than be
-   cut off by its own fifth */
 @media (max-width: 1100px) {
 	.section-tab { font-size: 0.9rem; }
 	.section-tab.active { font-size: 1.3rem; }
@@ -3857,8 +2823,6 @@ html:not(.inverted) .rail-left {
 	.topbar .section-tabs { gap: 0.5rem; }
 }
 
-/* five words in a phone's width: the strip gives up size before it
-   gives up letters */
 @media (max-width: 520px) {
 	.section-tab { font-size: 0.78rem; }
 	.section-tab.active { font-size: 1.05rem; }
@@ -3901,8 +2865,7 @@ html:not(.inverted) .rail-left {
 	gap: var(--group);
 	min-height: 0;
 }
-/* two boxes with a grip between them, the same shape the cards page
-   takes: the queue on the left, the player itself on the right */
+
 .player-body {
 	display: flex;
 	flex: 1;
@@ -3915,8 +2878,6 @@ html:not(.inverted) .rail-left {
 	min-height: 0;
 }
 .queue-side {
-	/* the width you dragged it to, but it gives way rather than push
-	   the player off the right of the page — see .deck-side */
 	flex: 0 1 var(--queue-col, 55%);
 	min-width: 0;      /* see .deck-side — it shrinks the whole way */
 	overflow: hidden;
@@ -3932,9 +2893,7 @@ html:not(.inverted) .rail-left {
 	align-items: center;
 	gap: var(--tight);
 }
-/* the pills are a fixed height, so a label that wraps drops its second
-   line straight out of the bottom. they keep to one line and clip with
-   an ellipsis instead, and the side padding gives way first. */
+
 .queue-bar .basic-button {
 	flex: 1;
 	min-width: 0;
@@ -3945,7 +2904,6 @@ html:not(.inverted) .rail-left {
 	text-overflow: ellipsis;
 }
 
-/* the player itself, on the frame every other box wears */
 .player-stage {
 	display: flex;
 	flex: 1;
@@ -3963,9 +2921,6 @@ html:not(.inverted) .rail-left {
 	flex: 1;
 	flex-direction: column;
 	align-items: center;
-	/* stacked from the top, not centred. centred, every row's place
-	   depended on how tall the whole stack happened to be, so dragging
-	   the divider walked the scrub bar up and down the panel. */
 	justify-content: flex-start;
 	gap: var(--group);
 	min-height: 0;
@@ -4001,48 +2956,33 @@ html:not(.inverted) .rail-left {
 	display: flex;
 	flex: none;
 	align-items: center;
-	/* the row has to survive the narrowest the panel can be dragged to,
-	   which is 17rem — at a --group between each of five buttons it was
-	   34px wider than that and the ends were cut off */
 	gap: var(--tight);
 	margin-top: var(--tight);
 }
-/* the one you press most is the biggest */
 .square-button.is-big {
 	width: 3.3rem;
 	height: 3.3rem;
 }
-/* a shade under the site's control height, so five of them and their
-   gaps still fit the panel at its smallest. the marks inside are a
-   share of the button, so they come down with it. */
+
 .now-controls .square-button {
 	width: 2.4rem;
 	height: 2.4rem;
+	padding: 0;
+	border-radius: 999px;
 }
 .now-controls .square-button.is-big { width: 3.3rem; height: 3.3rem; }
-/* round, and the mark inside fills it. a small glyph floating in a
-   square button is what made these look like something off an old
-   stereo — the shape is the button, so the icon can have the room. */
-.now-controls .square-button {
-	border-radius: 999px;
-	padding: 0;
-}
 .now-controls .square-button svg {
 	display: block;
-	/* the drawn ones are outlines and read lighter than the solid play
-	   beside them, so they are given a little more of the button */
 	width: 66%;
 	height: 66%;
 }
 .now-controls .square-button.is-big svg { width: 52%; height: 52%; }
-/* the play mark is a solid triangle and reads light for its size, so
-   it gets a little more than the rest */
+
 .now-controls #playToggle svg { width: 56%; height: 56%; }
 .now-controls #playToggle .mark-play { transform: translateX(4%); }
 
-/* the same marks in the bar's short copy */
 .rail-controls .clip-play svg { display: block; width: 62%; height: 62%; }
-.rail-controls .clip-play { display: grid; place-items: center; }
+.rail-controls .clip-play { display: grid; place-items: center; font-size: 0.75rem; }
 
 .now-volume {
 	display: flex;
@@ -4054,9 +2994,7 @@ html:not(.inverted) .rail-left {
 	margin-top: var(--tight);
 	font-size: 0.8rem;
 }
-/* a speaker that opens up as you turn it. the three arcs are all drawn
-   all the time and shown one at a time, so each one grows out of the
-   cone rather than a whole new picture being swapped in. */
+
 .volume-mark {
 	flex: none;
 	display: block;
@@ -4069,19 +3007,13 @@ html:not(.inverted) .rail-left {
 	stroke: currentColor;
 	stroke-width: 1.9;
 	stroke-linecap: round;
-	/* they grow out of the cone's mouth rather than out of the middle
-	   of the picture, so each one reads as the sound leaving it */
+	opacity: 0;
+	transform: scale(0.55);
 	transform-origin: 9px 12px;
 	transition: opacity 0.42s var(--ease),
 	            transform 0.42s cubic-bezier(0.22, 1.08, 0.36, 1);
 }
-.vol-wave { opacity: 0; transform: scale(0.55); }
-.vol-hush { opacity: 0; transform: scale(0.55); }
 
-/* the three arcs don't move together: opening up they arrive from the
-   inside out, and going quiet the outermost is the first to leave. it
-   is the same half-second either way, and the ripple is what makes it
-   read as one thing happening rather than three. */
 .is-one   { transition-delay: 0.14s; }
 .is-two   { transition-delay: 0.07s; }
 .is-three { transition-delay: 0s; }
@@ -4101,23 +3033,18 @@ html:not(.inverted) .rail-left {
 .volume-mark[data-level="3"] .is-two { transition-delay: 0.07s; }
 .volume-mark[data-level="3"] .is-three { transition-delay: 0.14s; }
 
-/* the cone leans back a touch when it is shut, so the turn has
-   something of its own to do at the bottom of the slider */
 .vol-cone {
 	transform-origin: 6px 12px;
 	transition: transform 0.42s cubic-bezier(0.22, 1.08, 0.36, 1);
 }
 .volume-mark[data-level="0"] .vol-cone { transform: scale(0.9); }
 
-/* it is decoration; anyone who has asked the system for less of that
-   gets the same picture without the travel */
 @media (prefers-reduced-motion: reduce) {
 	.vol-wave, .vol-hush, .vol-cone { transition-duration: 0.01s; transition-delay: 0s; }
 }
 .now-volume input { flex: 1; min-width: 0; }
 .now-note { flex: none; margin: 0; min-height: 1.1rem; font-size: 0.8rem; }
 
-/* a row that points at a recording rather than carrying its own file */
 .track-mark {
 	flex: none;
 	padding: 0.05rem 0.4rem;
@@ -4127,7 +3054,6 @@ html:not(.inverted) .rail-left {
 	font-weight: 700;
 }
 
-/* the list, on the same frame the clips and the decks use */
 #trackList {
 	contain: layout paint;
 	position: relative;   /* so a row's offsetTop is its slot in here */
@@ -4161,7 +3087,6 @@ html:not(.inverted) .rail-left {
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
-/* the song that's on wears the black, the way an open deck does */
 #trackList .track-item.is-playing {
 	color: var(--paper);
 	background: var(--ink);
@@ -4186,16 +3111,13 @@ html:not(.inverted) .rail-left {
 	text-overflow: ellipsis;
 }
 
-/* the bin on a row: the mark alone, swelling under the cursor, the
-   same as the one on a flashcard */
 .track-drop {
 	display: grid;
 	flex: none;
 	place-items: center;
 	width: 1.5rem;
 	height: 1.5rem;
-	padding: 0;
-	padding-top: 3px;
+	padding: 3px 0 0;
 	color: inherit;
 	background: none;
 	border: 0;
@@ -4206,29 +3128,20 @@ html:not(.inverted) .rail-left {
 }
 .track-drop:hover { transform: scale(1.18); }
 
-/* shuffle and repeat stay lit while they're on */
 .square-button.is-on {
 	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
 
-
 /* =========================================================
    21. create — which answers a card may be mixed up with
    ========================================================= */
-/* a bare + at the right end of the answer box — drawn from two bars
-   rather than set as a glyph, so its weight, size and centring are
-   exact instead of whatever the font happens to do. it matches the ×
-   on a flashcard row, and turns into one when the picker is open. */
 .field-add {
 	position: relative;
 	flex: none;
 	width: 1.4rem;
 	height: 1.4rem;
-	/* the field's own right padding left more air beside it than over
-	   and under it; this takes back the difference so it sits the same
-	   distance from all three edges */
 	margin-right: -0.35rem;
 	padding: 0;
 	color: var(--ink);
@@ -4250,16 +3163,12 @@ html:not(.inverted) .rail-left {
 .field-add::before { width: 12px; height: 1.5px; }
 .field-add::after { width: 1.5px; height: 12px; }
 .field-add:hover { transform: scale(1.15); }
-/* open: it turns a quarter and reads as a close */
 .field-add[aria-expanded="true"] { transform: rotate(45deg); }
 .field-add[aria-expanded="true"]:hover { transform: rotate(45deg) scale(1.15); }
-/* something picked: the bars thicken a touch. it used to fill in solid
-   black, which read as a button stuck on rather than a mark. */
+
 .field-add.is-on::before { height: 2.5px; }
 .field-add.is-on::after { width: 2.5px; }
 
-/* both hang off the button that opened them, on the same white frame
-   the confirm chip and the deck codes use */
 .pop-panel {
 	position: fixed;
 	z-index: 60;
@@ -4274,7 +3183,6 @@ html:not(.inverted) .rail-left {
 	animation: confirm-in 0.18s var(--ease);
 	transition: opacity 0.16s var(--ease), transform 0.16s var(--ease);
 }
-/* on the way out it settles back rather than blinking off */
 .pop-panel.is-leaving {
 	opacity: 0;
 	transform: translateY(4px) scale(0.98);
@@ -4288,28 +3196,19 @@ html:not(.inverted) .rail-left {
 	font-size: 0.78rem;
 	line-height: 1.45;
 }
-/* a one-word label has nothing to divide from what is under it */
 .pop-plain {
 	padding-bottom: 0;
 	border-bottom: 0;
 	text-align: center;
 }
 
-/* the answers themselves, as a wrapping set of switches */
-.pop-picks { display: flex; flex-direction: column; }
-
-/* the shapes, drawn at the shape they are. a picture of each says more
-   than its numbers do — a 2×2 is obvious as a square and not as a word. */
-/* the shape itself, to scale against the others */
 .size-shape {
 	display: block;
 	border: 1px solid currentColor;
 	border-radius: 3px;
 	background: none;
 }
-/* a plain list, one under the other, every row the same length. as a
-   wrapped row of pills each was as wide as its own name, which read as
-   a jumble rather than as a list of the same kind of thing. */
+
 .pick-list {
 	display: flex;
 	flex-direction: column;
@@ -4320,9 +3219,10 @@ html:not(.inverted) .rail-left {
 	scrollbar-width: none;
 }
 .pick-list::-webkit-scrollbar { display: none; }
-/* no panel around it: just the list. it is a column of outlined pills
-   on the page, and a box around a box is one box too many. */
+
 .pop-picks {
+	display: flex;
+	flex-direction: column;
 	width: 11rem;
 	padding: 0;
 	background: none;
@@ -4334,11 +3234,8 @@ html:not(.inverted) .rail-left {
 	width: 100%;
 	max-width: none;
 }
-.pick-list::-webkit-scrollbar { display: none; }
 .pick-list .empty-message { padding: 0.3rem; font-size: 0.85rem; }
 
-/* each one is a pill that fills in when it's picked — no tick box, the
-   state is the shape itself */
 .option-pick {
 	display: flex;
 	align-items: center;
@@ -4364,17 +3261,12 @@ html:not(.inverted) .rail-left {
 }
 .option-pick.is-picked { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
-
-
-/* the short version in the right bar: what's on, how far through, and
-   the three things you actually press. everything else stays on the
-   player page. */
 .rail-now {
 	display: flex;
 	flex: none;
 	flex-direction: column;
 	gap: var(--tight);
-	padding: var(--rail-pad);
+	padding: var(--rail-pad) 0;
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
@@ -4396,54 +3288,38 @@ html:not(.inverted) .rail-left {
 	justify-content: center;
 	gap: var(--group);
 }
-.rail-controls .clip-play { font-size: 0.75rem; }
 .rail-controls .clip-play:disabled { cursor: var(--cur-dot); }
-
 
 /* =========================================================
    22. the bar's own three — clock, storage, recently binned
    ========================================================= */
-/* the clock is the one black box in the bar, so the time reads at a
-   glance. the half-filled circle beside it turns the whole page over. */
 .rail-clock {
 	display: flex;
 	flex: none;
 	flex-direction: column;
 	align-items: center;
 	gap: 0.1rem;
-	/* measured to the ink rather than to the boxes: the moon at the top
-	   and the date at the floor sit the same distance off their edges */
-	padding: 0.7rem var(--rail-pad) 0.61rem;
+	padding: 0.7rem var(--group) 0.61rem;
 	color: var(--bar-ink);
 	background: var(--bar);
 	border: 1px solid var(--line);
-	border-radius: var(--radius);
+	border-radius: 999px;
 }
 .clock-top {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	gap: 0.45rem;
-	/* the moon and its two letters ride nearer the top edge, and take
-	   less room while they are up there — they name the hour, they are
-	   not the hour */
 	margin-top: -0.15rem;
 }
 .clock-suffix {
-	/* measured off the glyphs: the ink of the two letters sits high in
-	   their line box, which left them riding above the moon beside
-	   them. at this the pair straddle the middle of the row evenly —
-	   half a pixel each way is as close as the rasteriser gets. */
 	position: relative;
 	top: 1px;
 	font-size: 0.9rem;
 	font-weight: 700;
 	line-height: 1;
 }
-/* the hour is the one thing in this box worth reading from across the
-   room, so it is the title face rather than the number one — bitcount
-   is the heaviest of the four. never bold: its letters are dots and the
-   bold weight fills the gaps between them. */
+
 .clock-time {
 	margin: 0;
 	font-family: var(--title-font);
@@ -4458,7 +3334,6 @@ html:not(.inverted) .rail-left {
 	font-size: 0.8rem;
 }
 
-/* the swap: it turns as it goes, so the press has somewhere to land */
 .theme-swap {
 	display: grid;
 	flex: none;
@@ -4473,42 +3348,17 @@ html:not(.inverted) .rail-left {
 	transition: transform 0.45s cubic-bezier(0.34, 1.2, 0.5, 1);
 }
 .theme-swap:hover { transform: scale(1.12); }
-/* the turn is on the moon, not on the button: the button's transform
-   is spoken for by the hover, and the two fought each other — the
-   moon would finish its turn and then jump as the hover took back
-   over. they're on separate elements now, so they compose. */
-/* only while the page is actually changing sides. left on all the
-   time, the resting angle set during a page load counted as a change
-   and the moon span itself round on every refresh. */
+
 html.fading .theme-swap svg {
 	transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.45, 1);
 }
 html.inverted .theme-swap svg { transform: rotate(180deg); }
 
-/* the swap used to be one filter on the root, which inverted the page
-   as a picture: the black bars came out as slabs of white. now the two
-   colour tokens change places and every surface follows.
-
-   how the move is carried matters more than it sounds. it was a
-   transition on every element on the page at once — four properties
-   each, and colour is not a thing the compositor can do on its own, so
-   every frame of it was the main thread walking the whole document.
-   with a board of tiles, a deck and a list of clips up, that is
-   thousands of animations for four tenths of a second, and it stuttered.
-
-   the browser will do the whole thing as one picture instead: it takes
-   a copy of the page before and after and fades one into the other on
-   the compositor, which costs one paint and then nothing. that is the
-   path below; the blanket transition is kept only for a browser
-   without it. */
 ::view-transition-old(root), ::view-transition-new(root) {
 	animation-duration: 0.34s;
 	animation-timing-function: var(--ease);
 }
-/* the moon is lifted out of that picture into one of its own, so it can
-   still turn over as the page changes sides — the same half turn with a
-   dip through the middle, drawn as two snapshots passing rather than as
-   an animation on the button itself. */
+
 html.theming .theme-swap { view-transition-name: moon; }
 ::view-transition-old(moon) { animation: moon-away 0.34s var(--ease) both; }
 ::view-transition-new(moon) { animation: moon-here 0.34s var(--ease) both; }
@@ -4519,12 +3369,6 @@ html.theming .theme-swap { view-transition-name: moon; }
 	from { opacity: 0; transform: rotate(-84deg) scale(0.74); }
 }
 
-/* the fallback, for a browser with no view transitions. the
-   pseudo-elements have to be named: a star matches elements, not the
-   things drawn before and after them. left out, the scalloped edge and
-   the dotted one changed colour on the spot while the page was still
-   fading — a rectangle of the new colour appearing over the old page,
-   which is exactly what it looked like. */
 html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	transition: background-color 0.4s var(--ease), color 0.4s var(--ease),
 		border-color 0.4s var(--ease), fill 0.4s var(--ease) !important;
@@ -4537,31 +3381,22 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	.theme-swap { transition: none; }
 }
 
-/* how much room everything you've kept is taking */
 .rail-store {
 	display: flex;
 	flex: none;
 	flex-direction: column;
-	/* the same step below the label as the box keeps above it. at a
-	   third of that the words sat almost on the bar, with all the air
-	   over their heads — which reads as a label that has slipped. */
 	gap: var(--rail-pad);
-	padding: var(--rail-pad);
+	padding: var(--rail-pad) 0;
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
 .store-head {
 	display: flex;
-	/* the label and the amount are set in different faces, so their
-	   line boxes don't line up — the two sit on one baseline instead */
 	align-items: baseline;
 	justify-content: space-between;
 	gap: var(--tight);
 	font-size: 0.78rem;
-	/* the row is one line of small type: the default leading put ~3px
-	   of air over the words, which read as sitting low in the box
-	   against the even padding. the line box is the words themselves. */
 	line-height: 1;
 }
 .store-head span:first-child { font-family: var(--head-font); font-weight: 700; }
@@ -4580,13 +3415,12 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	transition: width 0.3s var(--ease);
 }
 
-/* the last few things binned — press one to put it back */
 .rail-binned {
 	display: flex;
 	flex: none;
 	flex-direction: column;
 	gap: var(--rail-pad);   /* see .rail-store */
-	padding: var(--rail-pad);
+	padding: var(--rail-pad) 0;
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
@@ -4605,9 +3439,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .binned-count:empty { display: none; }
 .binned-empty {
 	flex: none;
-	/* a fixed height does the centring, plus the drop every other pill
-	   carries. as bare padding the label leaned, because the line box
-	   is taller than the room the padding left it. */
 	display: grid;
 	place-items: center;
 	height: 1.35rem;
@@ -4648,90 +3479,26 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 .binned-item:hover { color: var(--paper); background: var(--ink); }
 
-
-/* **The bar's boxes are round at both ends, all the way.** A short box
-   takes a true half circle on each side (999px is clamped to half its
-   height). A box that can grow tall — the function drawer open, a long
-   bin — would turn into a pill standing on end that way, so it takes a
-   half ellipse instead: a fixed reach across, the whole height down.
-   The sides are still one curve top to bottom, with no straight edge.
-
-   The words are held further in to clear the curves. "for now" — the
-   insets are a first pass and expected to move. */
-.rail-clock, .rail-store, .rail-now, .help-box { border-radius: 999px; }
-.help-box.is-open, .rail-binned { border-radius: var(--rail-round) / 50%; }
-/* no outline round these any more, so nothing to hold the words off —
-   and at the narrow bar the rounded ends' inset wrapped the storage
-   amount onto a second line */
-.rail-store, .rail-now, .rail-binned {
-	padding-left: 0;
-	padding-right: 0;
-}
-.help-box { padding-left: var(--rail-round); padding-right: var(--rail-round); }
-/* only the bottom grows when it opens. the top stays the shut box's
-   own, so the word does not move — growing the top as well is what
-   made it drop as the drawer opened. */
-/* **one gap down the whole bar**, measured to the ink: 27px from the
-   clock to the function word, from the last line of words to the
-   dotted line, and from the dotted line to the storage label. the
-   words' double spacing already carries about 18px under the last
-   line, so only a little more is added here. */
-.help-box.is-open { padding-bottom: calc(var(--tight) + 1px); }
-.rail-clock { padding-left: var(--group); padding-right: var(--group); }
-
-/* **Only the clock wears an outline.** The function drawer, the storage
-   line, the player and the bin sit straight on the black, each on its
-   own, with no box drawn round it — the clock is the one tile. */
 .rail-left .help-box, .rail-left .rail-store, .rail-left .rail-now, .rail-left .rail-binned {
 	border-color: transparent;
-}
-
-/* with no outline there is nothing for a rounded corner to round, and
-   it would only clip the words — and it was the open drawer swapping
-   from one curve to another that jolted it. square, and still. */
-.rail-left .help-box, .rail-left .rail-store, .rail-left .rail-now, .rail-left .rail-binned {
 	border-radius: 0;
 }
-/* a line between each of them, laid on the top edge of every box after
-   the function drawer — so it sits in the gap, and a box that isn't
-   there takes its line with it. */
+
 .rail-left > .help-box ~ section {
 	position: relative;
 	border-top-color: transparent;
 }
-/* the line between them is a row of small round dots, drawn rather
-   than a dotted border: a border sets its own gaps and stops wherever
-   the last whole dot runs out, which left a gap at the right end.
 
-   each tile carries half a dot at either end, and `round` fits a whole
-   number of tiles between the first dot's middle and the last's — so
-   the ends land exactly where they are put, and every join between two
-   tiles makes one whole dot. the 2px of padding either side is room for
-   the outer halves of the two end dots, which the next tile out draws. */
 .rail-left > .help-box ~ section::before,
 .rail-left .rail-clock::after {
 	content: '';
 	position: absolute;
 	top: -2px;
-	/* the row ends the same distance off the bar's edge at both ends:
-	   --dot-end from the window's wall to the first dot's middle, and
-	   the same from the last dot's middle to the deepest point of the
-	   wave. the box sits --rail-pad in from the wall, and --rail-pad
-	   short of the bumps' strip, whose wave dips --wave-out further in.
-	   the last dot clears the strip by a couple of pixels, which is all
-	   it can — any closer and the strip paints over half of it. */
-	/* the whole width of the bar: --dot-end off the window's wall at
-	   one end, and the same off the deepest point of the wave at the
-	   other. the box sits --rail-pad in from the wall, and --rail-pad
-	   short of the bumps' strip, whose wave dips --wave-out further in. */
 	left: calc(var(--dot-end) - var(--rail-pad) - 2px);
 	right: calc(var(--dot-end) - var(--rail-pad) - var(--wave-out) - 2px);
 	height: 3px;
 	padding: 0 2px;
 	box-sizing: border-box;
-	/* fitted to the content box — the stretch between the two end dots'
-	   middles — and drawn out into the padding either side, so the end
-	   tiles' outer halves land there and each end dot comes out whole. */
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='3' viewBox='0 0 18 3' preserveAspectRatio='none'%3E%3Ccircle cx='0' cy='1.5' r='1.25' fill='%23fff'/%3E%3Ccircle cx='18' cy='1.5' r='1.25' fill='%23fff'/%3E%3C/svg%3E");
 	background-size: var(--dot-step) 3px;
 	background-repeat: round no-repeat;
@@ -4740,20 +3507,11 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	background-position: 0 0;
 	pointer-events: none;
 }
-/* and one between the clock and the function drawer. it hangs off the
-   clock — the drawer clips whatever leaves it — a gap's length below
-   it, and the drawer is moved down by that gap plus the dots, so the
-   clock, the dots and the function word are the same distance apart as
-   everything else in the bar. */
-.rail-left .rail-clock { position: relative; }
+
 .rail-left .rail-clock::after { top: calc(100% + 28px); }
 .rail-left .rail-clock + .help-box { margin-top: 30px; }
-/* the same air over and under each of them as the function word gets
-   between the clock and its line — storage sat tight against its own
-   line while function had room all round it */
+
 .rail-left .rail-store, .rail-left .rail-now, .rail-left .rail-binned {
-	/* measured to the ink: 27px from the dotted line to the word, the
-	   same as from the clock to the function word */
 	padding-top: calc(var(--rail-pad) + var(--tight) + 7px);
 	padding-bottom: calc(var(--rail-pad) + var(--tight));
 }
@@ -4761,31 +3519,10 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 /* =========================================================
    23. home — the board you arrange yourself
    ========================================================= */
-
-/* home is a board, not a list: four columns of square slots, and every
-   widget takes one of three shapes across them. the tiles sit straight
-   on the page — there is no frame round them, so the only spacing in
-   here is the one step the rest of the site uses. */
-.home-panel {
-	position: relative;
-	gap: var(--group);
-	padding: 0;
-	background: none;
-	border: 0;
-	border-radius: 0;
-}
 .widget-list {
 	display: grid;
 	flex: 0 1 auto;
-	/* minmax(0, ...) and not plain 1fr: a 1fr track still grows to fit
-	   an item too big for it, and while a tile is being animated from a
-	   wide shape to a narrow one it IS too big for it. the columns were
-	   stretching to hold it and everything in them jumped 129px sideways
-	   and back — which is the snap. at minmax(0,1fr) the track holds its
-	   share and the tile simply overflows it while it shrinks. */
 	grid-template-columns: repeat(4, minmax(0, 1fr));
-	/* one row per row in use, and a spare one under them while you are
-	   arranging so a tile can be dropped below everything else */
 	grid-template-rows: repeat(var(--board-rows, 1), 8.5rem);
 	grid-auto-rows: 8.5rem;
 	gap: var(--group);
@@ -4793,21 +3530,11 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	scrollbar-width: none;
-	/* a scrolling box crops whatever leaves it, and the tiles lift and
-	   cast a shadow — both of which left it. the board is inset by that
-	   much and given the same back as negative margin, so nothing is cut
-	   and nothing has moved. */
 	padding: 8px;
-	/* the top gives back 4px less, because the tiles are lifted 4px —
-	   without that the first row rides higher than the first thing on
-	   every other page. measured: 16.0px under the strip on all four,
-	   and in the right bar. */
 	margin: -4px -8px -8px;
 }
 .widget-list::-webkit-scrollbar { display: none; }
 
-/* the way out. it is not there until a tile is in the air, and it is
-   the one place on the board that does something other than hold. */
 .widget-bin {
 	position: absolute;
 	left: 0;
@@ -4831,9 +3558,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease),
 	            color 0.18s var(--ease), background-color 0.18s var(--ease);
 }
-.widget-bin[hidden] { display: none; }
 .widget-bin.is-up { opacity: 1; transform: none; }
-/* over it, it fills in — the same thing every live state here does */
 .widget-bin.is-live {
 	color: var(--paper);
 	background: var(--ink);
@@ -4842,16 +3567,12 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 .widget-bin svg { display: block; flex: none; }
 
-/* where a tile will land, left behind while it is in the air */
 .widget-ghost {
 	border: 1px dashed var(--line);
 	border-radius: var(--radius);
 	pointer-events: none;
 }
 
-/* the three shapes. a square says one number, a wide one says three,
-   and the big one has room for the whole story — which is why every
-   widget writes itself differently at each. */
 .widget-card[data-size="small"] { grid-column: span 1; grid-row: span 1; }
 .widget-card[data-size="wide"]  { grid-column: span 2; grid-row: span 1; }
 .widget-card[data-size="large"] { grid-column: span 2; grid-row: span 2; }
@@ -4862,26 +3583,17 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	flex-direction: column;
 	gap: var(--tight);
 	min-width: 0;
-	/* tighter over the head than under the body: the name and its cross
-	   ride at the top of the tile, and the cross sits the same distance
-	   from the top edge as from the left one */
-	/* the head's row is as tall as the name's line box, not as tall as
-	   the cross, so the cross centres 2.2px below where the padding
-	   alone would put it. the top gives that back, and the cross ends
-	   up the same distance from the top edge as from the left. */
 	padding: 0.46rem 0.8rem 0.8rem;
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	overflow: hidden;
 	text-align: left;
-	/* translate, not transform: dragging and the slide both write transform,
-	   and the lift must not tread on either of them */
+	translate: 0 -4px;
+	box-shadow: 3px 3px 0 var(--ink);
 	transition: translate 0.18s ease, box-shadow 0.18s ease;
 }
-/* the top row: a slot for the ×, the name, and a slot the same width
-   on the other side. the name is centred whichever of the two are
-   showing, which is what lets the × appear without the name moving. */
+
 .widget-head {
 	display: grid;
 	grid-template-columns: 0.95rem 1fr 0.95rem;
@@ -4889,10 +3601,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	gap: var(--tight);
 	flex: none;
 	min-height: 0.95rem;
-	/* the row reaches a little past the tile's own padding on both
-	   sides, which carries the cross out towards the corner without
-	   moving the name — the two edges give way by the same amount, so
-	   what is between them stays in the middle */
 	margin: 0 -0.2rem;
 }
 .widget-head h3 {
@@ -4911,8 +3619,8 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	grid-column: 3;
 	font-size: 0.75rem;
 	text-align: right;
+	transition: opacity 0.22s var(--ease);
 }
-/* a square has no room for both the name and its face */
 .widget-card[data-size="small"] .widget-face { display: none; }
 
 .widget-body {
@@ -4925,7 +3633,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	overflow: hidden;
 }
 
-/* one reading, in the title face, with its word set small beside it */
 .widget-big {
 	display: flex;
 	align-items: baseline;
@@ -4943,9 +3650,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	font-size: 0.8rem;
 	font-weight: 600;
 }
-/* the clock reads down the middle: the figures, the half under them,
-   and the day under that. beside the figures the half dragged the whole
-   reading off centre, being the one part not in the number face. */
+
 .widget-body.is-clock {
 	align-items: center;
 	text-align: center;
@@ -4956,7 +3661,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	line-height: 1;
 }
 
-/* the face, when it is read with hands rather than figures */
 .clock-hands {
 	display: grid;
 	place-items: center;
@@ -4980,8 +3684,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	text-overflow: ellipsis;
 }
 
-/* three readings sharing the width — they sit on their own thirds so
-   the numbers line up down the board rather than bunching at the left */
 .widget-tallies {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
@@ -5007,7 +3709,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	text-overflow: ellipsis;
 }
 
-/* the same outlined bar the storage box uses */
 .widget-meter {
 	display: block;
 	flex: none;
@@ -5024,7 +3725,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	background: var(--ink);
 }
 
-/* a deck per line, with a bar for how much of the pile it is */
 .widget-rows {
 	display: flex;
 	flex: 1;
@@ -5043,7 +3743,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 .widget-row-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
-/* the decks you can drop straight into practice */
 .widget-jumps {
 	display: flex;
 	flex: 1;
@@ -5076,12 +3775,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 
 /* ---------- edit mode ---------- */
 
-/* the corner switch: a circle standing off the bottom right of the
-   page, where the board rarely reaches. it used to be a word on a row
-   of its own, which cost the board a whole line of height. */
-/* the board's own two marks, on a row right under it. pinned to the
-   foot of the panel they sat at the bottom of the page, which is a long
-   way from a single row of tiles at the top of it. */
 .board-foot {
 	position: relative;    /* the add button hides behind the pen in here */
 	display: flex;
@@ -5104,11 +3797,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	border-radius: 999px;
 	cursor: var(--cur-tap);
 }
-/* the add button is a circle the same size as the pen, and it lives out
-   of the row's flow — it is *under* the pen when the board is settled
-   and slides out from behind it when arranging starts. in the flow it
-   would have had to appear from nothing, or push the pen sideways
-   before it was wanted. */
+
 .widget-add {
 	position: absolute;
 	right: calc(2.2rem + var(--tight));
@@ -5131,14 +3820,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 		opacity 0.2s var(--ease),
 		transform 0.28s var(--drawer);
 }
-/* the pen while the board is settled, a cross while you're arranging.
-   they sit on top of each other and change places by turning, rather
-   than one being switched off and the other on.
 
-   it was a tick, which read as "save what I did" — and there is
-   nothing to save: every move is already kept as it is made. a cross
-   says the only thing the button does, which is put the arranging
-   away. */
 .widget-edit svg { position: relative; }
 .widget-edit .mark-pen, .widget-edit .mark-shut {
 	transform-box: fill-box;
@@ -5154,12 +3836,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	border-color: var(--ink);
 }
 
-
-/* the × sits in the head's first slot rather than floating in the
-   corner, so it lines up with the name beside it and keeps the same
-   air above it as to its left. it is the mark alone — a circle round
-   it made a second shape to centre inside a first, and it read as off
-   whichever of the two you looked at. */
 .widget-off {
 	grid-column: 1;
 	display: grid;
@@ -5179,9 +3855,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .widget-off svg { display: block; width: 100%; height: 100%; }
 .widget-off:hover { transform: scale(1.12); }
 
-/* the corner you can pull. it is the indicator as much as the handle:
-   three strokes in the corner are what say a thing is resizable, and
-   the pointer turns diagonal over it to say the same again. */
 .widget-grip {
 	position: absolute;
 	z-index: 2;
@@ -5204,41 +3877,26 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .widget-grip:hover { transform: translate(1px, 1px); }
 
 .home-panel.is-editing .widget-off,
-.home-panel.is-editing .home-panel.is-editing .widget-grip:hover { transform: translate(1px, 1px); }
-/* while a corner is being pulled the whole board keeps that pointer */
+.home-panel.is-editing .widget-grip {
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+}
+.home-panel.is-editing .widget-grip:hover { transform: translate(1px, 1px); }
 .sizing, .sizing * { cursor: var(--cur-corner) !important; user-select: none; }
 .home-panel.is-editing .widget-off:hover { transform: scale(1.12); }
-/* the chip takes the bottom corner, so the tile's own words step off it */
 .home-panel.is-editing .widget-face { opacity: 0; }
-.widget-face { transition: opacity 0.22s var(--ease); }
-.home-panel.is-editing .widget-body { padding-bottom: 1.2rem; }
-/* in edit a tile is something you move, so nothing inside it answers */
-/* turning edit on lifts the board off the page and turning it off sets it
-   back down, so the mode arrives and leaves rather than snapping */
-/* the lift and the hard shadow are how a tile looks all the time now,
-   not only while the board is being arranged. edit still changes what a
-   tile *does* — the handles, the grab cursor, the body going quiet —
-   but not how it sits. */
-.widget-card {
-	translate: 0 -4px;
-	box-shadow: 3px 3px 0 var(--ink);
-}
 .home-panel.is-editing .widget-card {
 	cursor: var(--cur-grab);
 	touch-action: none;
 	user-select: none;
 }
-.home-panel.is-editing .widget-body { pointer-events: none; }
+.home-panel.is-editing .widget-body { padding-bottom: 1.2rem; pointer-events: none; }
 
-/* nothing shakes. edit shows itself by the handles appearing and the
-   tiles taking a grab cursor — a board of jiggling tiles is a lot of
-   movement to sit and read. */
 @media (prefers-reduced-motion: reduce) {
 	.widget-card { transition: none; }
 }
 
-/* in the air it belongs to the window, not to the board — nothing can
-   crop it and no reflow can shift it while it is up there */
 .widget-card.is-dragging {
 	position: fixed;
 	z-index: 90;
@@ -5247,17 +3905,16 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	translate: 0 -4px;
 	box-shadow: 5px 5px 0 var(--ink);
 	pointer-events: none;
-	/* the lift and the shadow arrive rather than appearing whole. left
-	   and top are written every frame, so they stay out of here. */
 	transition: translate 0.16s var(--ease), box-shadow 0.16s var(--ease);
 }
-/* the handles step back while it is in your hand — there is nothing to
-   press on a thing that is moving. they used to blink out, because the
-   tile was being moved to the end of the page and a reparented element
-   has no previous style to move from. */
+
 .home-panel.is-editing .widget-card.is-dragging .widget-off,
-.home-panel.is-editing .widget-card.is-dragging /* held over the bin it shrinks in your hand, so you can see what
-   letting go would do before you do it */
+.home-panel.is-editing .widget-card.is-dragging .widget-grip {
+	opacity: 0;
+	transform: scale(0.7);
+	pointer-events: none;
+}
+/* held over the bin it shrinks in your hand */
 .widget-card.is-going-out {
 	translate: 0 -4px;
 	scale: 0.88;
@@ -5266,7 +3923,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	            opacity 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
 
-/* it shrinks into its slot on the way out rather than blinking off */
 .widget-card.is-going {
 	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
 	opacity: 0;
@@ -5274,24 +3930,19 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	pointer-events: none;
 }
 
-/* the add button only means anything while you're arranging, so at rest
-   it is behind the pen: shifted right by its own width and the gap, and
-   small. pressing edit lets it out. */
 .home-panel:not(.is-editing):not(.is-empty) .widget-add {
 	transform: translateX(calc(2.2rem + var(--tight))) scale(0.55);
 	opacity: 0;
 	pointer-events: none;
 }
-/* and out again, said plainly rather than left to the absence of the
-   rule above it */
+
 .home-panel.is-editing .widget-add,
 .home-panel.is-empty .widget-add {
 	transform: none;
 	opacity: 1;
 	pointer-events: auto;
 }
-/* the list of ways a widget can be read. same as the add list: no
-   panel around it, just the column of pills. */
+
 .pop-looks {
 	width: 9rem;
 	padding: 0;
@@ -5314,15 +3965,9 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .widget-pick { cursor: var(--cur-tap); }
 .widget-pick:hover { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
-
 /* =========================================================
-   24. the left bar — notes in, cards out
+   24. cards — notes in, cards out
    ========================================================= */
-
-/* it lives on the page now rather than in the black bar, so it is
-   written in the page's two colours like everything else here — a
-   white box with an outline, and the one button that matters filled
-   in black. */
 .notes-panel {
 	display: flex;
 	flex-direction: column;
@@ -5330,25 +3975,14 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	min-height: 0;
 	color: var(--ink);
 }
-/* under the two tiles, over the deck. it takes its own height and the
-   deck below it takes the rest. */
+
 .notes-home {
 	display: flex;
-	/* the height the grip below it was dragged to. it shrinks the whole
-	   way to nothing, like every other pane with a grip. */
 	flex: 0 1 var(--notes-row, 30%);
 	flex-direction: column;
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;
-	/* the padding comes in with the box rather than all at once — a box
-	   can never be smaller than its own padding and outline, which
-	   would stop this one short of shut. see --skin in wireSplit. */
-	/* only the sides ramp. the floor --skin is there for is a width
-	   floor — a box can't be narrower than its own side padding and
-	   outline — and ramping the top and bottom with it slid everything
-	   in the box down nine pixels as it was dragged shut. measured:
-	   the buttons held at 749.0 the whole way after this. */
 	padding: var(--tight) calc(var(--tight) * var(--skin, 1));
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -5381,9 +4015,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .notes-input::placeholder { color: var(--ink); opacity: 0.55; }
 
 .notes-actions { display: flex; flex: none; gap: var(--tight); }
-/* the stretch is for buttons sharing a row. left on the loose, a button
-   is a child of a column and grows to whatever height is going — which
-   is how the make button came to be five hundred pixels tall. */
+
 .notes-actions .notes-button { flex: 1; }
 .notes-button {
 	flex: none;
@@ -5396,8 +4028,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	cursor: var(--cur-tap);
 }
 .notes-button:hover { color: var(--paper); background: var(--ink); }
-/* the one that acts on the deck is filled in, the way a live state is
-   everywhere else — inverted here, because the bar is already black */
+
 .notes-button.is-solid { color: var(--paper); background: var(--ink); font-weight: 700; }
 .notes-button:disabled { cursor: var(--cur-dot); opacity: 1; }
 .notes-button:disabled:hover { color: var(--ink); background: none; }
@@ -5408,7 +4039,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	line-height: 1.5;
 }
 
-/* what it found, before you keep any of it */
 .notes-found {
 	display: flex;
 	flex-direction: column;
@@ -5449,16 +4079,8 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	cursor: var(--cur-tap);
 }
 
-/* the key lives behind its own switch: it is a thing you set once and
-   never look at again, and it shouldn't sit in the way meanwhile */
-/* the quiet second line under the button, the same as the scratch
-   box's. a rule under two small words read as a mistake rather than as
-   a link. */
 .notes-key-toggle {
 	align-self: center;
-	/* it sat 16px under the button and 9px off the floor — the panel's
-	   own gap on top of the room the button above it keeps. the seven
-	   comes back so it lies evenly between the two. */
 	margin: -7px 0 0;
 	padding: 0;
 	color: var(--ink);
@@ -5473,7 +4095,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .notes-key-toggle:hover { opacity: 1; }
 .notes-key { display: flex; flex-direction: column; gap: var(--tight); }
 
-/* the head row: the name, and the button that opens it wide */
 .notes-head {
 	display: grid;
 	grid-template-columns: 0.95rem 1fr 0.95rem;
@@ -5484,8 +4105,8 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	padding-bottom: 0;
 	border-bottom: 0;
 }
-.notes-wide { grid-column: 3; }
 .notes-wide {
+	grid-column: 3;
 	flex: none;
 	display: grid;
 	place-items: center;
@@ -5499,9 +4120,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 .notes-wide svg { display: block; width: 100%; height: 100%; }
 
-/* what's attached, waiting to be read */
 .notes-bits { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.notes-bits[hidden] { display: none; }
 .notes-bit {
 	position: relative;
 	display: grid;
@@ -5529,11 +4148,8 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	line-height: 1;
 	cursor: var(--cur-tap);
 }
-/* something being dragged over the panel */
 .notes-panel.is-catching { outline: 2px dashed var(--ink); outline-offset: -6px; }
 
-/* opened wide: the same panel, in a window with room to type in. it
-   keeps the bar's colours — it is the bar's panel, just moved. */
 .notes-screen {
 	width: min(46rem, 100%);
 	padding: var(--group) var(--gap) var(--gap);
@@ -5556,27 +4172,18 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	scrollbar-width: none;
 }
 .notes-slot .notes-panel::-webkit-scrollbar { display: none; }
-/* in the window the head is already named by the window's own title */
 .notes-slot .notes-head { display: none; }
 .notes-slot .notes-input { min-height: 14rem; font-size: 0.95rem; }
 .notes-slot .notes-found { max-height: none; }
 .notes-slot .notes-bit { width: 4.5rem; height: 4.5rem; }
 
-/* on the page it is a column among columns: the box is worth typing in
-   without being the whole page, and what it finds scrolls inside
-   itself rather than pushing the deck off the bottom */
 .notes-home .notes-panel { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
 .notes-home .notes-panel::-webkit-scrollbar { display: none; }
-/* the box you type in takes whatever the panel has spare rather than a
-   height of its own, so the blank part of it is only ever as big as
-   the tool has been given */
+
 .notes-home .notes-box { flex: 1 1 auto; min-height: 3.2rem; }
 .notes-home .notes-input { flex: 1; min-height: 0; resize: none; }
 .notes-home .notes-found { max-height: 9rem; }
 
-/* the box you type in is the drop target too: one thing to aim at
-   rather than a panel of boxes, and the picture button lives in its
-   corner instead of taking a row to itself */
 .notes-box { position: relative; display: flex; }
 .notes-box .notes-input { padding-bottom: 2.2rem; }
 .notes-clip {
@@ -5597,7 +4204,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .notes-clip svg { display: block; width: 0.95rem; height: 0.95rem; }
 .notes-clip:hover { color: var(--paper); background: var(--ink); }
 
-/* while something is being dragged over, the box says so itself */
 .notes-panel.is-catching .notes-box::after {
 	content: 'let go and it reads it';
 	position: absolute;
@@ -5612,18 +4218,15 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	pointer-events: none;
 }
 
-/* the one that does the work: a button's height, no more */
 .notes-button.is-go {
 	flex: none;
 	padding: calc(0.5rem + var(--drop)) 0.6rem calc(0.5rem - var(--drop));
 	font-size: 0.85rem;
 }
-/* everything in the panel keeps its own height; the list of cards is
-   the only thing that takes what is left */
+
 .notes-panel > * { flex: none; }
 .notes-panel > .notes-found { flex: 0 1 auto; }
-/* and the list reader is a quiet second, for a glossary you already
-   have in pairs */
+
 .notes-plain {
 	align-self: center;
 	padding: 0;
@@ -5634,22 +4237,13 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	font-size: 0.72rem;
 	cursor: var(--cur-tap);
 }
-.notes-plain[hidden] { display: none; }
 
-
-
-/* the clip being packed while the whole list is downloading. it is the
-   same inversion every live thing on the site wears, so the eye finds
-   it without being told what to look for. */
 .recording-item.is-packing {
 	color: var(--paper);
 	background: var(--ink);
 	border-color: var(--ink);
 }
-/* every mark on the row turns over with it. these four name `--ink`
-   themselves rather than inheriting, so the row going black left them
-   black on black — a button you could only find by remembering it was
-   there. */
+
 .recording-item.is-packing .clip-play,
 .recording-item.is-packing .clip-crop,
 .recording-item.is-packing .clip-download,
@@ -5658,7 +4252,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .recording-item.is-packing .clip-track { border-color: var(--paper); }
 .recording-item.is-packing .clip-fill { background: var(--paper); }
 .recording-item.is-packing .crop-shade { filter: invert(1); }
-/* a mark that keeps moving, so a slow one doesn't look stuck */
 .recording-item.is-packing .clip-label::after {
 	content: '';
 	display: inline-block;
@@ -5670,40 +4263,23 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	border-radius: 999px;
 	animation: clip-waiting 0.9s ease-in-out infinite;
 }
-/* one that wouldn't keeps its outline, so it can be found afterwards */
 .recording-item.is-packing-failed { border-color: var(--line); border-width: 2px; }
 
-
 /* =========================================================
-   one weight
+   25. one weight
    ========================================================= */
-/* nothing here is set bold. the words in the top strip are the titles
-   and they carry themselves on their face and their size; everywhere
-   else bold was saying the same thing twice. bitcount must never be
-   bold at all — its letters are dots and the weight fills the gaps
-   between them — so the strip is left exactly as it is rather than
-   being bolded to match the ask. */
 body, body *, .modal-panel, .modal-panel *, .pop-panel, .pop-panel * {
 	font-weight: 400 !important;
 }
-/* except the titles in the top strip, which are the one thing on the
-   site that is meant to shout. asked for twice, knowing bitcount fills
-   its own gaps at this weight. */
+
 .section-tab { font-weight: 700 !important; }
-/* and a link under the pointer, which has thickened since before this
-   rule existed — the rule was quietly holding it flat */
+
 a:hover, a:focus-visible { font-weight: 700 !important; }
 
-
 /* =========================================================
-   coming in
+   26. coming in
    ========================================================= */
-/* a hard refresh used to show the page in pieces — the columns blank,
-   then the clips arriving out of storage a beat later. it is held back
-   until what it draws is there and then faded in as one thing, with
-   three dots holding the place meanwhile. */
 html.booting .app-shell { opacity: 0; }
-.app-shell { opacity: 1; transition: opacity 0.34s var(--ease); }
 
 .booting-mark {
 	position: fixed;
@@ -5717,13 +4293,7 @@ html.booting .app-shell { opacity: 0; }
 	pointer-events: none;
 }
 html.booting .booting-mark { display: flex; }
-/* it only shows itself if the wait is actually a wait. on a quick load
-   the page was ready before the eye had settled, and the face flashed
-   up in the middle of the screen for a frame — which is worse than no
-   face at all. nothing for the first third of a second. */
-/* written out rather than with var(--ease): a custom property inside a
-   two-animation shorthand takes the whole declaration down with it if
-   it doesn't resolve, and then neither animation runs at all. */
+
 .booting-mark .spin-face {
 	opacity: 0;
 	animation: face-turn 1.5s cubic-bezier(0.62, 0, 0.3, 1) infinite,
@@ -5732,25 +4302,12 @@ html.booting .booting-mark { display: flex; }
 @keyframes face-arrive {
 	to { opacity: 1; }
 }
-/* the one thing that waits, in both places something waits: a smiley,
-   turning.
 
-   it is drawn rather than typed. as a glyph it was whatever the body
-   face made of it — a heavy mouth, odd eyes — and worse, a glyph does
-   not sit in the middle of its own box: it has side bearings and it
-   stands on a baseline, so turning the box turned the face around a
-   point that wasn't its middle and it wobbled. drawn, the circle is
-   centred in the box by construction and the turn is true.
-
-   the line is `non-scaling-stroke` at 1, so it is the same hair as
-   every outline on the site however big the face is drawn. */
 .spin-face {
 	display: block;
 	width: 2rem;
 	height: 2rem;
 	color: var(--ink);
-	/* a turn and then a beat, rather than going round and round at one
-	   speed: it winds up, comes round in one go, and waits. */
 	animation: face-turn 1.5s cubic-bezier(0.62, 0, 0.3, 1) infinite;
 }
 @keyframes face-turn {
@@ -5763,19 +4320,8 @@ html.booting .booting-mark { display: flex; }
 	.app-shell { transition: none; }
 }
 
-/* the site itself never scrolls sideways; every pane inside it ends in
-   an ellipsis rather than pushing the page wider */
-html, body { overflow-x: hidden; }
-
-
 /* =========================================================
-   25. chat — people, and the talking with them
-   ---------------------------------------------------------
-   The same bones as every other page here: a bar on top, then
-   two panes with a grip between them. The people are the
-   narrow one and the talking takes the rest. Until somebody
-   has been added there are no panes at all, only the one line
-   that fixes that.
+   27. chat — people, and the talking with them
    ========================================================= */
 .chat-panel {
 	display: flex;
@@ -5785,7 +4331,6 @@ html, body { overflow-x: hidden; }
 	min-height: 0;
 }
 
-/* who you are, and the way in. the same row the other pages open with */
 .chat-bar {
 	position: relative;
 	display: flex;
@@ -5804,9 +4349,6 @@ html, body { overflow-x: hidden; }
 	font-size: 0.9rem;
 }
 
-/* nothing added yet. an empty people column beside an empty thread is
-   two boxes saying the same nothing — this says it once, in the middle
-   of the room, and hands over the one thing that fixes it. */
 .chat-start {
 	display: flex;
 	flex: 1;
@@ -5819,7 +4361,6 @@ html, body { overflow-x: hidden; }
 	text-align: center;
 }
 .chat-start-head {
-	/* the heading face every other heading over a panel wears */
 	margin: 0;
 	font-family: var(--head-font);
 	font-weight: 400;
@@ -5843,7 +4384,6 @@ html, body { overflow-x: hidden; }
 .chat-body {
 	display: flex;
 	flex: 1;
-	/* no gap: the grip between the two is the gap, as everywhere else */
 	gap: 0;
 	min-height: 0;
 }
@@ -5854,8 +4394,6 @@ html, body { overflow-x: hidden; }
 	min-height: 0;
 }
 .room-side {
-	/* the width you dragged it to, and it gives way before it pushes
-	   the talking off the page — see .deck-side */
 	flex: 0 1 var(--room-col, 26%);
 	min-width: 0;
 	overflow: hidden;
@@ -5865,8 +4403,6 @@ html, body { overflow-x: hidden; }
 	min-width: 0;
 }
 
-/* the rooms. the list scrolls and the field that makes one holds the
-   bottom, so a long list never pushes it off. */
 .room-scroll {
 	flex: 1;
 	min-height: 0;
@@ -5883,8 +4419,7 @@ html, body { overflow-x: hidden; }
 	padding: 0;
 	list-style: none;
 }
-/* a room is a full-width row, and the one you are in inverts — the
-   same way every live thing on this site says so */
+
 .room-row {
 	display: block;
 	width: 100%;
@@ -5903,13 +4438,9 @@ html, body { overflow-x: hidden; }
 }
 .room-row:hover,
 .room-row.is-on { color: var(--paper); background: var(--ink); }
-/* added, but they have never opened the chat, so there is no key of
-   theirs to seal anything with. the same dashed outline a slot on the
-   home board wears while it is only a place something could go. */
+
 .room-row.is-waiting { border-style: dashed; }
 
-/* a field with its own button sitting inside the outline, the move the
-   notes box makes with its picture button */
 .room-make, .talk-bar {
 	display: flex;
 	flex: none;
@@ -5935,8 +4466,7 @@ html, body { overflow-x: hidden; }
 	outline: none;
 }
 .room-make input::placeholder, .talk-bar input::placeholder { color: var(--ink); opacity: 1; }
-/* no grey for a field that cannot be typed in yet — the head above it
-   already says there is no room to say anything in */
+
 .talk-bar input:disabled { opacity: 1; }
 .field-go {
 	flex: none;
@@ -5954,7 +4484,6 @@ html, body { overflow-x: hidden; }
 .field-go svg { display: block; width: 1rem; height: 1rem; }
 .field-go:hover { color: var(--paper); background: var(--ink); }
 
-/* the head of the room: its name, and how many are in it */
 .talk-head {
 	display: flex;
 	align-items: baseline;
@@ -5967,7 +4496,6 @@ html, body { overflow-x: hidden; }
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
-/* said of a thread between two people, and never of a room */
 .talk-sealed {
 	flex: none;
 	margin: 0;
@@ -5984,14 +4512,12 @@ html, body { overflow-x: hidden; }
 	font-size: 0.95rem;
 }
 
-/* what has been said. it scrolls, and it keeps to the bottom. */
 .talk-log {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
 	gap: 0;
 	min-height: 0;
-	/* the last line sits off the field rather than against it */
 	padding: 0 0.1rem var(--tight);
 	overflow-y: auto;
 	overscroll-behavior: contain;
@@ -6000,22 +4526,14 @@ html, body { overflow-x: hidden; }
 .talk-log::-webkit-scrollbar { display: none; }
 .talk-log > .empty-message { margin: auto; }
 
-/* one message. the face and the name sit on the first line and the
-   words go under them in the same column — so the same person twice in
-   a breath just adds a line rather than starting the shape again. */
 .said-row {
 	display: grid;
 	grid-template-columns: 2rem minmax(0, 1fr);
 	align-items: start;
 	gap: 0 var(--tight);
-	/* a new turn gets air; the same person carrying on gets a line.
-	   at a full --group between every turn the thread read as a list
-	   of notices rather than as people talking. */
 	padding-top: 0.75rem;
 }
-/* a short thread sits on the field rather than floating at the top of
-   an empty column — the newest line is the one being read, so that is
-   the end that should be anchored. */
+
 .said-row:first-of-type { padding-top: 0; margin-top: auto; }
 .said-row.is-run-on { padding-top: 0.12rem; }
 .said-face {
@@ -6029,9 +4547,7 @@ html, body { overflow-x: hidden; }
 	border-radius: 999px;
 	font-size: 0.9rem;
 }
-/* your own turns wear the filled mark, the way every live thing here
-   does. it is the only difference between the two sides — a whole
-   second alignment for your own words would halve the width of both. */
+
 .said-row.is-mine .said-face { color: var(--paper); background: var(--ink); }
 .said-head {
 	display: flex;
@@ -6048,39 +4564,26 @@ html, body { overflow-x: hidden; }
 	margin: 0;
 	font-size: 0.88rem;
 	line-height: 1.5;
-	/* a word nobody meant to be a word — a pasted link — has to break
-	   somewhere, or it widens the pane and the page with it */
 	overflow-wrap: anywhere;
 }
 
-/* the window: where it lives, then who you are in it */
 .chat-door {
 	display: flex;
 	flex-direction: column;
 	gap: var(--group);
 	min-width: 0;
 }
-/* a word kept to yourself without being a password field. chrome
-   reserves its weak-and-breached warnings for `type="password"`, and
-   this is a word for a public notice board — warning someone that it
-   is weak rather overstates what it was ever protecting. */
+
 .word-field {
 	-webkit-text-security: disc;
-	text-security: disc;
-	/* a real password field is not a drag source. without this the row
-	   of dots could be dragged into the username box and arrived there
-	   in the clear. */
 	-webkit-user-drag: none;
 }
 
-/* the button while it is doing the slow part. no spinner: it says
-   which slow part, which is more use than a turning shape. */
 .ask-go.is-working { cursor: var(--cur-no); }
 .ask-go:disabled, .ask-swap:disabled { opacity: 1; }   /* no grey here either */
 
 .ask-swap { align-self: center; }
-/* the small print, and it is small print on purpose — it is the sort
-   of thing nobody reads and everybody should */
+
 .ask-small {
 	margin: 0;
 	font-size: 0.75rem;
@@ -6094,7 +4597,6 @@ html, body { overflow-x: hidden; }
 }
 .ask-note:empty { display: none; }
 
-/* on a narrow screen the two panes stack, the same as every other pair */
 @media (max-width: 760px) {
 	.chat-body { flex-direction: column; }
 	.room-side { flex: none; }
