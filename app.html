@@ -112,18 +112,108 @@
              and in its own colours. -->
         <div class="say-what" id="sayWhat" aria-hidden="true"></div>
 
-        <aside class="rail rail-left" aria-hidden="true">
-        </aside>
+        <!-- everything the right bar used to hold, in the black bar
+             instead: the clock, what this page does, what it is costing,
+             the player and what was last binned. the bar is black, so it
+             is all drawn the other way round — one swap of the two
+             colour tokens and every box inside follows. -->
+        <aside class="rail rail-left" aria-label="menu">
+
+                    <!-- the time, above everything -->
+                    <section class="rail-clock" aria-label="the time">
+                        <div class="clock-top">
+                            <!-- a crescent, cut out of a full disc: the lit side
+                                 is the page's own colour, so the moon reads
+                                 right on either theme -->
+                            <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="turn the lights off" title="turn the lights off">
+                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                    <!-- a disc with a bite taken straight out of its
+                                         side: both circles sit on the same line, so
+                                         the crescent opens left to right and its
+                                         horns are blunt rather than sharp -->
+                                    <path fill="currentColor"
+                                          d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
+                                </svg>
+                            </button>
+                            <span class="clock-suffix" id="clockSuffix"></span>
+                        </div>
+                        <p class="clock-time" id="clockTime">--:--</p>
+                        <p class="clock-date" id="clockDate"></p>
+                    </section>
+
+
+                    <!-- what the page you're on actually does. one
+                         paragraph per section — keep this current
+                         whenever something new lands on the site. -->
+                    <!-- it keeps itself shut: the heading is the switch, and
+                         the words underneath slide open when you want them -->
+                    <section class="help-box" aria-label="what this page does">
+                        <button class="help-head panel-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody">
+                            <h2>function</h2>
+                        </button>
+
+                        <div class="help-body" id="helpBody"><div class="help-body-inner">
+
+                        <p class="help-note" data-section="home" hidden>welcome to my house</p>
+
+                        <p class="help-note" data-section="cards" hidden>flashcard maker; decks and flashcards can be organized. notes or images can be converted to flashcards, although this is still getting experimented and may not work well.</p>
+
+                        <p class="help-note" data-section="audio" hidden>audio recorder; records clips that cut when a change is detected in a selected area. clips can be cropped and downloaded as mp3s individually, or get batch downloaded in a custom folder all tg. clips also can be matched up w a spotify playlist.</p>
+
+                        <p class="help-note" data-section="chat" hidden>chat; the one page here that isn't only yours. pick a name and a password and you're in, nothing to set up. add someone by the name they signed up with and you get a thread with them. every message is sealed to the two people in it &mdash; the board it travels on can't read them, and neither can this page.</p>
+                        <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface</p>
+
+
+                        </div></div>
+                    </section>
+
+
+
+
+                    <!-- how much room everything you've kept is using -->
+                    <section class="rail-store" aria-label="storage">
+                        <div class="store-head">
+                            <span>storage</span>
+                            <span id="storeAmount">—</span>
+                        </div>
+                        <div class="store-bar"><div class="store-fill" id="storeFill"></div></div>
+                    </section>
+
+                    <!-- what's on, in short. the full player lives on the
+                         player page; this is here so it follows you. -->
+                    <section class="rail-now" aria-label="web player">
+                        <p class="rail-title" id="railTitle"></p>
+                        <div class="clip-track" id="railTrack">
+                            <div class="clip-fill" id="railFill"></div>
+                        </div>
+                        <div class="rail-controls">
+                            <button class="clip-play" id="railPrev" type="button" aria-label="previous song" title="previous">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 5.5v13L9 12z" fill="currentColor"/><rect x="4.5" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
+                            </button>
+                            <button class="clip-play" id="railToggle" type="button" aria-label="play" title="play"></button>
+                            <button class="clip-play" id="railNext" type="button" aria-label="next song" title="next">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 5.5v13L15 12z" fill="currentColor"/><rect x="17.1" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                    </section>
+
+
+                    <!-- the last few things you binned, newest first.
+                         press one to put it back; ctrl+z does the top. -->
+                    <section class="rail-binned" id="railBinned" aria-label="recently binned" hidden>
+                        <div class="binned-head">
+                            <span>recently binned<span class="binned-count" id="binnedCount"></span></span>
+                            <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+                        </div>
+                        <ol class="binned-list" id="binnedList"></ol>
+                    </section>
+
+                </aside>
 
         <div class="app-right">
 
             <!-- the black strip, starting beside the left bar -->
             <!-- the black strip: it carries the page names -->
-            <!-- on the chat page the strip is hidden and this is what
-                 finds it again: a thin reach at the very top, so the
-                 page below is whole and the tabs are a gesture away. -->
-            <div class="top-peek" aria-hidden="true"></div>
-
             <header class="topbar">
                 <!-- section tabs — the active one is big, the rest small.
                 these are the title while you're on home. -->
@@ -895,99 +985,6 @@
                 </main>
 
                 <!-- right bar — always in, sits under the top bar -->
-                <aside class="rail rail-right" aria-label="right menu">
-
-                    <!-- the time, above everything -->
-                    <section class="rail-clock" aria-label="the time">
-                        <div class="clock-top">
-                            <!-- a crescent, cut out of a full disc: the lit side
-                                 is the page's own colour, so the moon reads
-                                 right on either theme -->
-                            <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="turn the lights off" title="turn the lights off">
-                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                                    <!-- a disc with a bite taken straight out of its
-                                         side: both circles sit on the same line, so
-                                         the crescent opens left to right and its
-                                         horns are blunt rather than sharp -->
-                                    <path fill="currentColor"
-                                          d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
-                                </svg>
-                            </button>
-                            <span class="clock-suffix" id="clockSuffix"></span>
-                        </div>
-                        <p class="clock-time" id="clockTime">--:--</p>
-                        <p class="clock-date" id="clockDate"></p>
-                    </section>
-
-
-                    <!-- what the page you're on actually does. one
-                         paragraph per section — keep this current
-                         whenever something new lands on the site. -->
-                    <!-- it keeps itself shut: the heading is the switch, and
-                         the words underneath slide open when you want them -->
-                    <section class="help-box" aria-label="what this page does">
-                        <button class="help-head panel-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody">
-                            <h2>function</h2>
-                        </button>
-
-                        <div class="help-body" id="helpBody"><div class="help-body-inner">
-
-                        <p class="help-note" data-section="home" hidden>welcome to my house</p>
-
-                        <p class="help-note" data-section="cards" hidden>flashcard maker; decks and flashcards can be organized. notes or images can be converted to flashcards, although this is still getting experimented and may not work well.</p>
-
-                        <p class="help-note" data-section="audio" hidden>audio recorder; records clips that cut when a change is detected in a selected area. clips can be cropped and downloaded as mp3s individually, or get batch downloaded in a custom folder all tg. clips also can be matched up w a spotify playlist.</p>
-
-                        <p class="help-note" data-section="chat" hidden>chat; the one page here that isn't only yours. pick a name and a password and you're in, nothing to set up. add someone by the name they signed up with and you get a thread with them. every message is sealed to the two people in it &mdash; the board it travels on can't read them, and neither can this page.</p>
-                        <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface</p>
-
-
-                        </div></div>
-                    </section>
-
-
-
-
-                    <!-- how much room everything you've kept is using -->
-                    <section class="rail-store" aria-label="storage">
-                        <div class="store-head">
-                            <span>storage</span>
-                            <span id="storeAmount">—</span>
-                        </div>
-                        <div class="store-bar"><div class="store-fill" id="storeFill"></div></div>
-                    </section>
-
-                    <!-- what's on, in short. the full player lives on the
-                         player page; this is here so it follows you. -->
-                    <section class="rail-now" aria-label="web player">
-                        <p class="rail-title" id="railTitle"></p>
-                        <div class="clip-track" id="railTrack">
-                            <div class="clip-fill" id="railFill"></div>
-                        </div>
-                        <div class="rail-controls">
-                            <button class="clip-play" id="railPrev" type="button" aria-label="previous song" title="previous">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 5.5v13L9 12z" fill="currentColor"/><rect x="4.5" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
-                            </button>
-                            <button class="clip-play" id="railToggle" type="button" aria-label="play" title="play"></button>
-                            <button class="clip-play" id="railNext" type="button" aria-label="next song" title="next">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 5.5v13L15 12z" fill="currentColor"/><rect x="17.1" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
-                            </button>
-                        </div>
-                    </section>
-
-
-                    <!-- the last few things you binned, newest first.
-                         press one to put it back; ctrl+z does the top. -->
-                    <section class="rail-binned" id="railBinned" aria-label="recently binned" hidden>
-                        <div class="binned-head">
-                            <span>recently binned<span class="binned-count" id="binnedCount"></span></span>
-                            <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
-                        </div>
-                        <ol class="binned-list" id="binnedList"></ol>
-                    </section>
-
-                </aside>
-
             </div>
         </div>
     </div>

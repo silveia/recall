@@ -320,12 +320,6 @@ function renderSections() {
     audioPanel.hidden = activeSectionId !== 'audio';
     playerPanel.hidden = activeSectionId !== 'player';
     chatPanel.hidden = activeSectionId !== 'chat';
-    /* the chat is given the window: the left bar has been empty since
-       the notes tool moved out, and the top strip slides away until
-       the pointer goes looking for it. set on the root so the shell's
-       own pieces — the bar, the scallop, the strip — can all answer to
-       one class. */
-    document.documentElement.classList.toggle('on-chat', activeSectionId === 'chat');
     /* the chat is the one page that is talking to somewhere else. it
        only starts listening once it is looked at, and it keeps
        listening after — a message that arrived while you were on

@@ -671,6 +671,45 @@ in — same half-second either way, staggered 70ms apart. The ripple is
 what makes it read as one thing happening rather than three pictures
 swapping.
 
+## One bar, on the left, and everything in it
+
+There were two: a black one down the left with nothing in it since the
+notes tool moved out, and a white one down the right behind a column
+of dots, holding the clock, the function box, what the storage is
+costing, the player and what was last binned. Two bars to hold one
+bar's worth of things.
+
+It is all in the black one now, and the right bar and its dotted edge
+are gone. The page gets that width back.
+
+**The bar is black, so everything in it is drawn the other way round
+— by swapping the two colour tokens for its subtree, not by restating
+a colour on every box inside it.** `html:not(.inverted) .rail-left`
+redefines `--paper`, `--ink`, `--line`, `--hover` and `--veil` to the
+values `html.inverted` uses, and every rule in the stylesheet follows
+on its own, including the ones that invert on hover — they were
+written in terms of those same two names, so they come out right
+without being touched.
+
+Only while the page is light. In the dark the page is already this way
+round and the bar is the same black as everything else, so an override
+there would put it back to front.
+
+The clock is the exception, and deliberately: it was the one filled
+thing in a white bar, and it keeps that job by being filled the other
+way — a white tile in a black column, on both sides of the swap.
+
+**Narrow, the bar loses width before it loses contents**: 19rem, then
+15rem under 1000px, and under 760px it lies down under the page at a
+third of the height rather than disappearing. It used to be hidden
+outright at that width, which was fine when it was empty and is not
+now.
+
+Measured on all five pages at 1400px: the bar's first box and the
+page's first box both at y=68.0 — **0.0px apart** — and the page
+column starting at x=320.0 on every one. At 1400/1100/1000/820/700 no
+page scrolls sideways.
+
 ## The home board
 
 **As many tiles as you like, and as many of a kind as you like.** Every
@@ -737,7 +776,7 @@ be. A board saved when it was deeper comes back to row 0, and a tile
 that no longer fits is dropped rather than stacked.
 
 **Everything starts 16px under the black strip** — every page and the
-right bar both. It was three different numbers: the pages at 16, the
+bar both. It was three different numbers: the pages at 16, the
 bar at 13.6 (it was using `--rail-pad`, which is its *side* inset), and
 the board at 12, because the tiles are lifted 4px and that came off the
 top. The board gives those 4px back in its own negative margin
@@ -1382,20 +1421,6 @@ live stream and from a republish must land once.
 **A line you typed goes up before it is sent.** Waiting on somebody
 else's server to see your own words is the difference between a chat
 and a form.
-
-### The chat page takes the window
-
-The left bar has been empty since the notes tool moved out of it, and a
-chat wants the width more than any other page here, so on this page
-alone it is gone and the top strip slides away with it. `html.on-chat`
-is the one class that does it, set on the root because the pieces it
-moves belong to the shell — the bar, the scallop carved out of it, and
-the strip. The strip comes back on `.top-peek`, a 10px reach along the
-very top, which is where anybody looks for a menu that isn't there;
-`:focus-within` brings it back for a keyboard too.
-
-Don't collapse `--rail` to do this — it is the width of *both* side
-bars, and the right one is still wanted.
 
 **The thread is anchored to the field, not to the top.** `margin-top:
 auto` on the first row: the newest line is the one being read, and a

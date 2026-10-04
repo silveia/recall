@@ -570,47 +570,47 @@ html.inverted .app-shell::before { opacity: 1; }
    it's simply there on load — no entrance. */
 .rail-left {
 	contain: layout paint;
-	color: var(--bar-ink);
-	background: var(--bar);
-}
-/* the right bar is always in. its edge is a column of round dots — a
-   real border can only do square dashes, so it's a repeating background. */
-.rail-right {
 	display: flex;
 	flex-direction: column;
-	position: relative;   /* the dotted edge hangs off it */
-	/* every inset in here is one value, including the one off the dots */
+	color: var(--bar-ink);
+	background: var(--bar);
+	/* every inset in here is one value */
 	gap: var(--rail-pad);
 	padding: var(--rail-pad);
-	/* starts right under the black bar, at the same distance under it as
-	   the first thing on every page — `--rail-pad` put it at 13.6 while
-	   the pages sat at 16, which is a difference you can see between the
-	   two columns without being able to name it */
+	/* starts right under the black strip, at the same distance under it
+	   as the first thing on every page — `--rail-pad` alone put it at
+	   13.6 while the pages sat at 16, which is a difference you can see
+	   between the two columns without being able to name it */
 	padding-top: calc(var(--topbar) + var(--group));
-
 	overflow: hidden;   /* the help box scrolls, the bar doesn't */
 }
 
-/* the column of round dots down its edge. the dots are a colour behind
-   a mask rather than a picture of dots: a picture carries its own black
-   and has to be swapped whole for the dark side, which flashes. */
-.rail-right::before {
-	content: '';
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	width: 2px;
-	background: var(--ink);
-	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='16' viewBox='0 0 2 16'%3E%3Ccircle cx='1' cy='8' r='1' fill='%23000'/%3E%3C/svg%3E");
-	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2' height='16' viewBox='0 0 2 16'%3E%3Ccircle cx='1' cy='8' r='1' fill='%23000'/%3E%3C/svg%3E");
-	-webkit-mask-repeat: repeat-y;
-	mask-repeat: repeat-y;
-	-webkit-mask-size: 2px 16px;
-	mask-size: 2px 16px;
-	pointer-events: none;
+/* **The bar is black, so everything in it is drawn the other way
+   round.** Rather than restating a colour on every box inside, the two
+   tokens are swapped for the bar's own subtree and every rule in the
+   stylesheet follows on its own — including the ones that invert on
+   hover, which come out right because they were written in terms of
+   the same two names.
+
+   Only while the page is light. In the dark the page is already this
+   way round and the bar is the same black as everything else, so an
+   override here would put it back to front. */
+html:not(.inverted) .rail-left {
+	--paper: #000;
+	--ink: #ffffff;
+	--line: #ffffff;
+	--hover: #151515;
+	--veil: rgba(0, 0, 0, 0.72);
 }
 
+/* the clock is the one thing that stood out of the old bar by being
+   filled, and it keeps that job by being filled the other way: a white
+   tile in a black column, on both sides of the swap. */
+.rail-left .rail-clock {
+	color: var(--paper);
+	background: var(--ink);
+	border-color: var(--ink);
+}
 /* the black strip at the very top, beside the left bar. it runs back
    under the scallop so the bumps bite into it — otherwise it stopped
    short of the left bar by the width of a bump. */
@@ -3641,29 +3641,10 @@ html.inverted .app-shell::before { opacity: 1; }
 /* =========================================================
    19. small screens
    ========================================================= */
-/* no room for a right bar — it becomes a strip under the content,
-   so the two tiles stay reachable */
+/* the bar is the one fixed column on the page, so the first thing a
+   narrow window takes is its width — not its contents */
 @media (max-width: 1000px) {
-	.app-body { flex-direction: column; }
-	.rail-right { flex: none; }
-	/* the strip sits under the page here, so its dots lie down with it */
-	.rail-right::before {
-		top: 0;
-		right: 0;
-		bottom: auto;
-		width: auto;
-		height: 2px;
-		-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='2' viewBox='0 0 16 2'%3E%3Ccircle cx='8' cy='1' r='1' fill='%23000'/%3E%3C/svg%3E");
-		mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='2' viewBox='0 0 16 2'%3E%3Ccircle cx='8' cy='1' r='1' fill='%23000'/%3E%3C/svg%3E");
-		-webkit-mask-repeat: repeat-x;
-		mask-repeat: repeat-x;
-		-webkit-mask-size: 16px 2px;
-		mask-size: 16px 2px;
-	}
-	/* the strip takes at most a third, so the page above it still has
-	   room — the help box scrolls inside whatever is left */
-	.rail-right { max-height: 38%; overflow: hidden; padding-top: var(--rail-pad); }
-	.help-box { flex: 1; min-height: 0; overflow-y: auto; }
+	:root { --rail: 15rem; }
 }
 
 /* narrower than both columns can hold, they stop being columns: the
@@ -3680,8 +3661,22 @@ html.inverted .app-shell::before { opacity: 1; }
 	.pane-split { display: none; }
 }
 
+/* narrower than the bar and a page can sit side by side. the bar lies
+   down under the content rather than disappearing — it holds the
+   clock, what the page does and what it is costing, and all of that
+   was lost with it before. */
 @media (max-width: 760px) {
-	.rail-left { display: none; }
+	.app-shell { flex-direction: column; }
+	.app-right { order: 1; min-height: 0; }
+	.rail-left {
+		order: 2;
+		flex: none;
+		/* at most a third, so the page above it still has room — the
+		   help box scrolls inside whatever is left */
+		max-height: 38%;
+		padding-top: var(--rail-pad);
+	}
+	.help-box { flex: 1; min-height: 0; overflow-y: auto; }
 	.app-shell::after, .app-shell::before { display: none; }   /* its edge goes with it */
 	.topbar { left: 0; }                   /* no scallop to reach under */
 }
@@ -5502,44 +5497,6 @@ html.booting .booting-mark { display: flex; }
    an ellipsis rather than pushing the page wider */
 html, body { overflow-x: hidden; }
 
-
-/* --- the chat page is given the whole window ---
-
-   The left bar has been empty since the notes tool moved out of it,
-   and a chat wants the width more than any other page here. The top
-   strip stays, but out of the way: it slides up and comes back when
-   the pointer goes to the very top of the window, which is where
-   anybody reaches for a menu that isn't there.
-
-   One class on the root, because the pieces this moves belong to the
-   shell rather than to the page — the bar, the scallop carved out of
-   it, and the strip itself. */
-.top-peek { display: none; }
-html.on-chat .rail-left { display: none; }
-/* the scallop is the edge of a bar that is no longer there */
-html.on-chat .app-shell::after,
-html.on-chat .app-shell::before { display: none; }
-html.on-chat .topbar {
-	left: 0;
-	padding-left: var(--gap);
-	transform: translateY(-100%);
-	transition: transform 0.26s var(--ease);
-}
-html.on-chat .top-peek {
-	display: block;
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	z-index: 5;      /* over the strip, so the reach works while it is up */
-	height: 10px;
-}
-/* reached for, hovered once it is down, or tabbed into */
-html.on-chat .top-peek:hover ~ .topbar,
-html.on-chat .topbar:hover,
-html.on-chat .topbar:focus-within { transform: none; }
-/* and the page takes back the room the strip was holding */
-html.on-chat .app-content { padding-top: 0; }
 
 /* =========================================================
    25. chat — people, and the talking with them
