@@ -728,6 +728,16 @@ third of the height rather than disappearing. It used to be hidden
 outright at that width, which was fine when it was empty and is not
 now.
 
+**The wave is one size, in three tokens.** `--wave-w`, `--wave-h` and
+`--wave-out` in `:root` are the whole of it: the tile is drawn at
+26×44 in its own viewBox and scaled to the first two, and everything
+that has to line up with the wave is worked out from them — where the
+carve and the outline sit, how far the strip reaches back under it,
+how far the bar's boxes stay off it, and where the line under the
+strip starts. Changing the size is changing those three numbers.
+`--wave-out` is how far a crest reaches past `--rail`, which is
+4/26ths of the width.
+
 **The boxes have to clear the trough, not sit in it.** The scallop's
 wave bites 13px back inside the bar's nominal edge, so a plain
 `--rail-pad` on the right left them 0.6px off the bumps and reading as
@@ -751,11 +761,13 @@ page.
 Two one-pixel things, both of the kind you see without being able to
 name:
 
-- **The line under the strip crossed the first bump.** It is white, so
-  on a white page it shows there and nowhere else — a nick in the top
-  corner. It starts past the scallop entirely now; in the dark the
-  scallop's own line already says where the bar ends, and the two meet
-  at that x.
+- **The line under the strip has to end exactly on the bump**, and
+  there are two ways to get it wrong. Reaching back further than the
+  bump it crosses it, and being white on a white page it shows there
+  and nowhere else — a nick in the top corner. Starting past the whole
+  scallop instead leaves a gap between the line and the wave, which
+  shows in the dark where both are white. The strip's underside falls
+  on a crest, so the x is `--rail + --wave-out`.
 - **The dark outline sat *on* the bump's edge**, and a stroke is
   centred on its path, so half of it ate into the black and the shape
   came out a hair different with the lights off. The arc is nudged

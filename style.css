@@ -65,6 +65,15 @@
 
 	--col: 34rem;      /* max width of the content column */
 	--rail: 19rem;     /* width of both side bars */
+	/* the scalloped edge, as one size. the tile is drawn at 26x44 in
+	   its own viewBox and scaled to these, so changing them is the
+	   whole of making the bumps bigger or smaller — everything that
+	   has to line up with the wave is worked out from them.
+	   --wave-out is how far a crest reaches past --rail: 4/26ths of
+	   the width, which is where the arc's widest point lands. */
+	--wave-w: 39px;
+	--wave-h: 66px;
+	--wave-out: 6px;
 	--topbar: 3.25rem; /* height of the top bar */
 	--radius: 10px;
 	--field: 42px;     /* height of every control in the deck bar */
@@ -493,11 +502,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	left: calc(var(--rail) - 13px);
+	left: calc(var(--rail) - var(--wave-w) / 2);
 	/* above the bar it carves (2), but under the black strip (4) — at 5
 	   it painted its own white tile into the strip and notched it */
 	z-index: 3;
-	width: 26px;
+	width: var(--wave-w);
 	pointer-events: none;
 	/* two-tone: the page's white fills the tile and the bump is painted
 	   black over it, so the strip carves the bar's straight edge into
@@ -509,9 +518,9 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   the bar while everything else was still fading. only the bump is
 	   drawn, on nothing, so one picture serves both sides. */
 	background-color: var(--paper);
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
-	background-size: 26px 44px;
+	background-size: var(--wave-w) var(--wave-h);
 	/* half a tile up from where the strip ends, so the strip's underside
 	   meets the wave at a **crest** rather than at a trough. Meeting it
 	   at a trough left the carve's white biting 9px into the bar on the
@@ -519,7 +528,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   the sort of thing you see without being able to name. At a crest
 	   the first row under the strip is solid black and the wave flows
 	   down out of it. What is above is behind the strip and never seen. */
-	background-position: 0 calc(var(--topbar) - 22px);
+	background-position: 0 calc(var(--topbar) - var(--wave-h) / 2);
 }
 
 /* in the dark the bar and the page are the same black, so the scallop
@@ -535,12 +544,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	position: absolute;
 	top: 0;
 	bottom: 0;
-	left: calc(var(--rail) - 13px);
+	left: calc(var(--rail) - var(--wave-w) / 2);
 	/* over the strip that carves the edge, not under it. at the same
 	   level the carve painted last and buried this — which is why it
 	   was in the stylesheet and nowhere on the screen. */
 	z-index: 4;
-	width: 26px;
+	width: var(--wave-w);
 	pointer-events: none;
 	opacity: 0;
 	/* the stroke is centred on whatever path it is given, so drawn on
@@ -549,10 +558,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   arc is nudged half a pixel out, so the line lies against the
 	   black rather than on it and the bump is the same size either
 	   way. */
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M4.5 0 A 25 25 0 0 1 4.5 44' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.5 0 A 37.5 37.5 0 0 1 6.5 66' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
-	background-size: 26px 44px;
-	background-position: 0 calc(var(--topbar) - 22px);   /* in step with the carve */
+	background-size: var(--wave-w) var(--wave-h);
+	background-position: 0 calc(var(--topbar) - var(--wave-h) / 2);   /* in step with the carve */
 }
 html.inverted .app-shell::before { opacity: 1; }
 /* no fade of its own. the swap is one picture the compositor crosses
@@ -596,7 +605,7 @@ html.fading .app-shell::before { transition: opacity 0.4s var(--ease); }
 	   and they read as touching the bumps. */
 	gap: var(--rail-pad);
 	padding: var(--rail-pad);
-	padding-right: calc(var(--rail-pad) + 13px);
+	padding-right: calc(var(--rail-pad) + var(--wave-w) / 2);
 	/* **The bar does not wait for the strip.** Over the page the strip
 	   is a visible header — tabs on it, white page below — so the page
 	   starting under it reads right. Over the bar it is black on
@@ -647,7 +656,7 @@ html:not(.inverted) .rail-left {
 	   would paint the wave out. So the strip keeps to the page, and
 	   the bar fills its own top with the clock instead of leaving it
 	   empty. */
-	left: calc(var(--rail) - 13px);
+	left: calc(var(--rail) - var(--wave-w) / 2);
 	right: 0;
 	z-index: 4;
 	display: flex;
@@ -656,7 +665,7 @@ html:not(.inverted) .rail-left {
 	height: var(--topbar);
 	/* the words use the whole strip, from just past the left bar to the
 	   far edge of the page, rather than stopping at the content column */
-	padding-left: calc(var(--gap) + 13px);
+	padding-left: calc(var(--gap) + var(--wave-w) / 2);
 	padding-right: var(--gap);
 	color: var(--bar-ink);
 	background: var(--bar);
@@ -678,15 +687,18 @@ html:not(.inverted) .rail-left {
 	content: '';
 	position: absolute;
 	top: 100%;
-	/* it starts past the scallop entirely. Reaching back to the bar's
-	   edge it crossed the first bump, and being white on a white page
-	   it showed there and nowhere else — a 1px nick in the top corner,
-	   exactly the sort of thing you see without being able to name.
-	   There is nothing to mark over the bar anyway: in the dark the
-	   scallop's own white line already says where the bar ends, and
-	   the two meet at this x. Measured from the strip's own left edge,
-	   which starts 13px back under the scallop. */
-	left: 26px;
+	/* **It starts exactly where the bump ends on this row, and not a
+	   pixel either side.** Reaching back further it crossed the bump,
+	   and being white on a white page it showed there and nowhere
+	   else — a nick in the top corner. Starting past the whole scallop
+	   instead left a gap between the line and the wave that showed in
+	   the dark, where both are white.
+
+	   The strip's underside falls on a crest, which is the wave's
+	   widest point, so that x is `--rail + --wave-out`. The strip's
+	   own left edge is half a tile back from `--rail`, hence the two
+	   halves added here. */
+	left: calc(var(--wave-w) / 2 + var(--wave-out));
 	right: 0;
 	height: 1px;
 	background: var(--bar-ink);
