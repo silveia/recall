@@ -193,13 +193,17 @@ function loadDecks() {
    Every section has its own link: morie.top/cards, morie.top/audio.
    Github pages serves files and nothing else, so `/cards` is not a
    path it knows — which is what the little `cards/index.html` beside
-   this one is for. Each of them does one thing: send the browser back
-   to the root with `?go=cards` on it, which the lines below read and
-   then tidy out of the address bar again.
+   this one is for. Each of them does one thing: send the browser on to
+   `app.html?go=cards`, which the lines below read and then tidy out of
+   the address bar again.
+
+   The site itself is `app.html` rather than the root, because the root
+   is a page of its own. Both names come off the path here, so the
+   links read `/cards` either way.
 
    Worked out once, before anything is written to the address bar: a
    replaceState would otherwise move the ground this stands on. */
-const SITE_ROOT = window.location.pathname.replace(/\/(index\.html)?$/, '');
+const SITE_ROOT = window.location.pathname.replace(/\/(index\.html|app\.html)?$/, '');
 
 const isSection = (id) => sections.some((section) => section.id === id);
 

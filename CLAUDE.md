@@ -22,8 +22,8 @@ Must be served over http, not opened as a file:
 
     python3 -m http.server 8000
 
-Then open `http://localhost:8000`. Never open `index.html` by double-clicking
-it. On `file://` two things break: screen capture is blocked, and Chrome
+Then open `http://localhost:8000/home` — the root is a page of its own and
+is blank. Never open the html by double-clicking it. On `file://` two things break: screen capture is blocked, and Chrome
 refuses to load `mp3-worker.js` at all ("cannot be accessed from origin
 'null'"), so downloads fail with a worker error.
 
@@ -1235,18 +1235,24 @@ redirecting www to an address that did not exist.
 you press (`pushState`), the back button walks them, and arriving on
 one opens that section.
 
+**The root is not the site.** `morie.top` is its own page and is blank
+for now; the site itself is `app.html`. That is why the app's html is
+not `index.html` any more — and why it stayed at the root rather than
+moving into a folder, since every relative path in it (`script.js`,
+`ocr/`, `llm/`, the woff2) is written from there.
+
 **Github pages serves files, not routes**, so `/cards` has to be a real
 place on the disk — which is what the one-line `cards/index.html` in
-each of those folders is. All it does is send the reader back to the
-root with `?go=cards`, and `loadSection()` reads that, opens the
-section and tidies the query back out of the address bar. `404.html`
-does the same for anything else, falling back to home rather than
+each of those folders is. All it does is send the reader on to
+`app.html?go=cards`, and `loadSection()` reads that, opens the section
+and tidies the query back out of the address bar. `404.html` does the
+same for anything else, falling back to the front door rather than
 showing someone a page about being lost.
 
 `SITE_ROOT` is worked out **once, before anything is written to the
 address bar** — a `replaceState` moves the ground it stands on. It
-strips `/index.html`, so the links are right whether the site is at a
-domain's root or in a folder under it.
+strips both `/index.html` and `/app.html`, so the links are right
+whether the site is at a domain's root or in a folder under it.
 
 Every write goes through `writeLink()`, which swallows its own throw:
 opened as a file rather than served, the browser refuses to be told a
@@ -1302,7 +1308,10 @@ than pretending.
 - `CNAME` — the custom domain. See "the site's own address".
 - `home/`, `cards/`, `audio/`, `player/`, `chat/` + `404.html` — one line
   each, so every section has a link of its own. See "a link per page".
-- `index.html` — all three screens
+- `index.html` — the front door at `morie.top`, blank for now. It carries
+  the dark/light class and nothing else: arriving with the lights off, a
+  white sheet would be the one thing here that didn't know.
+- `app.html` — the site itself, all of its screens
 - `style.css` — numbered sections, see the table of contents at the top
 - `script.js` — numbered sections, see the table of contents at the top
 - `mp3-worker.js` — mp3 encoding, kept off the main thread
