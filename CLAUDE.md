@@ -1289,6 +1289,19 @@ and checked here rather than anywhere that could enforce it. It keeps
 your sister out of your account and nobody else out of anything. The
 window says so in as many words, because someone has to.
 
+**The password field is not a password field.** Chrome reserves its
+weak-and-breached warnings for `type="password"`, and it was firing
+them at a word guarding a public notice board — a warning that rather
+overstates what the word was ever protecting. It is a text field
+masked with `-webkit-text-security: disc`, and it goes back to a real
+password field where that isn't understood, since a word typed in the
+clear is worse than a warning.
+
+The rule is six characters with a letter and a number, and it is
+checked **only when an account is made**. A word that was allowed when
+the account was made has to go on being allowed, or the rule locks out
+the very people it was meant to look after.
+
 **The board forgets after twelve hours**, which is the one real cost of
 needing nothing set up. So every browser keeps its own copy of what it
 has seen (`chat-known`) and merges that with what the board still

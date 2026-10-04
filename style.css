@@ -5730,6 +5730,15 @@ html, body { overflow-x: hidden; }
 	gap: var(--group);
 	min-width: 0;
 }
+/* a word kept to yourself without being a password field. chrome
+   reserves its weak-and-breached warnings for `type="password"`, and
+   this is a word for a public notice board — warning someone that it
+   is weak rather overstates what it was ever protecting. */
+.word-field {
+	-webkit-text-security: disc;
+	text-security: disc;
+}
+
 .ask-swap { align-self: center; }
 /* the small print, and it is small print on purpose — it is the sort
    of thing nobody reads and everybody should */

@@ -687,10 +687,16 @@
 
                                 <div class="ask-body">
                                     <div class="chat-door" id="chatDoor">
-                                        <p class="ask-why" id="chatDoorWhy">pick a name nobody here has taken, and a password you have not used anywhere else.</p>
+                                        <p class="ask-why" id="chatDoorWhy">pick a name nobody here has taken, and a password you have not used anywhere else &mdash; 6 characters or more, with a letter and a number in it.</p>
 
                                         <input id="chatHandle" type="text" autocomplete="off" spellcheck="false" placeholder="what to call you" aria-label="your name">
-                                        <input id="chatWord" type="password" autocomplete="off" spellcheck="false" placeholder="password" aria-label="password">
+                                        <!-- not type="password" on purpose: chrome's password
+                                             manager only warns about weak and breached ones on
+                                             a real password field, and this is a name-and-word
+                                             for a public notice board, not a credential. it is
+                                             masked in css instead, and falls back to a real
+                                             password field where that isn't supported. -->
+                                        <input id="chatWord" type="text" class="word-field" name="morie-word" autocomplete="off" spellcheck="false" placeholder="password" aria-label="password">
                                         <button class="basic-button is-solid ask-go" id="chatGo" type="button">make an account</button>
                                         <button class="scratch-plain ask-swap" id="chatSwap" type="button">i already have one</button>
 

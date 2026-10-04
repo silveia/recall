@@ -8905,6 +8905,25 @@ const chatNote = document.getElementById('chatNote');
 
 [roomNameField, talkSay, chatHandle].forEach((field) => field && stopGuessing(field));
 
+/* the word is masked in css rather than by being a password field, so
+   that chrome doesn't offer to judge it. where that css isn't
+   understood it has to go back to being a real one — a word typed in
+   the clear is worse than a warning. */
+if (chatWord && !(window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc'))) {
+    chatWord.type = 'password';
+}
+
+/* six long, and a letter and a number in it. not security — six
+   characters never is — but it stops `1` and `aa`, which are the ones
+   somebody else guesses on their first try. */
+const WORD_SHORT = 6;
+function wordComplaint(word) {
+    if (word.length < WORD_SHORT) return `the password wants ${WORD_SHORT} characters or more`;
+    if (!/[a-z]/i.test(word)) return 'the password wants a letter in it';
+    if (!/[0-9]/.test(word)) return 'the password wants a number in it';
+    return '';
+}
+
 const CHAT_BOARD = 'https://ntfy.sh';
 /* versioned, so what is kept can change shape without every old page
    arguing with every new one */
@@ -9286,7 +9305,7 @@ function paintChatDoor() {
     chatGo.textContent = chatDoorNew ? 'make an account' : 'sign in';
     chatSwap.textContent = chatDoorNew ? 'i already have one' : 'make one instead';
     chatDoorWhy.textContent = chatDoorNew
-        ? 'pick a name nobody here has taken, and a password you have not used anywhere else.'
+        ? `pick a name nobody here has taken, and a password you have not used anywhere else — ${WORD_SHORT} characters or more, with a letter and a number in it.`
         : 'the name and the password you made it with.';
 }
 
@@ -9308,6 +9327,13 @@ chatGo.addEventListener('click', async () => {
     const word = chatWord.value;
     if (!called) { saySomethingChat('what should people call you?'); return; }
     if (!word) { saySomethingChat('it wants a password too'); return; }
+    /* only when making one: a word that was allowed when the account
+       was made has to go on being allowed, or the rule locks out the
+       very people it was meant to look after. */
+    if (chatDoorNew) {
+        const wrong = wordComplaint(word);
+        if (wrong) { saySomethingChat(wrong); return; }
+    }
     if (!chatOn) { saySomethingChat('finding the board…'); await wakeChat(); }
     if (!chatOn) { saySomethingChat('the chat board would not answer'); return; }
 
