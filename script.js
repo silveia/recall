@@ -8848,32 +8848,39 @@ window.addEventListener('blur', () => {
    people have to meet somewhere, and a page on github pages has no
    server to be that place.
 
-   **Nothing is set up and nothing is signed up for.** It talks to a
-   public mqtt broker — hivemq's, with mosquitto's behind it — which
-   anyone may connect to without a key or an account. That is the whole
-   reason it is used: the alternative was a firebase project the reader
-   had to make themselves, and five minutes of console before you can
-   say hello is five minutes nobody spends.
+   **Nothing is set up and nothing is signed up for.** It talks to
+   ntfy.sh, a public notice board anyone may post to and read without a
+   key or an account. Posting is an ordinary `POST`, reading back is an
+   ordinary `GET`, and the live half is an `EventSource`.
 
-   **The security is terrible, on purpose and by request.** The broker
+   **Plain https, and that is the point.** This was mqtt over a
+   websocket first, and it worked — until it met a machine with a proxy
+   set on it. A websocket goes through the proxy and a proxy that isn't
+   answering doesn't refuse, it waits, so the chat simply never
+   connected. Measured on that machine, same page, same moment: https
+   fetch 200, https post 200, server-sent events open, **websocket
+   error**. Everything here is therefore the three that worked. Don't
+   put a websocket back.
+
+   **The security is terrible, on purpose and by request.** The board
    is public, so anyone who knows the topic can read every word and
-   write any word. The accounts are the page's own: a name and a
-   password, the password kept as a sha-256 hash in a message on that
-   same public broker, and checked here rather than anywhere that could
+   post any word. The accounts are the page's own: a name and a
+   password, the password kept as a sha-256 hash in a post on that same
+   public board, and checked here rather than anywhere that could
    enforce it. It keeps your sister out of your account. It keeps
-   nobody else out of anything. The window says so in as many words,
-   because someone has to.
+   nobody else out of anything. The window says so in as many words.
 
-   **History comes from retained messages.** A retained message is the
-   last thing published on a topic, and the broker hands it to whoever
-   subscribes next — so a room's whole log lives in one retained
-   message and arrives in full the moment you join. Sending republishes
-   the log with the new line on the end. Measured against both brokers:
-   live delivery and retention, both good.
+   **The board forgets after twelve hours**, which is the one real cost
+   of needing nothing set up. So every browser keeps its own copy of
+   what it has seen (`chat-known`) and merges that with what the board
+   still holds — your own history is never lost, and a newcomer gets
+   the last twelve hours. Anything of yours missing from the board is
+   posted again when you open the page, so a chat that is used stays
+   alive and only one left alone for half a day forgets.
 
-   Two people sending in the same instant would otherwise have one log
-   land on top of the other, so an arriving log is **merged** with what
-   is already here rather than replacing it, deduped by id.
+   Everything is one of three kinds of post — an account, a room, or a
+   line said — and state is rebuilt by reading them in order. There is
+   no server to hold a shape, so the posts are the shape.
 */
 
 const chatScreen = document.getElementById('chatScreen');
@@ -8898,33 +8905,30 @@ const chatNote = document.getElementById('chatNote');
 
 [roomNameField, talkSay, chatHandle].forEach((field) => field && stopGuessing(field));
 
-/* the brokers, tried in turn. both were measured end to end — connect,
-   publish, read back, and a retained message surviving a fresh
-   connection — before either was written down here. */
-const CHAT_WAYS = [
-    'wss://broker.hivemq.com:8884/mqtt',
-    'wss://test.mosquitto.org:8081/mqtt'
-];
-const CHAT_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.1/mqtt.min.js';
-/* versioned, so the shape of what is kept can change without every
-   old page arguing with every new one */
-const CHAT_ROOT = 'morie-top/chat/v1';
+const CHAT_BOARD = 'https://ntfy.sh';
+/* versioned, so what is kept can change shape without every old page
+   arguing with every new one */
+const CHAT_TOPIC = 'morie-top-chat-v1';
+const HERE_TOPIC = `${CHAT_TOPIC}-here`;
 const CHAT_ME = 'chat-me';
+const CHAT_KNOWN = 'chat-known';
 const CHAT_ROOM = 'chat-room';
-const TALK_KEEP = 150;          // how much of a room is kept
-const HERE_EVERY = 15000;       // a heartbeat, so the room knows you're in it
-const HERE_GONE = 40000;        // and how long before it decides you left
+const TALK_KEEP = 300;          // how much of a room each browser keeps
+const HERE_EVERY = 30000;       // a heartbeat, so the room knows you're in
+const HERE_GONE = 80000;        // and how long before it decides you left
 const SAME_BREATH = 5 * 60 * 1000;
 
-let chatLink = null;            // the mqtt client, once connected
+let chatOn = false;             // the board is answering
 let chatMe = null;              // { name, word } — the word is the hash
-let chatPeople = {};
+let chatPeople = {};            // lowercased name -> { name, word }
 let chatRooms = [];
 let chatRoomId = window.localStorage.getItem(CHAT_ROOM) || '';
-let chatSaid = [];
-let chatHere = new Map();       // name -> when they were last heard
+let chatTalk = {};              // room id -> the lines said in it
+let chatHereSeen = new Map();   // name -> when they were last heard
 let chatDoorNew = true;
 let chatStarting = false;
+let chatStream = null;
+let hereStream = null;
 let hereTimer = 0;
 let hereSweep = 0;
 
@@ -8932,13 +8936,8 @@ function saySomethingChat(words) {
     if (chatNote) chatNote.textContent = words || '';
 }
 
-const topicPeople = () => `${CHAT_ROOT}/people`;
-const topicRooms = () => `${CHAT_ROOT}/rooms`;
-const topicTalk = (id) => `${CHAT_ROOT}/talk/${id}`;
-const topicHere = (id) => `${CHAT_ROOT}/here/${id}`;
-
 /* a password, badly kept. sha-256 is not what makes this safe — nothing
-   here does — but a hash means the broker is not carrying everybody's
+   here does — but a hash means the board is not carrying everybody's
    password in plain sight, which is a low bar worth clearing. */
 async function wordHash(word) {
     const bytes = new TextEncoder().encode(`morie:${word}`);
@@ -8946,158 +8945,152 @@ async function wordHash(word) {
     return [...new Uint8Array(out)].map((n) => n.toString(16).padStart(2, '0')).join('');
 }
 
-function readJson(payload, fallback) {
+const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+
+/* --- what this browser remembers on its own --- */
+
+function loadKnown() {
     try {
-        const held = JSON.parse(payload.toString());
-        return held === null ? fallback : held;
+        const held = JSON.parse(window.localStorage.getItem(CHAT_KNOWN) || 'null');
+        if (!held) return;
+        chatPeople = held.people || {};
+        chatRooms = Array.isArray(held.rooms) ? held.rooms : [];
+        chatTalk = held.talk || {};
     } catch (error) {
-        return fallback;
+        // nothing kept, or kept badly. the board will fill it in.
     }
 }
 
-/* --- getting on --- */
-
-function loadChatLib() {
-    if (window.mqtt) return Promise.resolve(window.mqtt);
-    return new Promise((keep, drop) => {
-        const tag = document.createElement('script');
-        tag.src = CHAT_LIB;
-        tag.onload = () => (window.mqtt ? keep(window.mqtt) : drop(new Error('no mqtt')));
-        tag.onerror = () => drop(new Error('the chat library would not load'));
-        document.head.append(tag);
-    });
+function keepKnown() {
+    try {
+        window.localStorage.setItem(CHAT_KNOWN, JSON.stringify({
+            people: chatPeople,
+            rooms: chatRooms,
+            talk: chatTalk
+        }));
+    } catch (error) {
+        // out of room; it just won't survive a refresh
+    }
 }
 
-/* the page is looked at. nothing before this has touched the network,
-   and nothing after it is taken down again — a message that arrived
-   while you were on another page should be there when you come back. */
-async function wakeChat() {
-    paintChatBar();
-    if (chatStarting || chatLink) return;
-    chatStarting = true;
-    chatWhoLine.textContent = 'finding the chat…';
+/* --- the board --- */
 
-    let lib;
+function postToBoard(topic, body) {
+    return fetch(`${CHAT_BOARD}/${topic}`, { method: 'POST', body: JSON.stringify(body) });
+}
+
+/* every post is one of three kinds, and the state is whatever reading
+   them in order adds up to. `fresh` says whether this is news — a post
+   read back out of history is not something to scroll to. */
+function takePost(post) {
+    if (!post || !post.k) return false;
+    if (post.k === 'who' && post.name && post.word) {
+        const key = post.name.toLowerCase();
+        if (!chatPeople[key]) chatPeople[key] = { name: post.name, word: post.word };
+        return true;
+    }
+    if (post.k === 'room' && post.id && post.name) {
+        if (!chatRooms.some((room) => room.id === post.id)) {
+            chatRooms = [...chatRooms, { id: post.id, name: post.name, at: post.at || 0 }]
+                .sort((one, two) => (one.at || 0) - (two.at || 0));
+        }
+        return true;
+    }
+    if (post.k === 'say' && post.id && post.room) {
+        const held = chatTalk[post.room] || [];
+        if (held.some((one) => one.id === post.id)) return false;
+        chatTalk[post.room] = [...held, post]
+            .sort((one, two) => (one.at || 0) - (two.at || 0))
+            .slice(-TALK_KEEP);
+        return true;
+    }
+    return false;
+}
+
+/* the page is looked at. nothing before this has touched the network. */
+async function wakeChat() {
+    if (chatStarting || chatOn) { paintChatBar(); return; }
+    chatStarting = true;
+    loadKnown();
+    const mine = (() => {
+        try { return JSON.parse(window.localStorage.getItem(CHAT_ME) || 'null'); } catch (error) { return null; }
+    })();
+    if (mine && mine.name && mine.word) chatMe = mine;
+    paintRooms();
+    paintTalk();
+    chatWhoLine.textContent = 'catching up…';
+
     try {
-        lib = await loadChatLib();
+        const said = await fetch(`${CHAT_BOARD}/${CHAT_TOPIC}/json?poll=1&since=all`);
+        if (!said.ok) throw new Error(String(said.status));
+        const lines = (await said.text()).trim().split('\n').filter(Boolean);
+        const onBoard = new Set();
+        lines.forEach((line) => {
+            try {
+                const note = JSON.parse(line);
+                if (note.event !== 'message' || !note.message) return;
+                const post = JSON.parse(note.message);
+                takePost(post);
+                onBoard.add(`${post.k}:${post.id || (post.name || '').toLowerCase()}`);
+            } catch (error) {
+                // somebody else posting to the same topic; not ours to read
+            }
+        });
+        chatOn = true;
+        keepKnown();
+        sayAgainWhatIsMissing(onBoard);
     } catch (error) {
         chatStarting = false;
-        chatWhoLine.textContent = 'the chat library would not load';
+        chatWhoLine.textContent = 'the chat board would not answer';
         return;
     }
 
-    /* tried in turn rather than raced: two connections to two brokers
-       would each hold half the conversation, and nobody in one would
-       hear anybody in the other. */
-    for (const way of CHAT_WAYS) {
-        const got = await tryBroker(lib, way);
-        if (got) {
-            chatLink = got;
-            chatStarting = false;
-            wireBroker();
-            return;
-        }
-    }
+    listenToBoard();
     chatStarting = false;
-    /* and the one thing that causes this that nobody thinks to look
-       for: a proxy set on the machine. a websocket goes through it
-       like anything else, and a proxy that isn't answering doesn't
-       refuse — it hangs, which reads as the chat being down. */
-    chatWhoLine.textContent = 'no chat server answered — a proxy set on this machine will do that';
+    paintChatBar();
+    paintRooms();
+    enterRoom(chatRoomId || (chatRooms[0] && chatRooms[0].id) || '');
 }
 
-function tryBroker(lib, way) {
-    return new Promise((keep) => {
-        let settled = false;
-        const client = lib.connect(way, {
-            // a name no one else is using. two clients on one name and
-            // the broker throws the first one off, over and over.
-            clientId: `morie-${Math.random().toString(36).slice(2, 10)}`,
-            connectTimeout: 8000,
-            reconnectPeriod: 4000,
-            clean: true
-        });
-        const giveUp = window.setTimeout(() => {
-            if (settled) return;
-            settled = true;
-            try { client.end(true); } catch (error) { /* already gone */ }
-            keep(null);
-        }, 9000);
-        client.on('connect', () => {
-            if (settled) return;
-            settled = true;
-            window.clearTimeout(giveUp);
-            keep(client);
-        });
-        client.on('error', () => {
-            if (settled) return;
-            settled = true;
-            window.clearTimeout(giveUp);
-            try { client.end(true); } catch (error) { /* already gone */ }
-            keep(null);
-        });
+/* the board forgets after twelve hours. anything this browser knows
+   that the board no longer does is posted again, so a chat that is
+   used keeps itself alive without anyone thinking about it. */
+function sayAgainWhatIsMissing(onBoard) {
+    const missing = [];
+    if (chatMe && !onBoard.has(`who:${chatMe.name.toLowerCase()}`)) {
+        missing.push({ k: 'who', name: chatMe.name, word: chatMe.word, at: Date.now() });
+    }
+    chatRooms.forEach((room) => {
+        if (!onBoard.has(`room:${room.id}`)) {
+            missing.push({ k: 'room', id: room.id, name: room.name, at: room.at || Date.now() });
+        }
+    });
+    // one at a time, and never in a flood — the board is somebody
+    // else's and a page load is not an emergency
+    missing.slice(0, 12).forEach((post, at) => {
+        window.setTimeout(() => postToBoard(CHAT_TOPIC, post).catch(() => {}), at * 400);
     });
 }
 
-function wireBroker() {
-    chatLink.subscribe([topicPeople(), topicRooms()]);
-    chatLink.on('message', takeMessage);
-    chatLink.on('close', () => paintChatBar());
-    chatLink.on('reconnect', () => paintChatBar());
-
-    const held = readJson(window.localStorage.getItem(CHAT_ME) || 'null', null);
-    if (held && held.name && held.word) chatMe = held;
-    paintChatBar();
-    if (chatMe) enterRoom(chatRoomId);
-    paintRooms();
-}
-
-function takeMessage(topic, payload) {
-    if (topic === topicPeople()) {
-        chatPeople = readJson(payload, {}) || {};
-        return;
-    }
-    if (topic === topicRooms()) {
-        const held = readJson(payload, []);
-        chatRooms = Array.isArray(held) ? held : [];
-        if (!chatRooms.some((room) => room.id === chatRoomId)) {
-            enterRoom(chatRooms.length ? chatRooms[0].id : '');
+function listenToBoard() {
+    if (chatStream) chatStream.close();
+    chatStream = new EventSource(`${CHAT_BOARD}/${CHAT_TOPIC}/sse`);
+    chatStream.addEventListener('message', (event) => {
+        let post;
+        try {
+            post = JSON.parse(JSON.parse(event.data).message);
+        } catch (error) {
+            return;
         }
-        paintRooms();
-        return;
-    }
-    if (chatRoomId && topic === topicTalk(chatRoomId)) {
-        const held = readJson(payload, []);
-        chatSaid = mergeSaid(chatSaid, Array.isArray(held) ? held : []);
-        paintTalk();
-        return;
-    }
-    if (chatRoomId && topic === topicHere(chatRoomId)) {
-        const held = readJson(payload, null);
-        if (held && held.name) {
-            chatHere.set(held.name, Date.now());
-            paintHere();
-        }
-    }
-}
-
-/* two people sending in the same breath each republish the whole log,
-   and one lands on top of the other. what arrives is merged with what
-   is already here rather than replacing it, so neither line is lost. */
-function mergeSaid(mine, theirs) {
-    const byId = new Map();
-    [...mine, ...theirs].forEach((one) => { if (one && one.id) byId.set(one.id, one); });
-    return [...byId.values()]
-        .sort((one, two) => (one.at || 0) - (two.at || 0))
-        .slice(-TALK_KEEP);
+        if (!takePost(post)) return;
+        keepKnown();
+        if (post.k === 'room') paintRooms();
+        if (post.k === 'say' && post.room === chatRoomId) paintTalk();
+    });
+    chatStream.addEventListener('error', () => paintChatBar());
 }
 
 /* --- the rooms --- */
-
-function keepRooms() {
-    if (!chatLink) return;
-    chatLink.publish(topicRooms(), JSON.stringify(chatRooms), { retain: true });
-}
 
 function paintRooms() {
     roomList.innerHTML = '';
@@ -9127,62 +9120,73 @@ roomMake.addEventListener('submit', (event) => {
     const called = roomNameField.value.trim();
     if (!called) return;
     if (!chatMe) { openChatDoor(); return; }
-    if (!chatLink) { saySomethingChat('not connected yet'); return; }
-    const made = { id: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: called.slice(0, 40), made: Date.now() };
-    chatRooms = [...chatRooms, made];
-    keepRooms();
+    const made = { k: 'room', id: `r${newId()}`, name: called.slice(0, 40), at: Date.now() };
+    takePost(made);
+    keepKnown();
     roomNameField.value = '';
+    paintRooms();
     enterRoom(made.id);
+    postToBoard(CHAT_TOPIC, made).catch(() => saySomethingChat('that room did not reach the board'));
 });
 
 function enterRoom(id) {
-    if (chatLink && chatRoomId) {
-        chatLink.unsubscribe([topicTalk(chatRoomId), topicHere(chatRoomId)]);
-    }
     chatRoomId = id || '';
     window.localStorage.setItem(CHAT_ROOM, chatRoomId);
-    chatSaid = [];
-    chatHere = new Map();
+    chatHereSeen = new Map();
+    paintRooms();
     paintTalk();
     paintHere();
-    paintRooms();
 
     const room = chatRooms.find((one) => one.id === chatRoomId);
     talkName.textContent = room ? room.name : 'no room yet';
-    talkSay.disabled = !room || !chatMe;
-    if (!room || !chatMe || !chatLink) { stopHeartbeat(); return; }
-
-    chatLink.subscribe([topicTalk(chatRoomId), topicHere(chatRoomId)]);
+    talkSay.disabled = !room || !chatMe || !chatOn;
+    if (!room || !chatMe || !chatOn) { stopHeartbeat(); return; }
     startHeartbeat();
 }
 
 /* who is in the room. there is nothing to ask — everyone says so every
-   fifteen seconds, and anyone not heard from in forty has gone. a
-   browser cannot be relied on to say goodbye on its way out. */
+   half minute, and anyone unheard for eighty seconds has gone. a
+   browser cannot be relied on to say goodbye on its way out.
+
+   It has a board of its own, which is never read back as history: a
+   heartbeat is only worth anything in the moment, and twelve hours of
+   them would bury everything else. */
 function startHeartbeat() {
     stopHeartbeat();
     const beat = () => {
-        if (!chatLink || !chatMe || !chatRoomId) return;
-        chatLink.publish(topicHere(chatRoomId), JSON.stringify({ name: chatMe.name, at: Date.now() }));
+        if (!chatMe || !chatRoomId || document.hidden || activeSectionId !== 'chat') return;
+        postToBoard(HERE_TOPIC, { k: 'here', room: chatRoomId, by: chatMe.name, at: Date.now() }).catch(() => {});
     };
     beat();
     hereTimer = window.setInterval(beat, HERE_EVERY);
-    hereSweep = window.setInterval(paintHere, 5000);
+    hereSweep = window.setInterval(paintHere, 8000);
+    if (hereStream) hereStream.close();
+    hereStream = new EventSource(`${CHAT_BOARD}/${HERE_TOPIC}/sse`);
+    hereStream.addEventListener('message', (event) => {
+        try {
+            const post = JSON.parse(JSON.parse(event.data).message);
+            if (post.k !== 'here' || post.room !== chatRoomId || !post.by) return;
+            chatHereSeen.set(post.by, Date.now());
+            paintHere();
+        } catch (error) {
+            // not ours
+        }
+    });
 }
 
 function stopHeartbeat() {
     window.clearInterval(hereTimer);
     window.clearInterval(hereSweep);
     hereTimer = hereSweep = 0;
+    if (hereStream) { hereStream.close(); hereStream = null; }
 }
 
 function paintHere() {
     const now = Date.now();
-    [...chatHere.entries()].forEach(([name, at]) => {
-        if (now - at > HERE_GONE) chatHere.delete(name);
+    [...chatHereSeen.entries()].forEach(([name, at]) => {
+        if (now - at > HERE_GONE) chatHereSeen.delete(name);
     });
-    const count = chatHere.size;
-    talkHere.textContent = count ? `${count} here` : '';
+    talkHere.textContent = chatHereSeen.size ? `${chatHereSeen.size} here` : '';
 }
 
 /* --- what is said --- */
@@ -9190,28 +9194,35 @@ function paintHere() {
 talkForm.addEventListener('submit', (event) => {
     event.preventDefault();
     const words = talkSay.value.trim();
-    if (!words || !chatMe || !chatRoomId || !chatLink) return;
+    if (!words || !chatMe || !chatRoomId) return;
     talkSay.value = '';
-    chatSaid = mergeSaid(chatSaid, [{
-        id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`,
+    const post = {
+        k: 'say',
+        id: newId(),
+        room: chatRoomId,
         by: chatMe.name,
         said: words.slice(0, 1200),
         at: Date.now()
-    }]);
+    };
+    // up on the page first, sent second: a line you typed should not
+    // wait on somebody else's server to appear
+    takePost(post);
+    keepKnown();
     paintTalk();
-    chatLink.publish(topicTalk(chatRoomId), JSON.stringify(chatSaid), { retain: true });
+    postToBoard(CHAT_TOPIC, post).catch(() => saySomethingChat('that line did not reach the board'));
 });
 
 function paintTalk() {
     talkLog.querySelectorAll('.said-row').forEach((row) => row.remove());
-    talkEmpty.hidden = chatSaid.length > 0;
-    if (!chatSaid.length) return;
+    const said = chatTalk[chatRoomId] || [];
+    talkEmpty.hidden = said.length > 0;
+    if (!said.length) return;
 
     const stuck = talkLog.scrollHeight - talkLog.scrollTop - talkLog.clientHeight < 60;
 
     let lastBy = '';
     let lastAt = 0;
-    chatSaid.forEach((one) => {
+    said.forEach((one) => {
         const row = document.createElement('article');
         row.className = 'said-row';
         /* the same person twice in a breath is one person talking, so
@@ -9260,14 +9271,13 @@ function saidAt(ms) {
 
 function paintChatBar() {
     if (!chatMe) {
-        chatWhoLine.textContent = chatLink ? 'not signed in' : chatWhoLine.textContent;
-        if (!chatLink && !chatStarting) chatWhoLine.textContent = 'not signed in';
+        chatWhoLine.textContent = chatOn ? 'not signed in' : 'the chat board would not answer';
         chatSignOut.hidden = true;
         chatSetupOpen.hidden = false;
         chatSetupOpen.textContent = 'sign in';
         return;
     }
-    chatWhoLine.textContent = chatMe.name;
+    chatWhoLine.textContent = chatOn ? chatMe.name : `${chatMe.name} — offline`;
     chatSignOut.hidden = false;
     chatSetupOpen.hidden = true;
 }
@@ -9298,16 +9308,17 @@ chatGo.addEventListener('click', async () => {
     const word = chatWord.value;
     if (!called) { saySomethingChat('what should people call you?'); return; }
     if (!word) { saySomethingChat('it wants a password too'); return; }
-    if (!chatLink) { saySomethingChat('not connected yet — one moment'); await wakeChat(); }
-    if (!chatLink) { saySomethingChat('no chat server would answer'); return; }
+    if (!chatOn) { saySomethingChat('finding the board…'); await wakeChat(); }
+    if (!chatOn) { saySomethingChat('the chat board would not answer'); return; }
 
     const hash = await wordHash(word);
     const known = chatPeople[called.toLowerCase()];
 
     if (chatDoorNew) {
         if (known) { saySomethingChat('that name is taken. sign in instead?'); return; }
-        chatPeople[called.toLowerCase()] = { name: called, word: hash, made: Date.now() };
-        chatLink.publish(topicPeople(), JSON.stringify(chatPeople), { retain: true });
+        const post = { k: 'who', name: called, word: hash, at: Date.now() };
+        takePost(post);
+        postToBoard(CHAT_TOPIC, post).catch(() => {});
     } else {
         if (!known) { saySomethingChat('no account by that name'); return; }
         if (known.word !== hash) { saySomethingChat('that password is not the one'); return; }
@@ -9315,6 +9326,7 @@ chatGo.addEventListener('click', async () => {
 
     chatMe = { name: known ? known.name : called, word: hash };
     window.localStorage.setItem(CHAT_ME, JSON.stringify(chatMe));
+    keepKnown();
     chatWord.value = '';
     saySomethingChat('');
     paintChatBar();

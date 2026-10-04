@@ -1265,53 +1265,60 @@ The one page here that is not only yours. Everything else keeps to this
 browser; a chat cannot, because two people have to meet somewhere, and
 a static page has no server to be that place.
 
-**Nothing is set up and nothing is signed up for.** It talks to a
-public mqtt broker over websockets — hivemq's, with mosquitto's behind
-it — which anyone may connect to with no key and no account. That is
-the whole reason it is used. It was a firebase project the reader had
-to make first, and five minutes of somebody's console before you can
-say hello is five minutes nobody spends. Both brokers were measured end
-to end before either was written down: connect, publish, read back, and
-a retained message surviving a fresh connection.
+**Nothing is set up and nothing is signed up for.** It talks to
+ntfy.sh, a public notice board anyone may post to and read without a
+key or an account. Posting is an ordinary `POST`, reading back is an
+ordinary `GET`, the live half is an `EventSource`.
 
-**The security is terrible, on purpose and by request.** The broker is
-public, so anyone who knows the topic can read every word and write any
-word. The accounts are the page's own — a name and a password, the
-password kept as a sha-256 hash in a retained message on that same
-public broker, and checked here rather than anywhere that could enforce
-it. It keeps your sister out of your account and nobody else out of
-anything. The window says that in as many words, because someone has
-to.
+**Plain https, and that is the whole point.** This was mqtt over a
+websocket first, and it worked — until it met a machine with a proxy
+set on it. A websocket goes through the proxy, and a proxy that isn't
+answering doesn't refuse, it waits, so the chat simply never
+connected. Measured on that machine, same page, same moment:
 
-**History is a retained message.** A retained message is the last thing
-published on a topic and the broker hands it to whoever subscribes
-next — so a room's whole log lives in one retained message and arrives
-in full the moment you join. Sending republishes the log with the new
-line on the end, capped at `TALK_KEEP`. No database, and nothing to pay
-for.
+    https fetch 200 · https post 200 · sse open · websocket ERROR
 
-Two people sending in the same instant would otherwise have one log
-land on top of the other, so an arriving log is **merged** with what is
-already here rather than replacing it, deduped by id.
+Everything here is therefore the three that worked. **Don't put a
+websocket back**, however much tidier the protocol looks.
 
-**Who is here is a heartbeat, not a register.** Everyone says so every
-fifteen seconds and anyone unheard for forty has gone — a browser
-cannot be relied on to say goodbye on its way out.
+**The security is terrible, on purpose and by request.** The board is
+public, so anyone who knows the topic can read every word and post any
+word. The accounts are the page's own: a name and a password, the
+password kept as a sha-256 hash in a post on that same public board,
+and checked here rather than anywhere that could enforce it. It keeps
+your sister out of your account and nobody else out of anything. The
+window says so in as many words, because someone has to.
 
-The brokers are tried **in turn, never raced**: two connections to two
-brokers would each hold half the conversation, and nobody in one would
-hear anybody in the other. That is the opposite of the playlist box's
-rule, and for the opposite reason — there, any answer will do; here,
-everyone has to be in the same room.
+**The board forgets after twelve hours**, which is the one real cost of
+needing nothing set up. So every browser keeps its own copy of what it
+has seen (`chat-known`) and merges that with what the board still
+holds: your own history is never lost, and a newcomer gets the last
+twelve hours. Anything of yours the board has dropped is posted again
+when you open the page (`sayAgainWhatIsMissing`), spaced 400ms apart
+and capped — a page load is not an emergency on somebody else's
+server. A chat that is used keeps itself alive; only one left alone
+for half a day forgets.
 
-`clientId` must be random. Two clients on one id and the broker throws
-the first off, forever, each reconnect evicting the other.
+**The posts are the shape.** There is no server holding a schema, so
+state is whatever reading the posts in order adds up to: an account, a
+room, or a line said. `takePost` is the only thing that writes state,
+and it is deliberately idempotent — the same post read from history, from
+the live stream and from a republish must land once.
 
-**A proxy set on the machine hangs every websocket**, and a proxy that
-isn't answering doesn't refuse — it waits, which reads as the chat
-being down. Measured: identical page, `--no-proxy-server` connects in
-3s and the system proxy never connects at all. The bar says so when
-nothing answers, because nobody thinks to look there.
+**A line you typed goes up before it is sent.** Waiting on somebody
+else's server to see your own words is the difference between a chat
+and a form.
+
+**Who is here has a board of its own**, and that one is never read back
+as history — a heartbeat is worth something only in the moment, and
+twelve hours of them would bury everything else. Everyone says so every
+half minute (never while the tab is hidden or the page is elsewhere)
+and anyone unheard for eighty seconds has gone.
+
+Verified end to end on the proxied machine, two separate browsers: the
+board answered in 0.5s, a cold second browser saw the first's room in
+0.5s and its history on joining, each saw the other's lines, and both
+counted `2 here`.
 
 ## Known limits — accepted, don't re-raise
 
