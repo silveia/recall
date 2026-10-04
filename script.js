@@ -320,6 +320,12 @@ function renderSections() {
     audioPanel.hidden = activeSectionId !== 'audio';
     playerPanel.hidden = activeSectionId !== 'player';
     chatPanel.hidden = activeSectionId !== 'chat';
+    /* the chat is given the window: the left bar has been empty since
+       the notes tool moved out, and the top strip slides away until
+       the pointer goes looking for it. set on the root so the shell's
+       own pieces — the bar, the scallop, the strip — can all answer to
+       one class. */
+    document.documentElement.classList.toggle('on-chat', activeSectionId === 'chat');
     /* the chat is the one page that is talking to somewhere else. it
        only starts listening once it is looked at, and it keeps
        listening after — a message that arrived while you were on
@@ -5608,7 +5614,6 @@ const widgetList = document.getElementById('widgetList');
 const widgetBin = document.getElementById('widgetBin');
 const widgetAdd = document.getElementById('widgetAdd');
 const widgetPicks = document.getElementById('widgetPicks');
-const sizeList = document.getElementById('sizeList');
 const widgetPickList = document.getElementById('widgetPickList');
 const widgetEdit = document.getElementById('widgetEdit');
 const homePanel2 = document.getElementById('homePanel');
@@ -8891,7 +8896,6 @@ const roomList = document.getElementById('roomList');
 const roomMake = document.getElementById('roomMake');
 const roomNameField = document.getElementById('roomName');
 const talkName = document.getElementById('talkName');
-const talkHere = document.getElementById('talkHere');
 const talkSealed = document.getElementById('talkSealed');
 const talkLog = document.getElementById('talkLog');
 const talkEmpty = document.getElementById('talkEmpty');
@@ -8903,8 +8907,13 @@ const chatGo = document.getElementById('chatGo');
 const chatSwap = document.getElementById('chatSwap');
 const chatDoorWhy = document.getElementById('chatDoorWhy');
 const chatNote = document.getElementById('chatNote');
+const chatBody = document.getElementById('chatBody');
+const chatStart = document.getElementById('chatStart');
+const startAdd = document.getElementById('startAdd');
+const startName = document.getElementById('startName');
+const startNote = document.getElementById('startNote');
 
-[roomNameField, talkSay, chatHandle].forEach((field) => field && stopGuessing(field));
+[roomNameField, talkSay, chatHandle, startName].forEach((field) => field && stopGuessing(field));
 
 /* the word is masked in css rather than by being a password field, so
    that chrome doesn't offer to judge it. where that css isn't
@@ -8929,45 +8938,29 @@ const CHAT_BOARD = 'https://ntfy.sh';
 /* versioned, so what is kept can change shape without every old page
    arguing with every new one */
 const CHAT_TOPIC = 'morie-top-chat-v1';
-const HERE_TOPIC = `${CHAT_TOPIC}-here`;
 const CHAT_ME = 'chat-me';
 const CHAT_KNOWN = 'chat-known';
-const CHAT_ROOM = 'chat-room';
-const TALK_KEEP = 300;          // how much of a room each browser keeps
-const HERE_EVERY = 30000;       // a heartbeat, so the room knows you're in
-const HERE_GONE = 80000;        // and how long before it decides you left
+const CHAT_WITH = 'chat-with';
+const TALK_KEEP = 300;          // how much of a thread each browser keeps
 const SAME_BREATH = 5 * 60 * 1000;
 
 let chatOn = false;             // the board is answering
 let chatMe = null;              // { name, word } — the word is the hash
-let chatPeople = {};            // lowercased name -> { name, word }
-let chatRooms = [];
-let chatRoomId = '';
-let chatTalk = {};              // room id -> the lines said in it
+let chatPeople = {};            // every account the board has told us of
+let chatFriends = [];           // the ones you added — the only ones shown
 let chatDms = {};               // their name (lowercased) -> the lines between you
 let chatSealed = [];            // sealed posts waiting on a key to read them
 let chatPriv = null;            // your own private key, this browser only
-let chatWith = null;            // { kind: 'room' | 'dm', id }
-let chatHereSeen = new Map();   // name -> when they were last heard
+let chatWith = null;            // whose thread is open, lowercased
 let chatDoorNew = true;
 let chatStarting = false;
 let chatStream = null;
-let hereStream = null;
-let hereTimer = 0;
-let hereSweep = 0;
 
-/* what was open last time. it used to be a bare room id, so anything
-   that isn't the new shape is read as a room and not argued with. */
-function whatWasOpen() {
-    const held = window.localStorage.getItem(CHAT_ROOM);
-    if (!held) return chatRooms[0] ? { kind: 'room', id: chatRooms[0].id } : null;
-    try {
-        const what = JSON.parse(held);
-        if (what && what.kind && what.id) return what;
-    } catch (error) {
-        return { kind: 'room', id: held };
-    }
-    return chatRooms[0] ? { kind: 'room', id: chatRooms[0].id } : null;
+/* whose thread was open last time */
+function whoWasOpen() {
+    const held = window.localStorage.getItem(CHAT_WITH);
+    if (held && chatFriends.includes(held)) return held;
+    return chatFriends[0] || null;
 }
 
 function saySomethingChat(words) {
@@ -9073,8 +9066,7 @@ function loadKnown() {
         const held = JSON.parse(window.localStorage.getItem(CHAT_KNOWN) || 'null');
         if (!held) return;
         chatPeople = held.people || {};
-        chatRooms = Array.isArray(held.rooms) ? held.rooms : [];
-        chatTalk = held.talk || {};
+        chatFriends = Array.isArray(held.friends) ? held.friends : [];
         chatDms = held.dms || {};
         chatPriv = held.priv || null;
     } catch (error) {
@@ -9086,8 +9078,7 @@ function keepKnown() {
     try {
         window.localStorage.setItem(CHAT_KNOWN, JSON.stringify({
             people: chatPeople,
-            rooms: chatRooms,
-            talk: chatTalk,
+            friends: chatFriends,
             dms: chatDms,
             priv: chatPriv
         }));
@@ -9132,21 +9123,6 @@ function takePost(post) {
         chatSealed.push(post);
         return true;
     }
-    if (post.k === 'room' && post.id && post.name) {
-        if (!chatRooms.some((room) => room.id === post.id)) {
-            chatRooms = [...chatRooms, { id: post.id, name: post.name, at: post.at || 0 }]
-                .sort((one, two) => (one.at || 0) - (two.at || 0));
-        }
-        return true;
-    }
-    if (post.k === 'say' && post.id && post.room) {
-        const held = chatTalk[post.room] || [];
-        if (held.some((one) => one.id === post.id)) return false;
-        chatTalk[post.room] = [...held, post]
-            .sort((one, two) => (one.at || 0) - (two.at || 0))
-            .slice(-TALK_KEEP);
-        return true;
-    }
     return false;
 }
 
@@ -9159,10 +9135,31 @@ async function wakeChat() {
         try { return JSON.parse(window.localStorage.getItem(CHAT_ME) || 'null'); } catch (error) { return null; }
     })();
     if (mine && mine.name && mine.word) chatMe = mine;
-    paintRooms();
+    paintPeople();
     paintTalk();
     chatWhoLine.textContent = 'catching up…';
 
+    const onBoard = await catchUp();
+    if (!onBoard) {
+        chatStarting = false;
+        chatWhoLine.textContent = 'the chat board would not answer';
+        paintChatShape();
+        return;
+    }
+    sayAgainWhatIsMissing(onBoard);
+
+    listenToBoard();
+    chatStarting = false;
+    paintChatBar();
+    paintPeople();
+    openWith(whoWasOpen());
+}
+
+/* everything the board still holds, read in order. it is also what
+   `addSomeone` asks before telling anyone that a name doesn't exist —
+   the board may have said it while this page was shut. Returns what
+   it found, or nothing at all if the board wouldn't answer. */
+async function catchUp() {
     try {
         const said = await fetch(`${CHAT_BOARD}/${CHAT_TOPIC}/json?poll=1&since=all`);
         if (!said.ok) throw new Error(String(said.status));
@@ -9182,18 +9179,10 @@ async function wakeChat() {
         chatOn = true;
         await openWhatIsWaiting();
         keepKnown();
-        sayAgainWhatIsMissing(onBoard);
+        return onBoard;
     } catch (error) {
-        chatStarting = false;
-        chatWhoLine.textContent = 'the chat board would not answer';
-        return;
+        return null;
     }
-
-    listenToBoard();
-    chatStarting = false;
-    paintChatBar();
-    paintRooms();
-    openWith(whatWasOpen());
 }
 
 /* sealed messages, opened once there is a key for them. a message
@@ -9235,14 +9224,15 @@ async function openWhatIsWaiting() {
    used keeps itself alive without anyone thinking about it. */
 function sayAgainWhatIsMissing(onBoard) {
     const missing = [];
+    /* your own account, and with it your public key — without it
+       nobody can seal anything to you, so this is the one thing that
+       must never quietly fall off the board. */
     if (chatMe && !onBoard.has(`who:${chatMe.name.toLowerCase()}`)) {
-        missing.push({ k: 'who', name: chatMe.name, word: chatMe.word, at: Date.now() });
-    }
-    chatRooms.forEach((room) => {
-        if (!onBoard.has(`room:${room.id}`)) {
-            missing.push({ k: 'room', id: room.id, name: room.name, at: room.at || Date.now() });
+        const me = chatPeople[chatMe.name.toLowerCase()];
+        if (me && me.pub) {
+            missing.push({ k: 'who', name: me.name, word: me.word, pub: me.pub, keep: me.keep, at: Date.now() });
         }
-    });
+    }
     // one at a time, and never in a flood — the board is somebody
     // else's and a page load is not an emergency
     missing.slice(0, 12).forEach((post, at) => {
@@ -9262,12 +9252,11 @@ function listenToBoard() {
         }
         if (!takePost(post)) return;
         keepKnown();
-        if (post.k === 'room' || post.k === 'who') paintRooms();
-        if (post.k === 'say' && chatWith && chatWith.kind === 'room' && post.room === chatWith.id) paintTalk();
+        if (post.k === 'who') paintPeople();
         /* a sealed one, and possibly the key for an older one: both
            kinds of news mean having another go at the pile */
         if (post.k === 'dm' || post.k === 'who') {
-            openWhatIsWaiting().then((opened) => { if (opened) paintTalk(); });
+            openWhatIsWaiting().then((opened) => { if (opened) { paintTalk(); paintPeople(); } });
         }
     });
     chatStream.addEventListener('error', () => paintChatBar());
@@ -9275,198 +9264,134 @@ function listenToBoard() {
 
 /* --- the rooms --- */
 
-/* the column is people first, then rooms — a message to one person is
-   the private kind and the one anybody reaches for, so it goes on top.
-   One scroll, two headings, rather than two boxes with two scrollbars
-   in a pane that narrows to nothing. */
-function paintRooms() {
+/* --- the people you added, and nobody else ---
+
+   The board knows every account posted to it, which is not the same
+   as a list of people you want to hear from. You add someone by the
+   name they signed up with; until you do, there is nothing on this
+   page at all. */
+
+function paintPeople() {
     roomList.innerHTML = '';
-
-    if (!chatMe) {
-        const none = document.createElement('li');
-        none.className = 'empty-message';
-        none.textContent = 'sign in to see them';
-        roomList.append(none);
-        return;
-    }
-
-    const label = (words) => {
-        const line = document.createElement('li');
-        line.className = 'room-label';
-        line.textContent = words;
-        roomList.append(line);
-    };
-    const row = (words, on, press, said) => {
+    chatFriends.forEach((key) => {
+        const them = chatPeople[key];
         const line = document.createElement('li');
         const tap = document.createElement('button');
         tap.className = 'room-row';
         tap.type = 'button';
-        tap.textContent = words;
-        tap.title = said || words;
-        if (on) tap.classList.add('is-on');
-        tap.addEventListener('click', press);
+        tap.textContent = them ? them.name : key;
+        // no key of theirs means nothing can be sealed to them yet
+        tap.title = them && them.pub ? tap.textContent : `${tap.textContent} — no key yet`;
+        if (!(them && them.pub)) tap.classList.add('is-waiting');
+        if (chatWith === key) tap.classList.add('is-on');
+        tap.addEventListener('click', () => openWith(key));
+        /* a person is dropped from the list by right-clicking, the
+           same way a deck is — nothing is deleted anywhere else, and
+           adding them again brings the thread back with them. */
+        tap.addEventListener('contextmenu', (event) => {
+            event.preventDefault();
+            dropSomeone(key);
+        });
         line.append(tap);
         roomList.append(line);
-    };
-
-    const mine = chatMe.name.toLowerCase();
-    const people = Object.values(chatPeople)
-        .filter((one) => one.name.toLowerCase() !== mine)
-        .sort((one, two) => one.name.localeCompare(two.name));
-
-    label('people');
-    if (!people.length) {
-        const none = document.createElement('li');
-        none.className = 'empty-message';
-        none.textContent = 'nobody else yet';
-        roomList.append(none);
-    }
-    people.forEach((one) => {
-        const key = one.name.toLowerCase();
-        const on = chatWith && chatWith.kind === 'dm' && chatWith.id === key;
-        // no key of theirs yet means nothing can be sealed to them
-        row(one.name, on, () => openWith({ kind: 'dm', id: key }), one.pub ? one.name : `${one.name} — no key yet`);
     });
-
-    label('rooms');
-    if (!chatRooms.length) {
-        const none = document.createElement('li');
-        none.className = 'empty-message';
-        none.textContent = 'no rooms yet';
-        roomList.append(none);
-    }
-    chatRooms.forEach((room) => {
-        const on = chatWith && chatWith.kind === 'room' && chatWith.id === room.id;
-        row(room.name, on, () => openWith({ kind: 'room', id: room.id }), room.name);
-    });
+    paintChatShape();
 }
 
-roomMake.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const called = roomNameField.value.trim();
-    if (!called) return;
-    if (!chatMe) { openChatDoor(); return; }
-    const made = { k: 'room', id: `r${newId()}`, name: called.slice(0, 40), at: Date.now() };
-    takePost(made);
+/* signed out, nobody added, or talking: three states, and one place
+   that decides which is on screen. */
+function paintChatShape() {
+    const ready = Boolean(chatMe);
+    chatStart.hidden = !ready || chatFriends.length > 0;
+    chatBody.hidden = !ready || chatFriends.length === 0;
+    // a hidden pane measures as nothing, so the grip is worked out
+    // once the two panes are actually on screen — never before
+    if (!chatBody.hidden && chatSplitter) chatSplitter.reclamp();
+}
+
+async function addSomeone(typed, complain) {
+    const called = typed.trim();
+    if (!called) return false;
+    if (!chatMe) { openChatDoor(); return false; }
+    const key = called.toLowerCase();
+    if (key === chatMe.name.toLowerCase()) { complain('that is you'); return false; }
+    if (chatFriends.includes(key)) { complain('they are already here'); openWith(key); return false; }
+
+    /* the board may have said their name while this page was shut, so
+       it is asked again before anyone is told nobody by that name
+       exists — the answer is usually already here, and this costs one
+       request to be sure. */
+    if (!chatPeople[key]) {
+        complain('looking…');
+        await catchUp();
+    }
+    if (!chatPeople[key]) { complain('nobody signed up by that name'); return false; }
+
+    chatFriends = [...chatFriends, key];
     keepKnown();
-    roomNameField.value = '';
-    openWith({ kind: 'room', id: made.id });
-    postToBoard(CHAT_TOPIC, made).catch(() => saySomethingChat('that room did not reach the board'));
+    complain('');
+    paintPeople();
+    openWith(key);
+    return true;
+}
+
+function dropSomeone(key) {
+    chatFriends = chatFriends.filter((one) => one !== key);
+    keepKnown();
+    if (chatWith === key) openWith(chatFriends[0] || null);
+    else paintPeople();
+}
+
+roomMake.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (await addSomeone(roomNameField.value, saySomethingChat)) roomNameField.value = '';
 });
 
-/* what is on screen: a person, or a room. one place decides it, so
-   the head, the list, the log and the field can never disagree. */
-function openWith(what) {
-    chatWith = what && what.id ? what : null;
-    chatRoomId = chatWith && chatWith.kind === 'room' ? chatWith.id : '';
-    window.localStorage.setItem(CHAT_ROOM, JSON.stringify(chatWith));
-    chatHereSeen = new Map();
-    paintRooms();
+startAdd.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const complain = (words) => { startNote.textContent = words || ''; };
+    if (await addSomeone(startName.value, complain)) startName.value = '';
+});
+
+/* whose thread is open. one place decides it, so the head, the list,
+   the log and the field can never disagree. */
+function openWith(who) {
+    chatWith = who && chatFriends.includes(who) ? who : null;
+    if (chatWith) window.localStorage.setItem(CHAT_WITH, chatWith);
+    else window.localStorage.removeItem(CHAT_WITH);
+
+    roomList.querySelectorAll('.room-row').forEach((row) => {
+        row.classList.toggle('is-on', row.textContent.toLowerCase() === chatWith);
+    });
     paintTalk();
-    paintHere();
+    paintChatShape();
 
     if (!chatWith) {
-        talkName.textContent = 'nothing open';
+        talkName.textContent = 'nobody open';
         talkSealed.hidden = true;
         talkSay.disabled = true;
-        stopHeartbeat();
         return;
     }
-
-    if (chatWith.kind === 'dm') {
-        const them = chatPeople[chatWith.id];
-        talkName.textContent = them ? them.name : chatWith.id;
-        talkSealed.hidden = false;
-        talkSay.disabled = !chatOn || !them || !them.pub || !chatPriv;
-        talkHere.textContent = '';
-        stopHeartbeat();     // a two-person thread has nobody to count
-        return;
-    }
-
-    const room = chatRooms.find((one) => one.id === chatWith.id);
-    talkName.textContent = room ? room.name : 'no room yet';
-    talkSealed.hidden = true;
-    talkSay.disabled = !room || !chatOn;
-    if (room && chatOn) startHeartbeat(); else stopHeartbeat();
+    const them = chatPeople[chatWith];
+    talkName.textContent = them ? them.name : chatWith;
+    talkSealed.hidden = false;
+    talkSay.disabled = !chatOn || !them || !them.pub || !chatPriv;
+    talkSay.placeholder = talkSay.disabled && them && !them.pub
+        ? 'they have not opened the chat yet'
+        : 'say something';
 }
-
-/* who is in the room. there is nothing to ask — everyone says so every
-   half minute, and anyone unheard for eighty seconds has gone. a
-   browser cannot be relied on to say goodbye on its way out.
-
-   It has a board of its own, which is never read back as history: a
-   heartbeat is only worth anything in the moment, and twelve hours of
-   them would bury everything else. */
-function startHeartbeat() {
-    stopHeartbeat();
-    const beat = () => {
-        if (!chatMe || !chatRoomId || document.hidden || activeSectionId !== 'chat') return;
-        postToBoard(HERE_TOPIC, { k: 'here', room: chatRoomId, by: chatMe.name, at: Date.now() }).catch(() => {});
-    };
-    beat();
-    hereTimer = window.setInterval(beat, HERE_EVERY);
-    hereSweep = window.setInterval(paintHere, 8000);
-    if (hereStream) hereStream.close();
-    hereStream = new EventSource(`${CHAT_BOARD}/${HERE_TOPIC}/sse`);
-    hereStream.addEventListener('message', (event) => {
-        try {
-            const post = JSON.parse(JSON.parse(event.data).message);
-            if (post.k !== 'here' || post.room !== chatRoomId || !post.by) return;
-            chatHereSeen.set(post.by, Date.now());
-            paintHere();
-        } catch (error) {
-            // not ours
-        }
-    });
-}
-
-function stopHeartbeat() {
-    window.clearInterval(hereTimer);
-    window.clearInterval(hereSweep);
-    hereTimer = hereSweep = 0;
-    if (hereStream) { hereStream.close(); hereStream = null; }
-}
-
-function paintHere() {
-    const now = Date.now();
-    [...chatHereSeen.entries()].forEach(([name, at]) => {
-        if (now - at > HERE_GONE) chatHereSeen.delete(name);
-    });
-    talkHere.textContent = chatHereSeen.size ? `${chatHereSeen.size} here` : '';
-}
-
-/* --- what is said --- */
 
 talkForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const words = talkSay.value.trim();
     if (!words || !chatMe || !chatWith) return;
     talkSay.value = '';
-
-    if (chatWith.kind === 'dm') {
-        await sendSealed(chatWith.id, words.slice(0, 1200));
-        return;
-    }
-
-    const post = {
-        k: 'say',
-        id: newId(),
-        room: chatWith.id,
-        by: chatMe.name,
-        said: words.slice(0, 1200),
-        at: Date.now()
-    };
-    // up on the page first, sent second: a line you typed should not
-    // wait on somebody else's server to appear
-    takePost(post);
-    keepKnown();
-    paintTalk();
-    postToBoard(CHAT_TOPIC, post).catch(() => saySomethingChat('that line did not reach the board'));
+    await sendSealed(chatWith, words.slice(0, 1200));
 });
 
-/* a message to one person: sealed here, posted sealed, and opened
-   only by the two of you. what goes on the board is the two names,
-   the time, and a box nobody else can open. */
+/* sealed here, posted sealed, and opened only by the two of you. what
+   goes on the board is the two names, the time, and a box nobody else
+   can open. */
 async function sendSealed(other, words) {
     const them = chatPeople[other];
     if (!them || !them.pub) { saySomethingChat('no key for them yet — they need to open the chat once'); return; }
@@ -9483,7 +9408,9 @@ async function sendSealed(other, words) {
         return;
     }
 
-    // your own copy goes up now; it is already readable to you
+    /* your own copy goes up now; it is already readable to you, and a
+       line you typed should not wait on somebody else's server to
+       appear. */
     chatDms[other] = [...(chatDms[other] || []), { id: post.id, by: chatMe.name, said: words, at: post.at }]
         .slice(-TALK_KEEP);
     keepKnown();
@@ -9492,8 +9419,7 @@ async function sendSealed(other, words) {
 }
 
 function whatIsSaid() {
-    if (!chatWith) return [];
-    return (chatWith.kind === 'dm' ? chatDms[chatWith.id] : chatTalk[chatWith.id]) || [];
+    return (chatWith && chatDms[chatWith]) || [];
 }
 
 function paintTalk() {
@@ -9513,6 +9439,7 @@ function paintTalk() {
            the second line goes under the first rather than starting
            again with the face and the name over it */
         const runOn = one.by === lastBy && (one.at || 0) - lastAt < SAME_BREATH;
+        if (chatMe && one.by === chatMe.name) row.classList.add('is-mine');
         if (runOn) row.classList.add('is-run-on');
         else {
             const face = document.createElement('span');
@@ -9645,14 +9572,13 @@ chatGo.addEventListener('click', async () => {
     chatWord.value = '';
     saySomethingChat('');
     paintChatBar();
-    paintRooms();
+    paintPeople();
     await openWhatIsWaiting();
-    openWith(whatWasOpen());
+    openWith(whoWasOpen());
     closeModal();
 });
 
 chatSignOut.addEventListener('click', () => {
-    stopHeartbeat();
     chatMe = null;
     chatPriv = null;      // the key goes with the account, not the browser
     chatDms = {};
@@ -9663,7 +9589,7 @@ chatSignOut.addEventListener('click', () => {
     talkSay.disabled = true;
     talkSealed.hidden = true;
     paintChatBar();
-    paintRooms();
+    paintPeople();
     paintTalk();
 });
 

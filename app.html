@@ -119,6 +119,11 @@
 
             <!-- the black strip, starting beside the left bar -->
             <!-- the black strip: it carries the page names -->
+            <!-- on the chat page the strip is hidden and this is what
+                 finds it again: a thin reach at the very top, so the
+                 page below is whole and the tabs are a gesture away. -->
+            <div class="top-peek" aria-hidden="true"></div>
+
             <header class="topbar">
                 <!-- section tabs — the active one is big, the rest small.
                 these are the title while you're on home. -->
@@ -538,8 +543,10 @@
                         <!-- chat — the one page here that is not only
                              yours. everything else lives in this browser;
                              this one needs somewhere to meet, so it talks
-                             to a public board anyone may connect to.
-                             nothing to set up, and nothing private. -->
+                             to a public board anyone may connect to. the
+                             board carries the messages and cannot read
+                             them: every one is sealed to the two people
+                             in it. -->
                         <section class="chat-panel" id="chatPanel" hidden>
 
                             <!-- who you are, and the way in -->
@@ -549,16 +556,37 @@
                                 <button class="basic-button" id="chatSetupOpen" type="button">sign in</button>
                             </div>
 
-                            <div class="chat-body" id="chatBody">
+                            <!-- nothing at all until there is somebody to
+                                 talk to. an empty people column beside an
+                                 empty thread is two boxes saying the same
+                                 nothing; this says it once, and hands you
+                                 the one thing that fixes it. -->
+                            <div class="chat-start" id="chatStart" hidden>
+                                <h2 class="chat-start-head">nobody yet</h2>
+                                <p class="chat-start-say">add someone by the name they signed up with. what you two say is sealed to the pair of you &mdash; nobody else can open it, this page included.</p>
+                                <form class="room-make chat-start-add" id="startAdd" novalidate>
+                                    <input id="startName" type="text" aria-label="add someone by name" placeholder="their name">
+                                    <button class="field-go" type="submit" aria-label="add them" title="add them">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M12 5.5v13M5.5 12h13"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                                <p class="chat-start-note" id="startNote" aria-live="polite"></p>
+                            </div>
 
-                                <!-- the rooms down the side, the way they are -->
+                            <div class="chat-body" id="chatBody" hidden>
+
+                                <!-- the people you have added, and nobody
+                                     else: the board knows every account on
+                                     it, which is not the same as a list of
+                                     people you want to hear from. -->
                                 <aside class="room-side" id="roomSide">
-                                    <!-- it holds both now: people to message, and rooms -->
-                                    <div class="panel-head"><h2>chats</h2></div>
+                                    <div class="panel-head"><h2>people</h2></div>
                                     <div class="room-scroll"><ol class="room-list" id="roomList"></ol></div>
                                     <form class="room-make" id="roomMake" novalidate>
-                                        <input id="roomName" type="text" aria-label="a new room" placeholder="a new room">
-                                        <button class="field-go" id="roomGo" type="submit" aria-label="make the room" title="make the room">
+                                        <input id="roomName" type="text" aria-label="add someone by name" placeholder="add someone">
+                                        <button class="field-go" id="roomGo" type="submit" aria-label="add them" title="add them">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                                 <path d="M12 5.5v13M5.5 12h13"/>
                                             </svg>
@@ -569,16 +597,14 @@
                                 <!-- drag this to trade width between the two -->
                                 <div class="pane-split chat-split" id="chatSplit" role="separator"
                                      aria-orientation="vertical" tabindex="0"
-                                     aria-label="resize the room list"></div>
+                                     aria-label="resize the people list"></div>
 
                                 <section class="talk-side" id="talkSide">
                                     <div class="panel-head talk-head">
-                                        <h2 id="talkName">no room yet</h2>
-                                        <!-- said only of a thread between two people, because
-                                             it is only true of one: a room on a public board
-                                             cannot be private and must not claim to be. -->
+                                        <h2 id="talkName">nobody open</h2>
+                                        <!-- it is true of every thread here, and
+                                             worth saying on each of them -->
                                         <p class="talk-sealed" id="talkSealed" hidden title="only you two can read this">sealed</p>
-                                        <p class="talk-here" id="talkHere"></p>
                                     </div>
 
                                     <div class="talk-log" id="talkLog">
@@ -705,7 +731,7 @@
                                         <button class="basic-button is-solid ask-go" id="chatGo" type="button">make an account</button>
                                         <button class="scratch-plain ask-swap" id="chatSwap" type="button">i already have one</button>
 
-                                        <p class="ask-small">this runs on a public message board that anyone may connect to, so that nothing has to be set up. <b>a message to one person is sealed, and only the two of you can open it</b> &mdash; but a room is not, so treat anything said in a room as public. either way the names and the times are in the open; only the words are sealed. don't use a password you use elsewhere.</p>
+                                        <p class="ask-small">this runs on a public message board that anyone may connect to, so that nothing has to be set up. <b>every message is sealed to the two people in it</b> and nobody else can open it. what is still in the open is who wrote to whom, and when &mdash; something has to say whose a message is. don't use a password you use elsewhere.</p>
                                     </div>
 
                                     <p class="ask-note" id="chatNote" aria-live="polite"></p>
@@ -907,7 +933,7 @@
 
                         <p class="help-note" data-section="audio" hidden>audio recorder; records clips that cut when a change is detected in a selected area. clips can be cropped and downloaded as mp3s individually, or get batch downloaded in a custom folder all tg. clips also can be matched up w a spotify playlist.</p>
 
-                        <p class="help-note" data-section="chat" hidden>chat; the one page here that isn't only yours. pick a name and a password and you're in, nothing to set up. rooms down the side, the talking in the middle. it runs on a public board so treat everything said here as public.</p>
+                        <p class="help-note" data-section="chat" hidden>chat; the one page here that isn't only yours. pick a name and a password and you're in, nothing to set up. add someone by the name they signed up with and you get a thread with them. every message is sealed to the two people in it &mdash; the board it travels on can't read them, and neither can this page.</p>
                         <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface</p>
 
 

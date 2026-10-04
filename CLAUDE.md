@@ -1281,13 +1281,39 @@ connected. Measured on that machine, same page, same moment:
 Everything here is therefore the three that worked. **Don't put a
 websocket back**, however much tidier the protocol looks.
 
-**The security is terrible, on purpose and by request.** The board is
-public, so anyone who knows the topic can read every word and post any
-word. The accounts are the page's own: a name and a password, the
-password kept as a sha-256 hash in a post on that same public board,
-and checked here rather than anywhere that could enforce it. It keeps
-your sister out of your account and nobody else out of anything. The
-window says so in as many words, because someone has to.
+**Every message is sealed to the two people in it.** There are no
+rooms: a public board cannot hold a private one, and a chat that is
+only sometimes private is worse than one that never claims to be. Each
+account carries a public key; a message is encrypted under a key the
+two of you derive between you (ecdh p-256 → aes-gcm) and never send.
+The board carries it and cannot read it, and nor can this page.
+
+**What is still in the open is who wrote to whom, and when.** Something
+has to say whose a message is. Only the words are sealed, and the
+window says so rather than letting anyone assume otherwise.
+
+Your private key lives in this browser, and a copy wrapped in your own
+password (pbkdf2, 150k rounds) is posted to the board — which is what
+lets you sign in on another machine and still read your own messages.
+The password itself never leaves.
+
+**The board knows every account on it; that is not a list of people
+you want to hear from.** You add someone by the name they signed up
+with, and only the people you added are shown. Until there is one,
+there are no panes at all — an empty people column beside an empty
+thread is two boxes saying the same nothing, so `chat-start` says it
+once and hands over the one field that fixes it. Right-click drops
+someone; nothing is deleted anywhere, and adding them back brings the
+thread with them.
+
+Someone added who has never opened the chat has no key to seal
+anything to, so their row goes **dashed** and the field says why
+rather than failing on the press.
+
+A sealed message whose sender's account hasn't arrived yet **waits**
+(`chatSealed`) rather than being dropped, and is opened on the next
+pass — an account post and a message post race, and the message
+usually wins.
 
 **The password field is not a password field.** Chrome reserves its
 weak-and-breached warnings for `type="password"`, and it was firing
@@ -1302,63 +1328,50 @@ checked **only when an account is made**. A word that was allowed when
 the account was made has to go on being allowed, or the rule locks out
 the very people it was meant to look after.
 
-**A message to one person is sealed; a room is not.** A public board
-cannot hold a private room, and saying it did would be a lie — so the
-two are told apart on screen rather than fudged: a thread between two
-people wears a `sealed` chip, a room wears none, and the window says
-which is which.
-
-The sealing is the browser's own crypto, no library. Each account
-carries a public key; a direct message is encrypted under a key the
-two of you derive between you (ecdh p-256 → aes-gcm) and never send.
-Your private key lives in this browser, and a copy wrapped in your own
-password (pbkdf2, 150k rounds) is posted to the board — which is what
-lets you sign in on another machine and still read your own messages.
-The password itself never leaves.
-
-**What is still in the open is who spoke to whom, and when.** Something
-has to say whose a message is. Only the words are sealed, and the
-window says that too rather than letting anyone assume otherwise.
-
-A sealed message whose sender's account hasn't arrived yet **waits**
-(`chatSealed`) rather than being dropped, and is opened on the next
-pass — an account post and a message post race, and the message
-usually wins.
-
-Verified on the public board from outside: the direct messages are
-opaque base64 with none of the words in them; the room lines are
-plain text, exactly as labelled.
-
 **The board forgets after twelve hours**, which is the one real cost of
 needing nothing set up. So every browser keeps its own copy of what it
 has seen (`chat-known`) and merges that with what the board still
 holds: your own history is never lost, and a newcomer gets the last
-twelve hours. Anything of yours the board has dropped is posted again
-when you open the page (`sayAgainWhatIsMissing`), spaced 400ms apart
-and capped — a page load is not an emergency on somebody else's
-server. A chat that is used keeps itself alive; only one left alone
-for half a day forgets.
+twelve hours. Your own account is posted again when you open the page
+(`sayAgainWhatIsMissing`) — without it on the board nobody can seal
+anything to you, so it is the one thing that must never quietly fall
+off. `catchUp()` is also what `addSomeone` asks before telling anyone
+that a name doesn't exist.
 
 **The posts are the shape.** There is no server holding a schema, so
-state is whatever reading the posts in order adds up to: an account, a
-room, or a line said. `takePost` is the only thing that writes state,
-and it is deliberately idempotent — the same post read from history, from
-the live stream and from a republish must land once.
+state is whatever reading the posts in order adds up to: an account, or
+a line said. `takePost` is the only thing that writes state, and it is
+deliberately idempotent — the same post read from history, from the
+live stream and from a republish must land once.
 
 **A line you typed goes up before it is sent.** Waiting on somebody
 else's server to see your own words is the difference between a chat
 and a form.
 
-**Who is here has a board of its own**, and that one is never read back
-as history — a heartbeat is worth something only in the moment, and
-twelve hours of them would bury everything else. Everyone says so every
-half minute (never while the tab is hidden or the page is elsewhere)
-and anyone unheard for eighty seconds has gone.
+### The chat page takes the window
 
-Verified end to end on the proxied machine, two separate browsers: the
-board answered in 0.5s, a cold second browser saw the first's room in
-0.5s and its history on joining, each saw the other's lines, and both
-counted `2 here`.
+The left bar has been empty since the notes tool moved out of it, and a
+chat wants the width more than any other page here, so on this page
+alone it is gone and the top strip slides away with it. `html.on-chat`
+is the one class that does it, set on the root because the pieces it
+moves belong to the shell — the bar, the scallop carved out of it, and
+the strip. The strip comes back on `.top-peek`, a 10px reach along the
+very top, which is where anybody looks for a menu that isn't there;
+`:focus-within` brings it back for a keyboard too.
+
+Don't collapse `--rail` to do this — it is the width of *both* side
+bars, and the right one is still wanted.
+
+**The thread is anchored to the field, not to the top.** `margin-top:
+auto` on the first row: the newest line is the one being read, and a
+short conversation floating at the top of an empty column reads as a
+mistake. Your own turns wear the filled mark, which is the only
+difference between the two sides — a second alignment for your own
+words would halve the width available to both.
+
+Verified end to end on the proxied machine, two separate browsers:
+sealed both ways, each read the other's, and from outside the board the
+messages are opaque base64 with none of the words in them.
 
 ## Known limits — accepted, don't re-raise
 

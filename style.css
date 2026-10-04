@@ -5503,12 +5503,52 @@ html.booting .booting-mark { display: flex; }
 html, body { overflow-x: hidden; }
 
 
+/* --- the chat page is given the whole window ---
+
+   The left bar has been empty since the notes tool moved out of it,
+   and a chat wants the width more than any other page here. The top
+   strip stays, but out of the way: it slides up and comes back when
+   the pointer goes to the very top of the window, which is where
+   anybody reaches for a menu that isn't there.
+
+   One class on the root, because the pieces this moves belong to the
+   shell rather than to the page — the bar, the scallop carved out of
+   it, and the strip itself. */
+.top-peek { display: none; }
+html.on-chat .rail-left { display: none; }
+/* the scallop is the edge of a bar that is no longer there */
+html.on-chat .app-shell::after,
+html.on-chat .app-shell::before { display: none; }
+html.on-chat .topbar {
+	left: 0;
+	padding-left: var(--gap);
+	transform: translateY(-100%);
+	transition: transform 0.26s var(--ease);
+}
+html.on-chat .top-peek {
+	display: block;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 5;      /* over the strip, so the reach works while it is up */
+	height: 10px;
+}
+/* reached for, hovered once it is down, or tabbed into */
+html.on-chat .top-peek:hover ~ .topbar,
+html.on-chat .topbar:hover,
+html.on-chat .topbar:focus-within { transform: none; }
+/* and the page takes back the room the strip was holding */
+html.on-chat .app-content { padding-top: 0; }
+
 /* =========================================================
-   25. chat — rooms, and the talking in them
+   25. chat — people, and the talking with them
    ---------------------------------------------------------
    The same bones as every other page here: a bar on top, then
-   two panes with a grip between them. The rooms are the narrow
-   one and the talking takes the rest.
+   two panes with a grip between them. The people are the
+   narrow one and the talking takes the rest. Until somebody
+   has been added there are no panes at all, only the one line
+   that fixes that.
    ========================================================= */
 .chat-panel {
 	display: flex;
@@ -5535,6 +5575,41 @@ html, body { overflow-x: hidden; }
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	font-size: 0.9rem;
+}
+
+/* nothing added yet. an empty people column beside an empty thread is
+   two boxes saying the same nothing — this says it once, in the middle
+   of the room, and hands over the one thing that fixes it. */
+.chat-start {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--group);
+	min-height: 0;
+	padding: 0 var(--gap);
+	text-align: center;
+}
+.chat-start-head {
+	/* the heading face every other heading over a panel wears */
+	margin: 0;
+	font-family: var(--head-font);
+	font-weight: 400;
+	font-size: 1.2rem;
+	letter-spacing: 0.02em;
+}
+.chat-start-say {
+	max-width: 28rem;
+	margin: 0;
+	font-size: 0.85rem;
+	line-height: 1.6;
+}
+.chat-start-add { width: min(20rem, 100%); }
+.chat-start-note {
+	min-height: 1em;
+	margin: 0;
+	font-size: 0.8rem;
 }
 
 .chat-body {
@@ -5600,6 +5675,10 @@ html, body { overflow-x: hidden; }
 }
 .room-row:hover,
 .room-row.is-on { color: var(--paper); background: var(--ink); }
+/* added, but they have never opened the chat, so there is no key of
+   theirs to seal anything with. the same dashed outline a slot on the
+   home board wears while it is only a place something could go. */
+.room-row.is-waiting { border-style: dashed; }
 
 /* a field with its own button sitting inside the outline, the move the
    notes box makes with its picture button */
@@ -5660,18 +5739,6 @@ html, body { overflow-x: hidden; }
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
-/* a small heading inside the one scrolling column, so people and
-   rooms read as two lists without being two boxes */
-.room-label {
-	margin: var(--tight) 0 0;
-	padding: 0 0.2rem;
-	font-family: var(--title-font, inherit);
-	font-size: 0.72rem;
-	letter-spacing: 0.04em;
-	opacity: 1;
-}
-.room-list > .room-label:first-child { margin-top: 0; }
-
 /* said of a thread between two people, and never of a room */
 .talk-sealed {
 	flex: none;
@@ -5696,12 +5763,14 @@ html, body { overflow-x: hidden; }
 	flex-direction: column;
 	gap: 0;
 	min-height: 0;
-	padding: 0 0.1rem;
+	/* the last line sits off the field rather than against it */
+	padding: 0 0.1rem var(--tight);
 	overflow-y: auto;
 	overscroll-behavior: contain;
 	scrollbar-width: none;
 }
 .talk-log::-webkit-scrollbar { display: none; }
+.talk-log > .empty-message { margin: auto; }
 
 /* one message. the face and the name sit on the first line and the
    words go under them in the same column — so the same person twice in
@@ -5711,9 +5780,16 @@ html, body { overflow-x: hidden; }
 	grid-template-columns: 2rem minmax(0, 1fr);
 	align-items: start;
 	gap: 0 var(--tight);
-	padding-top: var(--group);
+	/* a new turn gets air; the same person carrying on gets a line.
+	   at a full --group between every turn the thread read as a list
+	   of notices rather than as people talking. */
+	padding-top: 0.75rem;
 }
-.said-row.is-run-on { padding-top: 0.1rem; }
+/* a short thread sits on the field rather than floating at the top of
+   an empty column — the newest line is the one being read, so that is
+   the end that should be anchored. */
+.said-row:first-of-type { padding-top: 0; margin-top: auto; }
+.said-row.is-run-on { padding-top: 0.12rem; }
 .said-face {
 	grid-row: span 2;
 	display: grid;
@@ -5725,6 +5801,10 @@ html, body { overflow-x: hidden; }
 	border-radius: 999px;
 	font-size: 0.9rem;
 }
+/* your own turns wear the filled mark, the way every live thing here
+   does. it is the only difference between the two sides — a whole
+   second alignment for your own words would halve the width of both. */
+.said-row.is-mine .said-face { color: var(--paper); background: var(--ink); }
 .said-head {
 	display: flex;
 	align-items: baseline;
