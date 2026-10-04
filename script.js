@@ -8447,11 +8447,39 @@ function wakeListSite() {
     window.setTimeout(() => { listFrame.src = 'https://exportify.net/'; }, 380);
 }
 
+/* **A refused navigation leaves a dead frame, so it is put back.**
+
+   The `<meta>` policy stops the frame wandering off to spotify or to
+   a dead link, which is what it is for — but a refusal is not a
+   no-op: chrome abandons the page that was there and draws its own
+   blocked-content square, and a page cannot reach into a frame it
+   does not own to undo that. So the refusal is listened for instead.
+   The browser reports it to whichever document set the policy, which
+   is this one, and the frame is sent back where it came from.
+
+   Capped, because a site that bounced straight out again every time
+   would otherwise be reloaded forever; after three goes it is left
+   alone rather than fought with. */
+const SITE_RETURNS = 3;
+let sentBack = 0;
+let sendingBack = 0;
+window.addEventListener('securitypolicyviolation', (event) => {
+    if (event.violatedDirective !== 'frame-src') return;
+    if (!listFrame.dataset.woke || sentBack >= SITE_RETURNS) return;
+    sentBack += 1;
+    window.clearTimeout(sendingBack);
+    sendingBack = window.setTimeout(() => {
+        document.getElementById('listSite').classList.remove('is-here');
+        listFrame.src = 'https://exportify.net/';
+    }, 150);
+});
+
 scratchOpen.addEventListener('click', () => {
     paintLists();
     wakeListSite();
     showScreen(listScreen);
     fitSite();
+    sentBack = 0;      // a fresh opening gets its three goes again
 });
 
 /* the window holds exportify and nothing of ours to drop on: a list

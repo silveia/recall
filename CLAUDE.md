@@ -270,6 +270,16 @@ nothing else on the page is under a policy it wasn't under before.
 Measured with `securitypolicyviolation`: same origin loads, another
 origin is refused.
 
+**A refused navigation leaves a dead frame, so it is put back.** The
+policy stops the frame wandering off, which is what it is for — but a
+refusal is not a no-op: chrome abandons the page that was there and
+draws its own blocked-content square, and a page cannot reach into a
+frame it does not own to undo that. So the refusal is listened for
+instead: the browser reports it to whichever document set the policy,
+which is ours, and the frame is sent back to exportify. Capped at
+three goes, or a site that bounced straight out again would be
+reloaded forever.
+
 **A page cannot reach inside a frame it does not own.** So the layout,
 the type and the colours in there are not ours to set — only scale is.
 A `grayscale(1)` filter was tried and taken off again: it looks better
@@ -704,6 +714,38 @@ way — a white tile in a black column, on both sides of the swap.
 third of the height rather than disappearing. It used to be hidden
 outright at that width, which was fine when it was empty and is not
 now.
+
+**The boxes have to clear the trough, not sit in it.** The scallop's
+wave bites 13px back inside the bar's nominal edge, so a plain
+`--rail-pad` on the right left them 0.6px off the bumps and reading as
+touching them. The right padding is `--rail-pad + 13px`; the other
+three stay as they are.
+
+**The strip runs the whole width now.** Starting it past the bar left
+the bar's own top 52px uncovered — black, empty, and reading as a gap
+above the clock. Its tabs still start past the bar, so reaching over
+it doesn't drag them across it.
+
+Two one-pixel things, both of the kind you see without being able to
+name:
+
+- **The line under the strip crossed the first bump.** It is white, so
+  on a white page it shows there and nowhere else — a nick in the top
+  corner. It starts past the scallop entirely now; in the dark the
+  scallop's own line already says where the bar ends, and the two meet
+  at that x.
+- **The dark outline sat *on* the bump's edge**, and a stroke is
+  centred on its path, so half of it ate into the black and the shape
+  came out a hair different with the lights off. The arc is nudged
+  half a pixel out. Measured down a whole tile: the edge now matches
+  between light and dark to within 1px at every row, against a
+  consistent 1px before.
+
+**And the outline does not fade on its own.** The swap is one picture
+the compositor crosses over, and a half-second opacity transition
+running underneath it is a second, slower swap of the one edge
+everybody is looking at. Only the no-view-transition path fades it,
+where it is the only thing moving.
 
 Measured on all five pages at 1400px: the bar's first box and the
 page's first box both at y=68.0 — **0.0px apart** — and the page

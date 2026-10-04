@@ -512,10 +512,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: 26px 44px;
-	/* the tiles start where the black strip ends rather than at the top
-	   of the window, so the first bump below it is a whole one. what is
-	   above is behind the strip and never seen. */
-	background-position: 0 var(--topbar);
+	/* half a tile up from where the strip ends, so the strip's underside
+	   meets the wave at a **crest** rather than at a trough. Meeting it
+	   at a trough left the carve's white biting 9px into the bar on the
+	   single first row — a 1px nick in the top corner, which is exactly
+	   the sort of thing you see without being able to name. At a crest
+	   the first row under the strip is solid black and the wave flows
+	   down out of it. What is above is behind the strip and never seen. */
+	background-position: 0 calc(var(--topbar) - 22px);
 }
 
 /* in the dark the bar and the page are the same black, so the scallop
@@ -539,13 +543,25 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 26px;
 	pointer-events: none;
 	opacity: 0;
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M4 0 A 25 25 0 0 1 4 44' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");
+	/* the stroke is centred on whatever path it is given, so drawn on
+	   the bump's own edge half of it lands inside the black — which is
+	   why the shape looked a hair different with the lights off. the
+	   arc is nudged half a pixel out, so the line lies against the
+	   black rather than on it and the bump is the same size either
+	   way. */
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M4.5 0 A 25 25 0 0 1 4.5 44' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: 26px 44px;
-	background-position: 0 var(--topbar);   /* in step with the carve */
-	transition: opacity 0.4s var(--ease);
+	background-position: 0 calc(var(--topbar) - 22px);   /* in step with the carve */
 }
 html.inverted .app-shell::before { opacity: 1; }
+/* no fade of its own. the swap is one picture the compositor crosses
+   over (`startViewTransition`), and a half-second opacity transition
+   running underneath it is a second, slower swap of the one edge
+   everybody is looking at — which is exactly what made the bumps
+   change shape on the way across. Only the no-view-transition path
+   fades it, because there it is the only thing moving. */
+html.fading .app-shell::before { transition: opacity 0.4s var(--ease); }
 
 .app-right {
 	display: flex;
@@ -574,9 +590,13 @@ html.inverted .app-shell::before { opacity: 1; }
 	flex-direction: column;
 	color: var(--bar-ink);
 	background: var(--bar);
-	/* every inset in here is one value */
+	/* every inset in here is one value — except the right, which has
+	   the scallop to clear. the wave's trough is 13px inside the bar's
+	   nominal edge, so a plain --rail-pad put the boxes 0.6px off it
+	   and they read as touching the bumps. */
 	gap: var(--rail-pad);
 	padding: var(--rail-pad);
+	padding-right: calc(var(--rail-pad) + 13px);
 	/* starts right under the black strip, at the same distance under it
 	   as the first thing on every page — `--rail-pad` alone put it at
 	   13.6 while the pages sat at 16, which is a difference you can see
@@ -617,16 +637,20 @@ html:not(.inverted) .rail-left {
 .topbar {
 	position: absolute;
 	top: 0;
-	left: calc(var(--rail) - 13px);
+	/* the whole width, bar included. starting it past the bar left the
+	   bar's own top 52px uncovered — black, empty, and reading as a gap
+	   above the clock. the strip covers it now, and the bar's first box
+	   still sits --group under the strip exactly as every page does. */
+	left: 0;
 	right: 0;
 	z-index: 4;
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
 	height: var(--topbar);
-	/* the words use the whole strip, from just past the left bar to the
-	   far edge of the page, rather than stopping at the content column */
-	padding-left: calc(var(--gap) + 13px);
+	/* the words start past the bar, so the strip reaching over it does
+	   not drag the tabs across it too */
+	padding-left: calc(var(--rail) + var(--gap));
 	padding-right: var(--gap);
 	color: var(--bar-ink);
 	background: var(--bar);
@@ -648,10 +672,14 @@ html:not(.inverted) .rail-left {
 	content: '';
 	position: absolute;
 	top: 100%;
-	/* it reaches the bar's own edge. at the line's height the scallop
-	   is at the start of a tile — its narrowest — so 4px in is exactly
-	   where the black begins, and the two meet with nothing between. */
-	left: 4px;
+	/* it starts past the scallop entirely. Reaching back to the bar's
+	   edge it crossed the first bump, and being white on a white page
+	   it showed there and nowhere else — a 1px nick in the top corner,
+	   exactly the sort of thing you see without being able to name.
+	   There is nothing to mark over the bar anyway: in the dark the
+	   scallop's own white line already says where the bar ends, and
+	   the two meet at this x. */
+	left: calc(var(--rail) + 13px);
 	right: 0;
 	height: 1px;
 	background: var(--bar-ink);
