@@ -553,7 +553,8 @@
 
                                 <!-- the rooms down the side, the way they are -->
                                 <aside class="room-side" id="roomSide">
-                                    <div class="panel-head"><h2>rooms</h2></div>
+                                    <!-- it holds both now: people to message, and rooms -->
+                                    <div class="panel-head"><h2>chats</h2></div>
                                     <div class="room-scroll"><ol class="room-list" id="roomList"></ol></div>
                                     <form class="room-make" id="roomMake" novalidate>
                                         <input id="roomName" type="text" aria-label="a new room" placeholder="a new room">
@@ -573,6 +574,10 @@
                                 <section class="talk-side" id="talkSide">
                                     <div class="panel-head talk-head">
                                         <h2 id="talkName">no room yet</h2>
+                                        <!-- said only of a thread between two people, because
+                                             it is only true of one: a room on a public board
+                                             cannot be private and must not claim to be. -->
+                                        <p class="talk-sealed" id="talkSealed" hidden title="only you two can read this">sealed</p>
                                         <p class="talk-here" id="talkHere"></p>
                                     </div>
 
@@ -700,7 +705,7 @@
                                         <button class="basic-button is-solid ask-go" id="chatGo" type="button">make an account</button>
                                         <button class="scratch-plain ask-swap" id="chatSwap" type="button">i already have one</button>
 
-                                        <p class="ask-small">this runs on a public message board that anyone may connect to, so that nothing has to be set up. <b>treat everything here as public.</b> the password keeps your sister out of your account and nobody else out of anything &mdash; so don't use one you use elsewhere.</p>
+                                        <p class="ask-small">this runs on a public message board that anyone may connect to, so that nothing has to be set up. <b>a message to one person is sealed, and only the two of you can open it</b> &mdash; but a room is not, so treat anything said in a room as public. either way the names and the times are in the open; only the words are sealed. don't use a password you use elsewhere.</p>
                                     </div>
 
                                     <p class="ask-note" id="chatNote" aria-live="polite"></p>

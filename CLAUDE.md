@@ -1302,6 +1302,33 @@ checked **only when an account is made**. A word that was allowed when
 the account was made has to go on being allowed, or the rule locks out
 the very people it was meant to look after.
 
+**A message to one person is sealed; a room is not.** A public board
+cannot hold a private room, and saying it did would be a lie — so the
+two are told apart on screen rather than fudged: a thread between two
+people wears a `sealed` chip, a room wears none, and the window says
+which is which.
+
+The sealing is the browser's own crypto, no library. Each account
+carries a public key; a direct message is encrypted under a key the
+two of you derive between you (ecdh p-256 → aes-gcm) and never send.
+Your private key lives in this browser, and a copy wrapped in your own
+password (pbkdf2, 150k rounds) is posted to the board — which is what
+lets you sign in on another machine and still read your own messages.
+The password itself never leaves.
+
+**What is still in the open is who spoke to whom, and when.** Something
+has to say whose a message is. Only the words are sealed, and the
+window says that too rather than letting anyone assume otherwise.
+
+A sealed message whose sender's account hasn't arrived yet **waits**
+(`chatSealed`) rather than being dropped, and is opened on the next
+pass — an account post and a message post race, and the message
+usually wins.
+
+Verified on the public board from outside: the direct messages are
+opaque base64 with none of the words in them; the room lines are
+plain text, exactly as labelled.
+
 **The board forgets after twelve hours**, which is the one real cost of
 needing nothing set up. So every browser keeps its own copy of what it
 has seen (`chat-known`) and merges that with what the board still

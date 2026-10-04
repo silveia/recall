@@ -8892,6 +8892,7 @@ const roomMake = document.getElementById('roomMake');
 const roomNameField = document.getElementById('roomName');
 const talkName = document.getElementById('talkName');
 const talkHere = document.getElementById('talkHere');
+const talkSealed = document.getElementById('talkSealed');
 const talkLog = document.getElementById('talkLog');
 const talkEmpty = document.getElementById('talkEmpty');
 const talkForm = document.getElementById('talkForm');
@@ -8941,8 +8942,12 @@ let chatOn = false;             // the board is answering
 let chatMe = null;              // { name, word } — the word is the hash
 let chatPeople = {};            // lowercased name -> { name, word }
 let chatRooms = [];
-let chatRoomId = window.localStorage.getItem(CHAT_ROOM) || '';
+let chatRoomId = '';
 let chatTalk = {};              // room id -> the lines said in it
+let chatDms = {};               // their name (lowercased) -> the lines between you
+let chatSealed = [];            // sealed posts waiting on a key to read them
+let chatPriv = null;            // your own private key, this browser only
+let chatWith = null;            // { kind: 'room' | 'dm', id }
 let chatHereSeen = new Map();   // name -> when they were last heard
 let chatDoorNew = true;
 let chatStarting = false;
@@ -8950,6 +8955,20 @@ let chatStream = null;
 let hereStream = null;
 let hereTimer = 0;
 let hereSweep = 0;
+
+/* what was open last time. it used to be a bare room id, so anything
+   that isn't the new shape is read as a room and not argued with. */
+function whatWasOpen() {
+    const held = window.localStorage.getItem(CHAT_ROOM);
+    if (!held) return chatRooms[0] ? { kind: 'room', id: chatRooms[0].id } : null;
+    try {
+        const what = JSON.parse(held);
+        if (what && what.kind && what.id) return what;
+    } catch (error) {
+        return { kind: 'room', id: held };
+    }
+    return chatRooms[0] ? { kind: 'room', id: chatRooms[0].id } : null;
+}
 
 function saySomethingChat(words) {
     if (chatNote) chatNote.textContent = words || '';
@@ -8966,6 +8985,87 @@ async function wordHash(word) {
 
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
+/* --- keeping a message to the two people in it ---
+
+   The board is public: everything posted to it can be read by anyone
+   who knows the topic. A room therefore cannot be private, and saying
+   it was would be a lie. A message to one person can be, and is.
+
+   Each account carries a public key. A direct message is sealed with
+   a key the two of you work out between you (ecdh over p-256, then
+   aes-gcm) — so the board carries it, and the board cannot read it.
+   Nor can this page, for anybody else's.
+
+   **What still shows is who spoke to whom, and when.** The names on a
+   direct message are in the open, because something has to say whose
+   it is. Only the words are sealed. The window says so.
+
+   The private key is kept in this browser, and a copy of it wrapped
+   in your own password is posted to the board — which is what lets
+   you sign in somewhere else and still read your own messages. The
+   wrapping is pbkdf2 at 150k rounds; your password never leaves. */
+
+const KEY_SHAPE = { name: 'ECDH', namedCurve: 'P-256' };
+const SEAL_SHAPE = { name: 'AES-GCM', length: 256 };
+const WRAP_ROUNDS = 150000;
+
+const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const fromB64 = (text) => Uint8Array.from(atob(text), (ch) => ch.charCodeAt(0));
+
+async function makeKeyPair() {
+    const pair = await crypto.subtle.generateKey(KEY_SHAPE, true, ['deriveKey']);
+    return {
+        pub: await crypto.subtle.exportKey('jwk', pair.publicKey),
+        priv: await crypto.subtle.exportKey('jwk', pair.privateKey)
+    };
+}
+
+// the password, turned into something that can lock a key away
+async function wordKey(word, salt) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(word), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: WRAP_ROUNDS, hash: 'SHA-256' },
+        base, SEAL_SHAPE, false, ['encrypt', 'decrypt']
+    );
+}
+
+async function wrapPriv(privJwk, word) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await wordKey(word, salt);
+    const body = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(privJwk))
+    );
+    return { salt: toB64(salt), iv: toB64(iv), body: toB64(body) };
+}
+
+async function unwrapPriv(kept, word) {
+    const key = await wordKey(word, fromB64(kept.salt));
+    const out = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: fromB64(kept.iv) }, key, fromB64(kept.body)
+    );
+    return JSON.parse(new TextDecoder().decode(out));
+}
+
+/* the key the two of you share, worked out from your own private key
+   and their public one. neither of you ever sends it. */
+async function betweenKey(myPrivJwk, theirPubJwk) {
+    const mine = await crypto.subtle.importKey('jwk', myPrivJwk, KEY_SHAPE, false, ['deriveKey']);
+    const theirs = await crypto.subtle.importKey('jwk', theirPubJwk, KEY_SHAPE, false, []);
+    return crypto.subtle.deriveKey({ name: 'ECDH', public: theirs }, mine, SEAL_SHAPE, false, ['encrypt', 'decrypt']);
+}
+
+async function sealWords(key, words) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const body = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(words));
+    return { iv: toB64(iv), body: toB64(body) };
+}
+
+async function openWords(key, iv, body) {
+    const out = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(iv) }, key, fromB64(body));
+    return new TextDecoder().decode(out);
+}
+
 /* --- what this browser remembers on its own --- */
 
 function loadKnown() {
@@ -8975,6 +9075,8 @@ function loadKnown() {
         chatPeople = held.people || {};
         chatRooms = Array.isArray(held.rooms) ? held.rooms : [];
         chatTalk = held.talk || {};
+        chatDms = held.dms || {};
+        chatPriv = held.priv || null;
     } catch (error) {
         // nothing kept, or kept badly. the board will fill it in.
     }
@@ -8985,7 +9087,9 @@ function keepKnown() {
         window.localStorage.setItem(CHAT_KNOWN, JSON.stringify({
             people: chatPeople,
             rooms: chatRooms,
-            talk: chatTalk
+            talk: chatTalk,
+            dms: chatDms,
+            priv: chatPriv
         }));
     } catch (error) {
         // out of room; it just won't survive a refresh
@@ -9005,7 +9109,27 @@ function takePost(post) {
     if (!post || !post.k) return false;
     if (post.k === 'who' && post.name && post.word) {
         const key = post.name.toLowerCase();
-        if (!chatPeople[key]) chatPeople[key] = { name: post.name, word: post.word };
+        /* an account posted again carries the same keys; one posted
+           twice by two different people is the first one's, and the
+           second is turned away at the door rather than here. */
+        if (!chatPeople[key]) {
+            chatPeople[key] = { name: post.name, word: post.word, pub: post.pub || null, keep: post.keep || null };
+        } else if (!chatPeople[key].pub && post.pub) {
+            chatPeople[key].pub = post.pub;
+            chatPeople[key].keep = post.keep || chatPeople[key].keep;
+        }
+        return true;
+    }
+    /* a sealed message. it is only ours if our name is on it, and it
+       can only be read once we have their key — so it is set aside and
+       opened by `openWhatIsWaiting`, never here. */
+    if (post.k === 'dm' && post.id && post.from && post.to) {
+        if (!chatMe) return false;
+        const mine = chatMe.name.toLowerCase();
+        if (post.from.toLowerCase() !== mine && post.to.toLowerCase() !== mine) return false;
+        const other = post.from.toLowerCase() === mine ? post.to.toLowerCase() : post.from.toLowerCase();
+        if ((chatDms[other] || []).some((one) => one.id === post.id)) return false;
+        chatSealed.push(post);
         return true;
     }
     if (post.k === 'room' && post.id && post.name) {
@@ -9056,6 +9180,7 @@ async function wakeChat() {
             }
         });
         chatOn = true;
+        await openWhatIsWaiting();
         keepKnown();
         sayAgainWhatIsMissing(onBoard);
     } catch (error) {
@@ -9068,7 +9193,41 @@ async function wakeChat() {
     chatStarting = false;
     paintChatBar();
     paintRooms();
-    enterRoom(chatRoomId || (chatRooms[0] && chatRooms[0].id) || '');
+    openWith(whatWasOpen());
+}
+
+/* sealed messages, opened once there is a key for them. a message
+   from somebody whose account hasn't come down yet simply waits — it
+   is not lost, and the next pass will have it. */
+async function openWhatIsWaiting() {
+    if (!chatMe || !chatPriv || !chatSealed.length) return false;
+    const waiting = chatSealed;
+    chatSealed = [];
+    const stillWaiting = [];
+    let opened = false;
+
+    for (const post of waiting) {
+        const mine = chatMe.name.toLowerCase();
+        const other = post.from.toLowerCase() === mine ? post.to.toLowerCase() : post.from.toLowerCase();
+        const them = chatPeople[other];
+        if (!them || !them.pub) { stillWaiting.push(post); continue; }
+        try {
+            const key = await betweenKey(chatPriv, them.pub);
+            const said = await openWords(key, post.iv, post.body);
+            const held = chatDms[other] || [];
+            if (held.some((one) => one.id === post.id)) continue;
+            chatDms[other] = [...held, { id: post.id, by: post.from, said, at: post.at || 0 }]
+                .sort((one, two) => (one.at || 0) - (two.at || 0))
+                .slice(-TALK_KEEP);
+            opened = true;
+        } catch (error) {
+            // not for us after all, or sealed to a key we have since
+            // replaced. nothing to do but leave it alone.
+        }
+    }
+    chatSealed = stillWaiting;
+    if (opened) keepKnown();
+    return opened;
 }
 
 /* the board forgets after twelve hours. anything this browser knows
@@ -9103,34 +9262,82 @@ function listenToBoard() {
         }
         if (!takePost(post)) return;
         keepKnown();
-        if (post.k === 'room') paintRooms();
-        if (post.k === 'say' && post.room === chatRoomId) paintTalk();
+        if (post.k === 'room' || post.k === 'who') paintRooms();
+        if (post.k === 'say' && chatWith && chatWith.kind === 'room' && post.room === chatWith.id) paintTalk();
+        /* a sealed one, and possibly the key for an older one: both
+           kinds of news mean having another go at the pile */
+        if (post.k === 'dm' || post.k === 'who') {
+            openWhatIsWaiting().then((opened) => { if (opened) paintTalk(); });
+        }
     });
     chatStream.addEventListener('error', () => paintChatBar());
 }
 
 /* --- the rooms --- */
 
+/* the column is people first, then rooms — a message to one person is
+   the private kind and the one anybody reaches for, so it goes on top.
+   One scroll, two headings, rather than two boxes with two scrollbars
+   in a pane that narrows to nothing. */
 function paintRooms() {
     roomList.innerHTML = '';
-    if (!chatRooms.length) {
+
+    if (!chatMe) {
         const none = document.createElement('li');
         none.className = 'empty-message';
-        none.textContent = chatMe ? 'no rooms yet' : 'sign in to see them';
+        none.textContent = 'sign in to see them';
         roomList.append(none);
         return;
     }
-    chatRooms.forEach((room) => {
+
+    const label = (words) => {
         const line = document.createElement('li');
-        const press = document.createElement('button');
-        press.className = 'room-row';
-        press.type = 'button';
-        press.textContent = room.name;
-        press.title = room.name;
-        if (room.id === chatRoomId) press.classList.add('is-on');
-        press.addEventListener('click', () => enterRoom(room.id));
-        line.append(press);
+        line.className = 'room-label';
+        line.textContent = words;
         roomList.append(line);
+    };
+    const row = (words, on, press, said) => {
+        const line = document.createElement('li');
+        const tap = document.createElement('button');
+        tap.className = 'room-row';
+        tap.type = 'button';
+        tap.textContent = words;
+        tap.title = said || words;
+        if (on) tap.classList.add('is-on');
+        tap.addEventListener('click', press);
+        line.append(tap);
+        roomList.append(line);
+    };
+
+    const mine = chatMe.name.toLowerCase();
+    const people = Object.values(chatPeople)
+        .filter((one) => one.name.toLowerCase() !== mine)
+        .sort((one, two) => one.name.localeCompare(two.name));
+
+    label('people');
+    if (!people.length) {
+        const none = document.createElement('li');
+        none.className = 'empty-message';
+        none.textContent = 'nobody else yet';
+        roomList.append(none);
+    }
+    people.forEach((one) => {
+        const key = one.name.toLowerCase();
+        const on = chatWith && chatWith.kind === 'dm' && chatWith.id === key;
+        // no key of theirs yet means nothing can be sealed to them
+        row(one.name, on, () => openWith({ kind: 'dm', id: key }), one.pub ? one.name : `${one.name} — no key yet`);
+    });
+
+    label('rooms');
+    if (!chatRooms.length) {
+        const none = document.createElement('li');
+        none.className = 'empty-message';
+        none.textContent = 'no rooms yet';
+        roomList.append(none);
+    }
+    chatRooms.forEach((room) => {
+        const on = chatWith && chatWith.kind === 'room' && chatWith.id === room.id;
+        row(room.name, on, () => openWith({ kind: 'room', id: room.id }), room.name);
     });
 }
 
@@ -9143,24 +9350,44 @@ roomMake.addEventListener('submit', (event) => {
     takePost(made);
     keepKnown();
     roomNameField.value = '';
-    paintRooms();
-    enterRoom(made.id);
+    openWith({ kind: 'room', id: made.id });
     postToBoard(CHAT_TOPIC, made).catch(() => saySomethingChat('that room did not reach the board'));
 });
 
-function enterRoom(id) {
-    chatRoomId = id || '';
-    window.localStorage.setItem(CHAT_ROOM, chatRoomId);
+/* what is on screen: a person, or a room. one place decides it, so
+   the head, the list, the log and the field can never disagree. */
+function openWith(what) {
+    chatWith = what && what.id ? what : null;
+    chatRoomId = chatWith && chatWith.kind === 'room' ? chatWith.id : '';
+    window.localStorage.setItem(CHAT_ROOM, JSON.stringify(chatWith));
     chatHereSeen = new Map();
     paintRooms();
     paintTalk();
     paintHere();
 
-    const room = chatRooms.find((one) => one.id === chatRoomId);
+    if (!chatWith) {
+        talkName.textContent = 'nothing open';
+        talkSealed.hidden = true;
+        talkSay.disabled = true;
+        stopHeartbeat();
+        return;
+    }
+
+    if (chatWith.kind === 'dm') {
+        const them = chatPeople[chatWith.id];
+        talkName.textContent = them ? them.name : chatWith.id;
+        talkSealed.hidden = false;
+        talkSay.disabled = !chatOn || !them || !them.pub || !chatPriv;
+        talkHere.textContent = '';
+        stopHeartbeat();     // a two-person thread has nobody to count
+        return;
+    }
+
+    const room = chatRooms.find((one) => one.id === chatWith.id);
     talkName.textContent = room ? room.name : 'no room yet';
-    talkSay.disabled = !room || !chatMe || !chatOn;
-    if (!room || !chatMe || !chatOn) { stopHeartbeat(); return; }
-    startHeartbeat();
+    talkSealed.hidden = true;
+    talkSay.disabled = !room || !chatOn;
+    if (room && chatOn) startHeartbeat(); else stopHeartbeat();
 }
 
 /* who is in the room. there is nothing to ask — everyone says so every
@@ -9210,15 +9437,21 @@ function paintHere() {
 
 /* --- what is said --- */
 
-talkForm.addEventListener('submit', (event) => {
+talkForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const words = talkSay.value.trim();
-    if (!words || !chatMe || !chatRoomId) return;
+    if (!words || !chatMe || !chatWith) return;
     talkSay.value = '';
+
+    if (chatWith.kind === 'dm') {
+        await sendSealed(chatWith.id, words.slice(0, 1200));
+        return;
+    }
+
     const post = {
         k: 'say',
         id: newId(),
-        room: chatRoomId,
+        room: chatWith.id,
         by: chatMe.name,
         said: words.slice(0, 1200),
         at: Date.now()
@@ -9231,9 +9464,41 @@ talkForm.addEventListener('submit', (event) => {
     postToBoard(CHAT_TOPIC, post).catch(() => saySomethingChat('that line did not reach the board'));
 });
 
+/* a message to one person: sealed here, posted sealed, and opened
+   only by the two of you. what goes on the board is the two names,
+   the time, and a box nobody else can open. */
+async function sendSealed(other, words) {
+    const them = chatPeople[other];
+    if (!them || !them.pub) { saySomethingChat('no key for them yet — they need to open the chat once'); return; }
+    if (!chatPriv) { saySomethingChat('this browser has no key of yours. sign in again'); return; }
+
+    const post = { k: 'dm', id: newId(), from: chatMe.name, to: them.name, at: Date.now() };
+    try {
+        const key = await betweenKey(chatPriv, them.pub);
+        const sealed = await sealWords(key, words);
+        post.iv = sealed.iv;
+        post.body = sealed.body;
+    } catch (error) {
+        saySomethingChat('that would not seal');
+        return;
+    }
+
+    // your own copy goes up now; it is already readable to you
+    chatDms[other] = [...(chatDms[other] || []), { id: post.id, by: chatMe.name, said: words, at: post.at }]
+        .slice(-TALK_KEEP);
+    keepKnown();
+    paintTalk();
+    postToBoard(CHAT_TOPIC, post).catch(() => saySomethingChat('that line did not reach the board'));
+}
+
+function whatIsSaid() {
+    if (!chatWith) return [];
+    return (chatWith.kind === 'dm' ? chatDms[chatWith.id] : chatTalk[chatWith.id]) || [];
+}
+
 function paintTalk() {
     talkLog.querySelectorAll('.said-row').forEach((row) => row.remove());
-    const said = chatTalk[chatRoomId] || [];
+    const said = whatIsSaid();
     talkEmpty.hidden = said.length > 0;
     if (!said.length) return;
 
@@ -9327,6 +9592,7 @@ chatGo.addEventListener('click', async () => {
     const word = chatWord.value;
     if (!called) { saySomethingChat('what should people call you?'); return; }
     if (!word) { saySomethingChat('it wants a password too'); return; }
+
     /* only when making one: a word that was allowed when the account
        was made has to go on being allowed, or the rule locks out the
        very people it was meant to look after. */
@@ -9342,12 +9608,35 @@ chatGo.addEventListener('click', async () => {
 
     if (chatDoorNew) {
         if (known) { saySomethingChat('that name is taken. sign in instead?'); return; }
-        const post = { k: 'who', name: called, word: hash, at: Date.now() };
+        saySomethingChat('making your keys…');
+        const pair = await makeKeyPair();
+        chatPriv = pair.priv;
+        const post = {
+            k: 'who',
+            name: called,
+            word: hash,
+            pub: pair.pub,
+            // your own key, locked with your own password, so you can
+            // read your messages on another machine
+            keep: await wrapPriv(pair.priv, word),
+            at: Date.now()
+        };
         takePost(post);
         postToBoard(CHAT_TOPIC, post).catch(() => {});
     } else {
         if (!known) { saySomethingChat('no account by that name'); return; }
         if (known.word !== hash) { saySomethingChat('that password is not the one'); return; }
+        /* this browser may never have seen this account. the copy of
+           the key kept on the board is locked with the same password
+           just typed, so it can be opened here and now. */
+        if (!chatPriv && known.keep) {
+            saySomethingChat('unlocking your key…');
+            try {
+                chatPriv = await unwrapPriv(known.keep, word);
+            } catch (error) {
+                saySomethingChat('signed in, but your old messages cannot be opened here');
+            }
+        }
     }
 
     chatMe = { name: known ? known.name : called, word: hash };
@@ -9357,17 +9646,25 @@ chatGo.addEventListener('click', async () => {
     saySomethingChat('');
     paintChatBar();
     paintRooms();
-    enterRoom(chatRoomId || (chatRooms[0] && chatRooms[0].id) || '');
+    await openWhatIsWaiting();
+    openWith(whatWasOpen());
     closeModal();
 });
 
 chatSignOut.addEventListener('click', () => {
     stopHeartbeat();
     chatMe = null;
+    chatPriv = null;      // the key goes with the account, not the browser
+    chatDms = {};
+    chatSealed = [];
+    chatWith = null;
     window.localStorage.removeItem(CHAT_ME);
+    keepKnown();
     talkSay.disabled = true;
+    talkSealed.hidden = true;
     paintChatBar();
     paintRooms();
+    paintTalk();
 });
 
 /* the rooms take a quarter, the talking the rest — the same grip every

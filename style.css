@@ -5660,6 +5660,28 @@ html, body { overflow-x: hidden; }
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
+/* a small heading inside the one scrolling column, so people and
+   rooms read as two lists without being two boxes */
+.room-label {
+	margin: var(--tight) 0 0;
+	padding: 0 0.2rem;
+	font-family: var(--title-font, inherit);
+	font-size: 0.72rem;
+	letter-spacing: 0.04em;
+	opacity: 1;
+}
+.room-list > .room-label:first-child { margin-top: 0; }
+
+/* said of a thread between two people, and never of a room */
+.talk-sealed {
+	flex: none;
+	margin: 0;
+	padding: 0.1rem 0.5rem 0;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font-size: 0.7rem;
+}
+
 .talk-here {
 	flex: none;
 	margin: 0;
