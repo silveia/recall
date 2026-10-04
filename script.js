@@ -8990,24 +8990,28 @@ if (chatWord) {
     });
 }
 
-/* six long, and a letter and a number in it. not security — six
-   characters never is — but it stops `1` and `aa`, which are the ones
-   somebody else guesses on their first try. */
-const WORD_SHORT = 6;
-function wordComplaint(word) {
-    if (word.length < WORD_SHORT) return `the password wants ${WORD_SHORT} characters or more`;
-    if (!/[a-z]/i.test(word)) return 'the password wants a letter in it';
-    if (!/[0-9]/.test(word)) return 'the password wants a number in it';
-    return '';
-}
+/* No rule on the password. It guards a thread on a public board, and
+   a page that turns somebody away over a missing digit is pretending
+   to protect something it cannot. Whatever you type is what it is. */
 
 const CHAT_BOARD = 'https://ntfy.sh';
 /* versioned, so what is kept can change shape without every old page
    arguing with every new one */
-const CHAT_TOPIC = 'morie-top-chat-v1';
-const CHAT_ME = 'chat-me';
-const CHAT_KNOWN = 'chat-known';
-const CHAT_WITH = 'chat-with';
+/* **Bumping this is the reset.** There is no way to delete a post from
+   a public board, and no account to close — what there is, is another
+   board. A new name here is an empty one: no accounts, no threads,
+   nobody. The keys below carry the same number so a browser's own copy
+   goes with it rather than being left pointing at people who, on this
+   board, do not exist. The old ones are cleared on sight. */
+const CHAT_ERA = 'v2';
+const CHAT_TOPIC = `morie-top-chat-${CHAT_ERA}`;
+const CHAT_ME = `chat-me-${CHAT_ERA}`;
+const CHAT_KNOWN = `chat-known-${CHAT_ERA}`;
+const CHAT_WITH = `chat-with-${CHAT_ERA}`;
+const CHAT_GONE = ['chat-me', 'chat-known', 'chat-with', 'chat-room', 'chat-place'];
+CHAT_GONE.forEach((key) => {
+    try { window.localStorage.removeItem(key); } catch (error) { /* nothing kept */ }
+});
 const TALK_KEEP = 300;          // how much of a thread each browser keeps
 const SAME_BREATH = 5 * 60 * 1000;
 
@@ -9574,6 +9578,7 @@ function paintChatBar() {
    with a message belongs in the function box, not over a login form —
    nobody reads a paragraph on the way to typing their name. */
 function paintChatDoor() {
+    if (doorBusy) return;      // it is saying what it is doing
     chatDoorTitle.textContent = chatDoorNew ? 'sign up' : 'log in';
     chatGo.textContent = chatDoorNew ? 'sign up' : 'log in';
     chatSwap.textContent = chatDoorNew ? 'already have an account?' : 'need an account?';
@@ -9593,71 +9598,102 @@ chatSwap.addEventListener('click', () => {
     paintChatDoor();
 });
 
+/* the button says what it is doing and cannot be pressed twice while
+   it does it. making an account is three slow things in a row — the
+   board, a key pair, and the wrapping — and in silence it reads as a
+   press that did nothing, which is how you get two accounts. */
+let doorBusy = false;
+function doorWorking(words) {
+    doorBusy = Boolean(words);
+    chatGo.disabled = doorBusy;
+    chatSwap.disabled = doorBusy;
+    chatGo.classList.toggle('is-working', doorBusy);
+    chatGo.textContent = words || (chatDoorNew ? 'sign up' : 'log in');
+}
+
 chatGo.addEventListener('click', async () => {
+    if (doorBusy) return;
     const called = chatHandle.value.trim().slice(0, 24);
     const word = chatWord.value;
     if (!called) { saySomethingChat('what should people call you?'); return; }
     if (!word) { saySomethingChat('it wants a password too'); return; }
 
-    /* only when making one: a word that was allowed when the account
-       was made has to go on being allowed, or the rule locks out the
-       very people it was meant to look after. */
-    if (chatDoorNew) {
-        const wrong = wordComplaint(word);
-        if (wrong) { saySomethingChat(wrong); return; }
-    }
-    if (!chatOn) { saySomethingChat('finding the board…'); await wakeChat(); }
-    if (!chatOn) { saySomethingChat('the chat board would not answer'); return; }
+    saySomethingChat('');
+    doorWorking(chatDoorNew ? 'signing up…' : 'logging in…');
+    try {
+        if (!chatOn) await wakeChat();
+        if (!chatOn) { saySomethingChat('the chat board would not answer'); return; }
 
-    const hash = await wordHash(word);
-    const known = chatPeople[called.toLowerCase()];
+        /* **Ask the board before saying a name is free.** The list in
+           hand is whatever had arrived when the page opened, so a name
+           taken since — or taken while this page sat open — looked
+           free, and two people walked off with one name and one of
+           them could not read their own messages. One request, and the
+           answer is current. */
+        doorWorking(chatDoorNew ? 'checking the name…' : 'logging in…');
+        await catchUp();
 
-    if (chatDoorNew) {
-        if (known) { saySomethingChat('that name is taken. sign in instead?'); return; }
-        saySomethingChat('making your keys…');
-        const pair = await makeKeyPair();
-        chatPriv = pair.priv;
-        const post = {
-            k: 'who',
-            name: called,
-            word: hash,
-            pub: pair.pub,
-            // your own key, locked with your own password, so you can
-            // read your messages on another machine
-            keep: await wrapPriv(pair.priv, word),
-            at: Date.now()
-        };
-        takePost(post);
-        postToBoard(CHAT_TOPIC, post).catch(() => {});
-    } else {
-        if (!known) { saySomethingChat('no account by that name'); return; }
-        if (known.word !== hash) { saySomethingChat('that password is not the one'); return; }
-        /* this browser may never have seen this account. the copy of
-           the key kept on the board is locked with the same password
-           just typed, so it can be opened here and now. */
-        if (!chatPriv && known.keep) {
-            saySomethingChat('unlocking your key…');
-            try {
-                chatPriv = await unwrapPriv(known.keep, word);
-            } catch (error) {
-                saySomethingChat('signed in, but your old messages cannot be opened here');
+        const hash = await wordHash(word);
+        const known = chatPeople[called.toLowerCase()];
+
+        if (chatDoorNew) {
+            if (known) {
+                saySomethingChat(`${known.name} is already taken — log in instead?`);
+                return;
+            }
+            doorWorking('making your keys…');
+            const pair = await makeKeyPair();
+            chatPriv = pair.priv;
+            const post = {
+                k: 'who',
+                name: called,
+                word: hash,
+                pub: pair.pub,
+                // your own key, locked with your own password, so you
+                // can read your messages on another machine
+                keep: await wrapPriv(pair.priv, word),
+                at: Date.now()
+            };
+            takePost(post);
+            await postToBoard(CHAT_TOPIC, post).catch(() => {});
+        } else {
+            if (!known) { saySomethingChat('no account by that name'); return; }
+            if (known.word !== hash) { saySomethingChat('that password is not the one'); return; }
+            /* this browser may never have seen this account. the copy
+               of the key kept on the board is locked with the same
+               password just typed, so it can be opened here and now. */
+            if (!chatPriv && known.keep) {
+                doorWorking('unlocking your key…');
+                try {
+                    chatPriv = await unwrapPriv(known.keep, word);
+                } catch (error) {
+                    saySomethingChat('logged in, but your old messages cannot be opened here');
+                }
             }
         }
-    }
 
-    chatMe = { name: known ? known.name : called, word: hash };
-    window.localStorage.setItem(CHAT_ME, JSON.stringify(chatMe));
-    keepKnown();
-    chatWord.value = '';
-    saySomethingChat('');
-    paintChatBar();
-    paintPeople();
-    await openWhatIsWaiting();
-    openWith(whoWasOpen());
-    closeModal();
+        chatMe = { name: known ? known.name : called, word: hash };
+        window.localStorage.setItem(CHAT_ME, JSON.stringify(chatMe));
+        keepKnown();
+        chatWord.value = '';
+        saySomethingChat('');
+        paintChatBar();
+        paintPeople();
+        await openWhatIsWaiting();
+        openWith(whoWasOpen());
+        closeModal();
+    } finally {
+        // whatever happened, the button goes back to being a button
+        doorWorking('');
+    }
 });
 
-chatSignOut.addEventListener('click', () => {
+/* asked first, because it costs something: the key this browser holds
+   goes with it, and the threads it has opened go dark until the
+   password is typed again. the same chip every other undoable-once
+   press on this site uses. */
+chatSignOut.addEventListener('click', async () => {
+    if (!await askConfirm('log out?', chatSignOut)) return;
     chatMe = null;
     chatPriv = null;      // the key goes with the account, not the browser
     chatDms = {};

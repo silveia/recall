@@ -851,6 +851,13 @@ Two shapes, not three: a `large` was two rows tall and has nowhere to
 be. A board saved when it was deeper comes back to row 0, and a tile
 that no longer fits is dropped rather than stacked.
 
+**One inset on all four sides of the page, and it has to stay that
+way.** Half a step over the first box was tried, on the grounds that
+the strip above is already a margin of sorts — and it reads as a
+mistake, because every other edge is a `--group` and the eye compares
+them. `#homeScreen` is the one screen element behind all five pages,
+so this is a single line.
+
 **Everything starts 16px under the black strip** — every page and the
 bar both. It was three different numbers: the pages at 16, the
 bar at 13.6 (it was using `--rail-pad`, which is its *side* inset), and
@@ -1477,6 +1484,36 @@ The rule is six characters with a letter and a number, and it is
 checked **only when an account is made**. A word that was allowed when
 the account was made has to go on being allowed, or the rule locks out
 the very people it was meant to look after.
+
+**Bumping `CHAT_ERA` is the reset.** There is no way to delete a post
+from a public board and no account to close — what there is, is
+another board. A new era is an empty one: no accounts, no threads,
+nobody. The three localStorage keys carry the same number so a
+browser's own copy goes with it rather than being left pointing at
+people who, on this board, do not exist; the previous era's keys are
+cleared on sight.
+
+**Ask the board before saying a name is free.** The list in hand is
+whatever had arrived when the page opened, so a name taken since — or
+taken while the page sat open — looked free, and two people walked off
+with one name while only one of them could read their own messages.
+`catchUp()` runs first, and the answer is current.
+
+**No rule on the password.** It guards a thread on a public board, and
+a page that turns somebody away over a missing digit is pretending to
+protect something it cannot.
+
+**The door says what it is doing.** Making an account is three slow
+things in a row — the board, a key pair, and the pbkdf2 wrapping — and
+in silence that reads as a press that did nothing, which is how you
+get two accounts. The button carries the state (`checking the name…`,
+`making your keys…`) and is locked while it holds it, along with the
+swap beside it. `paintChatDoor` returns early while it is busy, or it
+would paint the label back.
+
+**Logging out is asked first**, with the same chip every other
+undoable-once press here uses: the key this browser holds goes with
+it, and every thread goes dark until the password is typed again.
 
 **The board forgets after twelve hours**, which is the one real cost of
 needing nothing set up. So every browser keeps its own copy of what it

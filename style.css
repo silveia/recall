@@ -782,11 +782,12 @@ html:not(.inverted) .rail-left {
 	   wider one — the sides used to be twice the top and bottom, and
 	   evening them up by growing the top and bottom cost the boxes
 	   height they needed more than the page needed margin. */
+	/* one inset on all four sides, and it has to stay that way. Half a
+	   step over the first box was tried, on the grounds that the strip
+	   above is already a margin of sorts — and it reads as a mistake,
+	   because every other edge on the page is a --group and the eye
+	   compares them. */
 	padding: var(--group);
-	/* less air over the first row than around it: the strip above is
-	   already a margin of sorts, and the board sat low under it. the
-	   shorthand is above, so this has to come after it. */
-	padding-top: var(--tight);
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
@@ -5871,6 +5872,11 @@ html, body { overflow-x: hidden; }
 	   in the clear. */
 	-webkit-user-drag: none;
 }
+
+/* the button while it is doing the slow part. no spinner: it says
+   which slow part, which is more use than a turning shape. */
+.ask-go.is-working { cursor: var(--cur-no); }
+.ask-go:disabled, .ask-swap:disabled { opacity: 1; }   /* no grey here either */
 
 .ask-swap { align-self: center; }
 /* the small print, and it is small print on purpose — it is the sort
