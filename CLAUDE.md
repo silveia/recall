@@ -858,6 +858,13 @@ mistake, because every other edge is a `--group` and the eye compares
 them. `#homeScreen` is the one screen element behind all five pages,
 so this is a single line.
 
+**The left edge is the exception, asked for.** The bumps already reach
+`--wave-out` into the page, so a full `--group` past them read as a
+white strip between the bar and the boxes. The left inset is
+`--wave-out + 4px` — the boxes sit 4px off the crests. Under 760px,
+where the bar lies down and there are no bumps, it goes back to
+`--group`.
+
 **Everything starts 16px under the black strip** — every page and the
 bar both. It was three different numbers: the pages at 16, the
 bar at 13.6 (it was using `--rail-pad`, which is its *side* inset), and

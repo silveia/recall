@@ -794,6 +794,10 @@ html:not(.inverted) .rail-left {
 	   because every other edge on the page is a --group and the eye
 	   compares them. */
 	padding: var(--group);
+	/* **Except the left, by request.** The bumps already reach 6px into
+	   the page, so a full --group past them read as a white strip
+	   between the bar and the boxes. The boxes sit 4px off the crests. */
+	padding-left: calc(var(--wave-out) + 4px);
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
@@ -3755,6 +3759,7 @@ html:not(.inverted) .rail-left {
 	.help-box { flex: 1; min-height: 0; overflow-y: auto; }
 	.app-shell::after, .app-shell::before { display: none; }   /* its edge goes with it */
 	.topbar { left: 0; }                   /* no scallop to reach under */
+	#homeScreen { padding-left: var(--group); }   /* no bumps to sit against */
 }
 
 /* five words share the strip, each holding a fifth of it, so the big
