@@ -74,6 +74,7 @@
 	   has to line up with the wave is worked out from them.
 	   --wave-out is how far a crest reaches past --rail: 4/26ths of
 	   the width, which is where the arc's widest point lands. */
+	--rail-round: 1.6rem;  /* how far in the rounded ends of the bar's boxes reach */
 	--wave-w: 32.5px;
 	--wave-h: 55px;
 	--wave-out: 5px;
@@ -4572,6 +4573,25 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 .binned-item:hover { color: var(--paper); background: var(--ink); }
 
+
+/* **The bar's boxes are round at both ends, all the way.** A short box
+   takes a true half circle on each side (999px is clamped to half its
+   height). A box that can grow tall — the function drawer open, a long
+   bin — would turn into a pill standing on end that way, so it takes a
+   half ellipse instead: a fixed reach across, the whole height down.
+   The sides are still one curve top to bottom, with no straight edge.
+
+   The words are held further in to clear the curves. "for now" — the
+   insets are a first pass and expected to move. */
+.rail-clock, .rail-store, .rail-now, .help-box { border-radius: 999px; }
+.help-box.is-open, .rail-binned { border-radius: var(--rail-round) / 50%; }
+.rail-store, .rail-now, .rail-binned {
+	padding-left: var(--rail-round);
+	padding-right: var(--rail-round);
+}
+.help-box { padding-left: var(--rail-round); padding-right: var(--rail-round); }
+.help-box.is-open { padding-top: var(--group); padding-bottom: calc(var(--group) * 2); }
+.rail-clock { padding-left: var(--group); padding-right: var(--group); }
 
 /* =========================================================
    23. home — the board you arrange yourself
