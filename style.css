@@ -494,12 +494,9 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	top: 0;
 	bottom: 0;
 	left: calc(var(--rail) - 13px);
-	/* **Above the strip (4), not under it.** Under it the wave's top
-	   52px were hidden and the bar's corner came out straight, so the
-	   curve looked like it began halfway down the page. Over it the
-	   wave carries on to the very top and bites into the end of the
-	   strip, which is the same thing it does to the bar. */
-	z-index: 5;
+	/* above the bar it carves (2), but under the black strip (4) — at 5
+	   it painted its own white tile into the strip and notched it */
+	z-index: 3;
 	width: 26px;
 	pointer-events: none;
 	/* two-tone: the page's white fills the tile and the bump is painted
@@ -515,33 +512,24 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M0 0 H4 A 25 25 0 0 1 4 44 H0 Z' fill='%23000'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: 26px 44px;
-	/* **A whole tile up from where the strip ends.** The strip does not
-	   cover the bar, so starting the wave at its underside left the
-	   bar's top corner straight and the curve looking like it began
-	   halfway down. A full tile up puts bumps at the very top of the
-	   window and still lands the strip's underside on a trough — the
-	   wave's narrowest point — which is where the line under the strip
-	   meets it with nothing crossing and nothing left over. */
-	background-position: 0 calc(var(--topbar) - 44px);
+	/* half a tile up from where the strip ends, so the strip's underside
+	   meets the wave at a **crest** rather than at a trough. Meeting it
+	   at a trough left the carve's white biting 9px into the bar on the
+	   single first row — a 1px nick in the top corner, which is exactly
+	   the sort of thing you see without being able to name. At a crest
+	   the first row under the strip is solid black and the wave flows
+	   down out of it. What is above is behind the strip and never seen. */
+	background-position: 0 calc(var(--topbar) - 22px);
 }
 
 /* in the dark the bar and the page are the same black, so the scallop
    has no edge to be seen by — the same problem the top strip has, and
    the same answer: a white line along it.
 
-   **It is drawn in both, and that is the point.** Shown only in the
-   dark, it appeared and disappeared on every swap, and an edge that
-   gains a hairline is an edge that moves — which is the shift you can
-   see if you watch the bumps while the lights go off. Drawn always, it
-   is white on the white page in the light and simply cannot be seen,
-   so the black shape and the line hugging it are pixel for pixel the
-   same on both sides and only the page around them changes. It also
-   means nothing here has an opacity to animate.
-
-   It is its own layer rather than a second picture swapped into the
+   it is its own layer rather than a second picture swapped into the
    one above, because swapping a picture happens all at once: the old
    rule's note records a rectangle of the old one flashing over the bar
-   while everything else was still fading. */
+   while everything else was still fading. this one only fades. */
 .app-shell::before {
 	content: '';
 	position: absolute;
@@ -551,9 +539,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	/* over the strip that carves the edge, not under it. at the same
 	   level the carve painted last and buried this — which is why it
 	   was in the stylesheet and nowhere on the screen. */
-	z-index: 6;
+	z-index: 4;
 	width: 26px;
 	pointer-events: none;
+	opacity: 0;
 	/* the stroke is centred on whatever path it is given, so drawn on
 	   the bump's own edge half of it lands inside the black — which is
 	   why the shape looked a hair different with the lights off. the
@@ -563,8 +552,16 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='44' viewBox='0 0 26 44'%3E%3Cpath d='M4.5 0 A 25 25 0 0 1 4.5 44' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: 26px 44px;
-	background-position: 0 calc(var(--topbar) - 44px);   /* in step with the carve */
+	background-position: 0 calc(var(--topbar) - 22px);   /* in step with the carve */
 }
+html.inverted .app-shell::before { opacity: 1; }
+/* no fade of its own. the swap is one picture the compositor crosses
+   over (`startViewTransition`), and a half-second opacity transition
+   running underneath it is a second, slower swap of the one edge
+   everybody is looking at — which is exactly what made the bumps
+   change shape on the way across. Only the no-view-transition path
+   fades it, because there it is the only thing moving. */
+html.fading .app-shell::before { transition: opacity 0.4s var(--ease); }
 
 .app-right {
 	display: flex;
@@ -685,12 +682,11 @@ html:not(.inverted) .rail-left {
 	   edge it crossed the first bump, and being white on a white page
 	   it showed there and nowhere else — a 1px nick in the top corner,
 	   exactly the sort of thing you see without being able to name.
-	   It reaches the bar's own edge. At the line's height the wave is
-	   at a trough — its narrowest — so this is exactly where the black
-	   begins, and the two meet with nothing between and nothing
-	   crossing. Measured from the strip's own left edge, which starts
-	   13px back under the scallop. */
-	left: 4px;
+	   There is nothing to mark over the bar anyway: in the dark the
+	   scallop's own white line already says where the bar ends, and
+	   the two meet at this x. Measured from the strip's own left edge,
+	   which starts 13px back under the scallop. */
+	left: 26px;
 	right: 0;
 	height: 1px;
 	background: var(--bar-ink);
