@@ -14,6 +14,18 @@
          policy it wasn't under before. -->
     <meta http-equiv="Content-Security-Policy" content="frame-src 'self' https://exportify.net;">
     <title>:p</title>
+    <!-- the lights are set before anything is drawn. left to script.js
+         at the foot of the page, a page with the lights off came up
+         white for a beat on every refresh and then turned over. -->
+    <script>
+        try {
+            if (localStorage.getItem('page-inverted') === 'yes') document.documentElement.classList.add('inverted');
+        } catch (error) { /* no storage; the light is the default anyway */ }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="matrix-sans-print.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;display=swap">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>

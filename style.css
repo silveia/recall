@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&family=Bitcount+Prop+Double:wght@400;700&family=VT323&display=swap');
+/* the google faces are linked from the head of the page rather than
+   imported here: an @import is only found once this file has arrived,
+   which put the type a whole round trip late and the page came up in
+   the fallback first. */
 
 /* matrix sans print, by brad neil — a 5×7 dot matrix of separate round
    dots, the look of a dot-matrix printer or a motorway sign. it is

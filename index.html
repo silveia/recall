@@ -26,9 +26,30 @@
 }());
 </script>
 
-<style>
-	@import url('https://fonts.googleapis.com/css2?family=Amiko:wght@400&family=Bitcount+Prop+Double:wght@400&family=VT323&display=swap');
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400&amp;family=Bitcount+Prop+Double:wght@400&amp;family=VT323&amp;display=swap">
 
+<!-- held back until the type is there. shown at once, every word came up
+     in the browser's fallback and jumped into its own face a beat later,
+     which is the flash of odd letters on arriving. a second is the most
+     it waits. -->
+<script>
+(function () {
+    var root = document.documentElement;
+    root.classList.add('booting');
+    var show = function () { root.classList.remove('booting'); };
+    setTimeout(show, 1000);
+    // asked for by name: nothing is laid out yet, so `fonts.ready`
+    // alone would answer at once with nothing loaded
+    if (!document.fonts || !document.fonts.load) return show();
+    Promise.all(['1em Amiko', '1em "Bitcount Prop Double"', '1em VT323']
+        .map(function (face) { return document.fonts.load(face); })).then(show, show);
+}());
+</script>
+
+<style>
+	html.booting body { visibility: hidden; }
 	:root {
 		--paper: #ffffff;
 		--ink: #000;

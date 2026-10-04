@@ -218,8 +218,12 @@ const SITE_ROOT = window.location.pathname
 
 const isSection = (id) => sections.some((section) => section.id === id);
 
+/* with the slash on the end, because that is the real file: /cards/
+   is cards/index.html, and /cards without it is answered by github
+   with a redirect — one more hop, and the address changing under you
+   on every refresh. */
 function sectionLink(id) {
-    return `${SITE_ROOT}/${id}`;
+    return `${SITE_ROOT}/${id}/`;
 }
 
 /* opened as a file rather than served, the browser refuses to be told
@@ -4809,8 +4813,20 @@ loadZoom();
 recorderReady = true;
 /* and the page comes in, once what it draws from storage is there. the
    inline snippet in the head takes the class off anyway after two and a
-   half seconds, so a slow store delays this rather than stopping it. */
-loadStoredClips().finally(() => {
+   half seconds, so a slow store delays this rather than stopping it.
+
+   the type has to be there too. shown before the faces had arrived,
+   every word came up in the browser's own fallback and then jumped into
+   its real face a beat later — a flash of the wrong letters on every
+   refresh. */
+/* asked for by name rather than waiting on `fonts.ready`: this runs
+   before the page is laid out, when nothing has started loading and
+   `ready` would answer at once with nothing there. */
+const typeReady = document.fonts && document.fonts.load
+    ? Promise.all(['1em Amiko', '1em "Bitcount Prop Double"', '700 1em "Bitcount Prop Double"',
+                   '1em VT323', '1em "Matrix Sans Print"'].map((face) => document.fonts.load(face)))
+    : Promise.resolve();
+Promise.all([loadStoredClips(), typeReady]).catch(() => {}).finally(() => {
     window.requestAnimationFrame(() => {
         document.documentElement.classList.remove('booting');
     });
@@ -7302,9 +7318,12 @@ function loadOcr() {
 async function readPicture(bit, say) {
     await loadOcr();
     const worker = await window.Tesseract.createWorker('eng', 1, {
-        workerPath: 'ocr/worker.min.js',
-        corePath: 'ocr/',
-        langPath: 'ocr/',
+        /* spelled out in full: tesseract reads a short path against the
+           address bar, not the page's <base>, and on /cards that is the
+           wrong folder */
+        workerPath: new URL('ocr/worker.min.js', document.baseURI).href,
+        corePath: new URL('ocr/', document.baseURI).href,
+        langPath: new URL('ocr/', document.baseURI).href,
         gzip: true,
         logger: (step) => {
             if (step.status === 'recognizing text' && say) {

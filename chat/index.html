@@ -1,17 +1,1013 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>:p</title>
-<!-- github pages serves files, not routes, so /chat has to be a real
-     place on the disk. this is that place, and all it does is hand the
-     reader on to the site itself with the section written on the
-     ticket — app.html reads it, opens chat, and tidies the address bar
-     back to /chat. the root is its own page and is left alone. -->
-<meta name="robots" content="noindex">
-<link rel="canonical" href="../chat">
-<script>location.replace('../app.html?go=chat' + location.hash);</script>
-<meta http-equiv="refresh" content="0; url=../app.html?go=chat">
+    <base href="../">
+    <!-- made from app.html by .githooks/pages.sh. edit app.html, not this -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- the frame in the exportify window may load exportify and nothing
+         else. press the wrong thing in there and it used to wander off to
+         spotify or to a dead link, with no way back short of reloading the
+         whole page — a page cannot ask a frame it does not own where it
+         went. this stops the wandering instead: any navigation out of
+         exportify is refused and the frame stays where it is.
+
+         only `frame-src` is named, so nothing else on the page is under a
+         policy it wasn't under before. -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'self' https://exportify.net;">
+    <title>:p</title>
+    <!-- the lights are set before anything is drawn. left to script.js
+         at the foot of the page, a page with the lights off came up
+         white for a beat on every refresh and then turned over. -->
+    <script>
+        try {
+            if (localStorage.getItem('page-inverted') === 'yes') document.documentElement.classList.add('inverted');
+        } catch (error) { /* no storage; the light is the default anyway */ }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" href="matrix-sans-print.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;display=swap">
+    <link rel="stylesheet" href="style.css">
 </head>
-<body><a href="../app.html?go=chat">chat</a></body>
+<body>
+    <!-- the page comes in as one thing rather than in pieces: it is held
+         back until what it draws from storage is there, then faded in.
+         set here rather than in the stylesheet so a page whose script
+         never runs is never left hidden, and taken off again after two
+         and a half seconds whatever happens. -->
+    <script>
+        document.documentElement.classList.add('booting');
+        setTimeout(function () { document.documentElement.classList.remove('booting'); }, 2500);
+    </script>
+    <div class="booting-mark" aria-hidden="true"><svg class="spin-face" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10.6" stroke-width="1" vector-effect="non-scaling-stroke"/><path d="M6.53 13.73A5.75 5.75 0 0 0 17.47 13.73" stroke-width="1.7" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="8.85" cy="8.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.15" cy="8.6" r="1.15" fill="currentColor" stroke="none"/></svg></div>
+
+
+    <!-- right-click menu, shared by every screen -->
+    <div class="context-menu" id="contextMenu" hidden></div>
+
+    <!-- "are you sure" chip, shared by every screen. it lives out here
+         because it is placed against whichever button asked, and its old
+         home in the audio bar is display:none on the other pages. -->
+    <!-- what "customize options" is for, and the answers themselves.
+         both hang off their buttons rather than sitting in the form. -->
+
+    <!-- aiming the sensing box: a window under the
+         gear rather than the whole page given over
+         to it. fixed to the screen and over
+         everything, so nothing under it moves or
+         shows through. -->
+    <div class="audio-stage" id="sensePop">
+        <!-- the picture and the box ride together on the stage,
+             so zooming scales both and the box keeps its place
+             on the frame. the wrap around it is what scrolls
+             once the stage is bigger than it, and the settings
+             sit outside that so they hold still. -->
+        <div class="preview-wrap" id="previewWrap" hidden>
+            <div class="preview-stage" id="previewStage">
+                <video id="previewVideo" muted playsinline></video>
+                <div class="sense-box" id="senseBox"></div>
+            </div>
+        </div>
+
+        <div class="sense-controls" id="senseControls" hidden>
+            <div class="panel-handle" aria-hidden="true"></div>
+            <label>zoom <input type="range" id="senseZoom" min="100" max="500" step="1" value="100"><output id="senseZoomOut"></output></label>
+            <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
+            <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
+            <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
+            <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
+            <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="1"><output id="senseThresholdOut"></output></label>
+            <button class="text-button" id="senseReset" type="button">reset to default</button>
+        </div>
+
+        <p class="sense-readout" id="senseReadout" hidden>change 0.0</p>
+    </div>
+
+    <!-- a widget that can be read more than one way says so when it is
+         pressed. the clock is the one that can, so far. -->
+    <div class="pop-panel pop-looks" id="lookPicks" hidden>
+        <div class="look-list" id="lookList"></div>
+    </div>
+
+    <div class="pop-panel pop-picks" id="optionsPanel" hidden>
+
+        <!-- edit this line freely; the picker leaves it alone -->
+        <p class="pop-say">practice puts three other answers beside this one. pick the ones it may use &mdash; choose as many as you like, and it draws three of them each time.</p>
+
+        <div class="pick-list" id="optionsPicks"></div>
+    </div>
+
+    <!-- the widgets not on the home page yet. hangs off the add button
+         the same way, and lists whatever is missing. -->
+    <div class="pop-panel pop-picks" id="widgetPicks" hidden>
+        <div class="pick-list" id="widgetPickList"></div>
+    </div>
+
+    <!-- the three shapes a widget can take. hangs off the chip in its
+         corner the same way the add list hangs off the plus. -->
+    <div class="confirm-pop" id="confirmChip" role="group" aria-label="are you sure" hidden>
+        <span id="confirmChipText"></span>
+        <div class="confirm-answers">
+            <button class="chip-button" id="confirmChipYes" type="button">yes</button>
+            <button class="chip-button" id="confirmChipNo" type="button">no</button>
+        </div>
+    </div>
+
+    <div class="app-shell">
+
+        <!-- left bar — full height, runs past the top bar -->
+        <!-- notes in, cards out. with a key saved it reads whatever you
+             give it — prose, a photo of a page, a pdf — and writes the
+             cards itself; without one it can still turn a list over. -->
+        <!-- hold option and whatever is under the pointer says what it
+             does, right beside it. it is drawn here rather than left to
+             the browser's own tooltip, which arrives on its own schedule
+             and in its own colours. -->
+        <div class="say-what" id="sayWhat" aria-hidden="true"></div>
+
+        <!-- everything the right bar used to hold, in the black bar
+             instead: the clock, what this page does, what it is costing,
+             the player and what was last binned. the bar is black, so it
+             is all drawn the other way round — one swap of the two
+             colour tokens and every box inside follows. -->
+        <aside class="rail rail-left" aria-label="menu">
+
+                    <!-- the time, above everything -->
+                    <section class="rail-clock" aria-label="the time">
+                        <div class="clock-top">
+                            <!-- a crescent, cut out of a full disc: the lit side
+                                 is the page's own colour, so the moon reads
+                                 right on either theme -->
+                            <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="turn the lights off" title="turn the lights off">
+                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                    <!-- a disc with a bite taken straight out of its
+                                         side: both circles sit on the same line, so
+                                         the crescent opens left to right and its
+                                         horns are blunt rather than sharp -->
+                                    <path fill="currentColor"
+                                          d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
+                                </svg>
+                            </button>
+                            <span class="clock-suffix" id="clockSuffix"></span>
+                        </div>
+                        <p class="clock-time" id="clockTime">--:--</p>
+                        <p class="clock-date" id="clockDate"></p>
+                    </section>
+
+
+                    <!-- what the page you're on actually does. one
+                         paragraph per section — keep this current
+                         whenever something new lands on the site. -->
+                    <!-- it keeps itself shut: the heading is the switch, and
+                         the words underneath slide open when you want them -->
+                    <section class="help-box" aria-label="what this page does">
+                        <button class="help-head panel-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody">
+                            <h2>function</h2>
+                        </button>
+
+                        <div class="help-body" id="helpBody"><div class="help-body-inner">
+
+                        <p class="help-note" data-section="home" hidden>welcome to my house</p>
+
+                        <p class="help-note" data-section="cards" hidden>flashcard maker; decks and flashcards can be organized. notes or images can be converted to flashcards, although this is still getting experimented and may not work well.</p>
+
+                        <p class="help-note" data-section="audio" hidden>audio recorder; records clips that cut when a change is detected in a selected area. clips can be cropped and downloaded as mp3s individually, or get batch downloaded in a custom folder all tg. clips also can be matched up w a spotify playlist.</p>
+
+                        <p class="help-note" data-section="chat" hidden>chat; the one page here that isn't only yours. pick a name and a password and you're in, nothing to set up. add someone by the name they signed up with and you get a thread with them. every message is sealed to the two people in it &mdash; the board it travels on can't read them, and neither can this page.</p>
+                        <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface</p>
+
+
+                        </div></div>
+                    </section>
+
+
+
+
+                    <!-- how much room everything you've kept is using -->
+                    <section class="rail-store" aria-label="storage">
+                        <div class="store-head">
+                            <span>storage</span>
+                            <span id="storeAmount">—</span>
+                        </div>
+                        <div class="store-bar"><div class="store-fill" id="storeFill"></div></div>
+                    </section>
+
+                    <!-- what's on, in short. the full player lives on the
+                         player page; this is here so it follows you. -->
+                    <section class="rail-now" aria-label="web player">
+                        <p class="rail-title" id="railTitle"></p>
+                        <div class="clip-track" id="railTrack">
+                            <div class="clip-fill" id="railFill"></div>
+                        </div>
+                        <div class="rail-controls">
+                            <button class="clip-play" id="railPrev" type="button" aria-label="previous song" title="previous">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 5.5v13L9 12z" fill="currentColor"/><rect x="4.5" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
+                            </button>
+                            <button class="clip-play" id="railToggle" type="button" aria-label="play" title="play"></button>
+                            <button class="clip-play" id="railNext" type="button" aria-label="next song" title="next">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 5.5v13L15 12z" fill="currentColor"/><rect x="17.1" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                    </section>
+
+
+                    <!-- the last few things you binned, newest first.
+                         press one to put it back; ctrl+z does the top. -->
+                    <section class="rail-binned" id="railBinned" aria-label="recently binned" hidden>
+                        <div class="binned-head">
+                            <span>recently binned<span class="binned-count" id="binnedCount"></span></span>
+                            <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+                        </div>
+                        <ol class="binned-list" id="binnedList"></ol>
+                    </section>
+
+                </aside>
+
+        <div class="app-right">
+
+            <!-- the black strip, starting beside the left bar -->
+            <!-- the black strip: it carries the page names -->
+            <header class="topbar">
+                <!-- section tabs — the active one is big, the rest small.
+                these are the title while you're on home. -->
+                <nav class="section-tabs" id="sectionTabs" aria-label="sections"></nav>
+            </header>
+
+            <div class="app-body">
+
+                <main class="app-content">
+
+                    <!-- ============ home ============ -->
+                    <section class="screen" id="homeScreen" data-title="home" aria-label="home">
+
+                        <!-- home — the first section. blank for now. -->
+                        <!-- home is yours to arrange: pick the widgets you
+                             want and drag them into whatever order suits. -->
+                        <section class="home-panel" id="homePanel" hidden>
+                            <!-- the corner switch. out of edit the board is
+                                 just the board; in edit every tile wobbles,
+                                 takes a drag, and shows its two handles. -->
+                            <div class="widget-list" id="widgetList"></div>
+                            <!-- only while a tile is being carried: drag one
+                                 down here and let go to be rid of it -->
+                            <div class="widget-bin" id="widgetBin" hidden aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4.5 6.5h15"/>
+                                    <path d="M10 6.5V4.5h4v2"/>
+                                    <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
+                                    <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
+                                </svg>
+                                <span>let go to remove</span>
+                            </div>
+
+                            <!-- right under the board, where the board is: the two of them
+                                 were pinned to the foot of the page, which is a long
+                                 way from a row of tiles at the top of it -->
+                            <div class="board-foot">
+                                <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks" aria-label="add a widget" title="add a widget">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                        <path d="M12 5 V19 M5 12 H19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                                <button class="widget-edit" id="widgetEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                        <path class="mark-pen" d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                                        <path class="mark-shut" d="M6.6 6.6 L17.4 17.4 M17.4 6.6 L6.6 17.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </section>
+
+                        <!-- decks on the left, the open deck's cards on
+                             the right. each side is a bar over a list, and
+                             the divider between them sizes both rows. -->
+                        <div class="home-body" id="homeBody">
+
+                            <div class="deck-side">
+                                <!-- deck picker, new deck form, decks in and out -->
+                                <div class="deck-bar">
+                                    <form id="deckForm" class="deck-form" novalidate>
+                                        <input id="deckNameInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="new deck">
+                                        <button class="square-button is-solid" type="submit" aria-label="create this deck" title="create this deck">
+                                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M5 12.5l4.5 4.5L19 7.5"/>
+                                        </svg>
+                                    </button>
+                                    </form>
+                                    <div class="share-picker">
+                                        <button class="square-button" id="shareToggle" type="button" aria-expanded="false" aria-controls="sharePanel" aria-label="share this deck" title="share this deck">
+                                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <rect x="9" y="9" width="11" height="11" rx="2"/>
+                                                <path d="M5 15V5a2 2 0 0 1 2-2h8"/>
+                                            </svg>
+                                        </button>
+
+                                        <!-- deck codes — a popup, anchored to the button -->
+                                        <div class="share-panel" id="sharePanel" hidden>
+
+                                            <label for="shareIn">paste someone's code</label>
+                                            <div class="share-row">
+                                                <textarea id="shareIn" rows="2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="rc2...."></textarea>
+                                                <button class="basic-button" id="loadCode" type="button">load</button>
+                                            </div>
+
+                                            <label for="shareOut">this deck's code</label>
+                                            <div class="share-row">
+                                                <textarea id="shareOut" rows="2" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                                                <button class="basic-button" id="copyCode" type="button">copy</button>
+                                            </div>
+
+                                            <p class="share-note" id="shareNote" aria-live="polite"></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="deck-list-slot" id="deckListSlot"></div>
+
+                            </div>
+
+                            <!-- drag this to trade width between the two -->
+                            <div class="pane-split" id="paneSplit" role="separator"
+                                 aria-orientation="vertical" aria-label="resize the deck list"
+                                 tabindex="0"></div>
+
+                            <div class="card-side">
+                                <!-- the two tiles, side by side over the organizer -->
+                                <section class="quick-panel" aria-label="card actions">
+                                    <button class="quick-action primary" id="createCardButton" type="button">
+                                        <span class="action-text"><strong>create</strong><small>ʕ•ᴥ•ʔ</small></span>
+                                        <b>&rarr;</b>
+                                    </button>
+                                    <button class="quick-action" id="randomStudyButton" type="button">
+                                        <span class="action-text"><strong>practice</strong><small>ʕ-ᴥ-ʔ</small></span>
+                                        <b>&rarr;</b>
+                                    </button>
+                                </section>
+
+                                <div class="deck-stage">
+                                    <div class="stage-head panel-head">
+                                        <h2 id="stageDeckName">flashcards</h2>
+                                    </div>
+                                    <ol id="deckCardList"></ol>
+                                </div>
+
+                                <!-- drag this to trade height between the
+                                     notes tool and the deck under it -->
+                                <div class="pane-split is-across" id="notesSplit" role="separator"
+                                     aria-orientation="horizontal" tabindex="0"
+                                     aria-label="resize the notes tool"></div>
+                                <!-- notes in, cards out. it used to live in the
+                                     left bar; it sits with the deck it writes
+                                     into now. it still moves into a window when
+                                     there's more to read than the column holds,
+                                     so there is one of it and one of everything
+                                     in it. -->
+                                <div class="notes-home" id="notesHome">
+                                    <section class="notes-panel" id="notesPanel" aria-label="turn notes into cards">
+                                    <div class="notes-head panel-head">
+                                    <h2 class="notes-title">notes &rarr; cards</h2>
+                                    <button class="notes-wide" id="notesWide" type="button" aria-label="open it wide" title="open it wide">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 H4 V9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                    </button>
+                                    </div>
+
+                                    <!-- the box is the drop target as well as the place you
+                                    type: one thing to aim at, and the picture button
+                                    sits in its corner rather than taking a row of its
+                                    own -->
+                                    <div class="notes-box">
+                                    <textarea id="notesInput" class="notes-input" rows="8" spellcheck="false"
+                                    placeholder="paste your notes here, or drop in a photo of them"></textarea>
+                                    <input id="notesFile" class="notes-file" type="file" accept="image/*,application/pdf" multiple hidden>
+                                    <button class="notes-clip" id="notesAttach" type="button" aria-label="add a photo or a pdf" title="add a photo or a pdf">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                                    <circle cx="8.5" cy="10" r="1.6" fill="currentColor"/>
+                                    <path d="M4 17 L9.5 12 L13 15 L16 12.5 L20 16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    </button>
+                                    </div>
+
+                                    <div class="notes-bits" id="notesBits"></div>
+
+                                    <button class="notes-button is-solid is-go" id="notesGo" type="button">make flashcards</button>
+                                    <button class="notes-plain" id="notesRead" type="button">read the list myself</button>
+
+                                    <p class="notes-note" id="notesNote" aria-live="polite"></p>
+
+                                    <ol class="notes-found" id="notesFound"></ol>
+
+                                    <div class="notes-actions" id="notesKeepRow" hidden>
+                                    <button class="notes-button is-solid" id="notesKeep" type="button">keep them</button>
+                                    <button class="notes-button" id="notesKeepNew" type="button">as a new deck</button>
+                                    </div>
+
+                                    <button class="notes-key-toggle" id="notesKeyToggle" type="button">sharper reading</button>
+                                    </section>
+                                </div>
+
+
+                            </div>
+
+                        </div>
+
+                        <!-- audio section — laid out like the cards page:
+                             a control bar, then a list beside a stage -->
+                        <section class="recorder-panel" id="audioPanel" hidden>
+
+                            <div class="audio-bar">
+                                <button class="basic-button" id="recordToggle" type="button">record</button>
+
+                                <!-- the recorder itself, right beside the button -->
+                                <div class="bar-meter">
+                                    <p class="record-status" id="recordStatus" aria-live="polite"></p>
+                                    <div class="meter-idle">nofing T_T</div>
+                                    <div class="live-meter" id="liveMeter">
+                                        <span class="clip-pulse"></span>
+                                        <canvas id="levelCanvas" width="600" height="10"></canvas>
+                                        <span class="clip-label" id="liveLabel"></span>
+                                        <span class="switch-count" id="switchCount">0 switches</span>
+                                    </div>
+                                </div>
+
+                                <button class="square-button" id="senseToggle" type="button" aria-expanded="false" aria-label="sensing settings" title="sensing settings">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="3.2"/>
+                                        <path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2L5.6 5.6"/>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div class="audio-body">
+
+                                <!-- the clips, in the same box the decks get, with
+                                     the two quiet lines that carry them elsewhere
+                                     under them: they are wanted once in a blue moon,
+                                     so they sit with what they act on rather than
+                                     taking a place in the bar. -->
+                                <div class="clip-column">
+                                    <!-- the folder the mp3s go into. it is made
+                                         inside whatever place you point at the
+                                         first time, and after that nothing is
+                                         asked again — see folderFor(). -->
+                                    <!-- one row across the top: what carries
+                                         every clip somewhere on the left, the
+                                         folder they land in down the middle,
+                                         and what acts on the lot of them on the
+                                         right. the two sides are given equal
+                                         width so the field sits centred whatever
+                                         they happen to hold. -->
+                                    <div class="clip-folder">
+                                        <div class="clip-folder-side">
+                                            <!-- one sends the clips somewhere, the
+                                                 other opens what came back: a share
+                                                 mark for out, a folder for in. two
+                                                 chevrons over a floor said the same
+                                                 thing, but only to someone who
+                                                 already knew which way was which. -->
+                                            <button class="square-button" id="packClips" type="button" aria-label="clips out to one file" title="clips out to one file">
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M12 3.6v10.2"/>
+                                                    <path d="M8.4 7.2 12 3.6l3.6 3.6"/>
+                                                    <path d="M7.4 10.6H5.2v9.8h13.6v-9.8h-2.2"/>
+                                                </svg>
+                                            </button>
+                                            <button class="square-button" id="unpackClips" type="button" aria-label="clips in from a file" title="clips in from a file">
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M3.6 19.4V5.8h5.3l1.9 2.3h9.6v11.3z"/>
+                                                </svg>
+                                            </button>
+                                            <input id="unpackInput" type="file" hidden>
+                                        </div>
+
+                                        <!-- the same name the window asks for, kept
+                                             in step with it both ways -->
+                                        <input id="folderNameBar" type="text" placeholder="folder name" aria-label="folder name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+
+                                        <div class="clip-folder-side is-right">
+                                            <button class="square-button" id="downloadAll" type="button" aria-label="every clip to a folder" title="every clip to a folder">
+                                                <svg class="icon-download" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M12 3.5v10"/>
+                                                    <path d="M8.5 10.5l3.5 3.5 3.5-3.5"/>
+                                                    <path d="M4.5 16v3.5h15V16"/>
+                                                </svg>
+                                                <!-- shown instead while it's saving the list -->
+                                                <svg class="icon-pause" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+                                                    <path d="M9.5 5.5v13"/>
+                                                    <path d="M14.5 5.5v13"/>
+                                                </svg>
+                                            </button>
+                                            <button class="square-button" id="clearClips" type="button" aria-label="bin every clip" title="bin every clip">
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M4.5 6.5h15"/>
+                                                    <path d="M10 6.5V4.5h4v2"/>
+                                                    <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
+                                                    <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <ol id="recordingList"></ol>
+                                </div>
+
+<!-- the spare box beside the clips. it is dragged
+                                     to whatever width you want it, up to half the
+                                     room, and all the way shut at nothing — the
+                                     grip stays where it is either way, so it can
+                                     always be pulled back out. -->
+                                <div class="pane-split clip-split" id="clipSplit" role="separator" aria-orientation="vertical" tabindex="0" aria-label="resize the box beside the clips"></div>
+                                <aside class="clip-side" id="clipSide">
+                                    <div class="panel-head"><h2>playlist</h2></div>
+                                    <!-- the songs are carried in as a list
+                                         rather than fetched: dropped on the box
+                                         or picked through the window. nothing
+                                         is looked up and nothing is signed
+                                         into. -->
+                                    <input id="scratchFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
+                                    <button class="basic-button is-plain scratch-bring" id="scratchOpen" type="button">exportify</button>
+
+                                    <div class="clip-side-body"><ol class="scratch-list" id="scratchList"></ol></div>
+                                    <p class="scratch-note" id="scratchNote" aria-live="polite"></p>
+                                    <!-- the two of them share the width evenly.
+                                         the clips are recorded in the
+                                         playlist's own order, so their lengths
+                                         ought to be the songs' lengths — match
+                                         walks the two lists together and names
+                                         whatever lines up. -->
+                                    <div class="scratch-acts">
+                                        <button class="basic-button scratch-all" id="scratchCopyAll" type="button" hidden>copy all</button>
+                                        <button class="basic-button scratch-all scratch-match" id="scratchMatch" type="button" hidden title="line the clips up by length">match clips</button>
+                                    </div>
+                                </aside>
+                            </div>
+                        </section>
+
+                        <!-- player — songs off your own disk, kept in this
+                             browser. nothing here is uploaded anywhere. -->
+                        <section class="player-panel" id="playerPanel" hidden>
+
+                            <div class="player-body" id="playerBody">
+
+                                <!-- the queue: what you've got, and how to add to it -->
+                                <div class="queue-side">
+
+                                    <div class="queue-bar">
+                                        <button class="basic-button" id="addTracks" type="button">add songs</button>
+                                        <input id="trackInput" type="file" accept="audio/*" multiple hidden>
+                                        <button class="basic-button" id="linkClips" type="button" title="pull in everything recorded on the audio page">link clips</button>
+                                        <button class="square-button" id="clearTracks" type="button" aria-label="bin every song" title="bin every song">
+                                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M4.5 6.5h15"/>
+                                                <path d="M10 6.5V4.5h4v2"/>
+                                                <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
+                                                <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <ol id="trackList"></ol>
+
+                                </div>
+
+                                <!-- drag this to trade width between the two -->
+                                <div class="pane-split" id="playerSplit" role="separator"
+                                     aria-orientation="vertical" aria-label="resize the song list"
+                                     tabindex="0"></div>
+
+                                <div class="stage-side">
+                                    <section class="player-stage" aria-label="web player">
+
+                                        <div class="stage-head panel-head">
+                                            <h2>web player</h2>
+                                        </div>
+
+                                        <div class="now-body">
+                                            <p class="now-title" id="nowTitle"></p>
+
+                                            <div class="clip-track" id="playerTrack">
+                                                <div class="clip-fill" id="playerFill"></div>
+                                            </div>
+                                            <div class="now-times">
+                                                <span id="nowElapsed">0:00</span>
+                                                <span id="nowTotal">0:00</span>
+                                            </div>
+
+                                            <div class="now-controls">
+                                                <button class="square-button" id="shuffleToggle" type="button" aria-pressed="false" aria-label="shuffle" title="shuffle">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M2.6 6.8h3.4c1.6 0 2.6 1 3.4 2.3l3.2 5.8c.8 1.3 1.8 2.3 3.4 2.3h1.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                                                        <path d="M2.6 17.2h3.4c1.6 0 2.6-1 3.4-2.3l3.2-5.8c.8-1.3 1.8-2.3 3.4-2.3h1.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                                                        <path d="M16.6 3.8 21.4 6.8 16.6 9.8z" fill="currentColor"/>
+                                                        <path d="M16.6 14.2 21.4 17.2 16.6 20.2z" fill="currentColor"/>
+                                                    </svg>
+                                                </button>
+                                                <button class="square-button" id="playPrev" type="button" aria-label="previous song" title="previous">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 5.5v13L9 12z" fill="currentColor"/><rect x="4.5" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
+                                                </button>
+                                                <button class="square-button is-big" id="playToggle" type="button" aria-label="play" title="play"></button>
+                                                <button class="square-button" id="playNext" type="button" aria-label="next song" title="next">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 5.5v13L15 12z" fill="currentColor"/><rect x="17.1" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
+                                                </button>
+                                                <button class="square-button" id="repeatToggle" type="button" aria-pressed="false" aria-label="repeat" title="repeat">
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M6.4 6.4h9a4.4 4.4 0 0 1 4.4 4.4v0.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                                                        <path d="M17.6 17.6h-9a4.4 4.4 0 0 1-4.4-4.4v-0.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                                                        <path d="M16.8 10.6 19.8 15.4 22.8 10.6z" fill="currentColor"/>
+                                                        <path d="M7.2 13.4 4.2 8.6 1.2 13.4z" fill="currentColor"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+
+                                            <label class="now-volume">
+                                                <span class="volume-mark" id="volumeMark" data-level="3" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24">
+                                                        <path class="vol-cone" d="M4 9.2h3.6L12.4 5v14L7.6 14.8H4z" fill="currentColor"/>
+                                                        <path class="vol-wave is-one" d="M15.4 9.9a3.2 3.2 0 0 1 0 4.2"/>
+                                                        <path class="vol-wave is-two" d="M17.6 7.6a6.6 6.6 0 0 1 0 8.8"/>
+                                                        <path class="vol-wave is-three" d="M19.8 5.3a10 10 0 0 1 0 13.4"/>
+                                                        <path class="vol-hush" d="M16.2 9.8 21 14.6M21 9.8l-4.8 4.8"/>
+                                                    </svg>
+                                                </span>
+                                                <span class="sr-only">volume</span>
+                                                <input id="playerVolume" type="range" min="0" max="100" value="100">
+                                            </label>
+
+                                            <p class="now-note" id="playerNote" aria-live="polite"></p>
+                                        </div>
+                                    </section>
+                                </div>
+
+
+                            </div>
+
+                        </section>
+
+                        <!-- chat — the one page here that is not only
+                             yours. everything else lives in this browser;
+                             this one needs somewhere to meet, so it talks
+                             to a public board anyone may connect to. the
+                             board carries the messages and cannot read
+                             them: every one is sealed to the two people
+                             in it. -->
+                        <section class="chat-panel" id="chatPanel" hidden>
+
+                            <!-- who you are, and the way in -->
+                            <div class="chat-bar">
+                                <p class="chat-who" id="chatWho">not signed in</p>
+                                <button class="basic-button" id="chatSignOut" type="button" hidden>sign out</button>
+                                <button class="basic-button" id="chatSetupOpen" type="button">sign in</button>
+                            </div>
+
+                            <!-- nothing at all until there is somebody to
+                                 talk to. an empty people column beside an
+                                 empty thread is two boxes saying the same
+                                 nothing; this says it once, and hands you
+                                 the one thing that fixes it. -->
+                            <!-- nothing at all until there is somebody to
+                                 talk to. an empty people column beside an
+                                 empty thread is two boxes saying the same
+                                 nothing; this says it once, and hands you
+                                 the one thing that fixes it. it covers
+                                 being signed out as well, or that state
+                                 is a blank page with a button in the
+                                 corner. -->
+                            <div class="chat-start" id="chatStart" hidden>
+                                <h2 class="chat-start-head" id="startHead">nobody yet</h2>
+                                <p class="chat-start-say" id="startSay">add someone by the name they signed up with. what you two say is sealed to the pair of you.</p>
+                                <form class="room-make chat-start-add" id="startAdd" novalidate>
+                                    <input id="startName" type="text" aria-label="add someone by name" placeholder="their username">
+                                    <button class="field-go" type="submit" aria-label="add them" title="add them">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M12 5.5v13M5.5 12h13"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                                <button class="basic-button is-solid chat-start-go" id="startGo" type="button" hidden>log in</button>
+                                <p class="chat-start-note" id="startNote" aria-live="polite"></p>
+                            </div>
+
+                            <div class="chat-body" id="chatBody" hidden>
+
+                                <!-- the people you have added, and nobody
+                                     else: the board knows every account on
+                                     it, which is not the same as a list of
+                                     people you want to hear from. -->
+                                <aside class="room-side" id="roomSide">
+                                    <div class="panel-head"><h2>people</h2></div>
+                                    <div class="room-scroll"><ol class="room-list" id="roomList"></ol></div>
+                                    <form class="room-make" id="roomMake" novalidate>
+                                        <input id="roomName" type="text" aria-label="add someone by name" placeholder="add someone">
+                                        <button class="field-go" id="roomGo" type="submit" aria-label="add them" title="add them">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M12 5.5v13M5.5 12h13"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </aside>
+
+                                <!-- drag this to trade width between the two -->
+                                <div class="pane-split chat-split" id="chatSplit" role="separator"
+                                     aria-orientation="vertical" tabindex="0"
+                                     aria-label="resize the people list"></div>
+
+                                <section class="talk-side" id="talkSide">
+                                    <div class="panel-head talk-head">
+                                        <h2 id="talkName">nobody open</h2>
+                                        <!-- it is true of every thread here, and
+                                             worth saying on each of them -->
+                                        <p class="talk-sealed" id="talkSealed" hidden title="only you two can read this">sealed</p>
+                                    </div>
+
+                                    <div class="talk-log" id="talkLog">
+                                        <p class="empty-message" id="talkEmpty">nothing said yet</p>
+                                    </div>
+
+                                    <form class="talk-bar" id="talkForm" novalidate>
+                                        <input id="talkSay" type="text" aria-label="say something" placeholder="say something" disabled>
+                                        <button class="field-go" id="talkGo" type="submit" aria-label="send it" title="send it">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M5 12h12.5M12 6.2 18.2 12 12 17.8"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </section>
+
+                            </div>
+
+                        </section>
+
+                    </section>
+
+                    <!-- create and practice are little windows over the
+                         page rather than pages of their own: click the
+                         backdrop, the ×, or press escape to drop them. -->
+                    <div class="modal-veil" id="modalVeil" hidden>
+
+                            <!-- ============ create ============ -->
+                            <section class="modal-panel maker-screen" id="makerScreen" data-title="create" hidden>
+
+                            <button class="modal-close" type="button" aria-label="close" title="close">×</button>
+
+                                <h2 class="modal-title">create</h2>
+
+                                <!-- a bar that feeds a list, same shape as the other pages -->
+                                <form id="cardForm" class="maker-bar" novalidate>
+
+                                    <!-- the two fields, with the one button
+                                         that acts on them standing beside -->
+                                    <div class="maker-entry">
+                                        <div class="maker-fields">
+                                            <label class="maker-field">
+                                                <span class="field-tag" aria-hidden="true">Q</span>
+                                                <input id="questionInput" type="text" aria-label="question" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="why did the chicken cross the road">
+                                            </label>
+                                            <label class="maker-field">
+                                                <span class="field-tag" aria-hidden="true">A</span>
+                                                <input id="answerInput" type="text" aria-label="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="to get to the other side">
+                                                <button class="field-add" id="optionsToggle" type="button" aria-expanded="false" aria-controls="optionsPanel" aria-label="choose which answers this can be mixed up with" title="which answers can sit beside this one">+</button>
+                                            </label>
+                                        </div>
+                                        <button class="basic-button add-upright" id="cardSubmitButton" type="submit"><span>add</span></button>
+                                    </div>
+
+                                    <p class="form-note" id="cardFormNote" aria-live="polite"></p>
+                                </form>
+
+                                <ol id="cardList"><li class="empty-message">no cards yet</li></ol>
+
+                            </section>
+
+                            <!-- ============ notes, opened wide ============
+                                 it holds no controls of its own: the panel
+                                 from the left bar moves in here and back
+                                 again, so there is one of everything. -->
+                            <section class="modal-panel notes-screen" id="notesScreen" data-title="notes" hidden>
+                                <button class="modal-close" type="button" aria-label="close" title="close">×</button>
+                                <h2 class="modal-title">notes &rarr; cards</h2>
+                                <div class="notes-slot" id="notesSlot"></div>
+                            </section>
+
+                            <!-- ============ the sharper reader ============
+                                 the same shape as the spotify window: a
+                                 wall of text in the corner of a panel is
+                                 not a thing anyone reads, and there was
+                                 no way out of it. -->
+                            <section class="modal-panel ask-screen" id="keyScreen" data-title="reading" hidden>
+                                <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                                <h2 class="modal-title">sharper reading</h2>
+
+                                <div class="ask-body">
+                                    <p class="ask-why">the reader that comes with this page runs on your own machine. it is free and private, and nothing you write leaves the browser &mdash; but it is slow to arrive (about 1.1gb, once) and plain about what it writes.</p>
+
+                                    <ol class="ask-steps">
+                                        <li>
+                                            <span class="ask-step">1</span>
+                                            <span class="ask-said">get a key from <b>console.anthropic.com</b> &mdash; it borrows a big model instead of downloading a small one.</span>
+                                        </li>
+                                        <li>
+                                            <span class="ask-step">2</span>
+                                            <span class="ask-said">paste it below. it stays in this browser, and it pays for what you ask it to read &mdash; usually well under a penny a page.</span>
+                                        </li>
+                                    </ol>
+
+                                    <input id="notesKey" type="password" autocomplete="off" spellcheck="false" placeholder="paste the key here" aria-label="anthropic key">
+                                    <button class="basic-button is-solid ask-go" id="notesKeySave" type="button">save the key</button>
+                                    <button class="scratch-plain ask-forget" id="notesKeyForget" type="button">forget it</button>
+                                </div>
+                            </section>
+
+                            <!-- ============ the way into chat ============
+                                 a name and a password, and that is the
+                                 whole of it. nothing to set up, because
+                                 the chat talks to a public broker that
+                                 wants no key — which is also why the
+                                 window says plainly how little this
+                                 account is worth. -->
+                            <section class="modal-panel ask-screen chat-screen" id="chatScreen" data-title="chat" hidden>
+                                <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                                <h2 class="modal-title" id="chatDoorTitle">sign up</h2>
+
+                                <div class="ask-body">
+                                    <div class="chat-door" id="chatDoor">
+                                        <input id="chatHandle" type="text" autocomplete="off" spellcheck="false" placeholder="username" aria-label="username">
+                                        <!-- not type="password" on purpose: chrome's password
+                                             manager only warns about weak and breached ones on
+                                             a real password field, and this is a name-and-word
+                                             for a public notice board, not a credential. it is
+                                             masked in css instead, and falls back to a real
+                                             password field where that isn't supported. -->
+                                        <input id="chatWord" type="text" class="word-field" name="morie-word" autocomplete="off" spellcheck="false" placeholder="password" aria-label="password">
+                                        <button class="basic-button is-solid ask-go" id="chatGo" type="button">sign up</button>
+                                        <button class="scratch-plain ask-swap" id="chatSwap" type="button">already have an account?</button>
+                                    </div>
+
+                                    <p class="ask-note" id="chatNote" aria-live="polite"></p>
+                                </div>
+                            </section>
+
+                            <!-- ============ bringing a list in ============
+                                 spotify blocks an app from its api unless
+                                 whoever registered the app pays for premium,
+                                 so a playlist past the first hundred cannot be
+                                 fetched here at all. It can be carried in
+                                 though, and this is the window that says how
+                                 and takes it. Exportify is somebody else's
+                                 page, opened in a tab of its own — embedding
+                                 it would fail twice over: spotify refuses to
+                                 draw its login inside anybody's frame, and a
+                                 page from another site is sealed off from this
+                                 one anyway. -->
+                            <section class="modal-panel ask-screen" id="listScreen" data-title="playlist" hidden>
+                                <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                                <h2 class="modal-title">exportify</h2>
+
+                                <div class="ask-body list-body">
+                                    <div class="list-site" id="listSite">
+                                        <!-- the dots hold the pane while somebody
+                                             else's site starts; the frame fades in
+                                             over them once it is there. -->
+                                        <div class="site-wait" aria-hidden="true"><svg class="spin-face" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10.6" stroke-width="1" vector-effect="non-scaling-stroke"/><path d="M6.53 13.73A5.75 5.75 0 0 0 17.47 13.73" stroke-width="1.7" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="8.85" cy="8.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.15" cy="8.6" r="1.15" fill="currentColor" stroke="none"/></svg></div>
+                                        <!-- shown only when the frame has tried to leave
+                                             exportify. spotify's sign-in refuses to be
+                                             framed at all, so there is nothing to fix in
+                                             here — it has to happen in a tab. -->
+                                        <p class="site-blocked" id="siteBlocked" hidden>that step needs spotify's own page, which won't run inside here. <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">open exportify in a tab</a>, sign in there, then come back &mdash; this will know you. <b>(press to put this away)</b></p>
+                                        <iframe id="listFrame" title="exportify" src="about:blank"
+                                            referrerpolicy="no-referrer"
+                                            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
+                                    </div>
+
+                                    <!-- the steps and the playlists already brought
+                                         in sit beside the site rather than over it:
+                                         they are the short part. -->
+                                    <div class="list-aside">
+                                        <!-- everything in here is yours to edit; nothing
+                                             reads it. the long one and the short one
+                                             swap with the button above them. -->
+                                        <div class="say-head">
+                                            <button class="say-swap" id="saySwap" type="button">short summary</button>
+                                        </div>
+
+                                        <p class="ask-why list-say" id="sayLong">wb to another lecture! i have created a feature helps unite souls and bring world peace, as it comes w convenience, specialty, and uniqueness that none other could rival.<br><br>one must complete a login/registration on the external website in order to prove oneself to the exquisiteness and holy presence of this platform.<br><br>the unspoken external website instructions r here</p>
+
+                                        <ol class="ask-steps" id="stepsLong">
+                                            <li>
+                                                <span class="ask-step">1</span>
+                                                <span class="ask-said">login to the ultimate
+                                                    <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">exportify.net</a>
+                                                    in order to complete this request laid upon you by the holy gods</span>
+                                            </li>
+                                            <li>
+                                                <span class="ask-step">2</span>
+                                                <span class="ask-said">if you wish to proceed, humbly select the export button and wait with patience and composure.</span>
+                                            </li>
+                                            <li>
+                                                <span class="ask-step">3</span>
+                                                <span class="ask-said">and if ur a lazy fuc u can allow permissions once and then u can always save the file to the list now</span>
+                                            </li>
+                                        </ol>
+
+                                        <!-- the short way of saying it. sample words —
+                                             write over them whenever you like. -->
+                                        <p class="ask-why list-say" id="sayShort" hidden>a playlist only
+                                            has to come in once. after that it is in the list below and
+                                            pressing it puts the songs back in the box.</p>
+
+                                        <ol class="ask-steps" id="stepsShort" hidden>
+                                            <li>
+                                                <span class="ask-step">1</span>
+                                                <span class="ask-said">sign in at exportify.net, in its own tab.</span>
+                                            </li>
+                                            <li>
+                                                <span class="ask-step">2</span>
+                                                <span class="ask-said">press export beside the playlist you want.</span>
+                                            </li>
+                                            <li>
+                                                <span class="ask-step">3</span>
+                                                <span class="ask-said">press find an export and pick it out of the list.</span>
+                                            </li>
+                                        </ol>
+
+                                        <ul class="list-kept" id="listKept" hidden></ul>
+
+                                        <!-- the exports it can find, listed here rather
+                                             than by the browser. last in the column and
+                                             pushed to the foot of it. -->
+                                        <button class="basic-button is-plain list-watch" id="listFind" type="button">find an export</button>
+                                    </div>
+                                </div>
+                            </section>
+
+
+                            <!-- ============ bringing clips in ============
+                                 the browser's own file window is somebody
+                                 else's furniture and shows everything on the
+                                 disk. this one is ours and shows the clip
+                                 files and nothing else. -->
+                            <section class="modal-panel ask-screen" id="bundleScreen" data-title="clips" hidden>
+                                <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                                <h2 class="modal-title">bring clips in</h2>
+
+                                <div class="ask-body">
+                                    <ul class="bundle-list" id="bundleList"></ul>
+                                    <p class="bundle-say" id="bundleSay"></p>
+                                    <button class="basic-button is-plain bundle-where" id="bundleWhere" type="button">look somewhere else</button>
+                                </div>
+                            </section>
+
+                            <!-- ============ where the mp3s go ============
+                                 a name, a place, and a press. the place
+                                 only points the picker at the right shelf —
+                                 permission to write there is the browser's
+                                 to give, once. -->
+                            <section class="modal-panel ask-screen folder-screen" id="folderScreen" data-title="folder" hidden>
+                                <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                                <h2 class="modal-title">where to</h2>
+
+                                <div class="ask-body">
+                                    <input id="folderName" type="text" placeholder="folder name" aria-label="folder name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+                                    <!-- what the press will actually do, in words -->
+                                    <p class="folder-say" id="folderSay"></p>
+
+                                    <button class="basic-button is-solid ask-go" id="folderGo" type="button">save them</button>
+
+                                    <!-- the other way, for anyone who would rather
+                                         have them written onto the disk and doesn't
+                                         mind being asked for the shelf first -->
+                                    <button class="folder-other" id="folderPick" type="button">or pick a folder to export to</button>
+                                </div>
+                            </section>
+
+                            <!-- ============ practice ============ -->
+                            <section class="modal-panel study-screen" id="studyScreen" data-title="practice" hidden>
+
+                            <button class="modal-close" type="button" aria-label="close" title="close">×</button>
+
+                                <h2 class="modal-title">practice</h2>
+
+                                <!-- question across the top, the four answers
+                                     filling the rest as real quadrants -->
+                                <div class="question-box">
+                                    <h2 id="studyQuestion"></h2>
+                                    <p id="studyFeedback" aria-live="polite"></p>
+                                </div>
+
+                                <div class="answer-options" id="answerOptions"></div>
+
+                            </section>
+
+                    </div>
+
+                </main>
+
+                <!-- right bar — always in, sits under the top bar -->
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>

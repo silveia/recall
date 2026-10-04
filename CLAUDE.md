@@ -1384,12 +1384,31 @@ moving into a folder, since every relative path in it (`script.js`,
 `ocr/`, `llm/`, the woff2) is written from there.
 
 **Github pages serves files, not routes**, so `/cards` has to be a real
-place on the disk — which is what the one-line `cards/index.html` in
-each of those folders is. All it does is send the reader on to
-`app.html?go=cards`, and `loadSection()` reads that, opens the section
-and tidies the query back out of the address bar. `404.html` does the
-same for anything else, falling back to the front door rather than
-showing someone a page about being lost.
+place on the disk — `cards/index.html`. **That file is the site
+itself**, a copy of `app.html` with `<base href="../">` so its relative
+paths still reach the root. It used to be a one-line hop on to
+`app.html?go=cards`, and every refresh showed it: a white page for a
+beat and `app.html?go=…` in the address bar before the real page came.
+
+**Never edit the copies — edit `app.html`.** `.githooks/pages.sh` writes
+all five, and the pre-commit hook runs it, so they cannot fall behind
+(`git config core.hooksPath .githooks` is what turns the hook on, and a
+fresh clone needs it run once). The `<base>` goes in *after* the
+doctype; anything before it drops the page into quirks mode.
+
+The links carry their slash (`/cards/`), because that is the real file;
+without it github answers with a redirect and the address changes under
+you. Tesseract reads its paths against the address bar rather than the
+`<base>`, so they are spelled out in full off `document.baseURI`.
+
+`app.html?go=cards` still works, for any old link. `404.html` sends a
+path ending in a section name to that section's folder, and anything
+else to the front door.
+
+**The lights are set in the head** of `app.html`, before the
+stylesheet, the same way the front door does it. Left to `script.js` at
+the foot of the page, a page with the lights off came up white on every
+refresh and then turned over.
 
 `SITE_ROOT` is worked out **once, before anything is written to the
 address bar** — a `replaceState` moves the ground it stands on. It
@@ -1579,8 +1598,11 @@ and catching it inverts it for a beat.
 ## Files
 
 - `CNAME` — the custom domain. See "the site's own address".
-- `home/`, `cards/`, `audio/`, `player/`, `chat/` + `404.html` — one line
-  each, so every section has a link of its own. See "a link per page".
+- `home/`, `cards/`, `audio/`, `player/`, `chat/` — each a copy of
+  `app.html`, written by `.githooks/pages.sh`. Never edit them by hand.
+  See "a link per page".
+- `404.html` — sends a stray path to its section, or to the front door.
+- `.githooks/` — the pre-commit hook that keeps the copies in step.
 - `index.html` — the front door at `morie.top`, blank for now. It carries
   the dark/light class and nothing else: arriving with the lights off, a
   white sheet would be the one thing here that didn't know.

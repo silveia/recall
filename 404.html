@@ -14,7 +14,7 @@
     var parts = location.pathname.split('/').filter(Boolean);
     var want = parts.length ? parts[parts.length - 1] : '';
     var root = location.pathname.slice(0, location.pathname.length - parts.join('/').length);
-    var to = pages.indexOf(want) > -1 ? root + 'app.html?go=' + want : root;
+    var to = pages.indexOf(want) > -1 ? root + want + '/' : root;
     location.replace(to + location.hash);
 }());
 </script>
