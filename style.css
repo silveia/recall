@@ -597,11 +597,13 @@ html.fading .app-shell::before { transition: opacity 0.4s var(--ease); }
 	gap: var(--rail-pad);
 	padding: var(--rail-pad);
 	padding-right: calc(var(--rail-pad) + 13px);
-	/* starts right under the black strip, at the same distance under it
-	   as the first thing on every page — `--rail-pad` alone put it at
-	   13.6 while the pages sat at 16, which is a difference you can see
-	   between the two columns without being able to name it */
-	padding-top: calc(var(--topbar) + var(--group));
+	/* **The bar does not wait for the strip.** Over the page the strip
+	   is a visible header — tabs on it, white page below — so the page
+	   starting under it reads right. Over the bar it is black on
+	   black, with no line between the two, so reserving its height
+	   left 52px of unbroken nothing above the clock. The bar starts at
+	   the top of the window, and the strip simply passes over it. */
+	padding-top: var(--group);
 	overflow: hidden;   /* the help box scrolls, the bar doesn't */
 }
 
@@ -637,20 +639,24 @@ html:not(.inverted) .rail-left {
 .topbar {
 	position: absolute;
 	top: 0;
-	/* the whole width, bar included. starting it past the bar left the
-	   bar's own top 52px uncovered — black, empty, and reading as a gap
-	   above the clock. the strip covers it now, and the bar's first box
-	   still sits --group under the strip exactly as every page does. */
-	left: 0;
+	/* it starts past the bar, not over it. Running it the whole width
+	   covers the bar's top — and the bar paints *under* it (z-index 2
+	   against 4), so the clock was simply hidden down to the strip's
+	   edge. The bar cannot be raised above it either: the scallop that
+	   carves its edge sits between the two, and the bar over that
+	   would paint the wave out. So the strip keeps to the page, and
+	   the bar fills its own top with the clock instead of leaving it
+	   empty. */
+	left: calc(var(--rail) - 13px);
 	right: 0;
 	z-index: 4;
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
 	height: var(--topbar);
-	/* the words start past the bar, so the strip reaching over it does
-	   not drag the tabs across it too */
-	padding-left: calc(var(--rail) + var(--gap));
+	/* the words use the whole strip, from just past the left bar to the
+	   far edge of the page, rather than stopping at the content column */
+	padding-left: calc(var(--gap) + 13px);
 	padding-right: var(--gap);
 	color: var(--bar-ink);
 	background: var(--bar);
@@ -678,8 +684,9 @@ html:not(.inverted) .rail-left {
 	   exactly the sort of thing you see without being able to name.
 	   There is nothing to mark over the bar anyway: in the dark the
 	   scallop's own white line already says where the bar ends, and
-	   the two meet at this x. */
-	left: calc(var(--rail) + 13px);
+	   the two meet at this x. Measured from the strip's own left edge,
+	   which starts 13px back under the scallop. */
+	left: 26px;
 	right: 0;
 	height: 1px;
 	background: var(--bar-ink);
@@ -764,6 +771,10 @@ html:not(.inverted) .rail-left {
 	   evening them up by growing the top and bottom cost the boxes
 	   height they needed more than the page needed margin. */
 	padding: var(--group);
+	/* less air over the first row than around it: the strip above is
+	   already a margin of sorts, and the board sat low under it. the
+	   shorthand is above, so this has to come after it. */
+	padding-top: var(--tight);
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }

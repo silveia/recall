@@ -721,10 +721,19 @@ wave bites 13px back inside the bar's nominal edge, so a plain
 touching them. The right padding is `--rail-pad + 13px`; the other
 three stay as they are.
 
-**The strip runs the whole width now.** Starting it past the bar left
-the bar's own top 52px uncovered — black, empty, and reading as a gap
-above the clock. Its tabs still start past the bar, so reaching over
-it doesn't drag them across it.
+**The bar does not wait for the strip.** Over the page the strip is a
+visible header — tabs on it, white page below — so a page starting
+under it reads right. Over the bar it is black on black with no line
+between them, so reserving its height left 52px of unbroken nothing
+above the clock. The bar starts at the top of the window instead and
+fills that space with the clock.
+
+Running the strip the whole width was tried first and does not work:
+the bar paints *under* it (z-index 2 against 4), so the clock was
+simply hidden down to the strip's edge. The bar cannot be raised above
+it either — the scallop that carves its edge sits between the two, and
+the bar over that would paint the wave out. The strip keeps to the
+page.
 
 Two one-pixel things, both of the kind you see without being able to
 name:
