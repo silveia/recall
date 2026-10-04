@@ -1299,6 +1299,34 @@ Everything the box says goes in one chip in its bottom corner
 the list down every time it changed, and it was the first thing you saw
 in a box whose point is the songs.
 
+## The top strip runs the whole width
+
+By request, the black strip across the top now covers the bar as well
+as the page. That reverses "the bar does not wait for the strip" and
+"running the strip the whole width … does not work" above: the bar's
+top padding is now `--topbar + --group`, so the clock starts under the
+strip, level with the page's first box, instead of being hidden by it.
+The tabs use the whole strip, from the window's edge. The line under
+the strip is solid over the page, from the dip where the bar's edge is
+on that row, and a row of the bar's own divider dots over the bar. The bumps' first tile sits behind the strip, and
+the wave comes out from under it at a dip.
+
+## The wave starts at the top, in both lights
+
+The bumps start with a whole bump at y=0 — a dip right at the top of
+the window — and the white outline along them is drawn in the light as
+well as the dark, over the black strip too, so the wave runs the full
+height. Light and dark put the tiles in exactly the same place: a
+version that moved them for the dark only made the edge jump on every
+swap, and was refused. The strip is exactly one bump tall
+(`--topbar: var(--wave-h)`), so the line under it meets the wave right
+on the dip between the first and second bumps, `--wave-out` in; the
+notes above about a crest under the strip are the older layout.
+
+The outline is drawn at stroke 39/32 because the tile is drawn 39 wide
+and shown at 32 — at 1 it came out 0.82px, thinner than the strip's
+line.
+
 ## Two bugs worth not repeating
 
 **A hidden panel measures as nothing.** `between()` used to work out

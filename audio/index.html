@@ -161,8 +161,9 @@
                          whenever something new lands on the site. -->
                     <!-- it keeps itself shut: the heading is the switch, and
                          the words underneath slide open when you want them -->
-                    <section class="help-box" aria-label="what this page does">
-                        <button class="help-head panel-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody">
+                    <!-- open from the start; its head shuts it -->
+                    <section class="help-box is-open" aria-label="what this page does">
+                        <button class="help-head panel-head" id="helpToggle" type="button" aria-expanded="true" aria-controls="helpBody">
                             <h2>function</h2>
                         </button>
 

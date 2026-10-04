@@ -75,10 +75,20 @@
 	   --wave-out is how far a crest reaches past --rail: 4/26ths of
 	   the width, which is where the arc's widest point lands. */
 	--rail-round: 1.6rem;  /* how far in the rounded ends of the bar's boxes reach */
-	--wave-w: 32.5px;
-	--wave-h: 55px;
-	--wave-out: 5px;
-	--topbar: 3.25rem; /* height of the top bar */
+	--dot-step: 24px;      /* how far apart the dots in the bar's dividers are */
+	--dot-end: 8px;        /* and how far their row stops off the bar's edges */
+	--dash-step: 14px;     /* a dash and its gap, in the line under the top strip over the bar */
+	/* the width is even on purpose: the strip starts half of it back
+	   from --rail, and half of an odd or fractional width lands the
+	   strip's edge between two pixels — drawn as a faint grey hairline
+	   down the whole bar. --wave-out is the same 6/39ths of it the
+	   tile is drawn with, worked out rather than rounded. */
+	--wave-w: 32px;
+	--wave-h: 54px;
+	--wave-out: calc(var(--wave-w) * 6 / 39);
+	/* height of the top bar: exactly one bump, so its underside lands on
+	   the dip between the first bump and the second */
+	--topbar: var(--wave-h);
 	--radius: 10px;
 	--field: 42px;     /* height of every control in the deck bar */
 	--card-row: 2.6rem;/* height of one row in the create window's list */
@@ -522,9 +532,16 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   the bar while everything else was still fading. only the bump is
 	   drawn, on nothing, so one picture serves both sides. */
 	background-color: var(--paper);
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E");
-	background-repeat: repeat-y;
-	background-size: var(--wave-w) var(--wave-h);
+	/* the straight back of the bumps is a plain block of the bar's black
+	   laid under the picture, not left to the picture alone: a picture
+	   scaled to size is blended at its own edges, and its left edge
+	   came out as a grey hairline down the whole bar. a flat colour has
+	   no edge to blend. */
+	background-image:
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E"),
+		linear-gradient(var(--bar), var(--bar));
+	background-repeat: repeat-y, no-repeat;
+	background-size: var(--wave-w) var(--wave-h), calc(var(--wave-out) + 1px) 100%;
 	/* half a tile up from where the strip ends, so the strip's underside
 	   meets the wave at a **crest** rather than at a trough. Meeting it
 	   at a trough left the carve's white biting 9px into the bar on the
@@ -532,7 +549,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   the sort of thing you see without being able to name. At a crest
 	   the first row under the strip is solid black and the wave flows
 	   down out of it. What is above is behind the strip and never seen. */
-	background-position: 0 calc(var(--topbar) - var(--wave-h) / 2);
+	background-position: 0 calc(var(--topbar) - var(--wave-h) / 2), 0 0;
 	/* **The carve stops at the crest.** The tile is half a tile past
 	   --rail, and its white ran the whole way — over the first 19px of
 	   the page, where it painted out the left outline of every box on
@@ -558,6 +575,9 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	/* over the strip that carves the edge, not under it. at the same
 	   level the carve painted last and buried this — which is why it
 	   was in the stylesheet and nowhere on the screen. */
+	/* under the black strip along the top: the strip runs the whole
+	   width, and the strip (later in the page, at the same 4) covers
+	   the first bump, so the edge comes out from under it at a dip. */
 	z-index: 4;
 	width: var(--wave-w);
 	pointer-events: none;
@@ -567,13 +587,28 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   why the shape looked a hair different with the lights off. the
 	   arc is nudged half a pixel out, so the line lies against the
 	   black rather than on it and the bump is the same size either
-	   way. */
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.5 0 A 37.5 37.5 0 0 1 6.5 66' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");
+	   way.
+
+	   the picture is drawn 39 wide and shown at --wave-w (32), so its
+	   stroke shrinks with it — at 1 it came out at 0.82px, visibly
+	   thinner than the 1px line under the top strip it meets. it is
+	   drawn at 39/32 so it lands on 1px. if --wave-w changes, this
+	   number and the half of it the arc is nudged by change with it. */
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.61 0 A 37.5 37.5 0 0 1 6.61 66' fill='none' stroke='%23ffffff' stroke-width='1.21875'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: var(--wave-w) var(--wave-h);
 	background-position: 0 calc(var(--topbar) - var(--wave-h) / 2);   /* in step with the carve */
 }
 html.inverted .app-shell::before { opacity: 1; }
+/* **The white edge shows in the light too, and the wave starts with a
+   whole bump at the very top of the window**, the same in both. Over
+   the page the white line lies on white and only the bump shows; over
+   the black strip at the top it is the one thing drawing the wave. The
+   tiles start at a dip at y=0 rather than putting a crest under the
+   strip, so the light and the dark agree to the pixel. */
+.app-shell::before { opacity: 1; }
+.app-shell::before,
+.app-shell::after { background-position-y: 0; }
 /* no fade of its own. the swap is one picture the compositor crosses
    over (`startViewTransition`), and a half-second opacity transition
    running underneath it is a second, slower swap of the one edge
@@ -621,8 +656,11 @@ html.fading .app-shell::before { transition: opacity 0.4s var(--ease); }
 	   starting under it reads right. Over the bar it is black on
 	   black, with no line between the two, so reserving its height
 	   left 52px of unbroken nothing above the clock. The bar starts at
-	   the top of the window, and the strip simply passes over it. */
-	padding-top: var(--group);
+	   the top of the window, and the strip simply passes over it.
+
+	   — undone: the strip runs the whole width now, so the bar starts
+	   under it, a --group below, level with the page's first box. */
+	padding-top: calc(var(--topbar) + var(--group));
 	overflow: hidden;   /* the help box scrolls, the bar doesn't */
 }
 
@@ -666,7 +704,13 @@ html:not(.inverted) .rail-left {
 	   would paint the wave out. So the strip keeps to the page, and
 	   the bar fills its own top with the clock instead of leaving it
 	   empty. */
-	left: calc(var(--rail) - var(--wave-w) / 2);
+	/* **It runs the whole width now, over the bar as well**, by
+	   request: one strip across the top of the window. The bar starts
+	   under it (its top padding is the strip's height), and the bumps
+	   go under it too — their first one sits behind the strip, so the
+	   wave comes out from under it at a dip. The note above is the
+	   older layout. */
+	left: 0;
 	right: 0;
 	z-index: 4;
 	display: flex;
@@ -675,7 +719,8 @@ html:not(.inverted) .rail-left {
 	height: var(--topbar);
 	/* the words use the whole strip, from just past the left bar to the
 	   far edge of the page, rather than stopping at the content column */
-	padding-left: calc(var(--gap) + var(--wave-w) / 2);
+	/* the words use the whole strip, from the window's own edge */
+	padding-left: var(--gap);
 	padding-right: var(--gap);
 	color: var(--bar-ink);
 	background: var(--bar);
@@ -712,6 +757,34 @@ html:not(.inverted) .rail-left {
 	right: 0;
 	height: 1px;
 	background: var(--bar-ink);
+	pointer-events: none;
+}
+/* the strip is one bump tall and runs the whole width now. over the
+   page the line under it is solid, and it starts exactly at the dip
+   between the first bump and the second — the bar's own edge on that
+   row. over the bar it is a row of dots instead, the same dots as the
+   bar's own dividers, ending as far off that dip as it starts off the
+   window's wall. */
+.topbar::after { left: calc(var(--rail) - var(--wave-w) / 2 + var(--wave-out)); }
+.topbar::before {
+	content: '';
+	position: absolute;
+	/* a dashed line rather than dots, so the strip's edge reads as its
+	   own thing beside the bar's dividers: 8px dashes, one pixel thick
+	   like the solid line it runs into. it runs the whole way from the
+	   window's wall to the dip where the solid line starts, and each
+	   tile is half a gap, a dash, half a gap — so `round` fits a whole
+	   number of them in, the wall and the solid line each sit a half-gap
+	   off the end dashes, and the step from the last dash into the solid
+	   line is the same gap as between any two dashes. */
+	top: 100%;
+	left: 0;
+	width: calc(var(--rail) - var(--wave-w) / 2 + var(--wave-out));
+	height: 1px;
+	background-image: linear-gradient(to right,
+		transparent 0 calc(50% - 4px), var(--bar-ink) calc(50% - 4px) calc(50% + 4px), transparent calc(50% + 4px));
+	background-size: var(--dash-step) 1px;
+	background-repeat: round no-repeat;
 	pointer-events: none;
 }
 
@@ -3763,7 +3836,9 @@ html:not(.inverted) .rail-left {
 	}
 	.help-box { flex: 1; min-height: 0; overflow-y: auto; }
 	.app-shell::after, .app-shell::before { display: none; }   /* its edge goes with it */
-	.topbar { left: 0; }                   /* no scallop to reach under */
+	.topbar { left: 0; padding-left: var(--gap); }   /* the bar is under the page here */
+	.topbar::after { left: 0; }                      /* so the line is solid all the way */
+	.topbar::before { display: none; }
 	#homeScreen { padding-left: var(--group); }   /* no bumps to sit against */
 }
 
@@ -4585,13 +4660,103 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
    insets are a first pass and expected to move. */
 .rail-clock, .rail-store, .rail-now, .help-box { border-radius: 999px; }
 .help-box.is-open, .rail-binned { border-radius: var(--rail-round) / 50%; }
+/* no outline round these any more, so nothing to hold the words off —
+   and at the narrow bar the rounded ends' inset wrapped the storage
+   amount onto a second line */
 .rail-store, .rail-now, .rail-binned {
-	padding-left: var(--rail-round);
-	padding-right: var(--rail-round);
+	padding-left: 0;
+	padding-right: 0;
 }
 .help-box { padding-left: var(--rail-round); padding-right: var(--rail-round); }
-.help-box.is-open { padding-top: var(--group); padding-bottom: calc(var(--group) * 2); }
+/* only the bottom grows when it opens. the top stays the shut box's
+   own, so the word does not move — growing the top as well is what
+   made it drop as the drawer opened. */
+/* **one gap down the whole bar**, measured to the ink: 27px from the
+   clock to the function word, from the last line of words to the
+   dotted line, and from the dotted line to the storage label. the
+   words' double spacing already carries about 18px under the last
+   line, so only a little more is added here. */
+.help-box.is-open { padding-bottom: calc(var(--tight) + 1px); }
 .rail-clock { padding-left: var(--group); padding-right: var(--group); }
+
+/* **Only the clock wears an outline.** The function drawer, the storage
+   line, the player and the bin sit straight on the black, each on its
+   own, with no box drawn round it — the clock is the one tile. */
+.rail-left .help-box, .rail-left .rail-store, .rail-left .rail-now, .rail-left .rail-binned {
+	border-color: transparent;
+}
+
+/* with no outline there is nothing for a rounded corner to round, and
+   it would only clip the words — and it was the open drawer swapping
+   from one curve to another that jolted it. square, and still. */
+.rail-left .help-box, .rail-left .rail-store, .rail-left .rail-now, .rail-left .rail-binned {
+	border-radius: 0;
+}
+/* a line between each of them, laid on the top edge of every box after
+   the function drawer — so it sits in the gap, and a box that isn't
+   there takes its line with it. */
+.rail-left > .help-box ~ section {
+	position: relative;
+	border-top-color: transparent;
+}
+/* the line between them is a row of small round dots, drawn rather
+   than a dotted border: a border sets its own gaps and stops wherever
+   the last whole dot runs out, which left a gap at the right end.
+
+   each tile carries half a dot at either end, and `round` fits a whole
+   number of tiles between the first dot's middle and the last's — so
+   the ends land exactly where they are put, and every join between two
+   tiles makes one whole dot. the 2px of padding either side is room for
+   the outer halves of the two end dots, which the next tile out draws. */
+.rail-left > .help-box ~ section::before,
+.rail-left .rail-clock::after {
+	content: '';
+	position: absolute;
+	top: -2px;
+	/* the row ends the same distance off the bar's edge at both ends:
+	   --dot-end from the window's wall to the first dot's middle, and
+	   the same from the last dot's middle to the deepest point of the
+	   wave. the box sits --rail-pad in from the wall, and --rail-pad
+	   short of the bumps' strip, whose wave dips --wave-out further in.
+	   the last dot clears the strip by a couple of pixels, which is all
+	   it can — any closer and the strip paints over half of it. */
+	/* the whole width of the bar: --dot-end off the window's wall at
+	   one end, and the same off the deepest point of the wave at the
+	   other. the box sits --rail-pad in from the wall, and --rail-pad
+	   short of the bumps' strip, whose wave dips --wave-out further in. */
+	left: calc(var(--dot-end) - var(--rail-pad) - 2px);
+	right: calc(var(--dot-end) - var(--rail-pad) - var(--wave-out) - 2px);
+	height: 3px;
+	padding: 0 2px;
+	box-sizing: border-box;
+	/* fitted to the content box — the stretch between the two end dots'
+	   middles — and drawn out into the padding either side, so the end
+	   tiles' outer halves land there and each end dot comes out whole. */
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='3' viewBox='0 0 18 3' preserveAspectRatio='none'%3E%3Ccircle cx='0' cy='1.5' r='1.25' fill='%23fff'/%3E%3Ccircle cx='18' cy='1.5' r='1.25' fill='%23fff'/%3E%3C/svg%3E");
+	background-size: var(--dot-step) 3px;
+	background-repeat: round no-repeat;
+	background-origin: content-box;
+	background-clip: border-box;
+	background-position: 0 0;
+	pointer-events: none;
+}
+/* and one between the clock and the function drawer. it hangs off the
+   clock — the drawer clips whatever leaves it — a gap's length below
+   it, and the drawer is moved down by that gap plus the dots, so the
+   clock, the dots and the function word are the same distance apart as
+   everything else in the bar. */
+.rail-left .rail-clock { position: relative; }
+.rail-left .rail-clock::after { top: calc(100% + 28px); }
+.rail-left .rail-clock + .help-box { margin-top: 30px; }
+/* the same air over and under each of them as the function word gets
+   between the clock and its line — storage sat tight against its own
+   line while function had room all round it */
+.rail-left .rail-store, .rail-left .rail-now, .rail-left .rail-binned {
+	/* measured to the ink: 27px from the dotted line to the word, the
+	   same as from the clock to the function word */
+	padding-top: calc(var(--rail-pad) + var(--tight) + 7px);
+	padding-bottom: calc(var(--rail-pad) + var(--tight));
+}
 
 /* =========================================================
    23. home — the board you arrange yourself
