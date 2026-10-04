@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>:p</title>
+<!-- github pages serves files, not routes, so /home has to be a real
+     place on the disk. this is that place, and all it does is hand the
+     reader back to the site with the section written on the ticket —
+     index.html reads it, opens home, and tidies the address bar back to
+     /home. relative, so it works the same served from a folder. -->
+<meta name="robots" content="noindex">
+<link rel="canonical" href="../home">
+<script>location.replace('../?go=home' + location.hash);</script>
+<meta http-equiv="refresh" content="0; url=../?go=home">
+</head>
+<body><a href="../?go=home">home</a></body>
+</html>

@@ -41,6 +41,10 @@ const audioPanel = document.getElementById('audioPanel');
 // on a const still in its dead zone throws rather than answering
 const chatPanel = document.getElementById('chatPanel');
 let chatSplitter = null;
+// section 19 declares the rest of the chat's own things, further down
+// the file than this runs. landing straight on /chat would otherwise
+// wake it before it exists.
+let chatReady = false;
 
 // decks
 const deckListSlot = document.getElementById('deckListSlot');
@@ -184,10 +188,66 @@ function loadDecks() {
     }
 }
 
+/* --- a page per section, in the address bar ---
+
+   Every section has its own link: morie.top/cards, morie.top/audio.
+   Github pages serves files and nothing else, so `/cards` is not a
+   path it knows — which is what the little `cards/index.html` beside
+   this one is for. Each of them does one thing: send the browser back
+   to the root with `?go=cards` on it, which the lines below read and
+   then tidy out of the address bar again.
+
+   Worked out once, before anything is written to the address bar: a
+   replaceState would otherwise move the ground this stands on. */
+const SITE_ROOT = window.location.pathname.replace(/\/(index\.html)?$/, '');
+
+const isSection = (id) => sections.some((section) => section.id === id);
+
+function sectionLink(id) {
+    return `${SITE_ROOT}/${id}`;
+}
+
+/* opened as a file rather than served, the browser refuses to be told
+   a path at all — and that throw would take the section swap with it.
+   The address bar is the one part of this that is allowed to fail. */
+function writeLink(how, id) {
+    try {
+        window.history[how]({ section: id }, '', sectionLink(id));
+    } catch (error) {
+        // file://, or a browser that won't have it. the page still works
+    }
+}
+
+/* where the reader actually is, in order of how plainly they said it:
+   the `?go=` a redirect left, then the path itself (for a browser that
+   was handed /cards directly), then whatever they were last on. */
+function askedForSection() {
+    const asked = new URLSearchParams(window.location.search).get('go');
+    if (isSection(asked)) return asked;
+    const last = window.location.pathname.split('/').filter(Boolean).pop();
+    if (isSection(last)) return last;
+    return null;
+}
+
 function loadSection() {
     const saved = window.localStorage.getItem('active-section');
-    if (sections.some((section) => section.id === saved)) activeSectionId = saved;
+    if (isSection(saved)) activeSectionId = saved;
+    const asked = askedForSection();
+    if (asked) activeSectionId = asked;
+    /* the link is written whichever way they arrived, so the address
+       bar says the same thing as the page under it — and the `?go=`
+       the redirect needed is gone the moment it has been read. */
+    writeLink('replaceState', activeSectionId);
 }
+
+// the back button walks the sections, the way it walks anything else
+window.addEventListener('popstate', (event) => {
+    const want = (event.state && event.state.section) || askedForSection() || 'home';
+    if (!isSection(want) || want === activeSectionId) return;
+    activeSectionId = want;
+    window.localStorage.setItem('active-section', activeSectionId);
+    renderSections();
+});
 
 /* nothing on this site wants the browser guessing at what you meant —
    no autocomplete list, no autocorrect, no capitalising the first
@@ -214,6 +274,7 @@ function switchSection(id) {
 
     activeSectionId = id;
     window.localStorage.setItem('active-section', activeSectionId);
+    writeLink('pushState', id);
     renderSections();
 
     if (!tabs[0] || typeof tabs[0].animate !== 'function') return;
@@ -248,7 +309,7 @@ function renderSections() {
        only starts listening once it is looked at, and it keeps
        listening after — a message that arrived while you were on
        another page should be there when you come back. */
-    if (activeSectionId === 'chat') wakeChat();
+    if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
     /* the sensing window is fixed to the screen and lives outside every
        panel — hiding the page it belongs to does not take it with it */
@@ -9272,5 +9333,9 @@ if (chatSplitter) {
     if (window.localStorage.getItem('room-column') === null) chatSplitter.set(26);
 }
 
+chatReady = true;
 paintChatBar();
 paintChatDoor();
+// arrived straight on /chat: renderSections ran before any of this
+// existed, so the waking is done here instead
+if (activeSectionId === 'chat') wakeChat();

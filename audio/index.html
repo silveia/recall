@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>:p</title>
+<!-- github pages serves files, not routes, so /audio has to be a real
+     place on the disk. this is that place, and all it does is hand the
+     reader back to the site with the section written on the ticket —
+     index.html reads it, opens audio, and tidies the address bar back to
+     /audio. relative, so it works the same served from a folder. -->
+<meta name="robots" content="noindex">
+<link rel="canonical" href="../audio">
+<script>location.replace('../?go=audio' + location.hash);</script>
+<meta http-equiv="refresh" content="0; url=../?go=audio">
+</head>
+<body><a href="../?go=audio">audio</a></body>
+</html>

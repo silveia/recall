@@ -1229,6 +1229,30 @@ nothing in this repo can help. That is exactly what happened on first
 setting it up: www resolved, the apex did not, and pages was
 redirecting www to an address that did not exist.
 
+## A link per page
+
+`morie.top/cards`, `morie.top/audio`, and so on. The tabs write them as
+you press (`pushState`), the back button walks them, and arriving on
+one opens that section.
+
+**Github pages serves files, not routes**, so `/cards` has to be a real
+place on the disk — which is what the one-line `cards/index.html` in
+each of those folders is. All it does is send the reader back to the
+root with `?go=cards`, and `loadSection()` reads that, opens the
+section and tidies the query back out of the address bar. `404.html`
+does the same for anything else, falling back to home rather than
+showing someone a page about being lost.
+
+`SITE_ROOT` is worked out **once, before anything is written to the
+address bar** — a `replaceState` moves the ground it stands on. It
+strips `/index.html`, so the links are right whether the site is at a
+domain's root or in a folder under it.
+
+Every write goes through `writeLink()`, which swallows its own throw:
+opened as a file rather than served, the browser refuses to be told a
+path at all, and that throw would otherwise take the section swap down
+with it.
+
 ## Chatting
 
 The one page here that is not only yours. Everything else keeps to this
@@ -1276,6 +1300,8 @@ than pretending.
 ## Files
 
 - `CNAME` — the custom domain. See "the site's own address".
+- `home/`, `cards/`, `audio/`, `player/`, `chat/` + `404.html` — one line
+  each, so every section has a link of its own. See "a link per page".
 - `index.html` — all three screens
 - `style.css` — numbered sections, see the table of contents at the top
 - `script.js` — numbered sections, see the table of contents at the top
