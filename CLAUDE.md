@@ -1265,36 +1265,53 @@ The one page here that is not only yours. Everything else keeps to this
 browser; a chat cannot, because two people have to meet somewhere, and
 a static page has no server to be that place.
 
-So it **borrows one**: a firebase project the reader makes and owns,
-pasted in once and kept in `chat-place`. Nothing of it is in this repo.
-The config is public by design — it names the project, it does not open
-it; what keeps the chat shut is the database's own rules, and the
-window hands those over to be pasted in:
+**Nothing is set up and nothing is signed up for.** It talks to a
+public mqtt broker over websockets — hivemq's, with mosquitto's behind
+it — which anyone may connect to with no key and no account. That is
+the whole reason it is used. It was a firebase project the reader had
+to make first, and five minutes of somebody's console before you can
+say hello is five minutes nobody spends. Both brokers were measured end
+to end before either was written down: connect, publish, read back, and
+a retained message surviving a fresh connection.
 
-    { "rules": { ".read": "auth != null", ".write": "auth != null" } }
+**The security is terrible, on purpose and by request.** The broker is
+public, so anyone who knows the topic can read every word and write any
+word. The accounts are the page's own — a name and a password, the
+password kept as a sha-256 hash in a retained message on that same
+public broker, and checked here rather than anywhere that could enforce
+it. It keeps your sister out of your account and nobody else out of
+anything. The window says that in as many words, because someone has
+to.
 
-The sdk is ~250kb and comes off gstatic by `import()` **only when the
-chat page is actually looked at** — a visit to the cards page should
-not pay for it. Once it is listening it stays listening, even on
-another page: a message that arrived while you were away should be
-there when you come back.
+**History is a retained message.** A retained message is the last thing
+published on a topic and the broker hands it to whoever subscribes
+next — so a room's whole log lives in one retained message and arrives
+in full the moment you join. Sending republishes the log with the new
+line on the end, capped at `TALK_KEEP`. No database, and nothing to pay
+for.
 
-**Rooms and what is said in them are kept apart** — `rooms/{id}` and
-`talk/{id}`. Under one branch, asking for the list of rooms drags every
-message in every room down with it. A room is read `limitToLast(200)`:
-a year of talking is not something to re-read on every visit.
+Two people sending in the same instant would otherwise have one log
+land on top of the other, so an arriving log is **merged** with what is
+already here rather than replacing it, deduped by id.
 
-**Who is here is written by the server, not the browser.** A shut lid
-says nothing on the way out, so the leaving is registered first with
-`onDisconnect` and firebase does it when the line drops.
+**Who is here is a heartbeat, not a register.** Everyone says so every
+fifteen seconds and anyone unheard for forty has gone — a browser
+cannot be relied on to say goodbye on its way out.
 
-The same person twice within five minutes runs on under their last
-line rather than starting again with the face and the name — which is
-the whole look of a chat, and it is three lines of code.
+The brokers are tried **in turn, never raced**: two connections to two
+brokers would each hold half the conversation, and nobody in one would
+hear anybody in the other. That is the opposite of the playlist box's
+rule, and for the opposite reason — there, any answer will do; here,
+everyone has to be in the same room.
 
-A project cannot be swapped under a page that has already started one:
-firebase keeps the first. Saving a new config says to refresh rather
-than pretending.
+`clientId` must be random. Two clients on one id and the broker throws
+the first off, forever, each reconnect evicting the other.
+
+**A proxy set on the machine hangs every websocket**, and a proxy that
+isn't answering doesn't refuse — it waits, which reads as the chat
+being down. Measured: identical page, `--no-proxy-server` connects in
+3s and the system proxy never connects at all. The bar says so when
+nothing answers, because nobody thinks to look there.
 
 ## Known limits — accepted, don't re-raise
 

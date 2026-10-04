@@ -538,14 +538,15 @@
                         <!-- chat — the one page here that is not only
                              yours. everything else lives in this browser;
                              this one needs somewhere to meet, so it talks
-                             to a firebase project you set up yourself. -->
+                             to a public board anyone may connect to.
+                             nothing to set up, and nothing private. -->
                         <section class="chat-panel" id="chatPanel" hidden>
 
                             <!-- who you are, and the way in -->
                             <div class="chat-bar">
                                 <p class="chat-who" id="chatWho">not signed in</p>
                                 <button class="basic-button" id="chatSignOut" type="button" hidden>sign out</button>
-                                <button class="basic-button" id="chatSetupOpen" type="button">set this up</button>
+                                <button class="basic-button" id="chatSetupOpen" type="button">sign in</button>
                             </div>
 
                             <div class="chat-body" id="chatBody">
@@ -674,53 +675,26 @@
                             </section>
 
                             <!-- ============ the way into chat ============
-                                 the same shape as the other asking
-                                 windows. it is two things in one: where
-                                 the chat lives, and who you are in it. -->
+                                 a name and a password, and that is the
+                                 whole of it. nothing to set up, because
+                                 the chat talks to a public broker that
+                                 wants no key — which is also why the
+                                 window says plainly how little this
+                                 account is worth. -->
                             <section class="modal-panel ask-screen chat-screen" id="chatScreen" data-title="chat" hidden>
                                 <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
                                 <h2 class="modal-title">chat</h2>
 
                                 <div class="ask-body">
-
-                                    <!-- first: somewhere for it to live -->
-                                    <div class="chat-setup" id="chatSetup">
-                                        <p class="ask-why">every other page here keeps to this browser. a chat cannot &mdash; it needs somewhere both of you can reach. this page has no server, so you lend it one: a firebase project of your own, free, and nobody else's.</p>
-
-                                        <ol class="ask-steps">
-                                            <li>
-                                                <span class="ask-step">1</span>
-                                                <span class="ask-said">make a project at <b>console.firebase.google.com</b>, then add a <b>web app</b> to it.</span>
-                                            </li>
-                                            <li>
-                                                <span class="ask-step">2</span>
-                                                <span class="ask-said">in <b>build &rarr; authentication</b>, turn on <b>email/password</b>. in <b>build &rarr; realtime database</b>, make a database.</span>
-                                            </li>
-                                            <li>
-                                                <span class="ask-step">3</span>
-                                                <span class="ask-said">put these rules on the database, so only signed-in people can read or write it. <button class="scratch-plain" id="chatRulesCopy" type="button">copy the rules</button></span>
-                                            </li>
-                                            <li>
-                                                <span class="ask-step">4</span>
-                                                <span class="ask-said">paste the app's config here &mdash; the <b>const firebaseConfig = &#123;&hellip;&#125;</b> block. it is meant to be public; the rules are what keep the chat shut.</span>
-                                            </li>
-                                        </ol>
-
-                                        <textarea id="chatConfig" rows="4" spellcheck="false" placeholder="paste the firebaseConfig block here" aria-label="firebase config"></textarea>
-                                        <button class="basic-button is-solid ask-go" id="chatConfigSave" type="button">save it</button>
-                                        <button class="scratch-plain ask-forget" id="chatConfigForget" type="button" hidden>forget it</button>
-                                    </div>
-
-                                    <!-- then: who you are in it -->
-                                    <div class="chat-door" id="chatDoor" hidden>
-                                        <p class="ask-why" id="chatDoorWhy">an account here is an email and a password, and it is yours alone &mdash; nobody signed in can see anybody's but their own.</p>
+                                    <div class="chat-door" id="chatDoor">
+                                        <p class="ask-why" id="chatDoorWhy">pick a name nobody here has taken, and a password you have not used anywhere else.</p>
 
                                         <input id="chatHandle" type="text" autocomplete="off" spellcheck="false" placeholder="what to call you" aria-label="your name">
-                                        <input id="chatMail" type="email" autocomplete="off" spellcheck="false" placeholder="email" aria-label="email">
                                         <input id="chatWord" type="password" autocomplete="off" spellcheck="false" placeholder="password" aria-label="password">
                                         <button class="basic-button is-solid ask-go" id="chatGo" type="button">make an account</button>
                                         <button class="scratch-plain ask-swap" id="chatSwap" type="button">i already have one</button>
-                                        <button class="scratch-plain ask-forget" id="chatSetupBack" type="button">change where it lives</button>
+
+                                        <p class="ask-small">this runs on a public message board that anyone may connect to, so that nothing has to be set up. <b>treat everything here as public.</b> the password keeps your sister out of your account and nobody else out of anything &mdash; so don't use one you use elsewhere.</p>
                                     </div>
 
                                     <p class="ask-note" id="chatNote" aria-live="polite"></p>
@@ -922,7 +896,7 @@
 
                         <p class="help-note" data-section="audio" hidden>audio recorder; records clips that cut when a change is detected in a selected area. clips can be cropped and downloaded as mp3s individually, or get batch downloaded in a custom folder all tg. clips also can be matched up w a spotify playlist.</p>
 
-                        <p class="help-note" data-section="chat" hidden>chat; the one page here that isn't only yours. it talks to a firebase project you set it up with, so it needs an account. rooms down the side, the talking in the middle.</p>
+                        <p class="help-note" data-section="chat" hidden>chat; the one page here that isn't only yours. pick a name and a password and you're in, nothing to set up. rooms down the side, the talking in the middle. it runs on a public board so treat everything said here as public.</p>
                         <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface</p>
 
 

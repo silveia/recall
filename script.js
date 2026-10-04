@@ -8845,23 +8845,38 @@ window.addEventListener('blur', () => {
 /* ---------- 19. chat   (the one page that is not only yours) ----------
 
    Every other page here keeps to this browser. A chat cannot: two
-   people need somewhere to meet, and a page on github pages has no
-   server to be that place. So it borrows one — a firebase project the
-   reader sets up and owns, pasted in once and kept in `chat-place`.
+   people have to meet somewhere, and a page on github pages has no
+   server to be that place.
 
-   Nothing of it is in this repo, and nothing is fetched until the chat
-   page is actually looked at: the firebase sdk is ~250kb and a visit to
-   the cards page should not pay for it.
+   **Nothing is set up and nothing is signed up for.** It talks to a
+   public mqtt broker — hivemq's, with mosquitto's behind it — which
+   anyone may connect to without a key or an account. That is the whole
+   reason it is used: the alternative was a firebase project the reader
+   had to make themselves, and five minutes of console before you can
+   say hello is five minutes nobody spends.
 
-   The config is public by design — it names the project, it does not
-   open it. What keeps the chat shut is the database's own rules, which
-   the window hands over to be pasted in:
+   **The security is terrible, on purpose and by request.** The broker
+   is public, so anyone who knows the topic can read every word and
+   write any word. The accounts are the page's own: a name and a
+   password, the password kept as a sha-256 hash in a message on that
+   same public broker, and checked here rather than anywhere that could
+   enforce it. It keeps your sister out of your account. It keeps
+   nobody else out of anything. The window says so in as many words,
+   because someone has to.
 
-       { "rules": { ".read": "auth != null", ".write": "auth != null" } }
+   **History comes from retained messages.** A retained message is the
+   last thing published on a topic, and the broker hands it to whoever
+   subscribes next — so a room's whole log lives in one retained
+   message and arrives in full the moment you join. Sending republishes
+   the log with the new line on the end. Measured against both brokers:
+   live delivery and retention, both good.
+
+   Two people sending in the same instant would otherwise have one log
+   land on top of the other, so an arriving log is **merged** with what
+   is already here rather than replacing it, deduped by id.
 */
 
 const chatScreen = document.getElementById('chatScreen');
-const chatBar = document.querySelector('.chat-bar');
 const chatWhoLine = document.getElementById('chatWho');
 const chatSignOut = document.getElementById('chatSignOut');
 const chatSetupOpen = document.getElementById('chatSetupOpen');
@@ -8874,186 +8889,214 @@ const talkLog = document.getElementById('talkLog');
 const talkEmpty = document.getElementById('talkEmpty');
 const talkForm = document.getElementById('talkForm');
 const talkSay = document.getElementById('talkSay');
-const chatSetupBox = document.getElementById('chatSetup');
-const chatDoor = document.getElementById('chatDoor');
-const chatDoorWhy = document.getElementById('chatDoorWhy');
-const chatConfig = document.getElementById('chatConfig');
-const chatConfigSave = document.getElementById('chatConfigSave');
-const chatConfigForget = document.getElementById('chatConfigForget');
-const chatRulesCopy = document.getElementById('chatRulesCopy');
 const chatHandle = document.getElementById('chatHandle');
-const chatMail = document.getElementById('chatMail');
 const chatWord = document.getElementById('chatWord');
 const chatGo = document.getElementById('chatGo');
 const chatSwap = document.getElementById('chatSwap');
-const chatSetupBack = document.getElementById('chatSetupBack');
+const chatDoorWhy = document.getElementById('chatDoorWhy');
 const chatNote = document.getElementById('chatNote');
 
-[roomNameField, talkSay, chatHandle, chatMail].forEach((field) => field && stopGuessing(field));
+[roomNameField, talkSay, chatHandle].forEach((field) => field && stopGuessing(field));
 
-const CHAT_PLACE = 'chat-place';
+/* the brokers, tried in turn. both were measured end to end — connect,
+   publish, read back, and a retained message surviving a fresh
+   connection — before either was written down here. */
+const CHAT_WAYS = [
+    'wss://broker.hivemq.com:8884/mqtt',
+    'wss://test.mosquitto.org:8081/mqtt'
+];
+const CHAT_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.1/mqtt.min.js';
+/* versioned, so the shape of what is kept can change without every
+   old page arguing with every new one */
+const CHAT_ROOT = 'morie-top/chat/v1';
+const CHAT_ME = 'chat-me';
 const CHAT_ROOM = 'chat-room';
-const CHAT_SDK = 'https://www.gstatic.com/firebasejs/10.12.5/';
-const CHAT_RULES = '{\n  "rules": {\n    ".read": "auth != null",\n    ".write": "auth != null"\n  }\n}';
-const TALK_KEEP = 200;      // how far back a room is read
-const SAME_BREATH = 5 * 60 * 1000;   // two messages close enough to run on
+const TALK_KEEP = 150;          // how much of a room is kept
+const HERE_EVERY = 15000;       // a heartbeat, so the room knows you're in it
+const HERE_GONE = 40000;        // and how long before it decides you left
+const SAME_BREATH = 5 * 60 * 1000;
 
-let chatKit = null;         // the sdk, once it has come down
-let chatAuth = null;
-let chatDb = null;
-let chatMe = null;          // the signed-in account, or nothing
+let chatLink = null;            // the mqtt client, once connected
+let chatMe = null;              // { name, word } — the word is the hash
+let chatPeople = {};
 let chatRooms = [];
 let chatRoomId = window.localStorage.getItem(CHAT_ROOM) || '';
 let chatSaid = [];
-let dropRoomWatch = null;   // the listeners, so a swap can take them off
-let dropTalkWatch = null;
-let dropHereWatch = null;
-let chatDoorNew = true;     // the door makes an account, or opens one
+let chatHere = new Map();       // name -> when they were last heard
+let chatDoorNew = true;
 let chatStarting = false;
+let hereTimer = 0;
+let hereSweep = 0;
 
 function saySomethingChat(words) {
     if (chatNote) chatNote.textContent = words || '';
 }
 
-/* where it lives. the config is the firebase console's own snippet,
-   which is javascript rather than json — so it is read for the pairs it
-   holds rather than parsed, and never run. a page that evals whatever
-   is pasted into it deserves what it gets. */
-function chatPlace() {
+const topicPeople = () => `${CHAT_ROOT}/people`;
+const topicRooms = () => `${CHAT_ROOT}/rooms`;
+const topicTalk = (id) => `${CHAT_ROOT}/talk/${id}`;
+const topicHere = (id) => `${CHAT_ROOT}/here/${id}`;
+
+/* a password, badly kept. sha-256 is not what makes this safe — nothing
+   here does — but a hash means the broker is not carrying everybody's
+   password in plain sight, which is a low bar worth clearing. */
+async function wordHash(word) {
+    const bytes = new TextEncoder().encode(`morie:${word}`);
+    const out = await crypto.subtle.digest('SHA-256', bytes);
+    return [...new Uint8Array(out)].map((n) => n.toString(16).padStart(2, '0')).join('');
+}
+
+function readJson(payload, fallback) {
     try {
-        const held = JSON.parse(window.localStorage.getItem(CHAT_PLACE) || 'null');
-        return held && held.apiKey && held.databaseURL ? held : null;
+        const held = JSON.parse(payload.toString());
+        return held === null ? fallback : held;
     } catch (error) {
-        return null;
+        return fallback;
     }
 }
 
-function readConfig(text) {
-    const found = {};
-    const pairs = /([A-Za-z]+)\s*:\s*["'`]([^"'`]*)["'`]/g;
-    let hit;
-    while ((hit = pairs.exec(text))) found[hit[1]] = hit[2];
-    if (!found.apiKey || !found.projectId) return null;
-    /* the realtime database is the one part the console leaves out of
-       the snippet unless the database already exists — its address is
-       the project's own, so it can be worked out rather than asked for */
-    if (!found.databaseURL) found.databaseURL = `https://${found.projectId}-default-rtdb.firebaseio.com`;
-    return found;
+/* --- getting on --- */
+
+function loadChatLib() {
+    if (window.mqtt) return Promise.resolve(window.mqtt);
+    return new Promise((keep, drop) => {
+        const tag = document.createElement('script');
+        tag.src = CHAT_LIB;
+        tag.onload = () => (window.mqtt ? keep(window.mqtt) : drop(new Error('no mqtt')));
+        tag.onerror = () => drop(new Error('the chat library would not load'));
+        document.head.append(tag);
+    });
 }
 
-/* the sdk, fetched once and only when someone actually opens the chat */
-async function chatSdk() {
-    if (chatKit) return chatKit;
-    const [app, auth, db] = await Promise.all([
-        import(`${CHAT_SDK}firebase-app.js`),
-        import(`${CHAT_SDK}firebase-auth.js`),
-        import(`${CHAT_SDK}firebase-database.js`)
-    ]);
-    chatKit = { app, auth, db };
-    return chatKit;
-}
-
-/* the page is looked at. nothing before this point has touched the
-   network, and nothing after it is torn down again — a message that
-   arrives while you are on another page should be waiting when you
-   come back. */
+/* the page is looked at. nothing before this has touched the network,
+   and nothing after it is taken down again — a message that arrived
+   while you were on another page should be there when you come back. */
 async function wakeChat() {
     paintChatBar();
-    if (chatStarting || chatAuth) return;
-    const place = chatPlace();
-    if (!place) return;
+    if (chatStarting || chatLink) return;
     chatStarting = true;
+    chatWhoLine.textContent = 'finding the chat…';
+
+    let lib;
     try {
-        const kit = await chatSdk();
-        const app = kit.app.initializeApp(place);
-        chatAuth = kit.auth.getAuth(app);
-        chatDb = kit.db.getDatabase(app);
-        kit.auth.onAuthStateChanged(chatAuth, (who) => {
-            chatMe = who || null;
-            paintChatBar();
-            if (chatMe) listenRooms();
-            else stopListening();
-        });
+        lib = await loadChatLib();
     } catch (error) {
         chatStarting = false;
-        saySomethingChat(sayChatWrong(error));
-        chatWhoLine.textContent = 'that project would not start';
-    }
-}
-
-/* firebase says what went wrong in a code rather than in words, and
-   the code is the useful half — these are the ones a reader will
-   actually meet. */
-function sayChatWrong(error) {
-    const code = (error && error.code ? String(error.code) : '').replace('auth/', '');
-    return {
-        'invalid-email': 'that is not an email address',
-        'missing-password': 'it wants a password too',
-        'weak-password': 'that password is too short — six letters at least',
-        'email-already-in-use': 'there is already an account on that email. open it instead',
-        'invalid-credential': 'that email and password do not go together',
-        'invalid-login-credentials': 'that email and password do not go together',
-        'user-not-found': 'no account on that email yet',
-        'wrong-password': 'that password is not the one',
-        'operation-not-allowed': 'turn on email/password in the project first',
-        'network-request-failed': 'the project could not be reached',
-        'too-many-requests': 'too many tries — leave it a minute',
-        'PERMISSION_DENIED': 'the database rules are refusing this. paste the rules in'
-    }[code] || (error && error.message ? String(error.message).slice(0, 90) : 'that did not work');
-}
-
-function paintChatBar() {
-    const place = chatPlace();
-    if (!place) {
-        chatWhoLine.textContent = 'nowhere to chat yet';
-        chatSignOut.hidden = true;
-        chatSetupOpen.hidden = false;
-        chatSetupOpen.textContent = 'set this up';
+        chatWhoLine.textContent = 'the chat library would not load';
         return;
     }
-    if (!chatMe) {
-        chatWhoLine.textContent = 'not signed in';
-        chatSignOut.hidden = true;
-        chatSetupOpen.hidden = false;
-        chatSetupOpen.textContent = 'sign in';
-        return;
+
+    /* tried in turn rather than raced: two connections to two brokers
+       would each hold half the conversation, and nobody in one would
+       hear anybody in the other. */
+    for (const way of CHAT_WAYS) {
+        const got = await tryBroker(lib, way);
+        if (got) {
+            chatLink = got;
+            chatStarting = false;
+            wireBroker();
+            return;
+        }
     }
-    chatWhoLine.textContent = chatMe.displayName || chatMe.email || 'signed in';
-    chatSignOut.hidden = false;
-    chatSetupOpen.hidden = true;
+    chatStarting = false;
+    /* and the one thing that causes this that nobody thinks to look
+       for: a proxy set on the machine. a websocket goes through it
+       like anything else, and a proxy that isn't answering doesn't
+       refuse — it hangs, which reads as the chat being down. */
+    chatWhoLine.textContent = 'no chat server answered — a proxy set on this machine will do that';
 }
 
-/* --- the rooms down the side --- */
+function tryBroker(lib, way) {
+    return new Promise((keep) => {
+        let settled = false;
+        const client = lib.connect(way, {
+            // a name no one else is using. two clients on one name and
+            // the broker throws the first one off, over and over.
+            clientId: `morie-${Math.random().toString(36).slice(2, 10)}`,
+            connectTimeout: 8000,
+            reconnectPeriod: 4000,
+            clean: true
+        });
+        const giveUp = window.setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            try { client.end(true); } catch (error) { /* already gone */ }
+            keep(null);
+        }, 9000);
+        client.on('connect', () => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(giveUp);
+            keep(client);
+        });
+        client.on('error', () => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(giveUp);
+            try { client.end(true); } catch (error) { /* already gone */ }
+            keep(null);
+        });
+    });
+}
 
-function listenRooms() {
-    if (dropRoomWatch) return;
-    const { ref, onValue } = chatKit.db;
-    /* the rooms are kept apart from what is said in them. under one
-       branch, asking for the list of rooms would drag every message in
-       every room down with it. */
-    dropRoomWatch = onValue(ref(chatDb, 'rooms'), (shot) => {
-        const held = shot.val() || {};
-        chatRooms = Object.keys(held)
-            .map((id) => ({ id, name: String(held[id].name || 'a room'), made: held[id].made || 0 }))
-            .sort((one, two) => one.made - two.made);
+function wireBroker() {
+    chatLink.subscribe([topicPeople(), topicRooms()]);
+    chatLink.on('message', takeMessage);
+    chatLink.on('close', () => paintChatBar());
+    chatLink.on('reconnect', () => paintChatBar());
+
+    const held = readJson(window.localStorage.getItem(CHAT_ME) || 'null', null);
+    if (held && held.name && held.word) chatMe = held;
+    paintChatBar();
+    if (chatMe) enterRoom(chatRoomId);
+    paintRooms();
+}
+
+function takeMessage(topic, payload) {
+    if (topic === topicPeople()) {
+        chatPeople = readJson(payload, {}) || {};
+        return;
+    }
+    if (topic === topicRooms()) {
+        const held = readJson(payload, []);
+        chatRooms = Array.isArray(held) ? held : [];
         if (!chatRooms.some((room) => room.id === chatRoomId)) {
-            chatRoomId = chatRooms.length ? chatRooms[0].id : '';
-            window.localStorage.setItem(CHAT_ROOM, chatRoomId);
+            enterRoom(chatRooms.length ? chatRooms[0].id : '');
         }
         paintRooms();
-        openRoom(chatRoomId);
-    }, (error) => saySomethingChat(sayChatWrong(error)));
+        return;
+    }
+    if (chatRoomId && topic === topicTalk(chatRoomId)) {
+        const held = readJson(payload, []);
+        chatSaid = mergeSaid(chatSaid, Array.isArray(held) ? held : []);
+        paintTalk();
+        return;
+    }
+    if (chatRoomId && topic === topicHere(chatRoomId)) {
+        const held = readJson(payload, null);
+        if (held && held.name) {
+            chatHere.set(held.name, Date.now());
+            paintHere();
+        }
+    }
 }
 
-function stopListening() {
-    [dropRoomWatch, dropTalkWatch, dropHereWatch].forEach((drop) => { if (drop) drop(); });
-    dropRoomWatch = dropTalkWatch = dropHereWatch = null;
-    chatRooms = [];
-    chatSaid = [];
-    paintRooms();
-    paintTalk();
-    talkName.textContent = 'no room yet';
-    talkHere.textContent = '';
+/* two people sending in the same breath each republish the whole log,
+   and one lands on top of the other. what arrives is merged with what
+   is already here rather than replacing it, so neither line is lost. */
+function mergeSaid(mine, theirs) {
+    const byId = new Map();
+    [...mine, ...theirs].forEach((one) => { if (one && one.id) byId.set(one.id, one); });
+    return [...byId.values()]
+        .sort((one, two) => (one.at || 0) - (two.at || 0))
+        .slice(-TALK_KEEP);
+}
+
+/* --- the rooms --- */
+
+function keepRooms() {
+    if (!chatLink) return;
+    chatLink.publish(topicRooms(), JSON.stringify(chatRooms), { retain: true });
 }
 
 function paintRooms() {
@@ -9073,84 +9116,91 @@ function paintRooms() {
         press.textContent = room.name;
         press.title = room.name;
         if (room.id === chatRoomId) press.classList.add('is-on');
-        press.addEventListener('click', () => {
-            chatRoomId = room.id;
-            window.localStorage.setItem(CHAT_ROOM, room.id);
-            paintRooms();
-            openRoom(room.id);
-        });
+        press.addEventListener('click', () => enterRoom(room.id));
         line.append(press);
         roomList.append(line);
     });
 }
 
-roomMake.addEventListener('submit', async (event) => {
+roomMake.addEventListener('submit', (event) => {
     event.preventDefault();
     const called = roomNameField.value.trim();
     if (!called) return;
-    if (!chatMe) { showScreen(chatScreen); return; }
-    const { ref, push, set, serverTimestamp } = chatKit.db;
-    try {
-        const made = push(ref(chatDb, 'rooms'));
-        await set(made, { name: called.slice(0, 40), made: serverTimestamp(), by: chatMe.uid });
-        roomNameField.value = '';
-        chatRoomId = made.key;
-        window.localStorage.setItem(CHAT_ROOM, chatRoomId);
-    } catch (error) {
-        saySomethingChat(sayChatWrong(error));
-    }
+    if (!chatMe) { openChatDoor(); return; }
+    if (!chatLink) { saySomethingChat('not connected yet'); return; }
+    const made = { id: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: called.slice(0, 40), made: Date.now() };
+    chatRooms = [...chatRooms, made];
+    keepRooms();
+    roomNameField.value = '';
+    enterRoom(made.id);
 });
 
-/* --- the room you are in --- */
-
-function openRoom(id) {
-    if (dropTalkWatch) { dropTalkWatch(); dropTalkWatch = null; }
-    if (dropHereWatch) { dropHereWatch(); dropHereWatch = null; }
+function enterRoom(id) {
+    if (chatLink && chatRoomId) {
+        chatLink.unsubscribe([topicTalk(chatRoomId), topicHere(chatRoomId)]);
+    }
+    chatRoomId = id || '';
+    window.localStorage.setItem(CHAT_ROOM, chatRoomId);
     chatSaid = [];
+    chatHere = new Map();
     paintTalk();
+    paintHere();
+    paintRooms();
 
-    const room = chatRooms.find((one) => one.id === id);
+    const room = chatRooms.find((one) => one.id === chatRoomId);
     talkName.textContent = room ? room.name : 'no room yet';
-    talkHere.textContent = '';
     talkSay.disabled = !room || !chatMe;
-    if (!room || !chatMe) return;
+    if (!room || !chatMe || !chatLink) { stopHeartbeat(); return; }
 
-    const { ref, query, limitToLast, onValue, set, remove, onDisconnect, serverTimestamp } = chatKit.db;
-
-    /* only the last couple of hundred. a room that has been going for
-       a year is not something to read from the beginning on every
-       visit, and the browser would hold all of it. */
-    dropTalkWatch = onValue(
-        query(ref(chatDb, `talk/${id}`), limitToLast(TALK_KEEP)),
-        (shot) => {
-            const held = shot.val() || {};
-            chatSaid = Object.keys(held).map((key) => ({ key, ...held[key] }))
-                .sort((one, two) => (one.at || 0) - (two.at || 0));
-            paintTalk();
-        },
-        (error) => saySomethingChat(sayChatWrong(error))
-    );
-
-    /* who is in the room. the browser cannot be relied on to say
-       goodbye — a shut lid or a killed tab says nothing — so the going
-       is written down first, with `onDisconnect`, and the server does
-       it when the line drops. */
-    const mine = ref(chatDb, `here/${id}/${chatMe.uid}`);
-    set(mine, { name: chatMe.displayName || chatMe.email, at: serverTimestamp() }).catch(() => {});
-    onDisconnect(mine).remove();
-    chatLeaving = () => remove(mine).catch(() => {});
-
-    dropHereWatch = onValue(ref(chatDb, `here/${id}`), (shot) => {
-        const held = shot.val() || {};
-        const count = Object.keys(held).length;
-        talkHere.textContent = count ? `${count} here` : '';
-    }, () => {});
+    chatLink.subscribe([topicTalk(chatRoomId), topicHere(chatRoomId)]);
+    startHeartbeat();
 }
 
-let chatLeaving = null;
-// a shut tab leaves the room on the way out, and the server tidies up
-// after the ones that never got the chance
-window.addEventListener('pagehide', () => { if (chatLeaving) chatLeaving(); });
+/* who is in the room. there is nothing to ask — everyone says so every
+   fifteen seconds, and anyone not heard from in forty has gone. a
+   browser cannot be relied on to say goodbye on its way out. */
+function startHeartbeat() {
+    stopHeartbeat();
+    const beat = () => {
+        if (!chatLink || !chatMe || !chatRoomId) return;
+        chatLink.publish(topicHere(chatRoomId), JSON.stringify({ name: chatMe.name, at: Date.now() }));
+    };
+    beat();
+    hereTimer = window.setInterval(beat, HERE_EVERY);
+    hereSweep = window.setInterval(paintHere, 5000);
+}
+
+function stopHeartbeat() {
+    window.clearInterval(hereTimer);
+    window.clearInterval(hereSweep);
+    hereTimer = hereSweep = 0;
+}
+
+function paintHere() {
+    const now = Date.now();
+    [...chatHere.entries()].forEach(([name, at]) => {
+        if (now - at > HERE_GONE) chatHere.delete(name);
+    });
+    const count = chatHere.size;
+    talkHere.textContent = count ? `${count} here` : '';
+}
+
+/* --- what is said --- */
+
+talkForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const words = talkSay.value.trim();
+    if (!words || !chatMe || !chatRoomId || !chatLink) return;
+    talkSay.value = '';
+    chatSaid = mergeSaid(chatSaid, [{
+        id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`,
+        by: chatMe.name,
+        said: words.slice(0, 1200),
+        at: Date.now()
+    }]);
+    paintTalk();
+    chatLink.publish(topicTalk(chatRoomId), JSON.stringify(chatSaid), { retain: true });
+});
 
 function paintTalk() {
     talkLog.querySelectorAll('.said-row').forEach((row) => row.remove());
@@ -9172,11 +9222,11 @@ function paintTalk() {
         else {
             const face = document.createElement('span');
             face.className = 'said-face';
-            face.textContent = (one.name || '?').trim().charAt(0).toLowerCase() || '?';
+            face.textContent = (one.by || '?').trim().charAt(0).toLowerCase() || '?';
             const head = document.createElement('p');
             head.className = 'said-head';
             const who = document.createElement('b');
-            who.textContent = one.name || 'someone';
+            who.textContent = one.by || 'someone';
             const when = document.createElement('span');
             when.className = 'said-when';
             when.textContent = saidAt(one.at);
@@ -9200,91 +9250,43 @@ function paintTalk() {
 function saidAt(ms) {
     if (!ms) return '';
     const when = new Date(ms);
-    const today = new Date();
-    const sameDay = when.toDateString() === today.toDateString();
+    const sameDay = when.toDateString() === new Date().toDateString();
     const clock = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
     if (sameDay) return clock;
     return `${when.toLocaleDateString([], { day: 'numeric', month: 'short' }).toLowerCase()} ${clock}`;
 }
 
-talkForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const words = talkSay.value.trim();
-    if (!words || !chatMe || !chatRoomId) return;
-    const { ref, push, set, serverTimestamp } = chatKit.db;
-    talkSay.value = '';
-    try {
-        await set(push(ref(chatDb, `talk/${chatRoomId}`)), {
-            by: chatMe.uid,
-            name: chatMe.displayName || chatMe.email,
-            said: words.slice(0, 2000),
-            at: serverTimestamp()
-        });
-    } catch (error) {
-        talkSay.value = words;      // give it back rather than losing it
-        saySomethingChat(sayChatWrong(error));
+/* --- who you are --- */
+
+function paintChatBar() {
+    if (!chatMe) {
+        chatWhoLine.textContent = chatLink ? 'not signed in' : chatWhoLine.textContent;
+        if (!chatLink && !chatStarting) chatWhoLine.textContent = 'not signed in';
+        chatSignOut.hidden = true;
+        chatSetupOpen.hidden = false;
+        chatSetupOpen.textContent = 'sign in';
+        return;
     }
-});
-
-/* --- the window: where it lives, and who you are --- */
-
-function paintChatDoor() {
-    const place = chatPlace();
-    chatSetupBox.hidden = Boolean(place) && !chatSetupBox.dataset.forced;
-    chatDoor.hidden = !place || Boolean(chatSetupBox.dataset.forced);
-    chatConfigForget.hidden = !place;
-    chatGo.textContent = chatDoorNew ? 'make an account' : 'sign in';
-    chatSwap.textContent = chatDoorNew ? 'i already have one' : 'make one instead';
-    chatHandle.hidden = !chatDoorNew;
-    chatDoorWhy.textContent = chatDoorNew
-        ? 'an account here is an email and a password, and it lives in your own project — nobody else has it.'
-        : 'the email and the password you made the account with.';
+    chatWhoLine.textContent = chatMe.name;
+    chatSignOut.hidden = false;
+    chatSetupOpen.hidden = true;
 }
 
-chatSetupOpen.addEventListener('click', () => {
-    delete chatSetupBox.dataset.forced;
+function paintChatDoor() {
+    chatGo.textContent = chatDoorNew ? 'make an account' : 'sign in';
+    chatSwap.textContent = chatDoorNew ? 'i already have one' : 'make one instead';
+    chatDoorWhy.textContent = chatDoorNew
+        ? 'pick a name nobody here has taken, and a password you have not used anywhere else.'
+        : 'the name and the password you made it with.';
+}
+
+function openChatDoor() {
     saySomethingChat('');
     paintChatDoor();
     showScreen(chatScreen);
-});
+}
 
-chatSetupBack.addEventListener('click', () => {
-    chatSetupBox.dataset.forced = 'yes';
-    chatConfig.value = JSON.stringify(chatPlace() || {}, null, 1);
-    paintChatDoor();
-});
-
-chatRulesCopy.addEventListener('click', async () => {
-    try {
-        await navigator.clipboard.writeText(CHAT_RULES);
-        saySomethingChat('rules copied — paste them into the database');
-    } catch (error) {
-        saySomethingChat('could not copy them');
-    }
-});
-
-chatConfigSave.addEventListener('click', () => {
-    const read = readConfig(chatConfig.value);
-    if (!read) { saySomethingChat('that does not look like the config block'); return; }
-    window.localStorage.setItem(CHAT_PLACE, JSON.stringify(read));
-    delete chatSetupBox.dataset.forced;
-    chatConfig.value = '';
-    saySomethingChat('saved. now make an account');
-    paintChatDoor();
-    paintChatBar();
-    /* a project swapped under a page that has already started one
-       cannot be swapped in place — firebase keeps the first. */
-    if (chatAuth) saySomethingChat('saved — refresh the page to use it');
-    else wakeChat();
-});
-
-chatConfigForget.addEventListener('click', () => {
-    window.localStorage.removeItem(CHAT_PLACE);
-    saySomethingChat('forgotten. refresh the page');
-    paintChatDoor();
-    paintChatBar();
-});
-
+chatSetupOpen.addEventListener('click', openChatDoor);
 chatSwap.addEventListener('click', () => {
     chatDoorNew = !chatDoorNew;
     saySomethingChat('');
@@ -9292,43 +9294,45 @@ chatSwap.addEventListener('click', () => {
 });
 
 chatGo.addEventListener('click', async () => {
-    const mail = chatMail.value.trim();
+    const called = chatHandle.value.trim().slice(0, 24);
     const word = chatWord.value;
-    const called = chatHandle.value.trim();
-    if (!mail || !word) { saySomethingChat('it wants an email and a password'); return; }
-    if (chatDoorNew && !called) { saySomethingChat('what should people call you?'); return; }
+    if (!called) { saySomethingChat('what should people call you?'); return; }
+    if (!word) { saySomethingChat('it wants a password too'); return; }
+    if (!chatLink) { saySomethingChat('not connected yet — one moment'); await wakeChat(); }
+    if (!chatLink) { saySomethingChat('no chat server would answer'); return; }
 
-    saySomethingChat('one moment…');
-    try {
-        if (!chatAuth) await wakeChat();
-        if (!chatAuth) return;
-        const { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } = chatKit.auth;
-        if (chatDoorNew) {
-            const made = await createUserWithEmailAndPassword(chatAuth, mail, word);
-            await updateProfile(made.user, { displayName: called.slice(0, 30) });
-            /* the name is written after the account is, so the watcher
-               that already fired saw it without one — say it again now
-               that there is something to say */
-            chatMe = chatAuth.currentUser;
-        } else {
-            await signInWithEmailAndPassword(chatAuth, mail, word);
-        }
-        chatWord.value = '';
-        saySomethingChat('');
-        paintChatBar();
-        closeModal();
-    } catch (error) {
-        saySomethingChat(sayChatWrong(error));
+    const hash = await wordHash(word);
+    const known = chatPeople[called.toLowerCase()];
+
+    if (chatDoorNew) {
+        if (known) { saySomethingChat('that name is taken. sign in instead?'); return; }
+        chatPeople[called.toLowerCase()] = { name: called, word: hash, made: Date.now() };
+        chatLink.publish(topicPeople(), JSON.stringify(chatPeople), { retain: true });
+    } else {
+        if (!known) { saySomethingChat('no account by that name'); return; }
+        if (known.word !== hash) { saySomethingChat('that password is not the one'); return; }
     }
-});
 
-chatSignOut.addEventListener('click', async () => {
-    if (chatLeaving) chatLeaving();
-    try { await chatKit.auth.signOut(chatAuth); } catch (error) { /* already out */ }
+    chatMe = { name: known ? known.name : called, word: hash };
+    window.localStorage.setItem(CHAT_ME, JSON.stringify(chatMe));
+    chatWord.value = '';
+    saySomethingChat('');
     paintChatBar();
+    paintRooms();
+    enterRoom(chatRoomId || (chatRooms[0] && chatRooms[0].id) || '');
+    closeModal();
 });
 
-/* the rooms take a third, the talking the rest — the same grip every
+chatSignOut.addEventListener('click', () => {
+    stopHeartbeat();
+    chatMe = null;
+    window.localStorage.removeItem(CHAT_ME);
+    talkSay.disabled = true;
+    paintChatBar();
+    paintRooms();
+});
+
+/* the rooms take a quarter, the talking the rest — the same grip every
    other pair of panes here is divided by */
 chatSplitter = wireSplit({
     split: document.getElementById('chatSplit'),
@@ -9344,7 +9348,6 @@ chatSplitter = wireSplit({
 
 if (chatSplitter) {
     chatSplitter.load();
-    // nothing saved yet: the rooms take a quarter, the talking the rest
     if (window.localStorage.getItem('room-column') === null) chatSplitter.set(26);
 }
 

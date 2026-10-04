@@ -5724,25 +5724,21 @@ html, body { overflow-x: hidden; }
 }
 
 /* the window: where it lives, then who you are in it */
-.chat-setup, .chat-door {
+.chat-door {
 	display: flex;
 	flex-direction: column;
 	gap: var(--group);
 	min-width: 0;
 }
-.chat-screen textarea {
-	width: 100%;
-	padding: 0.7rem 0.9rem;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 1.1rem;
-	color: var(--ink);
-	font: inherit;
-	font-size: 0.8rem;
-	resize: vertical;
-}
-.chat-screen textarea::placeholder { color: var(--ink); opacity: 1; }
 .ask-swap { align-self: center; }
+/* the small print, and it is small print on purpose — it is the sort
+   of thing nobody reads and everybody should */
+.ask-small {
+	margin: 0;
+	font-size: 0.75rem;
+	line-height: 1.55;
+	text-align: left;
+}
 .ask-note {
 	margin: 0;
 	text-align: center;
