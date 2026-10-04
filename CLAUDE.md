@@ -1298,6 +1298,28 @@ is measured once on pointerdown — what the pane's size *would* be from
 the pointer, minus what it actually is — and carried through the drag.
 Works on both axes and both directions, whatever the geometry.
 
+**The wave runs from the top of the window, and over the strip.** Drawn
+under the strip (z-index 3 against 4) its first 52px were hidden and
+the bar's corner came out straight, so the curve looked like it began
+halfway down the page. It sits above the strip now and bites into the
+end of it, which is the same thing it does to the bar. The tiles are
+phased a whole tile up from the strip's underside, so there are bumps
+at y=0 *and* the strip's line still meets the wave at a trough — its
+narrowest — with nothing crossing and nothing left over.
+
+**The outline is drawn in both themes, and that is the point.** Shown
+only in the dark it appeared and disappeared on every swap, and an
+edge that gains a hairline is an edge that moves — which is the shift
+you can see if you watch the bumps while the lights go off. Drawn
+always, it is white on the white page in the light and cannot be seen,
+so the black shape and the line hugging it are pixel for pixel the
+same on both sides and only the page around them changes. It also
+leaves nothing here with an opacity to animate.
+
+Measured over three whole tiles, every 4px: the dark outline sits
++1/+2px outside the light black edge at every single row, the same
+offset everywhere, repeating identically tile to tile.
+
 **Paint order beat the dark-mode scallop outline.** `.app-shell::before`
 draws the white line along the scalloped edge; at the same `z-index` as
 the carve above it, the carve painted last and buried it — present in
