@@ -198,12 +198,23 @@ function loadDecks() {
    the address bar again.
 
    The site itself is `app.html` rather than the root, because the root
-   is a page of its own. Both names come off the path here, so the
-   links read `/cards` either way.
+   is a page of its own.
+
+   What comes off the path: any file name, any trailing slash, and a
+   trailing section name — all three, because the address bar is
+   rewritten to `/cards` and a reload lands back here with that on it.
+   Stripping only the file name was enough until it wasn't: a browser
+   holding a stale copy of this file next to a fresh `cards/index.html`
+   built `/app.html/cards`, and every press after it added another
+   piece. A root worked out from a path has to survive being handed its
+   own answer back.
 
    Worked out once, before anything is written to the address bar: a
    replaceState would otherwise move the ground this stands on. */
-const SITE_ROOT = window.location.pathname.replace(/\/(index\.html|app\.html)?$/, '');
+const SITE_ROOT = window.location.pathname
+    .replace(/\/[^/]*\.html$/, '')
+    .replace(/\/+$/, '')
+    .replace(new RegExp(`/(${sections.map((section) => section.id).join('|')})$`), '');
 
 const isSection = (id) => sections.some((section) => section.id === id);
 
