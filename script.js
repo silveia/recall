@@ -8408,6 +8408,16 @@ async function takeListFile(file) {
 const listKept = document.getElementById('listKept');
 
 const listFrame = document.getElementById('listFrame');
+const siteBlocked = document.getElementById('siteBlocked');
+/* it lies over the top of their page, so it has to be possible to put
+   it away — pressing the line itself does it, and the link inside is
+   left to do its own job. */
+if (siteBlocked) {
+    siteBlocked.addEventListener('click', (event) => {
+        if (event.target.closest('a')) return;
+        siteBlocked.hidden = true;
+    });
+}
 
 /* exportify is loaded when the window is first opened and never again —
    a plain visit to this site fetches nothing of theirs.
@@ -8457,21 +8467,29 @@ function wakeListSite() {
    The browser reports it to whichever document set the policy, which
    is this one, and the frame is sent back where it came from.
 
-   Capped, because a site that bounced straight out again every time
-   would otherwise be reloaded forever; after three goes it is left
-   alone rather than fought with. */
+   **Put back once, and then said out loud.** Reloading on every
+   refusal looked like a fix and was a loop: what the frame is usually
+   trying to reach is spotify's sign-in, and that page is mid-login, so
+   it bounces straight back out again. Three goes later the frame was
+   dead anyway and nothing on screen said why — which is the grey
+   square with a torn-page icon in it.
+
+   Spotify's sign-in **refuses to be framed at all** (`x-frame-options:
+   deny`), so there is nothing to fix in here. It has to happen in a
+   tab, and the line that appears says so and offers one. Sign in
+   there and come back; the frame shares the cookies and knows you. */
 const SITE_RETURNS = 3;
 let sentBack = 0;
-let sendingBack = 0;
 window.addEventListener('securitypolicyviolation', (event) => {
     if (event.violatedDirective !== 'frame-src') return;
-    if (!listFrame.dataset.woke || sentBack >= SITE_RETURNS) return;
+    if (!listFrame.dataset.woke) return;
+    // the line goes up on the very first refusal, whether or not there
+    // is a go left: it is the part that actually helps
+    siteBlocked.hidden = false;
+    if (sentBack >= SITE_RETURNS) return;
     sentBack += 1;
-    window.clearTimeout(sendingBack);
-    sendingBack = window.setTimeout(() => {
-        document.getElementById('listSite').classList.remove('is-here');
-        listFrame.src = 'https://exportify.net/';
-    }, 150);
+    document.getElementById('listSite').classList.remove('is-here');
+    listFrame.src = 'https://exportify.net/';
 });
 
 scratchOpen.addEventListener('click', () => {
@@ -8479,7 +8497,8 @@ scratchOpen.addEventListener('click', () => {
     wakeListSite();
     showScreen(listScreen);
     fitSite();
-    sentBack = 0;      // a fresh opening gets its three goes again
+    sentBack = 0;              // a fresh opening gets its goes again
+    siteBlocked.hidden = true;
 });
 
 /* the window holds exportify and nothing of ours to drop on: a list

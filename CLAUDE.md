@@ -270,6 +270,18 @@ nothing else on the page is under a policy it wasn't under before.
 Measured with `securitypolicyviolation`: same origin loads, another
 origin is refused.
 
+**Reloading on every refusal is a loop, not a fix.** What the frame is
+usually trying to reach is spotify's sign-in, and that page is
+mid-login, so it bounces straight out again — three goes later the
+frame was dead anyway and nothing on screen said why. That is the grey
+square with a torn-page icon in it.
+
+Spotify's sign-in **refuses to be framed at all** (`x-frame-options:
+deny`), so there is nothing in here that can fix it. A line goes up on
+the first refusal saying so and offering a tab; sign in there and come
+back, and the frame shares the cookies and knows you. The line lies
+over their page, so pressing it puts it away.
+
 **A refused navigation leaves a dead frame, so it is put back.** The
 policy stops the frame wandering off, which is what it is for — but a
 refusal is not a no-op: chrome abandons the page that was there and

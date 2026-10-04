@@ -2698,6 +2698,24 @@ html:not(.inverted) .rail-left {
 
 /* exportify, in the window. it is somebody else's page, so it gets a
    box of its own and nothing of ours over it. */
+/* said only once the frame has tried to leave exportify, and laid over
+   the top of it so it cannot be missed */
+.site-blocked {
+	position: absolute;
+	z-index: 3;
+	top: var(--group);
+	left: var(--group);
+	right: var(--group);
+	margin: 0;
+	padding: var(--tight) var(--group);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font-size: 0.82rem;
+	line-height: 1.55;
+	text-align: left;
+}
+
 .list-site {
 	position: relative;     /* the dots wait in here */
 	flex: 1;
