@@ -5606,6 +5606,7 @@ html.on-chat .app-content { padding-top: 0; }
 	line-height: 1.6;
 }
 .chat-start-add { width: min(20rem, 100%); }
+.chat-start-go { min-width: 9rem; }
 .chat-start-note {
 	min-height: 1em;
 	margin: 0;
@@ -5839,6 +5840,10 @@ html.on-chat .app-content { padding-top: 0; }
 .word-field {
 	-webkit-text-security: disc;
 	text-security: disc;
+	/* a real password field is not a drag source. without this the row
+	   of dots could be dragged into the username box and arrived there
+	   in the clear. */
+	-webkit-user-drag: none;
 }
 
 .ask-swap { align-self: center; }

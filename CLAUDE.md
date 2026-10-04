@@ -891,6 +891,18 @@ is two movements at once, and the fade waited 160ms before starting,
 which is the wait you could feel. Measured: 37% open at 100ms, 87% at
 200ms, settled by 300ms.
 
+## A window must not close on a drag that ends outside it
+
+`click` fires on whatever the press and the release have in common —
+so pressing inside a window and letting go anywhere outside it counts
+as a click on the backdrop. Selecting text in a field and overshooting
+the edge therefore shut the window and lost what had been typed.
+
+The press has to have landed on the backdrop too: `pointerdown` records
+whether it did, and the `click` handler checks both. This is on the one
+veil, so it covers create, practice, notes and the chat's sign-in
+together.
+
 ## The windows that ask you for something
 
 Spotify's sign-in and the sharper reader share one shape (`.ask-body`,
@@ -1297,6 +1309,12 @@ password (pbkdf2, 150k rounds) is posted to the board — which is what
 lets you sign in on another machine and still read your own messages.
 The password itself never leaves.
 
+**Signed out, the page says so in the middle of itself.** Showing
+neither the empty state nor the panes left a blank page with a button
+in the corner, which reads as the chat being broken rather than as
+being logged out. `chat-start` covers all three states: signed out,
+signed in with nobody added, and the panes.
+
 **The board knows every account on it; that is not a list of people
 you want to hear from.** You add someone by the name they signed up
 with, and only the people you added are shown. Until there is one,
@@ -1315,6 +1333,16 @@ A sealed message whose sender's account hasn't arrived yet **waits**
 pass — an account post and a message post race, and the message
 usually wins.
 
+**A login window is a login window.** It had a paragraph of why over
+it and labels in this site's own voice — "what to call you", "the name
+and the password you made it with". Nobody reads a paragraph on the
+way to typing their name, and an unfamiliar word where `username`
+should be is a puzzle at the one moment there is nothing to be curious
+about. It is `username`, `password`, `sign up` / `log in`, and
+`already have an account?`, like everything else anybody has ever
+signed into. What the page does with a message belongs in the function
+box.
+
 **The password field is not a password field.** Chrome reserves its
 weak-and-breached warnings for `type="password"`, and it was firing
 them at a word guarding a public notice board — a warning that rather
@@ -1322,6 +1350,13 @@ overstates what the word was ever protecting. It is a text field
 masked with `-webkit-text-security: disc`, and it goes back to a real
 password field where that isn't understood, since a word typed in the
 clear is worse than a warning.
+
+Masking it in css is not enough on its own: a real password field is
+also not a drag source and cannot be copied out of. Without that the
+row of dots could be **dragged straight into the username box**, where
+it landed in the clear. `copy`, `cut` and `dragstart` are refused;
+pasting *in* is left alone, since that is how a password manager fills
+a field and it gives nothing away.
 
 The rule is six characters with a letter and a number, and it is
 checked **only when an account is made**. A word that was allowed when

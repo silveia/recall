@@ -2153,9 +2153,21 @@ document.addEventListener('click', (event) => {
     setHomeEditing(false);
 });
 
-// the backdrop is the way out; a click inside a panel is not
+/* the backdrop is the way out; a click inside a panel is not.
+
+   `click` alone was not enough: it fires on whatever the press and the
+   release have in common, so starting a drag inside the window and
+   letting go anywhere outside it counted as a click on the backdrop
+   and shut the window — which is exactly what selecting text in a
+   field and overshooting does. The press has to have landed on the
+   backdrop too. */
+let pressedVeil = false;
+modalVeil.addEventListener('pointerdown', (event) => {
+    pressedVeil = event.target === modalVeil;
+});
 modalVeil.addEventListener('click', (event) => {
-    if (event.target === modalVeil) showScreen(homeScreen);
+    if (event.target === modalVeil && pressedVeil) showScreen(homeScreen);
+    pressedVeil = false;
 });
 document.querySelectorAll('.modal-close').forEach((button) => {
     button.addEventListener('click', () => showScreen(homeScreen));
@@ -8905,7 +8917,10 @@ const chatHandle = document.getElementById('chatHandle');
 const chatWord = document.getElementById('chatWord');
 const chatGo = document.getElementById('chatGo');
 const chatSwap = document.getElementById('chatSwap');
-const chatDoorWhy = document.getElementById('chatDoorWhy');
+const chatDoorTitle = document.getElementById('chatDoorTitle');
+const startHead = document.getElementById('startHead');
+const startSay = document.getElementById('startSay');
+const startGo = document.getElementById('startGo');
 const chatNote = document.getElementById('chatNote');
 const chatBody = document.getElementById('chatBody');
 const chatStart = document.getElementById('chatStart');
@@ -8921,6 +8936,17 @@ const startNote = document.getElementById('startNote');
    the clear is worse than a warning. */
 if (chatWord && !(window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc'))) {
     chatWord.type = 'password';
+}
+
+/* a real password field cannot be copied out of or dragged out of, and
+   this one has to behave the same or the masking is decoration. the
+   dots were draggable straight into the username box, where they
+   landed in the clear. pasting *in* is left alone — that is how a
+   password manager fills a field, and it gives nothing away. */
+if (chatWord) {
+    ['copy', 'cut', 'dragstart'].forEach((kind) => {
+        chatWord.addEventListener(kind, (event) => event.preventDefault());
+    });
 }
 
 /* six long, and a letter and a number in it. not security — six
@@ -9137,6 +9163,7 @@ async function wakeChat() {
     if (mine && mine.name && mine.word) chatMe = mine;
     paintPeople();
     paintTalk();
+    paintChatShape();
     chatWhoLine.textContent = 'catching up…';
 
     const onBoard = await catchUp();
@@ -9299,11 +9326,20 @@ function paintPeople() {
 }
 
 /* signed out, nobody added, or talking: three states, and one place
-   that decides which is on screen. */
+   that decides which is on screen. Signed out used to show neither of
+   the first two, which left the page blank but for a button in the
+   corner — looking for all the world like the chat was broken. */
 function paintChatShape() {
     const ready = Boolean(chatMe);
-    chatStart.hidden = !ready || chatFriends.length > 0;
     chatBody.hidden = !ready || chatFriends.length === 0;
+    chatStart.hidden = ready && chatFriends.length > 0;
+
+    startAdd.hidden = !ready;
+    startGo.hidden = ready;
+    startHead.textContent = ready ? 'nobody yet' : 'chat';
+    startSay.textContent = ready
+        ? 'add someone by the username they signed up with. what you two say is sealed to the pair of you.'
+        : 'sign in to start. everything you send is sealed to the person you send it to.';
     // a hidden pane measures as nothing, so the grip is worked out
     // once the two panes are actually on screen — never before
     if (!chatBody.hidden && chatSplitter) chatSplitter.reclamp();
@@ -9493,12 +9529,13 @@ function paintChatBar() {
     chatSetupOpen.hidden = true;
 }
 
+/* the ordinary two words every other sign-in uses. what the page does
+   with a message belongs in the function box, not over a login form —
+   nobody reads a paragraph on the way to typing their name. */
 function paintChatDoor() {
-    chatGo.textContent = chatDoorNew ? 'make an account' : 'sign in';
-    chatSwap.textContent = chatDoorNew ? 'i already have one' : 'make one instead';
-    chatDoorWhy.textContent = chatDoorNew
-        ? `pick a name nobody here has taken, and a password you have not used anywhere else — ${WORD_SHORT} characters or more, with a letter and a number in it.`
-        : 'the name and the password you made it with.';
+    chatDoorTitle.textContent = chatDoorNew ? 'sign up' : 'log in';
+    chatGo.textContent = chatDoorNew ? 'sign up' : 'log in';
+    chatSwap.textContent = chatDoorNew ? 'already have an account?' : 'need an account?';
 }
 
 function openChatDoor() {
@@ -9508,6 +9545,7 @@ function openChatDoor() {
 }
 
 chatSetupOpen.addEventListener('click', openChatDoor);
+startGo.addEventListener('click', openChatDoor);
 chatSwap.addEventListener('click', () => {
     chatDoorNew = !chatDoorNew;
     saySomethingChat('');
@@ -9591,6 +9629,7 @@ chatSignOut.addEventListener('click', () => {
     paintChatBar();
     paintPeople();
     paintTalk();
+    paintChatShape();
 });
 
 /* the rooms take a quarter, the talking the rest — the same grip every

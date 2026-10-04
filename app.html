@@ -561,17 +561,26 @@
                                  empty thread is two boxes saying the same
                                  nothing; this says it once, and hands you
                                  the one thing that fixes it. -->
+                            <!-- nothing at all until there is somebody to
+                                 talk to. an empty people column beside an
+                                 empty thread is two boxes saying the same
+                                 nothing; this says it once, and hands you
+                                 the one thing that fixes it. it covers
+                                 being signed out as well, or that state
+                                 is a blank page with a button in the
+                                 corner. -->
                             <div class="chat-start" id="chatStart" hidden>
-                                <h2 class="chat-start-head">nobody yet</h2>
-                                <p class="chat-start-say">add someone by the name they signed up with. what you two say is sealed to the pair of you &mdash; nobody else can open it, this page included.</p>
+                                <h2 class="chat-start-head" id="startHead">nobody yet</h2>
+                                <p class="chat-start-say" id="startSay">add someone by the name they signed up with. what you two say is sealed to the pair of you.</p>
                                 <form class="room-make chat-start-add" id="startAdd" novalidate>
-                                    <input id="startName" type="text" aria-label="add someone by name" placeholder="their name">
+                                    <input id="startName" type="text" aria-label="add someone by name" placeholder="their username">
                                     <button class="field-go" type="submit" aria-label="add them" title="add them">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                             <path d="M12 5.5v13M5.5 12h13"/>
                                         </svg>
                                     </button>
                                 </form>
+                                <button class="basic-button is-solid chat-start-go" id="startGo" type="button" hidden>log in</button>
                                 <p class="chat-start-note" id="startNote" aria-live="polite"></p>
                             </div>
 
@@ -714,13 +723,11 @@
                                  account is worth. -->
                             <section class="modal-panel ask-screen chat-screen" id="chatScreen" data-title="chat" hidden>
                                 <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
-                                <h2 class="modal-title">chat</h2>
+                                <h2 class="modal-title" id="chatDoorTitle">sign up</h2>
 
                                 <div class="ask-body">
                                     <div class="chat-door" id="chatDoor">
-                                        <p class="ask-why" id="chatDoorWhy">pick a name nobody here has taken, and a password you have not used anywhere else &mdash; 6 characters or more, with a letter and a number in it.</p>
-
-                                        <input id="chatHandle" type="text" autocomplete="off" spellcheck="false" placeholder="what to call you" aria-label="your name">
+                                        <input id="chatHandle" type="text" autocomplete="off" spellcheck="false" placeholder="username" aria-label="username">
                                         <!-- not type="password" on purpose: chrome's password
                                              manager only warns about weak and breached ones on
                                              a real password field, and this is a name-and-word
@@ -728,10 +735,8 @@
                                              masked in css instead, and falls back to a real
                                              password field where that isn't supported. -->
                                         <input id="chatWord" type="text" class="word-field" name="morie-word" autocomplete="off" spellcheck="false" placeholder="password" aria-label="password">
-                                        <button class="basic-button is-solid ask-go" id="chatGo" type="button">make an account</button>
-                                        <button class="scratch-plain ask-swap" id="chatSwap" type="button">i already have one</button>
-
-                                        <p class="ask-small">this runs on a public message board that anyone may connect to, so that nothing has to be set up. <b>every message is sealed to the two people in it</b> and nobody else can open it. what is still in the open is who wrote to whom, and when &mdash; something has to say whose a message is. don't use a password you use elsewhere.</p>
+                                        <button class="basic-button is-solid ask-go" id="chatGo" type="button">sign up</button>
+                                        <button class="scratch-plain ask-swap" id="chatSwap" type="button">already have an account?</button>
                                     </div>
 
                                     <p class="ask-note" id="chatNote" aria-live="polite"></p>
