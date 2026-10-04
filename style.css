@@ -529,6 +529,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	   the first row under the strip is solid black and the wave flows
 	   down out of it. What is above is behind the strip and never seen. */
 	background-position: 0 calc(var(--topbar) - var(--wave-h) / 2);
+	/* **The carve stops at the crest.** The tile is half a tile past
+	   --rail, and its white ran the whole way — over the first 19px of
+	   the page, where it painted out the left outline of every box on
+	   every page. Past the crest it has nothing to carve, so it is cut
+	   off there: --rail + --wave-out, plus a pixel for the arc's edge. */
+	clip-path: inset(0 calc(var(--wave-w) / 2 - var(--wave-out) - 1px) 0 0);
 }
 
 /* in the dark the bar and the page are the same black, so the scallop

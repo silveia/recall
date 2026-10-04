@@ -1546,6 +1546,21 @@ Verified end to end on the proxied machine, two separate browsers:
 sealed both ways, each read the other's, and from outside the board the
 messages are opaque base64 with none of the words in them.
 
+## The front door's toys
+
+`morie.top` itself carries four toys — **snake, life, chase, draw** —
+picked by the pills along the bottom, the last one remembered under
+`front-toy`. Best scores are kept under `front-snake` and
+`front-chase`. Everything is inline in `index.html`; it does not load
+`style.css`, so the two cursor tokens are **copied** in, and must be
+copied again if they are redrawn.
+
+**One bit, and only one.** Every toy draws on a canvas in whole device
+pixels — the cells, the outline, everything — because a shape half-way
+into a pixel is painted grey. Nothing fades for the same reason. Chase
+is the one toy that is not on the canvas: the face is an ordinary pill,
+and catching it inverts it for a beat.
+
 ## Known limits — accepted, don't re-raise
 
 - A speaker's interrupted turns can't be stitched back together.
