@@ -1207,6 +1207,65 @@ The clip list always keeps at least half the row — `keepOther: 50` on
 its splitter, not a `max`, so the grip and the gap are measured rather
 than assumed.
 
+## The site's own address
+
+It lives at **morie.top**, and the `CNAME` file in the root is what
+says so. That file has to be *in the repo*: github pages writes one
+when the domain is set in the settings, but anything that rewrites the
+branch can take it away again, and the domain then quietly falls back
+to `silveia.github.io/recall`.
+
+**An apex domain needs A records, not a CNAME record.** `morie.top`
+itself cannot be pointed at `silveia.github.io` — dns does not allow a
+CNAME on the apex — so it needs github's four addresses:
+
+    185.199.108.153   185.199.109.153
+    185.199.110.153   185.199.111.153
+
+`www.morie.top` is the one that *is* a CNAME, to `silveia.github.io`.
+When the site goes dark, ask dns before anything else:
+`dig +short morie.top A` — no answer means the apex has no records and
+nothing in this repo can help. That is exactly what happened on first
+setting it up: www resolved, the apex did not, and pages was
+redirecting www to an address that did not exist.
+
+## Chatting
+
+The one page here that is not only yours. Everything else keeps to this
+browser; a chat cannot, because two people have to meet somewhere, and
+a static page has no server to be that place.
+
+So it **borrows one**: a firebase project the reader makes and owns,
+pasted in once and kept in `chat-place`. Nothing of it is in this repo.
+The config is public by design — it names the project, it does not open
+it; what keeps the chat shut is the database's own rules, and the
+window hands those over to be pasted in:
+
+    { "rules": { ".read": "auth != null", ".write": "auth != null" } }
+
+The sdk is ~250kb and comes off gstatic by `import()` **only when the
+chat page is actually looked at** — a visit to the cards page should
+not pay for it. Once it is listening it stays listening, even on
+another page: a message that arrived while you were away should be
+there when you come back.
+
+**Rooms and what is said in them are kept apart** — `rooms/{id}` and
+`talk/{id}`. Under one branch, asking for the list of rooms drags every
+message in every room down with it. A room is read `limitToLast(200)`:
+a year of talking is not something to re-read on every visit.
+
+**Who is here is written by the server, not the browser.** A shut lid
+says nothing on the way out, so the leaving is registered first with
+`onDisconnect` and firebase does it when the line drops.
+
+The same person twice within five minutes runs on under their last
+line rather than starting again with the face and the name — which is
+the whole look of a chat, and it is three lines of code.
+
+A project cannot be swapped under a page that has already started one:
+firebase keeps the first. Saving a new config says to refresh rather
+than pretending.
+
 ## Known limits — accepted, don't re-raise
 
 - A speaker's interrupted turns can't be stitched back together.
@@ -1216,6 +1275,7 @@ than assumed.
 
 ## Files
 
+- `CNAME` — the custom domain. See "the site's own address".
 - `index.html` — all three screens
 - `style.css` — numbered sections, see the table of contents at the top
 - `script.js` — numbered sections, see the table of contents at the top

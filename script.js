@@ -36,6 +36,11 @@ const notesScreen = document.getElementById('notesScreen');
 // sections
 const sectionTabs = document.getElementById('sectionTabs');
 const audioPanel = document.getElementById('audioPanel');
+// the chat page, named up here with the others: renderSections runs
+// before the chat section further down has been reached, and `typeof`
+// on a const still in its dead zone throws rather than answering
+const chatPanel = document.getElementById('chatPanel');
+let chatSplitter = null;
 
 // decks
 const deckListSlot = document.getElementById('deckListSlot');
@@ -93,7 +98,8 @@ const sections = [
     { id: 'home', name: 'home' },
     { id: 'cards', name: 'cards' },
     { id: 'audio', name: 'audio' },
-    { id: 'player', name: 'player' }
+    { id: 'player', name: 'player' },
+    { id: 'chat', name: 'chat' }
 ];
 
 let decks = [
@@ -237,6 +243,12 @@ function renderSections() {
     if (activeSectionId !== 'cards') closeSharePanel();
     audioPanel.hidden = activeSectionId !== 'audio';
     playerPanel.hidden = activeSectionId !== 'player';
+    chatPanel.hidden = activeSectionId !== 'chat';
+    /* the chat is the one page that is talking to somewhere else. it
+       only starts listening once it is looked at, and it keeps
+       listening after — a message that arrived while you were on
+       another page should be there when you come back. */
+    if (activeSectionId === 'chat') wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
     /* the sensing window is fixed to the screen and lives outside every
        panel — hiding the page it belongs to does not take it with it */
@@ -247,7 +259,8 @@ function renderSections() {
     const shown = {
         cards: [deckSplit, notesSplit],
         audio: [typeof clipSplitter !== 'undefined' && clipSplitter],
-        player: [typeof playerSplitter !== 'undefined' && playerSplitter]
+        player: [typeof playerSplitter !== 'undefined' && playerSplitter],
+        chat: [typeof chatSplitter !== 'undefined' && chatSplitter]
     }[activeSectionId] || [];
     shown.forEach((one) => { if (one) one.reclamp(); });
 
@@ -1079,6 +1092,7 @@ function closeModal() {
         folderScreen.hidden = true;
         bundleScreen.hidden = true;
         keyScreen.hidden = true;
+        chatScreen.hidden = true;
         returnNotesPanel();
     }, MODAL_EXIT_MS);
 }
@@ -1102,6 +1116,7 @@ function showScreen(screen) {
     folderScreen.hidden = screen !== folderScreen;
     bundleScreen.hidden = screen !== bundleScreen;
     keyScreen.hidden = screen !== keyScreen;
+    chatScreen.hidden = screen !== chatScreen;
     // the notes panel is borrowed from the left bar; anything else
     // opening means it is wanted back
     if (screen !== notesScreen) returnNotesPanel();
@@ -8749,3 +8764,513 @@ window.addEventListener('blur', () => {
     sayWhat.classList.remove('is-up');
     sayTitleAgain();
 });
+
+
+/* ---------- 19. chat   (the one page that is not only yours) ----------
+
+   Every other page here keeps to this browser. A chat cannot: two
+   people need somewhere to meet, and a page on github pages has no
+   server to be that place. So it borrows one — a firebase project the
+   reader sets up and owns, pasted in once and kept in `chat-place`.
+
+   Nothing of it is in this repo, and nothing is fetched until the chat
+   page is actually looked at: the firebase sdk is ~250kb and a visit to
+   the cards page should not pay for it.
+
+   The config is public by design — it names the project, it does not
+   open it. What keeps the chat shut is the database's own rules, which
+   the window hands over to be pasted in:
+
+       { "rules": { ".read": "auth != null", ".write": "auth != null" } }
+*/
+
+const chatScreen = document.getElementById('chatScreen');
+const chatBar = document.querySelector('.chat-bar');
+const chatWhoLine = document.getElementById('chatWho');
+const chatSignOut = document.getElementById('chatSignOut');
+const chatSetupOpen = document.getElementById('chatSetupOpen');
+const roomList = document.getElementById('roomList');
+const roomMake = document.getElementById('roomMake');
+const roomNameField = document.getElementById('roomName');
+const talkName = document.getElementById('talkName');
+const talkHere = document.getElementById('talkHere');
+const talkLog = document.getElementById('talkLog');
+const talkEmpty = document.getElementById('talkEmpty');
+const talkForm = document.getElementById('talkForm');
+const talkSay = document.getElementById('talkSay');
+const chatSetupBox = document.getElementById('chatSetup');
+const chatDoor = document.getElementById('chatDoor');
+const chatDoorWhy = document.getElementById('chatDoorWhy');
+const chatConfig = document.getElementById('chatConfig');
+const chatConfigSave = document.getElementById('chatConfigSave');
+const chatConfigForget = document.getElementById('chatConfigForget');
+const chatRulesCopy = document.getElementById('chatRulesCopy');
+const chatHandle = document.getElementById('chatHandle');
+const chatMail = document.getElementById('chatMail');
+const chatWord = document.getElementById('chatWord');
+const chatGo = document.getElementById('chatGo');
+const chatSwap = document.getElementById('chatSwap');
+const chatSetupBack = document.getElementById('chatSetupBack');
+const chatNote = document.getElementById('chatNote');
+
+[roomNameField, talkSay, chatHandle, chatMail].forEach((field) => field && stopGuessing(field));
+
+const CHAT_PLACE = 'chat-place';
+const CHAT_ROOM = 'chat-room';
+const CHAT_SDK = 'https://www.gstatic.com/firebasejs/10.12.5/';
+const CHAT_RULES = '{\n  "rules": {\n    ".read": "auth != null",\n    ".write": "auth != null"\n  }\n}';
+const TALK_KEEP = 200;      // how far back a room is read
+const SAME_BREATH = 5 * 60 * 1000;   // two messages close enough to run on
+
+let chatKit = null;         // the sdk, once it has come down
+let chatAuth = null;
+let chatDb = null;
+let chatMe = null;          // the signed-in account, or nothing
+let chatRooms = [];
+let chatRoomId = window.localStorage.getItem(CHAT_ROOM) || '';
+let chatSaid = [];
+let dropRoomWatch = null;   // the listeners, so a swap can take them off
+let dropTalkWatch = null;
+let dropHereWatch = null;
+let chatDoorNew = true;     // the door makes an account, or opens one
+let chatStarting = false;
+
+function saySomethingChat(words) {
+    if (chatNote) chatNote.textContent = words || '';
+}
+
+/* where it lives. the config is the firebase console's own snippet,
+   which is javascript rather than json — so it is read for the pairs it
+   holds rather than parsed, and never run. a page that evals whatever
+   is pasted into it deserves what it gets. */
+function chatPlace() {
+    try {
+        const held = JSON.parse(window.localStorage.getItem(CHAT_PLACE) || 'null');
+        return held && held.apiKey && held.databaseURL ? held : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function readConfig(text) {
+    const found = {};
+    const pairs = /([A-Za-z]+)\s*:\s*["'`]([^"'`]*)["'`]/g;
+    let hit;
+    while ((hit = pairs.exec(text))) found[hit[1]] = hit[2];
+    if (!found.apiKey || !found.projectId) return null;
+    /* the realtime database is the one part the console leaves out of
+       the snippet unless the database already exists — its address is
+       the project's own, so it can be worked out rather than asked for */
+    if (!found.databaseURL) found.databaseURL = `https://${found.projectId}-default-rtdb.firebaseio.com`;
+    return found;
+}
+
+/* the sdk, fetched once and only when someone actually opens the chat */
+async function chatSdk() {
+    if (chatKit) return chatKit;
+    const [app, auth, db] = await Promise.all([
+        import(`${CHAT_SDK}firebase-app.js`),
+        import(`${CHAT_SDK}firebase-auth.js`),
+        import(`${CHAT_SDK}firebase-database.js`)
+    ]);
+    chatKit = { app, auth, db };
+    return chatKit;
+}
+
+/* the page is looked at. nothing before this point has touched the
+   network, and nothing after it is torn down again — a message that
+   arrives while you are on another page should be waiting when you
+   come back. */
+async function wakeChat() {
+    paintChatBar();
+    if (chatStarting || chatAuth) return;
+    const place = chatPlace();
+    if (!place) return;
+    chatStarting = true;
+    try {
+        const kit = await chatSdk();
+        const app = kit.app.initializeApp(place);
+        chatAuth = kit.auth.getAuth(app);
+        chatDb = kit.db.getDatabase(app);
+        kit.auth.onAuthStateChanged(chatAuth, (who) => {
+            chatMe = who || null;
+            paintChatBar();
+            if (chatMe) listenRooms();
+            else stopListening();
+        });
+    } catch (error) {
+        chatStarting = false;
+        saySomethingChat(sayChatWrong(error));
+        chatWhoLine.textContent = 'that project would not start';
+    }
+}
+
+/* firebase says what went wrong in a code rather than in words, and
+   the code is the useful half — these are the ones a reader will
+   actually meet. */
+function sayChatWrong(error) {
+    const code = (error && error.code ? String(error.code) : '').replace('auth/', '');
+    return {
+        'invalid-email': 'that is not an email address',
+        'missing-password': 'it wants a password too',
+        'weak-password': 'that password is too short — six letters at least',
+        'email-already-in-use': 'there is already an account on that email. open it instead',
+        'invalid-credential': 'that email and password do not go together',
+        'invalid-login-credentials': 'that email and password do not go together',
+        'user-not-found': 'no account on that email yet',
+        'wrong-password': 'that password is not the one',
+        'operation-not-allowed': 'turn on email/password in the project first',
+        'network-request-failed': 'the project could not be reached',
+        'too-many-requests': 'too many tries — leave it a minute',
+        'PERMISSION_DENIED': 'the database rules are refusing this. paste the rules in'
+    }[code] || (error && error.message ? String(error.message).slice(0, 90) : 'that did not work');
+}
+
+function paintChatBar() {
+    const place = chatPlace();
+    if (!place) {
+        chatWhoLine.textContent = 'nowhere to chat yet';
+        chatSignOut.hidden = true;
+        chatSetupOpen.hidden = false;
+        chatSetupOpen.textContent = 'set this up';
+        return;
+    }
+    if (!chatMe) {
+        chatWhoLine.textContent = 'not signed in';
+        chatSignOut.hidden = true;
+        chatSetupOpen.hidden = false;
+        chatSetupOpen.textContent = 'sign in';
+        return;
+    }
+    chatWhoLine.textContent = chatMe.displayName || chatMe.email || 'signed in';
+    chatSignOut.hidden = false;
+    chatSetupOpen.hidden = true;
+}
+
+/* --- the rooms down the side --- */
+
+function listenRooms() {
+    if (dropRoomWatch) return;
+    const { ref, onValue } = chatKit.db;
+    /* the rooms are kept apart from what is said in them. under one
+       branch, asking for the list of rooms would drag every message in
+       every room down with it. */
+    dropRoomWatch = onValue(ref(chatDb, 'rooms'), (shot) => {
+        const held = shot.val() || {};
+        chatRooms = Object.keys(held)
+            .map((id) => ({ id, name: String(held[id].name || 'a room'), made: held[id].made || 0 }))
+            .sort((one, two) => one.made - two.made);
+        if (!chatRooms.some((room) => room.id === chatRoomId)) {
+            chatRoomId = chatRooms.length ? chatRooms[0].id : '';
+            window.localStorage.setItem(CHAT_ROOM, chatRoomId);
+        }
+        paintRooms();
+        openRoom(chatRoomId);
+    }, (error) => saySomethingChat(sayChatWrong(error)));
+}
+
+function stopListening() {
+    [dropRoomWatch, dropTalkWatch, dropHereWatch].forEach((drop) => { if (drop) drop(); });
+    dropRoomWatch = dropTalkWatch = dropHereWatch = null;
+    chatRooms = [];
+    chatSaid = [];
+    paintRooms();
+    paintTalk();
+    talkName.textContent = 'no room yet';
+    talkHere.textContent = '';
+}
+
+function paintRooms() {
+    roomList.innerHTML = '';
+    if (!chatRooms.length) {
+        const none = document.createElement('li');
+        none.className = 'empty-message';
+        none.textContent = chatMe ? 'no rooms yet' : 'sign in to see them';
+        roomList.append(none);
+        return;
+    }
+    chatRooms.forEach((room) => {
+        const line = document.createElement('li');
+        const press = document.createElement('button');
+        press.className = 'room-row';
+        press.type = 'button';
+        press.textContent = room.name;
+        press.title = room.name;
+        if (room.id === chatRoomId) press.classList.add('is-on');
+        press.addEventListener('click', () => {
+            chatRoomId = room.id;
+            window.localStorage.setItem(CHAT_ROOM, room.id);
+            paintRooms();
+            openRoom(room.id);
+        });
+        line.append(press);
+        roomList.append(line);
+    });
+}
+
+roomMake.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const called = roomNameField.value.trim();
+    if (!called) return;
+    if (!chatMe) { showScreen(chatScreen); return; }
+    const { ref, push, set, serverTimestamp } = chatKit.db;
+    try {
+        const made = push(ref(chatDb, 'rooms'));
+        await set(made, { name: called.slice(0, 40), made: serverTimestamp(), by: chatMe.uid });
+        roomNameField.value = '';
+        chatRoomId = made.key;
+        window.localStorage.setItem(CHAT_ROOM, chatRoomId);
+    } catch (error) {
+        saySomethingChat(sayChatWrong(error));
+    }
+});
+
+/* --- the room you are in --- */
+
+function openRoom(id) {
+    if (dropTalkWatch) { dropTalkWatch(); dropTalkWatch = null; }
+    if (dropHereWatch) { dropHereWatch(); dropHereWatch = null; }
+    chatSaid = [];
+    paintTalk();
+
+    const room = chatRooms.find((one) => one.id === id);
+    talkName.textContent = room ? room.name : 'no room yet';
+    talkHere.textContent = '';
+    talkSay.disabled = !room || !chatMe;
+    if (!room || !chatMe) return;
+
+    const { ref, query, limitToLast, onValue, set, remove, onDisconnect, serverTimestamp } = chatKit.db;
+
+    /* only the last couple of hundred. a room that has been going for
+       a year is not something to read from the beginning on every
+       visit, and the browser would hold all of it. */
+    dropTalkWatch = onValue(
+        query(ref(chatDb, `talk/${id}`), limitToLast(TALK_KEEP)),
+        (shot) => {
+            const held = shot.val() || {};
+            chatSaid = Object.keys(held).map((key) => ({ key, ...held[key] }))
+                .sort((one, two) => (one.at || 0) - (two.at || 0));
+            paintTalk();
+        },
+        (error) => saySomethingChat(sayChatWrong(error))
+    );
+
+    /* who is in the room. the browser cannot be relied on to say
+       goodbye — a shut lid or a killed tab says nothing — so the going
+       is written down first, with `onDisconnect`, and the server does
+       it when the line drops. */
+    const mine = ref(chatDb, `here/${id}/${chatMe.uid}`);
+    set(mine, { name: chatMe.displayName || chatMe.email, at: serverTimestamp() }).catch(() => {});
+    onDisconnect(mine).remove();
+    chatLeaving = () => remove(mine).catch(() => {});
+
+    dropHereWatch = onValue(ref(chatDb, `here/${id}`), (shot) => {
+        const held = shot.val() || {};
+        const count = Object.keys(held).length;
+        talkHere.textContent = count ? `${count} here` : '';
+    }, () => {});
+}
+
+let chatLeaving = null;
+// a shut tab leaves the room on the way out, and the server tidies up
+// after the ones that never got the chance
+window.addEventListener('pagehide', () => { if (chatLeaving) chatLeaving(); });
+
+function paintTalk() {
+    talkLog.querySelectorAll('.said-row').forEach((row) => row.remove());
+    talkEmpty.hidden = chatSaid.length > 0;
+    if (!chatSaid.length) return;
+
+    const stuck = talkLog.scrollHeight - talkLog.scrollTop - talkLog.clientHeight < 60;
+
+    let lastBy = '';
+    let lastAt = 0;
+    chatSaid.forEach((one) => {
+        const row = document.createElement('article');
+        row.className = 'said-row';
+        /* the same person twice in a breath is one person talking, so
+           the second line goes under the first rather than starting
+           again with the face and the name over it */
+        const runOn = one.by === lastBy && (one.at || 0) - lastAt < SAME_BREATH;
+        if (runOn) row.classList.add('is-run-on');
+        else {
+            const face = document.createElement('span');
+            face.className = 'said-face';
+            face.textContent = (one.name || '?').trim().charAt(0).toLowerCase() || '?';
+            const head = document.createElement('p');
+            head.className = 'said-head';
+            const who = document.createElement('b');
+            who.textContent = one.name || 'someone';
+            const when = document.createElement('span');
+            when.className = 'said-when';
+            when.textContent = saidAt(one.at);
+            head.append(who, when);
+            row.append(face, head);
+        }
+        const words = document.createElement('p');
+        words.className = 'said-words';
+        words.textContent = one.said || '';
+        row.append(words);
+        talkLog.append(row);
+        lastBy = one.by;
+        lastAt = one.at || 0;
+    });
+
+    // stay at the bottom if that is where you were; don't yank somebody
+    // out of what they were reading further up
+    if (stuck) talkLog.scrollTop = talkLog.scrollHeight;
+}
+
+function saidAt(ms) {
+    if (!ms) return '';
+    const when = new Date(ms);
+    const today = new Date();
+    const sameDay = when.toDateString() === today.toDateString();
+    const clock = when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    if (sameDay) return clock;
+    return `${when.toLocaleDateString([], { day: 'numeric', month: 'short' }).toLowerCase()} ${clock}`;
+}
+
+talkForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const words = talkSay.value.trim();
+    if (!words || !chatMe || !chatRoomId) return;
+    const { ref, push, set, serverTimestamp } = chatKit.db;
+    talkSay.value = '';
+    try {
+        await set(push(ref(chatDb, `talk/${chatRoomId}`)), {
+            by: chatMe.uid,
+            name: chatMe.displayName || chatMe.email,
+            said: words.slice(0, 2000),
+            at: serverTimestamp()
+        });
+    } catch (error) {
+        talkSay.value = words;      // give it back rather than losing it
+        saySomethingChat(sayChatWrong(error));
+    }
+});
+
+/* --- the window: where it lives, and who you are --- */
+
+function paintChatDoor() {
+    const place = chatPlace();
+    chatSetupBox.hidden = Boolean(place) && !chatSetupBox.dataset.forced;
+    chatDoor.hidden = !place || Boolean(chatSetupBox.dataset.forced);
+    chatConfigForget.hidden = !place;
+    chatGo.textContent = chatDoorNew ? 'make an account' : 'sign in';
+    chatSwap.textContent = chatDoorNew ? 'i already have one' : 'make one instead';
+    chatHandle.hidden = !chatDoorNew;
+    chatDoorWhy.textContent = chatDoorNew
+        ? 'an account here is an email and a password, and it lives in your own project — nobody else has it.'
+        : 'the email and the password you made the account with.';
+}
+
+chatSetupOpen.addEventListener('click', () => {
+    delete chatSetupBox.dataset.forced;
+    saySomethingChat('');
+    paintChatDoor();
+    showScreen(chatScreen);
+});
+
+chatSetupBack.addEventListener('click', () => {
+    chatSetupBox.dataset.forced = 'yes';
+    chatConfig.value = JSON.stringify(chatPlace() || {}, null, 1);
+    paintChatDoor();
+});
+
+chatRulesCopy.addEventListener('click', async () => {
+    try {
+        await navigator.clipboard.writeText(CHAT_RULES);
+        saySomethingChat('rules copied — paste them into the database');
+    } catch (error) {
+        saySomethingChat('could not copy them');
+    }
+});
+
+chatConfigSave.addEventListener('click', () => {
+    const read = readConfig(chatConfig.value);
+    if (!read) { saySomethingChat('that does not look like the config block'); return; }
+    window.localStorage.setItem(CHAT_PLACE, JSON.stringify(read));
+    delete chatSetupBox.dataset.forced;
+    chatConfig.value = '';
+    saySomethingChat('saved. now make an account');
+    paintChatDoor();
+    paintChatBar();
+    /* a project swapped under a page that has already started one
+       cannot be swapped in place — firebase keeps the first. */
+    if (chatAuth) saySomethingChat('saved — refresh the page to use it');
+    else wakeChat();
+});
+
+chatConfigForget.addEventListener('click', () => {
+    window.localStorage.removeItem(CHAT_PLACE);
+    saySomethingChat('forgotten. refresh the page');
+    paintChatDoor();
+    paintChatBar();
+});
+
+chatSwap.addEventListener('click', () => {
+    chatDoorNew = !chatDoorNew;
+    saySomethingChat('');
+    paintChatDoor();
+});
+
+chatGo.addEventListener('click', async () => {
+    const mail = chatMail.value.trim();
+    const word = chatWord.value;
+    const called = chatHandle.value.trim();
+    if (!mail || !word) { saySomethingChat('it wants an email and a password'); return; }
+    if (chatDoorNew && !called) { saySomethingChat('what should people call you?'); return; }
+
+    saySomethingChat('one moment…');
+    try {
+        if (!chatAuth) await wakeChat();
+        if (!chatAuth) return;
+        const { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } = chatKit.auth;
+        if (chatDoorNew) {
+            const made = await createUserWithEmailAndPassword(chatAuth, mail, word);
+            await updateProfile(made.user, { displayName: called.slice(0, 30) });
+            /* the name is written after the account is, so the watcher
+               that already fired saw it without one — say it again now
+               that there is something to say */
+            chatMe = chatAuth.currentUser;
+        } else {
+            await signInWithEmailAndPassword(chatAuth, mail, word);
+        }
+        chatWord.value = '';
+        saySomethingChat('');
+        paintChatBar();
+        closeModal();
+    } catch (error) {
+        saySomethingChat(sayChatWrong(error));
+    }
+});
+
+chatSignOut.addEventListener('click', async () => {
+    if (chatLeaving) chatLeaving();
+    try { await chatKit.auth.signOut(chatAuth); } catch (error) { /* already out */ }
+    paintChatBar();
+});
+
+/* the rooms take a third, the talking the rest — the same grip every
+   other pair of panes here is divided by */
+chatSplitter = wireSplit({
+    split: document.getElementById('chatSplit'),
+    body: document.getElementById('chatBody'),
+    other: document.getElementById('talkSide'),
+    pane: document.getElementById('roomSide'),
+    variable: '--room-col',
+    key: 'room-column',
+    keepOther: 50,
+    skinAt: 36,
+    fallback: 26
+});
+
+if (chatSplitter) {
+    chatSplitter.load();
+    // nothing saved yet: the rooms take a quarter, the talking the rest
+    if (window.localStorage.getItem('room-column') === null) chatSplitter.set(26);
+}
+
+paintChatBar();
+paintChatDoor();

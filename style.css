@@ -41,6 +41,7 @@
    22. the bar's own three — clock, storage, recently binned
    23. home — the widgets you arrange yourself
    24. the left bar — notes in, cards out
+   25. chat — rooms, and the talking in them
    ========================================================= */
 
 /* =========================================================
@@ -389,7 +390,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .home-panel:not([hidden]),
 .home-body:not([hidden]),
 .recorder-panel:not([hidden]),
-.player-panel:not([hidden]) {
+.player-panel:not([hidden]),
+.chat-panel:not([hidden]) {
 	animation: panel-in 0.34s var(--drawer) backwards;
 }
 /* the rail's own box follows a beat behind the page */
@@ -923,7 +925,7 @@ html.inverted .app-shell::before { opacity: 1; }
 /* =========================================================
    7. home — section tabs
    ========================================================= */
-.quick-panel, .recorder-panel, .home-panel, .player-panel { width: 100%; }
+.quick-panel, .recorder-panel, .home-panel, .player-panel, .chat-panel { width: 100%; }
 .quick-panel { flex: none; }
 
 /* home — the first section. empty for now; it's the frame waiting to
@@ -5499,3 +5501,258 @@ html.booting .booting-mark { display: flex; }
 /* the site itself never scrolls sideways; every pane inside it ends in
    an ellipsis rather than pushing the page wider */
 html, body { overflow-x: hidden; }
+
+
+/* =========================================================
+   25. chat — rooms, and the talking in them
+   ---------------------------------------------------------
+   The same bones as every other page here: a bar on top, then
+   two panes with a grip between them. The rooms are the narrow
+   one and the talking takes the rest.
+   ========================================================= */
+.chat-panel {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--group);
+	min-height: 0;
+}
+
+/* who you are, and the way in. the same row the other pages open with */
+.chat-bar {
+	position: relative;
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--tight);
+}
+.chat-bar .basic-button { height: var(--field); padding: calc(var(--drop) * 2) 1.4rem 0; }
+.chat-who {
+	flex: 1;
+	min-width: 0;
+	margin: 0 0 0 0.5rem;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: 0.9rem;
+}
+
+.chat-body {
+	display: flex;
+	flex: 1;
+	/* no gap: the grip between the two is the gap, as everywhere else */
+	gap: 0;
+	min-height: 0;
+}
+.room-side, .talk-side {
+	display: flex;
+	flex-direction: column;
+	gap: var(--group);
+	min-height: 0;
+}
+.room-side {
+	/* the width you dragged it to, and it gives way before it pushes
+	   the talking off the page — see .deck-side */
+	flex: 0 1 var(--room-col, 26%);
+	min-width: 0;
+	overflow: hidden;
+}
+.talk-side {
+	flex: 1;
+	min-width: 0;
+}
+
+/* the rooms. the list scrolls and the field that makes one holds the
+   bottom, so a long list never pushes it off. */
+.room-scroll {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+}
+.room-scroll::-webkit-scrollbar { display: none; }
+.room-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+/* a room is a full-width row, and the one you are in inverts — the
+   same way every live thing on this site says so */
+.room-row {
+	display: block;
+	width: 100%;
+	padding: calc(0.5rem + var(--drop) * 2) 0.8rem calc(0.5rem - var(--drop) * 2);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	text-align: left;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font: inherit;
+	font-size: 0.85rem;
+	cursor: var(--cur-tap);
+}
+.room-row:hover,
+.room-row.is-on { color: var(--paper); background: var(--ink); }
+
+/* a field with its own button sitting inside the outline, the move the
+   notes box makes with its picture button */
+.room-make, .talk-bar {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: var(--tight);
+	min-width: 0;
+	height: var(--field);
+	padding: 0 0.35rem 0 0.9rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+}
+.room-make input, .talk-bar input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	padding: 0;
+	background: none;
+	border: 0;
+	color: var(--ink);
+	font: inherit;
+	font-size: 0.85rem;
+	outline: none;
+}
+.room-make input::placeholder, .talk-bar input::placeholder { color: var(--ink); opacity: 1; }
+/* no grey for a field that cannot be typed in yet — the head above it
+   already says there is no room to say anything in */
+.talk-bar input:disabled { opacity: 1; }
+.field-go {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 1.9rem;
+	height: 1.9rem;
+	padding: 0;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	cursor: var(--cur-tap);
+}
+.field-go svg { display: block; width: 1rem; height: 1rem; }
+.field-go:hover { color: var(--paper); background: var(--ink); }
+
+/* the head of the room: its name, and how many are in it */
+.talk-head {
+	display: flex;
+	align-items: baseline;
+	gap: var(--tight);
+}
+.talk-head h2 {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.talk-here {
+	flex: none;
+	margin: 0;
+	font-family: var(--num-font);
+	font-size: 0.95rem;
+}
+
+/* what has been said. it scrolls, and it keeps to the bottom. */
+.talk-log {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 0;
+	min-height: 0;
+	padding: 0 0.1rem;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+}
+.talk-log::-webkit-scrollbar { display: none; }
+
+/* one message. the face and the name sit on the first line and the
+   words go under them in the same column — so the same person twice in
+   a breath just adds a line rather than starting the shape again. */
+.said-row {
+	display: grid;
+	grid-template-columns: 2rem minmax(0, 1fr);
+	align-items: start;
+	gap: 0 var(--tight);
+	padding-top: var(--group);
+}
+.said-row.is-run-on { padding-top: 0.1rem; }
+.said-face {
+	grid-row: span 2;
+	display: grid;
+	place-items: center;
+	width: 2rem;
+	height: 2rem;
+	color: var(--ink);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font-size: 0.9rem;
+}
+.said-head {
+	display: flex;
+	align-items: baseline;
+	gap: var(--tight);
+	min-width: 0;
+	margin: 0;
+	font-size: 0.85rem;
+}
+.said-head b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.said-when { flex: none; font-family: var(--num-font); font-size: 0.8rem; }
+.said-words {
+	grid-column: 2;
+	margin: 0;
+	font-size: 0.88rem;
+	line-height: 1.5;
+	/* a word nobody meant to be a word — a pasted link — has to break
+	   somewhere, or it widens the pane and the page with it */
+	overflow-wrap: anywhere;
+}
+
+/* the window: where it lives, then who you are in it */
+.chat-setup, .chat-door {
+	display: flex;
+	flex-direction: column;
+	gap: var(--group);
+	min-width: 0;
+}
+.chat-screen textarea {
+	width: 100%;
+	padding: 0.7rem 0.9rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 1.1rem;
+	color: var(--ink);
+	font: inherit;
+	font-size: 0.8rem;
+	resize: vertical;
+}
+.chat-screen textarea::placeholder { color: var(--ink); opacity: 1; }
+.ask-swap { align-self: center; }
+.ask-note {
+	margin: 0;
+	text-align: center;
+	font-size: 0.8rem;
+}
+.ask-note:empty { display: none; }
+
+/* on a narrow screen the two panes stack, the same as every other pair */
+@media (max-width: 760px) {
+	.chat-body { flex-direction: column; }
+	.room-side { flex: none; }
+	.talk-log { min-height: 12rem; }
+}
