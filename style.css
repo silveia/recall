@@ -71,9 +71,9 @@
 	   has to line up with the wave is worked out from them.
 	   --wave-out is how far a crest reaches past --rail: 4/26ths of
 	   the width, which is where the arc's widest point lands. */
-	--wave-w: 39px;
-	--wave-h: 66px;
-	--wave-out: 6px;
+	--wave-w: 32.5px;
+	--wave-h: 55px;
+	--wave-out: 5px;
 	--topbar: 3.25rem; /* height of the top bar */
 	--radius: 10px;
 	--field: 42px;     /* height of every control in the deck bar */
@@ -794,10 +794,11 @@ html:not(.inverted) .rail-left {
 	   because every other edge on the page is a --group and the eye
 	   compares them. */
 	padding: var(--group);
-	/* **Except the left, by request.** The bumps already reach 6px into
+	/* **Except the left, by request.** The bumps already reach 5px into
 	   the page, so a full --group past them read as a white strip
-	   between the bar and the boxes. The boxes sit 4px off the crests. */
-	padding-left: calc(var(--wave-out) + 4px);
+	   between the bar and the boxes. 4px off the crests was too tight,
+	   so they sit 10px off. */
+	padding-left: calc(var(--wave-out) + 10px);
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
