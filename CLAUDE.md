@@ -943,6 +943,21 @@ than being pushed out of the world. Measured: a column of three, the top
 one dropped on the bottom one — the displaced tile went to row 3 before
 and moves sideways now, with nothing past the depth.
 
+**On one row the board is read like a list (this replaces `shove`
+and `makeRoom`, which are gone).** `boardIfDropped` is the whole rule:
+dropped into a gap, nothing else moves. Dropped onto a tile, the carried
+one slots into the row's order by its middle — at the far left or far
+wall it goes to that end — and then one pass forward (nobody starts
+before the one ahead ends) and one pass back (nobody runs past the
+wall) move only the tiles actually in the way; gaps elsewhere are kept.
+The old pushing was written for a board many rows deep and bounced
+neighbours about on a single row depending on the exact pixel of the
+drag — that was the "odd shuffle". Checked by running every tile to
+every column on four boards: 0 overlaps, 0 tiles off the row, and four
+small tiles each land in exactly the column they are dropped on.
+
+The note below about direction hints is the older layout.
+
 **Tiles get out of the way in the direction they were pushed.** `shove`
 takes the drag's own travel as the hint — come at a tile from the left
 and it moves right, from above and it moves down; at the wall it goes
@@ -1567,16 +1582,47 @@ swap beside it. `paintChatDoor` returns early while it is busy, or it
 would paint the label back.
 
 **One round button in the chat's top-right corner** is the whole of
-the account bar. Signed out it opens the log-in window, and the page
-under it is empty except for the summary and a log in button. Signed in
-it goes solid, and pressing it drops a small panel under it — username,
-online or offline, how many people you've added, that messages are
-sealed — with log out at the foot. `#chatWho` is still written to but
-kept hidden.
+the account bar. Signed out it opens the log-in window directly (on
+**log in**, not sign up). Signed in it opens a Google-style panel: a
+large round picture at the top (press it to change it), your nickname
+large under it with `@username` small, `account settings`, then a white
+`switch account` and `log out` at the foot. **Log out asks inside its
+own button**: it splits into `confirm` and `cancel` side by side.
+Switch account logs out and opens the log-in window.
 
-**Logging out is asked first**, with the same chip every other
-undoable-once press here uses: the key this browser holds goes with
-it, and every thread goes dark until the password is typed again.
+**Faces are never letters.** With no picture set it is the person mark
+(`PERSON_MARK`). Your picture is kept in this browser only
+(`chat-face`), cropped to 96px and Floyd–Steinberg dithered to pure
+black and white so a photo survives the no-grey rule.
+
+**Account settings** is a window with four rows that open in place:
+edit nickname, edit username, edit password, edit profile picture.
+
+- **Nickname** is shown everywhere a name is — the panel, the people
+  list, the thread's heading, message rows (`displayName()`). Any
+  characters, fancy text included, up to 32.
+- **Username** is `a–z 0–9 _ - .` only, lowercased, up to 24
+  (`NAME_OK`), checked on sign-up and on rename. Existing accounts from
+  before the rule keep working.
+- **Password** asks for the current one first.
+
+**Every profile change is signed.** The board is public and anyone can
+post to it, so a change is a `{k:'me'}` post signed with ECDSA using
+the account's own P-256 key (the ECDH key, imported a second way), and
+others check it against the public key they already hold before
+believing it (`applyProfiles`). A forged nickname, rename or password
+change is simply ignored — verified with a forged post. A rename is
+followed everywhere with `whoIs()`: friends lists, threads and the
+open thread move to the new name, logging in with the old name lands
+on the new one, and the new name is also claimed with an ordinary
+`who` post so nobody can sign up over it. Your latest signed change is
+posted again if the board has forgotten it, like your account is.
+Sealed messages are now kept whatever names they carry and sorted out
+when opened, since a rename can make an old post yours.
+
+**Logging out is asked first** (inside the button, see above): the key
+this browser holds goes with it, and every thread goes dark until the
+password is typed again.
 
 **The board forgets after twelve hours**, which is the one real cost of
 needing nothing set up. So every browser keeps its own copy of what it
@@ -1601,9 +1647,16 @@ and a form.
 **The thread is anchored to the field, not to the top.** `margin-top:
 auto` on the first row: the newest line is the one being read, and a
 short conversation floating at the top of an empty column reads as a
-mistake. Your own turns wear the filled mark, which is the only
-difference between the two sides — a second alignment for your own
-words would halve the width available to both.
+mistake.
+
+**Message rows are laid out like Discord's**, by request: a round
+filled initial on the left, the name and `today at 3:04 pm` on top,
+the words under them, and lines from the same person within five
+minutes (`SAME_BREATH`) grouped under one head. A grouped line shows
+its own short time in the left gutter on hover, and the hovered row
+gets a dotted outline — Discord's hover is a grey wash, which isn't
+allowed here. Your own messages look the same as everyone else's, as
+in Discord; the filled mark that used to tell them apart is gone.
 
 Verified end to end on the proxied machine, two separate browsers:
 sealed both ways, each read the other's, and from outside the board the

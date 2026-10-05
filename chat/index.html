@@ -67,14 +67,24 @@
     </div>
 
     <div class="pop-panel account-pop" id="accountPop" role="dialog" aria-label="your account" hidden>
-        <p class="pop-say">account</p>
-        <dl class="account-facts">
-            <div><dt>username</dt><dd id="accName"></dd></div>
-            <div><dt>status</dt><dd id="accState"></dd></div>
-            <div><dt>people added</dt><dd class="account-num" id="accPeople"></dd></div>
-            <div><dt>messages</dt><dd>sealed to the two of you</dd></div>
-        </dl>
-        <button class="basic-button account-out" id="chatSignOut" type="button">log out</button>
+        <button class="account-face" id="accFace" type="button" aria-label="change your picture" title="change picture">
+            <span class="face-pic" id="accFacePic"></span>
+            <span class="account-face-edit" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
+            </span>
+        </button>
+        <input id="accFaceFile" type="file" accept="image/*" hidden>
+        <p class="account-name" id="accName"></p>
+        <p class="account-handle" id="accHandle"></p>
+        <button class="basic-button account-settings" id="accSettings" type="button">account settings</button>
+        <button class="basic-button account-switch" id="accSwitch" type="button">switch account</button>
+        <div class="account-leave-wrap" id="leaveWrap">
+            <button class="basic-button account-leave" id="chatSignOut" type="button">log out</button>
+            <div class="leave-split" id="leaveSplit" hidden>
+                <button class="basic-button" id="leaveYes" type="button">confirm</button>
+                <button class="basic-button leave-no" id="leaveNo" type="button">cancel</button>
+            </div>
+        </div>
     </div>
 
     <div class="confirm-pop" id="confirmChip" role="group" aria-label="are you sure" hidden>
@@ -475,6 +485,7 @@
                             <div class="chat-bar">
                                 <p class="chat-who" id="chatWho" hidden>not signed in</p>
                                 <button class="square-button chat-me" id="chatMeButton" type="button" aria-label="log in" title="log in" aria-expanded="false">
+                                    <span class="face-pic" id="chatMePic" hidden></span>
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
                                         <circle cx="12" cy="9" r="3.6"/>
                                         <path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/>
@@ -483,8 +494,10 @@
                             </div>
 
                             <div class="chat-start" id="chatStart" hidden>
-                                <h2 class="chat-start-head" id="startHead">nobody yet</h2>
-                                <p class="chat-start-say" id="startSay">add someone by the name they signed up with. what you two say is sealed to the pair of you.</p>
+                                <div class="chat-start-words">
+                                    <h2 class="chat-start-head" id="startHead">nobody yet</h2>
+                                    <p class="chat-start-say" id="startSay">add someone by the name they signed up with. what you two say is sealed to the pair of you.</p>
+                                </div>
                                 <form class="room-make chat-start-add" id="startAdd" novalidate>
                                     <input id="startName" type="text" aria-label="add someone by name" placeholder="their username">
                                     <button class="field-go" type="submit" aria-label="add them" title="add them">
@@ -611,6 +624,43 @@
 
                                 <p class="ask-note" id="chatNote" aria-live="polite"></p>
                             </div>
+                        </section>
+
+                        <section class="modal-panel ask-screen account-screen" id="accountScreen" data-title="account settings" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                            <h2 class="modal-title">account settings</h2>
+                            <div class="set-list">
+                                <div class="set-row" data-set="nick">
+                                    <button class="set-open" type="button"><span>edit nickname</span><span class="set-now" id="setNickNow"></span></button>
+                                    <form class="set-edit" novalidate hidden>
+                                        <input type="text" maxlength="32" placeholder="new nickname" aria-label="new nickname">
+                                        <button class="basic-button" type="submit">save</button>
+                                    </form>
+                                </div>
+                                <div class="set-row" data-set="name">
+                                    <button class="set-open" type="button"><span>edit username</span><span class="set-now" id="setNameNow"></span></button>
+                                    <form class="set-edit" novalidate hidden>
+                                        <input type="text" maxlength="24" placeholder="new username" aria-label="new username">
+                                        <button class="basic-button" type="submit">save</button>
+                                    </form>
+                                </div>
+                                <div class="set-row" data-set="word">
+                                    <button class="set-open" type="button"><span>edit password</span></button>
+                                    <form class="set-edit set-edit-two" novalidate hidden>
+                                        <input class="word-field" type="text" placeholder="current password" aria-label="current password">
+                                        <input class="word-field" type="text" placeholder="new password" aria-label="new password">
+                                        <button class="basic-button" type="submit">save</button>
+                                    </form>
+                                </div>
+                                <div class="set-row" data-set="face">
+                                    <button class="set-open" type="button"><span>edit profile picture</span></button>
+                                    <div class="set-edit set-face" hidden>
+                                        <button class="basic-button" id="setFacePick" type="button">choose a picture</button>
+                                        <button class="basic-button set-quiet" id="accFaceClear" type="button">remove it</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="set-note" id="setNote" aria-live="polite"></p>
                         </section>
 
                         <section class="modal-panel ask-screen" id="listScreen" data-title="playlist" hidden>
