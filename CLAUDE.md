@@ -1566,6 +1566,14 @@ get two accounts. The button carries the state (`checking the name…`,
 swap beside it. `paintChatDoor` returns early while it is busy, or it
 would paint the label back.
 
+**One round button in the chat's top-right corner** is the whole of
+the account bar. Signed out it opens the log-in window, and the page
+under it is empty except for the summary and a log in button. Signed in
+it goes solid, and pressing it drops a small panel under it — username,
+online or offline, how many people you've added, that messages are
+sealed — with log out at the foot. `#chatWho` is still written to but
+kept hidden.
+
 **Logging out is asked first**, with the same chip every other
 undoable-once press here uses: the key this browser holds goes with
 it, and every thread goes dark until the password is typed again.
@@ -1601,6 +1609,16 @@ Verified end to end on the proxied machine, two separate browsers:
 sealed both ways, each read the other's, and from outside the board the
 messages are opaque base64 with none of the words in them.
 
+## The front door
+
+`morie.top` is a tiny dino run in the middle of the screen and an
+`enter` pill that goes to `home/`. Space, up or a tap jumps; the best
+score is kept under `front-dino`. It is all inline in `index.html` and
+does not load `style.css`, so the two cursor tokens are **copied** in
+and must be copied again if they are redrawn. One bit: the art is
+drawn in whole pixels on a canvas sized to the screen's pixel ratio, so
+nothing is ever painted grey.
+
 ## Known limits — accepted, don't re-raise
 
 - A speaker's interrupted turns can't be stitched back together.
@@ -1616,9 +1634,8 @@ messages are opaque base64 with none of the words in them.
   See "a link per page".
 - `404.html` — sends a stray path to its section, or to the front door.
 - `.githooks/` — the pre-commit hook that keeps the copies in step.
-- `index.html` — the front door at `morie.top`, blank for now. It carries
-  the dark/light class and nothing else: arriving with the lights off, a
-  white sheet would be the one thing here that didn't know.
+- `index.html` — the front door at `morie.top`: the dino run and the way
+  in. See "the front door".
 - `app.html` — the site itself, all of its screens
 - `style.css` — numbered sections, see the table of contents at the top
 - `script.js` — numbered sections, see the table of contents at the top

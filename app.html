@@ -64,6 +64,17 @@
         <div class="pick-list" id="widgetPickList"></div>
     </div>
 
+    <div class="pop-panel account-pop" id="accountPop" role="dialog" aria-label="your account" hidden>
+        <p class="pop-say">account</p>
+        <dl class="account-facts">
+            <div><dt>username</dt><dd id="accName"></dd></div>
+            <div><dt>status</dt><dd id="accState"></dd></div>
+            <div><dt>people added</dt><dd class="account-num" id="accPeople"></dd></div>
+            <div><dt>messages</dt><dd>sealed to the two of you</dd></div>
+        </dl>
+        <button class="basic-button account-out" id="chatSignOut" type="button">log out</button>
+    </div>
+
     <div class="confirm-pop" id="confirmChip" role="group" aria-label="are you sure" hidden>
         <span id="confirmChipText"></span>
         <div class="confirm-answers">
@@ -460,9 +471,13 @@
 
                         <section class="chat-panel" id="chatPanel" hidden>
                             <div class="chat-bar">
-                                <p class="chat-who" id="chatWho">not signed in</p>
-                                <button class="basic-button" id="chatSignOut" type="button" hidden>sign out</button>
-                                <button class="basic-button" id="chatSetupOpen" type="button">sign in</button>
+                                <p class="chat-who" id="chatWho" hidden>not signed in</p>
+                                <button class="square-button chat-me" id="chatMeButton" type="button" aria-label="log in" title="log in" aria-expanded="false">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+                                        <circle cx="12" cy="9" r="3.6"/>
+                                        <path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/>
+                                    </svg>
+                                </button>
                             </div>
 
                             <div class="chat-start" id="chatStart" hidden>

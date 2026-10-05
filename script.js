@@ -292,6 +292,7 @@ function renderSections() {
     if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
     if (activeSectionId !== 'audio' && typeof openSensing === 'function') openSensing(false);
+    if (activeSectionId !== 'chat' && chatReady) closeAccount();
 
     const shown = {
         cards: [deckSplit, notesSplit],
@@ -7356,7 +7357,8 @@ window.addEventListener('blur', letGoOption);
 const chatScreen = document.getElementById('chatScreen');
 const chatWhoLine = document.getElementById('chatWho');
 const chatSignOut = document.getElementById('chatSignOut');
-const chatSetupOpen = document.getElementById('chatSetupOpen');
+const chatMeButton = document.getElementById('chatMeButton');
+const accountPop = document.getElementById('accountPop');
 const roomList = document.getElementById('roomList');
 const roomMake = document.getElementById('roomMake');
 const roomNameField = document.getElementById('roomName');
@@ -7864,17 +7866,43 @@ function saidAt(ms) {
 /* --- who you are --- */
 
 function paintChatBar() {
+    const said = chatMe ? 'your account' : 'log in';
+    chatMeButton.classList.toggle('is-solid', Boolean(chatMe));
+    chatMeButton.setAttribute('aria-label', said);
+    chatMeButton.title = said;
     if (!chatMe) {
         chatWhoLine.textContent = chatOn ? 'not signed in' : 'the chat board would not answer';
-        chatSignOut.hidden = true;
-        chatSetupOpen.hidden = false;
-        chatSetupOpen.textContent = 'sign in';
+        closeAccount();
         return;
     }
     chatWhoLine.textContent = chatOn ? chatMe.name : `${chatMe.name} — offline`;
-    chatSignOut.hidden = false;
-    chatSetupOpen.hidden = true;
+    if (!accountPop.hidden) paintAccount();
 }
+
+// the round button: the door when signed out, your account when signed in
+function paintAccount() {
+    document.getElementById('accName').textContent = chatMe.name;
+    document.getElementById('accState').textContent = chatOn ? 'online' : 'offline';
+    document.getElementById('accPeople').textContent = String(chatFriends.length);
+}
+
+function closeAccount() {
+    accountPop.hidden = true;
+    chatMeButton.setAttribute('aria-expanded', 'false');
+}
+
+chatMeButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (!chatMe) { openChatDoor(); return; }
+    if (!accountPop.hidden) { closeAccount(); return; }
+    paintAccount();
+    accountPop.hidden = false;
+    chatMeButton.setAttribute('aria-expanded', 'true');
+    placeUnder(accountPop, chatMeButton);
+});
+accountPop.addEventListener('click', (event) => event.stopPropagation());
+document.addEventListener('click', closeAccount);
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeAccount(); });
 
 function paintChatDoor() {
     if (doorBusy) return;      // it is saying what it is doing
@@ -7889,7 +7917,6 @@ function openChatDoor() {
     showScreen(chatScreen);
 }
 
-chatSetupOpen.addEventListener('click', openChatDoor);
 startGo.addEventListener('click', openChatDoor);
 chatSwap.addEventListener('click', () => {
     chatDoorNew = !chatDoorNew;
@@ -7974,6 +8001,7 @@ chatGo.addEventListener('click', async () => {
 
 chatSignOut.addEventListener('click', async () => {
     if (!await askConfirm('log out?', chatSignOut)) return;
+    closeAccount();
     chatMe = null;
     chatPriv = null;      // the key goes with the account, not the browser
     chatDms = {};

@@ -4,23 +4,184 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>:p</title>
-
-<!-- the front door: blank, carrying only the light/dark setting -->
+<!-- the front door: a tiny dino run in the middle, and the way in -->
 <script>
-(function () {
-    try {
-        if (localStorage.getItem('page-inverted') === 'yes') {
-            document.documentElement.classList.add('inverted');
-        }
-    } catch (error) { /* no storage; the light is the default anyway */ }
-}());
+try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElement.classList.add('inverted'); } catch (error) {}
 </script>
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400&amp;family=VT323&amp;display=swap">
 <style>
-	html { background: #fff; }
-	html.inverted { background: #000; }
-	body { margin: 0; min-height: 100vh; }
+	:root {
+		--paper: #fff;
+		--ink: #000;
+		--cur-dot: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default;
+		--cur-tap: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, pointer;
+	}
+	html.inverted { --paper: #000; --ink: #fff; }
+	html { background: var(--paper); color: var(--ink); cursor: var(--cur-dot); }
+	body {
+		display: grid;
+		place-items: center;
+		min-height: 100vh;
+		margin: 0;
+		font-family: 'Amiko', sans-serif;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+	.door { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+	.run { position: relative; }
+	canvas { display: block; cursor: var(--cur-tap); touch-action: manipulation; }
+	.score { position: absolute; top: 0; right: 0; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
+	.hint { margin: 0; font-size: 0.8rem; }
+	.enter {
+		display: grid;
+		place-items: center;
+		height: 2.4rem;
+		padding: 0.18em 1.6rem 0;
+		color: var(--ink);
+		background: var(--paper);
+		border: 1px solid var(--ink);
+		border-radius: 999px;
+		font-size: 0.95rem;
+		text-decoration: none;
+		cursor: var(--cur-tap);
+	}
+	.enter:hover { color: var(--paper); background: var(--ink); }
 </style>
 </head>
-<body></body>
+<body>
+<main class="door">
+	<div class="run">
+		<canvas id="run" aria-label="dino run — press space or tap to jump"></canvas>
+		<span class="score" id="score">0</span>
+	</div>
+	<p class="hint" id="hint">space or tap to jump</p>
+	<a class="enter" href="home/">enter</a>
+</main>
+<script>
+(function () {
+    const canvas = document.getElementById('run');
+    const pen = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const hintEl = document.getElementById('hint');
+    const W = 480, H = 120, GROUND = 100, P = 3;   // css size, ground line, one art pixel
+    const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
+    pen.scale(dpr, dpr);
+
+    // 1-bit art, one character per art pixel
+    const DINO = [
+        '....####', '...##.##', '...#####', '...###..', '#..#####', '#.####..',
+        '######..', '.#####..', '..##.#..', '..#..#..'
+    ];
+    const DINO_STEP = ['..##.#..', '..#...#.'];
+    const CACTI = [
+        ['.#.', '.##', '##.', '.#.', '.#.', '.#.'],
+        ['.#..#.', '.##.#.', '##.###', '.#..#.', '.#..#.', '.#..#.']
+    ];
+
+    let ink = '#000', paper = '#fff';
+    let dino, cacti, speed, score, best, state, last, nextGap, legs;
+
+    function colours() {
+        const css = getComputedStyle(document.documentElement);
+        ink = css.getPropertyValue('--ink').trim() || '#000';
+        paper = css.getPropertyValue('--paper').trim() || '#fff';
+    }
+
+    function sprite(rows, x, y) {
+        pen.fillStyle = ink;
+        rows.forEach((row, r) => {
+            for (let c = 0; c < row.length; c += 1) {
+                if (row[c] === '#') pen.fillRect(Math.round(x) + c * P, Math.round(y) + r * P, P, P);
+            }
+        });
+    }
+
+    function reset() {
+        dino = { y: 0, v: 0 };
+        cacti = [];
+        speed = 4;
+        score = 0;
+        legs = 0;
+        nextGap = 60;
+        state = 'ready';
+        try { best = Number(localStorage.getItem('front-dino')) || 0; } catch (error) { best = 0; }
+        scoreEl.textContent = best ? `hi ${best}` : '0';
+        draw();
+    }
+
+    function jump() {
+        if (state === 'over') { reset(); return; }
+        if (state === 'ready') { state = 'run'; hintEl.textContent = ''; last = performance.now(); requestAnimationFrame(tick); }
+        if (dino.y === 0) dino.v = 9.5;
+    }
+
+    function tick(now) {
+        if (state !== 'run') return;
+        const s = Math.max(0, Math.min((now - last) / 16.7, 3));   // a frame can stamp itself before the press
+        last = now;
+
+        dino.v -= 0.6 * s;
+        dino.y = Math.max(0, dino.y + dino.v * s);
+        if (dino.y === 0) dino.v = 0;
+
+        cacti.forEach((one) => { one.x -= speed * s; });
+        cacti = cacti.filter((one) => one.x > -30);
+        nextGap -= speed * s;
+        if (nextGap <= 0) {
+            cacti.push({ x: W + 10, art: CACTI[Math.random() < 0.7 ? 0 : 1] });
+            nextGap = 160 + Math.random() * 180 + speed * 12;
+        }
+
+        score += 0.1 * s;
+        speed = 4 + Math.min(score / 100, 5);
+        legs += s;
+        scoreEl.textContent = `${best ? `hi ${best} · ` : ''}${Math.floor(score)}`;
+
+        // a little inside each box, so a near miss is a miss
+        const dx = 30, dw = 8 * P - 6, dh = DINO.length * P - 4, dy = GROUND - dino.y - dh;
+        const hit = cacti.some((one) => {
+            const cw = one.art[0].length * P - 4, ch = one.art.length * P - 2;
+            return one.x + 2 < dx + dw && one.x + 2 + cw > dx && GROUND - ch < dy + dh;
+        });
+        draw();
+        if (hit) return over();
+        requestAnimationFrame(tick);
+    }
+
+    function over() {
+        state = 'over';
+        const got = Math.floor(score);
+        if (got > best) { best = got; try { localStorage.setItem('front-dino', String(best)); } catch (error) {} }
+        scoreEl.textContent = `hi ${best} · ${got}`;
+        hintEl.textContent = '(×_×) again?';
+    }
+
+    function draw() {
+        pen.fillStyle = paper;
+        pen.fillRect(0, 0, W, H);
+        pen.fillStyle = ink;
+        pen.fillRect(0, GROUND, W, 1);
+        const rows = DINO.slice(0, -2).concat(dino.y > 0 || state !== 'run'
+            ? DINO.slice(-2) : [DINO_STEP[Math.floor(legs / 6) % 2], DINO.at(-1)]);
+        sprite(rows, 30, GROUND - dino.y - DINO.length * P);
+        cacti.forEach((one) => sprite(one.art, one.x, GROUND - one.art.length * P));
+    }
+
+    window.addEventListener('keydown', (event) => {
+        if (event.code !== 'Space' && event.code !== 'ArrowUp') return;
+        if (document.activeElement && document.activeElement.classList.contains('enter')) return;
+        event.preventDefault();
+        jump();
+    });
+    canvas.addEventListener('pointerdown', (event) => { event.preventDefault(); jump(); });
+
+    colours();
+    reset();
+}());
+</script>
+</body>
 </html>
