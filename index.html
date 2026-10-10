@@ -39,14 +39,12 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		align-items: center;
 		gap: 16px;
 		transform: translate(-50%, calc(-100% + 1.2rem));
-		animation: door-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 	}
-	@keyframes door-in { from { transform: translate(-50%, calc(-100% + 1.2rem + 14px)); } }
-	/* the words over the run, level with the score and a touch lower; press them (or jump) to begin.
-	   They only fade while the run goes, so nothing under them moves */
+	/* the words over the run, under the best score; press them (or jump) to begin. Nothing on this
+	   page moves on its own but the enter pill: they are simply there, or not */
 	.start {
 		position: absolute;
-		top: 10px;
+		top: 28px;
 		left: 50%;
 		z-index: 1;
 		margin: 0;
@@ -60,15 +58,18 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		white-space: nowrap;
 		cursor: var(--cur-tap);
 		transform: translateX(-50%);
-		transition: opacity 0.3s ease, translate 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.start:focus { outline: none; }
-	.start.is-gone { opacity: 0; translate: 0 -6px; pointer-events: none; }
+	.start.is-gone { visibility: hidden; }
 	.run { position: relative; }
 	canvas { display: block; cursor: var(--cur-tap); touch-action: manipulation; }
-	.score { position: absolute; top: 0; right: 0; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
-	/* keeps its height empty, so nothing jumps; sits nearer the run than the pill */
-	.hint { min-height: 1.4em; margin: -10px 0 4px; font-size: 0.8rem; line-height: 1.4; }
+	.score { position: absolute; top: 0; right: 0; white-space: nowrap; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
+	/* before a run and after one the score sits top centre, over the words; while running, top right */
+	.score.is-middle { right: auto; left: 50%; transform: translateX(-50%); }
+	/* keeps its height empty, so nothing jumps; its middle is exactly halfway between the ground
+	   line and the pill — the ground is 19px above the canvas foot, so the bottom margin is the
+	   top one plus those 19px */
+	.hint { min-height: 1.4em; margin: -14px 0 5px; font-size: 0.8rem; line-height: 1.4; }
 	/* the link itself never moves: it is the steady thing the pointer is over, a few pixels bigger
 	   than the pill all round, so the pill can rise and wobble without slipping out from under it */
 	.enter {
@@ -129,7 +130,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	<div class="run">
 		<button class="start" id="start" type="button">start to start</button>
 		<canvas id="run" aria-label="dino run"></canvas>
-		<span class="score" id="score">0</span>
+		<span class="score is-middle" id="score">hi 0000</span>
 	</div>
 	<p class="hint" id="hint"></p>
 	<a class="enter" href="home/" aria-label="enter"><span class="enter-pill">^_^<span class="enter-ink" aria-hidden="true">^_^</span></span></a>
@@ -185,9 +186,16 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         nextGap = 60;
         state = 'ready';
         try { best = Number(localStorage.getItem('front-dino')) || 0; } catch (error) { best = 0; }
-        scoreEl.textContent = best ? `hi ${best}` : '0';
+        showScore(`hi ${four(best)}`, true);
         draw();
     }
+
+    const MAX = 9999;
+    const four = (n) => String(Math.min(MAX, Math.floor(n))).padStart(4, '0');
+    const showScore = (text, middle) => {
+        scoreEl.textContent = text;
+        scoreEl.classList.toggle('is-middle', middle);
+    };
 
     let overAt = 0;
     function jump() {
@@ -195,7 +203,13 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
             if (performance.now() - overAt < 350) return;   // no instant restart off the crash
             reset();                                          // and one press both resets and runs
         }
-        if (state === 'ready') { state = 'run'; hintEl.textContent = ''; startEl.classList.add('is-gone'); last = performance.now(); requestAnimationFrame(tick); }
+        if (state === 'ready') {
+            state = 'run';
+            hintEl.textContent = '';
+            startEl.classList.add('is-gone');
+            showScore(`hi ${four(best)} · 0000`, false);
+            last = performance.now(); requestAnimationFrame(tick);
+        }
         if (dino.y === 0) dino.v = 9.5;
     }
 
@@ -216,10 +230,10 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
             nextGap = 160 + Math.random() * 180 + speed * 12;
         }
 
-        score += 0.1 * s;
+        score = Math.min(MAX, score + 0.1 * s);
         speed = 4 + Math.min(score / 100, 5);
         legs += s;
-        scoreEl.textContent = `${best ? `hi ${best} · ` : ''}${Math.floor(score)}`;
+        scoreEl.textContent = `hi ${four(best)} · ${four(score)}`;
 
         // a little inside each box, so a near miss is a miss
         const dx = 30, dw = 8 * P - 6, dh = DINO.length * P - 4, dy = GROUND - dino.y - dh;
@@ -228,17 +242,18 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
             return one.x + 2 < dx + dw && one.x + 2 + cw > dx && GROUND - ch < dy + dh;
         });
         draw();
-        if (hit) return over();
+        if (hit) return over(false);
+        if (score >= MAX) return over(true);              // the top of the board: that's the end
         requestAnimationFrame(tick);
     }
 
-    function over() {
+    function over(passed) {
         state = 'over';
         overAt = performance.now();
         const got = Math.floor(score);
         if (got > best) { best = got; try { localStorage.setItem('front-dino', String(best)); } catch (error) {} }
-        scoreEl.textContent = `hi ${best} · ${got}`;
-        hintEl.textContent = 'died';
+        showScore(`hi ${four(best)} · ${four(got)}`, true);
+        hintEl.textContent = passed ? 'u have passd' : 'died';
         startEl.classList.remove('is-gone');
     }
 
