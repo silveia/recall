@@ -4367,6 +4367,8 @@ html.booting .booting-mark { display: flex; }
 }
 .talk-bar input::placeholder { color: var(--ink); opacity: 1; }
 .talk-bar input:disabled { opacity: 1; }
+.talk-left { flex: none; font-family: var(--num-font); font-size: 1rem; }   /* characters left, shown near the limit */
+.talk-left[hidden] { display: none; }
 .talk-bar:has(.talk-attach) { padding-left: 0.35rem; }
 .talk-attach {
 	flex: none;

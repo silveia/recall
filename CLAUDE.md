@@ -1748,6 +1748,8 @@ edit is itself a sealed note (`{gone: id}` / `{edit: id, said}`), obeyed
 only when it comes from whoever wrote the line (`lineChanged`), and every
 deleted line or spent note goes in `chatSkip` so it is never read again.
 
+**A line is at most 1000 characters** (`TALK_MOST`, the field's `maxlength`) and 2800 bytes. ntfy turns any post over 4096 bytes into an attachment, and sealing plus base64 grows a line by about a third — that is why very long messages silently never arrived. The count left shows in the bar from 150 out, and `too long` if emoji push the bytes over first.
+
 **A line you typed goes up before it is sent.** Waiting on somebody
 else's server to see your own words is the difference between a chat
 and a form.

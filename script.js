@@ -7481,7 +7481,7 @@ function lineChanged(other, note, from) {
         return;
     }
     if (line && whoIs(line.by) === from && typeof note.said === 'string') {
-        line.said = note.said.slice(0, 1200);
+        line.said = note.said.slice(0, TALK_MOST);
         line.edited = true;
     }
 }
@@ -7729,12 +7729,28 @@ talkLog.addEventListener('drop', async (event) => {
     for (const file of [...event.dataTransfer.files]) await sendFile(chatWith, file);
 });
 
+// how long a line may be. the board turns any post over 4096 bytes into a file nobody can read as
+// a line, which is why very long messages used to vanish: sealed and base64'd, a line grows by
+// about a third, so 1000 characters — and no more than 2800 bytes, for emoji — stays under it
+const TALK_MOST = 1000;
+const fitsBoard = (words) => new TextEncoder().encode(words).length <= 2800;
+const talkLeft = document.getElementById('talkLeft');
+function paintLeft() {
+    const left = TALK_MOST - talkSay.value.length;
+    const heavy = !fitsBoard(talkSay.value);
+    talkLeft.hidden = left > 150 && !heavy;     // only near the end
+    talkLeft.textContent = heavy ? 'too long' : String(left);
+}
+talkSay.addEventListener('input', paintLeft);
+
 talkForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const words = talkSay.value.trim();
     if (!words || !chatMe || !chatWith) return;
     talkSay.value = '';
-    await sendSealed(chatWith, words.slice(0, 1200));
+    if (!fitsBoard(words)) { talkSay.value = words; saySomethingChat('that is too long to send — make it shorter'); return; }
+    await sendSealed(chatWith, words.slice(0, TALK_MOST));
+    paintLeft();
 });
 
 // seals words for the two of you and makes the post; nothing is sent yet
@@ -8002,6 +8018,7 @@ function lineTools(row, other, line, words) {
 function editLine(row, other, line, words) {
     const field = document.createElement('input');
     field.className = 'said-edit';
+    field.maxLength = TALK_MOST;
     field.value = line.said;
     field.setAttribute('aria-label', 'edit the message');
     words.replaceWith(field);
@@ -8010,7 +8027,7 @@ function editLine(row, other, line, words) {
     const done = (keep) => {
         const said = field.value.trim();
         if (keep && said && said !== line.said) {
-            line.said = said.slice(0, 1200);
+            line.said = said.slice(0, TALK_MOST);
             line.edited = true;
             keepKnown();
             sendNote(other, { edit: line.id, said: line.said });
