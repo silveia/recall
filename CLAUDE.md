@@ -146,6 +146,12 @@ with four multiple-choice answers mapped to keyboard quadrants.
 **audio** — a Chrome tab recorder that splits clips by speaker. This is the
 part under active work.
 
+**chat** — sealed messages between people who add each other.
+
+The **player** section (songs off your own disk) was deleted by request:
+its tab, page, folder, script, styles and the bar's mini player are all
+gone. Songs binned before that are skipped if put back.
+
 ## How the audio section works
 
 Records a Chrome tab with `getDisplayMedia`. Tab audio only comes through if
@@ -669,31 +675,6 @@ the `03:22` under each name on the reader path. A playlist saved before
 that was added has no lengths and the button says so rather than
 matching everything to nothing.
 
-## The volume slides
-
-A press anywhere along the line used to put the bead there in the same
-instant — the one movement on the page that happened without happening.
-The press is taken off the browser (`preventDefault`) and the bead is
-driven by hand: it is always travelling towards where it has been asked
-to be and arrives in about a tenth of a second. Under a finger that is
-short enough to feel attached; across the whole line it reads as a
-slide. The arrow keys are picked up as a new destination.
-
-## The player's controls
-
-Five round buttons in a row, and the row has to survive the narrowest
-the panel can be dragged to — `.stage-side` has a 17rem floor, which
-leaves 254px of content. At a `--group` between each of them they
-needed 290px and the ends were cut off. They sit at 2.4rem (3.3rem for
-play) with a `--tight` gap, which comes to 238px. The marks inside are
-a share of the button, so they come down with it.
-
-The volume speaker is three arcs, all drawn all the time and shown one
-at a time. They open from the inside out and go quiet from the outside
-in — same half-second either way, staggered 70ms apart. The ripple is
-what makes it read as one thing happening rather than three pictures
-swapping.
-
 ## One bar, on the left, and everything in it
 
 There were two: a black one down the left with nothing in it since the
@@ -927,8 +908,21 @@ was true before. `untangle(anchor)` gives the anchor what it was
 dropped on and pushes anything under it down; nothing is ever pulled
 back up, because a gap you left is a gap you meant.
 
+**The tiles follow Apple's widgets** (by request; this replaces the
+lift and hard shadow): a small tile is square — a row is exactly as
+tall as a column is wide, worked out from the panel's own width
+(`container-type`, `100cqw`) — a wide one is two squares, corners are
+1.4rem, and every tile has one even inset (`--widget-pad`). By later
+request the words are **centred and larger** rather than Apple's
+top-left/bottom-left: the name centred at the top, the reading centred
+in the tile (numbers 3.4rem, the clock 4rem, tallies 2.8rem). The tiles
+start **the same 16px under the strip as they sit apart** — the board's
+negative top margin is −8px to cancel its own 8px padding, now that the
+old 4px lift is gone. The tile in your hand still lifts with a hard
+shadow while it is carried.
+
 **The lift and the hard shadow are how a tile sits all the time**, not
-only while the board is being arranged. Edit still changes what a tile
+only while the board is being arranged (older layout). Edit still changes what a tile
 *does* — the handles, the grab cursor, the body going quiet — but not
 how it looks.
 
@@ -1587,7 +1581,9 @@ the account bar. Signed out it opens the log-in window directly (on
 large round picture at the top (press it to change it), your nickname
 large under it with `@username` small, `account settings`, then a white
 `switch account` and `log out` at the foot. **Log out asks inside its
-own button**: it splits into `confirm` and `cancel` side by side.
+own button**: it divides — both halves start stacked as the one black
+pill and slide apart into `confirm` and `cancel`, cancel snapping to
+white once they part (a colour fade would pass through grey).
 Switch account logs out and opens the log-in window.
 
 **Faces are never letters.** With no picture set it is the person mark
@@ -1601,6 +1597,10 @@ edit nickname, edit username, edit password, edit profile picture.
 - **Nickname** is shown everywhere a name is — the panel, the people
   list, the thread's heading, message rows (`displayName()`). Any
   characters, fancy text included, up to 32.
+Every box on a page sits one `--group` (16px) from the next — the deck
+bar, the audio bar and the clip toolbar used `--tight` between their
+boxes and now don't.
+
 - **Username** is `a–z 0–9 _ - .` only, lowercased, up to 24
   (`NAME_OK`), checked on sign-up and on rename. Existing accounts from
   before the rule keep working.
@@ -1649,6 +1649,10 @@ auto` on the first row: the newest line is the one being read, and a
 short conversation floating at the top of an empty column reads as a
 mistake.
 
+The rule under `function` is a plain solid line again (a dotted fade was tried and taken out). The paragraphs
+under it are centred, at 1.65 line height, and run nearly the full width
+of the box.
+
 **Message rows are laid out like Discord's**, by request: a round
 filled initial on the left, the name and `today at 3:04 pm` on top,
 the words under them, and lines from the same person within five
@@ -1663,6 +1667,17 @@ sealed both ways, each read the other's, and from outside the board the
 messages are opaque base64 with none of the words in them.
 
 ## The front door
+
+**The site's pointer is set inline in `app.html`'s head**, before
+`style.css` arrives, so walking in from the front door never shows the
+system arrow for a beat.
+
+**The hint under the run keeps its height when empty** (`min-height`).
+Emptied on the first press, it collapsed, the centred group re-centred,
+and the whole run dropped a few pixels — the "glitch" on every start
+and restart. A held key is one jump (`event.repeat` ignored), and a
+crash can't be restarted for 350ms, so a jump pressed as it hits
+doesn't restart it on the spot.
 
 `morie.top` is a tiny dino run in the middle of the screen and an
 `enter` pill that goes to `home/`. Space, up or a tap jumps; the best
@@ -1682,7 +1697,7 @@ nothing is ever painted grey.
 ## Files
 
 - `CNAME` — the custom domain. See "the site's own address".
-- `home/`, `cards/`, `audio/`, `player/`, `chat/` — each a copy of
+- `home/`, `cards/`, `audio/`, `chat/` — each a copy of
   `app.html`, written by `.githooks/pages.sh`. Never edit them by hand.
   See "a link per page".
 - `404.html` — sends a stray path to its section, or to the front door.

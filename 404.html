@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <script>
 (function () {
-    var pages = ['home', 'cards', 'audio', 'player', 'chat'];
+    var pages = ['home', 'cards', 'audio', 'chat'];
     var parts = location.pathname.split('/').filter(Boolean);
     var want = parts[parts.length - 1];
     location.replace((pages.indexOf(want) > -1 ? '/' + want + '/' : '/') + location.hash);

@@ -16,6 +16,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" href="matrix-sans-print.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;display=swap">
+    <!-- the site's own pointer from the very first paint, before style.css has arrived -->
+    <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -55,7 +57,7 @@
     </div>
 
     <div class="pop-panel pop-picks" id="optionsPanel" hidden>
-        <p class="pop-say">practice puts three other answers beside this one. pick the ones it may use &mdash; choose as many as you like, and it draws three of them each time.</p>
+        <p class="pop-say">practice blablabllbabl GO TO SCHOOL</p>
 
         <div class="pick-list" id="optionsPicks"></div>
     </div>
@@ -64,8 +66,8 @@
         <div class="pick-list" id="widgetPickList"></div>
     </div>
 
-    <div class="pop-panel account-pop" id="accountPop" role="dialog" aria-label="your account" hidden>
-        <button class="account-face" id="accFace" type="button" aria-label="change your picture" title="change picture">
+    <div class="pop-panel account-pop" id="accountPop" role="dialog" aria-label="account" hidden>
+        <button class="account-face" id="accFace" type="button" aria-label="change pfp" title="change picture">
             <span class="face-pic" id="accFacePic"></span>
             <span class="account-face-edit" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
@@ -76,7 +78,7 @@
         <p class="account-handle" id="accHandle"></p>
         <button class="basic-button account-settings" id="accSettings" type="button">account settings</button>
         <button class="basic-button account-switch" id="accSwitch" type="button">switch account</button>
-        <div class="account-leave-wrap" id="leaveWrap">
+        <div class="account-leave-wrap">
             <button class="basic-button account-leave" id="chatSignOut" type="button">log out</button>
             <div class="leave-split" id="leaveSplit" hidden>
                 <button class="basic-button" id="leaveYes" type="button">confirm</button>
@@ -97,9 +99,9 @@
         <div class="say-what" id="sayWhat" aria-hidden="true"></div>
 
         <aside class="rail rail-left" aria-label="menu">
-            <section class="rail-clock" aria-label="the time">
+            <section class="rail-clock" aria-label="time">
                 <div class="clock-top">
-                    <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="turn the lights off" title="turn the lights off">
+                    <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="dark" title="dark">
                         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                             <path fill="currentColor"
                                   d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
@@ -112,21 +114,20 @@
             </section>
 
             <!-- one paragraph per section; keep it current -->
-            <section class="help-box is-open" aria-label="what this page does">
+            <section class="help-box is-open" aria-label="?">
                 <button class="help-head panel-head" id="helpToggle" type="button" aria-expanded="true" aria-controls="helpBody">
                     <h2>function</h2>
                 </button>
 
                 <div class="help-body" id="helpBody"><div class="help-body-inner">
 
-                <p class="help-note" data-section="home" hidden>welcome to my house</p>
+                <p class="help-note" data-section="home" hidden>welcome to my housr DD:&lt;</p>
 
-                <p class="help-note" data-section="cards" hidden>flashcard maker; decks and flashcards can be organized. notes or images can be converted to flashcards, although this is still getting experimented and may not work well.</p>
+                <p class="help-note" data-section="cards" hidden>create flashcards and test yourself like quizlet, the ai thing lwk sucks but works. will fix eventually; also decks can be shared through import/export next to the deck creation</p>
 
-                <p class="help-note" data-section="audio" hidden>audio recorder; records clips that cut when a change is detected in a selected area. clips can be cropped and downloaded as mp3s individually, or get batch downloaded in a custom folder all tg. clips also can be matched up w a spotify playlist.</p>
+                <p class="help-note" data-section="audio" hidden>record audio from a diff google tab assuming you use chrome, and detects area that is changeable through brightness icon during recording next to recorder pls cope while yuo can</p>
 
-                <p class="help-note" data-section="chat" hidden>chat; the one page here that isn't only yours. pick a name and a password and you're in, nothing to set up. add someone by the name they signed up with and you get a thread with them. every message is sealed to the two people in it &mdash; the board it travels on can't read them, and neither can this page.</p>
-                <p class="help-note" data-section="player" hidden>the best web player on the planet, look forward to working with this beautiful interface</p>
+                <p class="help-note" data-section="chat" hidden>js yap yap and yap its pretty self explanatory but the security prolly sucks icl dont share passwords or personal info</p>
                 </div></div>
             </section>
 
@@ -138,21 +139,6 @@
                 <div class="store-bar"><div class="store-fill" id="storeFill"></div></div>
             </section>
 
-            <section class="rail-now" aria-label="web player">
-                <p class="rail-title" id="railTitle"></p>
-                <div class="clip-track" id="railTrack">
-                    <div class="clip-fill" id="railFill"></div>
-                </div>
-                <div class="rail-controls">
-                    <button class="clip-play" id="railPrev" type="button" aria-label="previous song" title="previous">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 5.5v13L9 12z" fill="currentColor"/><rect x="4.5" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
-                    </button>
-                    <button class="clip-play" id="railToggle" type="button" aria-label="play" title="play"></button>
-                    <button class="clip-play" id="railNext" type="button" aria-label="next song" title="next">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 5.5v13L15 12z" fill="currentColor"/><rect x="17.1" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
-                    </button>
-                </div>
-            </section>
 
             <section class="rail-binned" id="railBinned" aria-label="recently binned" hidden>
                 <div class="binned-head">
@@ -218,13 +204,13 @@
                                         </button>
 
                                         <div class="share-panel" id="sharePanel" hidden>
-                                            <label for="shareIn">paste someone's code</label>
+                                            <label for="shareIn">paste code</label>
                                             <div class="share-row">
                                                 <textarea id="shareIn" rows="2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="rc2...."></textarea>
                                                 <button class="basic-button" id="loadCode" type="button">load</button>
                                             </div>
 
-                                            <label for="shareOut">this deck's code</label>
+                                            <label for="shareOut">this code</label>
                                             <div class="share-row">
                                                 <textarea id="shareOut" rows="2" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
                                                 <button class="basic-button" id="copyCode" type="button">copy</button>
@@ -239,7 +225,7 @@
                             </div>
 
                             <div class="pane-split" id="paneSplit" role="separator"
-                                 aria-orientation="vertical" aria-label="resize the deck list"
+                                 aria-orientation="vertical" aria-label="resize deck list"
                                  tabindex="0"></div>
 
                             <div class="card-side">
@@ -256,18 +242,18 @@
 
                                 <div class="deck-stage">
                                     <div class="stage-head panel-head">
-                                        <h2 id="stageDeckName">flashcards</h2>
+                                        <h2>flashcards</h2>
                                     </div>
                                     <ol id="deckCardList"></ol>
                                 </div>
 
                                 <div class="pane-split is-across" id="notesSplit" role="separator"
                                      aria-orientation="horizontal" tabindex="0"
-                                     aria-label="resize the notes tool"></div>
+                                     aria-label="resize notes tool"></div>
                                 <div class="notes-home" id="notesHome">
-                                    <section class="notes-panel" id="notesPanel" aria-label="turn notes into cards">
+                                    <section class="notes-panel" id="notesPanel" aria-label="notes to cards">
                                         <div class="notes-head panel-head">
-                                            <h2 class="notes-title">notes &rarr; cards</h2>
+                                            <h2 class="notes-title">ai card maker</h2>
                                             <button class="notes-wide" id="notesWide" type="button" aria-label="open it wide" title="open it wide">
                                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 H4 V9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                                             </button>
@@ -313,7 +299,7 @@
                                 <div class="bar-meter">
                                     <p class="record-status" id="recordStatus" aria-live="polite"></p>
                                     <div class="meter-idle">nofing T_T</div>
-                                    <div class="live-meter" id="liveMeter">
+                                    <div class="live-meter">
                                         <span class="clip-pulse"></span>
                                         <canvas id="levelCanvas" width="600" height="10"></canvas>
                                         <span class="clip-label" id="liveLabel"></span>
@@ -391,93 +377,6 @@
                             </div>
                         </section>
 
-                        <section class="player-panel" id="playerPanel" hidden>
-                            <div class="player-body" id="playerBody">
-                                <div class="queue-side">
-                                    <div class="queue-bar">
-                                        <button class="basic-button" id="addTracks" type="button">add songs</button>
-                                        <input id="trackInput" type="file" accept="audio/*" multiple hidden>
-                                        <button class="basic-button" id="linkClips" type="button" title="pull in everything recorded on the audio page">link clips</button>
-                                        <button class="square-button" id="clearTracks" type="button" aria-label="bin every song" title="bin every song">
-                                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                                <path d="M4.5 6.5h15"/>
-                                                <path d="M10 6.5V4.5h4v2"/>
-                                                <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
-                                                <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
-                                            </svg>
-                                        </button>
-                                    </div>
-
-                                    <ol id="trackList"></ol>
-                                </div>
-
-                                <div class="pane-split" id="playerSplit" role="separator"
-                                     aria-orientation="vertical" aria-label="resize the song list"
-                                     tabindex="0"></div>
-
-                                <div class="stage-side">
-                                    <section class="player-stage" aria-label="web player">
-                                        <div class="stage-head panel-head">
-                                            <h2>web player</h2>
-                                        </div>
-
-                                        <div class="now-body">
-                                            <p class="now-title" id="nowTitle"></p>
-
-                                            <div class="clip-track" id="playerTrack">
-                                                <div class="clip-fill" id="playerFill"></div>
-                                            </div>
-                                            <div class="now-times">
-                                                <span id="nowElapsed">0:00</span>
-                                                <span id="nowTotal">0:00</span>
-                                            </div>
-
-                                            <div class="now-controls">
-                                                <button class="square-button" id="shuffleToggle" type="button" aria-pressed="false" aria-label="shuffle" title="shuffle">
-                                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path d="M2.6 6.8h3.4c1.6 0 2.6 1 3.4 2.3l3.2 5.8c.8 1.3 1.8 2.3 3.4 2.3h1.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                                                        <path d="M2.6 17.2h3.4c1.6 0 2.6-1 3.4-2.3l3.2-5.8c.8-1.3 1.8-2.3 3.4-2.3h1.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                                                        <path d="M16.6 3.8 21.4 6.8 16.6 9.8z" fill="currentColor"/>
-                                                        <path d="M16.6 14.2 21.4 17.2 16.6 20.2z" fill="currentColor"/>
-                                                    </svg>
-                                                </button>
-                                                <button class="square-button" id="playPrev" type="button" aria-label="previous song" title="previous">
-                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.5 5.5v13L9 12z" fill="currentColor"/><rect x="4.5" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
-                                                </button>
-                                                <button class="square-button is-big" id="playToggle" type="button" aria-label="play" title="play"></button>
-                                                <button class="square-button" id="playNext" type="button" aria-label="next song" title="next">
-                                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 5.5v13L15 12z" fill="currentColor"/><rect x="17.1" y="5.5" width="2.4" height="13" rx="1.2" fill="currentColor"/></svg>
-                                                </button>
-                                                <button class="square-button" id="repeatToggle" type="button" aria-pressed="false" aria-label="repeat" title="repeat">
-                                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                        <path d="M6.4 6.4h9a4.4 4.4 0 0 1 4.4 4.4v0.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                                                        <path d="M17.6 17.6h-9a4.4 4.4 0 0 1-4.4-4.4v-0.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                                                        <path d="M16.8 10.6 19.8 15.4 22.8 10.6z" fill="currentColor"/>
-                                                        <path d="M7.2 13.4 4.2 8.6 1.2 13.4z" fill="currentColor"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
-
-                                            <label class="now-volume">
-                                                <span class="volume-mark" id="volumeMark" data-level="3" aria-hidden="true">
-                                                    <svg viewBox="0 0 24 24">
-                                                        <path class="vol-cone" d="M4 9.2h3.6L12.4 5v14L7.6 14.8H4z" fill="currentColor"/>
-                                                        <path class="vol-wave is-one" d="M15.4 9.9a3.2 3.2 0 0 1 0 4.2"/>
-                                                        <path class="vol-wave is-two" d="M17.6 7.6a6.6 6.6 0 0 1 0 8.8"/>
-                                                        <path class="vol-wave is-three" d="M19.8 5.3a10 10 0 0 1 0 13.4"/>
-                                                        <path class="vol-hush" d="M16.2 9.8 21 14.6M21 9.8l-4.8 4.8"/>
-                                                    </svg>
-                                                </span>
-                                                <span class="sr-only">volume</span>
-                                                <input id="playerVolume" type="range" min="0" max="100" value="100">
-                                            </label>
-
-                                            <p class="now-note" id="playerNote" aria-live="polite"></p>
-                                        </div>
-                                    </section>
-                                </div>
-                            </div>
-                        </section>
 
                         <section class="chat-panel" id="chatPanel" hidden>
                             <div class="chat-bar">
@@ -514,7 +413,7 @@
                                     <div class="room-scroll"><ol class="room-list" id="roomList"></ol></div>
                                     <form class="room-make" id="roomMake" novalidate>
                                         <input id="roomName" type="text" aria-label="add someone by name" placeholder="add someone">
-                                        <button class="field-go" id="roomGo" type="submit" aria-label="add them" title="add them">
+                                        <button class="field-go" type="submit" aria-label="add them" title="add them">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                                 <path d="M12 5.5v13M5.5 12h13"/>
                                             </svg>
@@ -538,7 +437,7 @@
 
                                     <form class="talk-bar" id="talkForm" novalidate>
                                         <input id="talkSay" type="text" aria-label="say something" placeholder="say something" disabled>
-                                        <button class="field-go" id="talkGo" type="submit" aria-label="send it" title="send it">
+                                        <button class="field-go" type="submit" aria-label="send it" title="send it">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                                 <path d="M5 12h12.5M12 6.2 18.2 12 12 17.8"/>
                                             </svg>
@@ -579,7 +478,7 @@
 
                         <section class="modal-panel notes-screen" id="notesScreen" data-title="notes" hidden>
                             <button class="modal-close" type="button" aria-label="close" title="close">×</button>
-                            <h2 class="modal-title">notes &rarr; cards</h2>
+                            <h2 class="modal-title">ai card maker</h2>
                             <div class="notes-slot" id="notesSlot"></div>
                         </section>
 
@@ -612,7 +511,7 @@
                             <h2 class="modal-title" id="chatDoorTitle">sign up</h2>
 
                             <div class="ask-body">
-                                <div class="chat-door" id="chatDoor">
+                                <div class="chat-door">
                                     <input id="chatHandle" type="text" autocomplete="off" spellcheck="false" placeholder="username" aria-label="username">
                                     <!-- not type="password" on purpose: masked in css, see CLAUDE.md -->
                                     <input id="chatWord" type="text" class="word-field" name="morie-word" autocomplete="off" spellcheck="false" placeholder="password" aria-label="password">

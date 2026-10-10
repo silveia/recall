@@ -33,7 +33,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	.run { position: relative; }
 	canvas { display: block; cursor: var(--cur-tap); touch-action: manipulation; }
 	.score { position: absolute; top: 0; right: 0; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
-	.hint { margin: 0; font-size: 0.8rem; }
+	.hint { min-height: 1.4em; margin: 0; font-size: 0.8rem; line-height: 1.4; }   /* keeps its height empty, so nothing jumps */
 	.enter {
 		display: grid;
 		place-items: center;
@@ -113,8 +113,9 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         draw();
     }
 
+    let overAt = 0;
     function jump() {
-        if (state === 'over') { reset(); return; }
+        if (state === 'over') { if (performance.now() - overAt > 350) reset(); return; }   // no instant restart off the crash
         if (state === 'ready') { state = 'run'; hintEl.textContent = ''; last = performance.now(); requestAnimationFrame(tick); }
         if (dino.y === 0) dino.v = 9.5;
     }
@@ -154,6 +155,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 
     function over() {
         state = 'over';
+        overAt = performance.now();
         const got = Math.floor(score);
         if (got > best) { best = got; try { localStorage.setItem('front-dino', String(best)); } catch (error) {} }
         scoreEl.textContent = `hi ${best} · ${got}`;
@@ -173,6 +175,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 
     window.addEventListener('keydown', (event) => {
         if (event.code !== 'Space' && event.code !== 'ArrowUp') return;
+        if (event.repeat) { event.preventDefault(); return; }    // a held key is one jump, not a restart
         if (document.activeElement && document.activeElement.classList.contains('enter')) return;
         event.preventDefault();
         jump();

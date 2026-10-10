@@ -4,7 +4,7 @@
    1. elements
    2. state
    3. storage
-   4. sections   (the home / cards / audio / player tabs)
+   4. sections   (the home / cards / audio / chat tabs)
    5. decks      (the list, and the split beside it)
    6. cards      (the create window)
    7. practice   (the practice window)
@@ -16,7 +16,7 @@
          status · sensing box · change detection
          clip storage · mp3 export · clip rows
          recording · level meter · capture
-   13. player    (songs off your own disk, and the bar's short copy)
+   13. (the player was here; only clockFace is left)
    14. the bar's own three   (clock · storage · recently binned)
    15. home widgets   (the home page, yours to arrange)
    16. notes → cards  (under the deck; reads notes, or asks claude)
@@ -98,7 +98,6 @@ const sections = [
     { id: 'home', name: 'home' },
     { id: 'cards', name: 'cards' },
     { id: 'audio', name: 'audio' },
-    { id: 'player', name: 'player' },
     { id: 'chat', name: 'chat' }
 ];
 
@@ -287,7 +286,6 @@ function renderSections() {
     });
     if (activeSectionId !== 'cards') closeSharePanel();
     audioPanel.hidden = activeSectionId !== 'audio';
-    playerPanel.hidden = activeSectionId !== 'player';
     chatPanel.hidden = activeSectionId !== 'chat';
     if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
@@ -297,7 +295,6 @@ function renderSections() {
     const shown = {
         cards: [deckSplit, notesSplit],
         audio: [typeof clipSplitter !== 'undefined' && clipSplitter],
-        player: [typeof playerSplitter !== 'undefined' && playerSplitter],
         chat: [typeof chatSplitter !== 'undefined' && chatSplitter]
     }[activeSectionId] || [];
     shown.forEach((one) => { if (one) one.reclamp(); });
@@ -568,7 +565,6 @@ function loadDeckColumn() {
 
 window.addEventListener('resize', () => {
     if (deckSplit) deckSplit.reclamp();
-    if (typeof playerSplitter !== 'undefined' && playerSplitter) playerSplitter.reclamp();
     if (typeof clipSplitter !== 'undefined' && clipSplitter) clipSplitter.reclamp();
     if (notesSplit) notesSplit.reclamp();
     if (chatSplitter) chatSplitter.reclamp();
@@ -1460,17 +1456,6 @@ function redoLastUndo() {
         deleteClip(again.item.id);
         refreshEmptyMessage();
         rememberClipOrder();
-    } else if (again.type === 'track') {
-        const at = tracks.findIndex((item) => item.id === again.item.id);
-        if (at === -1) return;
-        rememberDeleted({ type: 'track', item: again.item, index: at }, true);
-        if (playingId === again.item.id) stopPlayback();
-        const row = trackList.querySelector(`[data-track-id="${again.item.id}"]`);
-        if (row) row.remove();
-        tracks = tracks.filter((item) => item.id !== again.item.id);
-        forgetTrack(again.item.id);
-        rememberTrackOrder();
-        refreshPlayerState();
     }
 
     renderBinned();
@@ -1537,13 +1522,7 @@ function restoreDeleted(undone) {
         return;
     }
 
-    if (undone.type === 'track') {
-        tracks.splice(Math.min(undone.index, tracks.length), 0, undone.item);
-        saveTrack(undone.item).catch(() => {});
-        renderTrackRows();
-        rememberTrackOrder();
-        return;
-    }
+    if (undone.type === 'track') return;     // songs went with the player
 
     if (undone.type === 'deck') {
         decks.splice(Math.min(undone.index, decks.length), 0, undone.item);
@@ -4069,567 +4048,13 @@ Promise.all([loadStoredClips(), typeReady]).catch(() => {}).finally(() => {
 });
 senseToggle.hidden = true;
 
-/* ---------- 13. player   (songs off your own disk) ---------- */
-
-const playerPanel = document.getElementById('playerPanel');
-const trackList = document.getElementById('trackList');
-const trackInput = document.getElementById('trackInput');
-const addTracksButton = document.getElementById('addTracks');
-const clearTracksButton = document.getElementById('clearTracks');
-const playerBody = document.getElementById('playerBody');
-const playerSplit = document.getElementById('playerSplit');
-const stageSide = document.querySelector('.stage-side');
-const railNow = document.querySelector('.rail-now');
-const railTitle = document.getElementById('railTitle');
-const railTrack = document.getElementById('railTrack');
-const railFill = document.getElementById('railFill');
-const railToggle = document.getElementById('railToggle');
-const railPrev = document.getElementById('railPrev');
-const railNext = document.getElementById('railNext');
-const linkClipsButton = document.getElementById('linkClips');
-const nowTitle = document.getElementById('nowTitle');
-const nowElapsed = document.getElementById('nowElapsed');
-const nowTotal = document.getElementById('nowTotal');
-const playerVolume = document.getElementById('playerVolume');
-const playerNote = document.getElementById('playerNote');
-const playToggle = document.getElementById('playToggle');
-const playPrev = document.getElementById('playPrev');
-const playNext = document.getElementById('playNext');
-const playerTrack = document.getElementById('playerTrack');
-const playerFill = document.getElementById('playerFill');
-const shuffleToggle = document.getElementById('shuffleToggle');
-const repeatToggle = document.getElementById('repeatToggle');
-
-const MARK_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true">'
-    + '<path class="mark-play" d="M7 4.5 19.5 12 7 19.5z" fill="currentColor" stroke="currentColor"'
-    + ' stroke-width="2.4" stroke-linejoin="round"/></svg>';
-const MARK_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true">'
-    + '<rect x="6.4" y="4.8" width="3.9" height="14.4" rx="1.9" fill="currentColor"/>'
-    + '<rect x="13.7" y="4.8" width="3.9" height="14.4" rx="1.9" fill="currentColor"/></svg>';
-
-const songPlayer = new Audio();
-songPlayer.preload = 'metadata';
-
-let tracks = [];            // { id, name, blob, duration }
-let playingId = null;
-let playingUrl = '';
-let shuffleOn = false;
-let repeatOn = false;
-
-const TRACK_DB = 'recall-tracks';
-const TRACK_STORE = 'tracks';
-const TRACK_ORDER_KEY = 'track-order';
-
-function openTrackDb() {
-    return openDb(TRACK_DB, TRACK_STORE, true);
-}
-
-async function saveTrack(record) {
-    const db = await openTrackDb();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(TRACK_STORE, 'readwrite');
-        tx.objectStore(TRACK_STORE).put(record);
-        tx.oncomplete = resolve;
-        tx.onerror = () => reject(tx.error);
-    });
-}
-
-async function forgetTrack(id) {
-    try {
-        const db = await openTrackDb();
-        db.transaction(TRACK_STORE, 'readwrite').objectStore(TRACK_STORE).delete(id);
-    } catch (error) {
-        // the row has already gone from the page; nothing else to do
-    }
-}
-
-function savedTrackOrder() {
-    try {
-        const saved = JSON.parse(window.localStorage.getItem(TRACK_ORDER_KEY));
-        return Array.isArray(saved) ? saved : [];
-    } catch (error) {
-        return [];
-    }
-}
-
-function rememberTrackOrder() {
-    tracks = [...trackList.querySelectorAll('.track-item')]
-        .map((row) => tracks.find((item) => item.id === row.dataset.trackId))
-        .filter(Boolean);
-    try {
-        window.localStorage.setItem(TRACK_ORDER_KEY, JSON.stringify(tracks.map((t) => t.id)));
-    } catch (error) {
-        // out of room — the order just won't survive a refresh
-    }
-}
-
-/* --- adding songs --- */
+/* ---------- 13. (the player was here; it is gone) ---------- */
 
 function clockFace(seconds) {
     if (!Number.isFinite(seconds)) return '0:00';
     const whole = Math.max(0, Math.floor(seconds));
     return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
 }
-
-function readDuration(blob) {
-    return new Promise((resolve) => {
-        const probe = new Audio();
-        const url = URL.createObjectURL(blob);
-        const done = (value) => {
-            probe.src = '';
-            URL.revokeObjectURL(url);
-            resolve(value);
-        };
-        probe.addEventListener('loadedmetadata', () => done(probe.duration), { once: true });
-        probe.addEventListener('error', () => done(null), { once: true });
-        probe.src = url;
-    });
-}
-
-async function addTrackFiles(files) {
-    const picked = [...files].filter((file) => file.type.startsWith('audio/'));
-    if (!picked.length) return;
-
-    if (navigator.storage && navigator.storage.persist) {
-        try { await navigator.storage.persist(); } catch (error) { /* not fatal */ }
-    }
-
-    let added = 0;
-    for (const file of picked) {
-        setPlayerStatus(`reading ${file.name}...`);
-        const duration = await readDuration(file);
-        if (duration === null) continue;
-        const record = {
-            id: `track-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            name: file.name.replace(/\.[^.]+$/, ''),
-            blob: file,
-            duration
-        };
-        try {
-            await saveTrack(record);
-        } catch (error) {
-            setPlayerStatus('out of room — that one was not kept', true);
-            continue;
-        }
-        tracks.push(record);
-        addTrackRow(record);
-        added += 1;
-    }
-    rememberTrackOrder();
-    refreshPlayerState();
-    setPlayerStatus(added ? '' : "none of those would play");
-    paintStorage();
-}
-
-function setPlayerStatus(text) {
-    playerNote.textContent = text || '';
-}
-
-/* --- the list --- */
-
-function trackLiftConfig() {
-    return {
-        list: trackList,
-        selector: '.track-item',
-        feel: LIFT_FEEL.clips,
-        onSettle: rememberTrackOrder
-    };
-}
-
-function addTrackRow(record) {
-    const item = document.createElement('li');
-    item.className = 'track-item';
-    item.dataset.trackId = record.id;
-
-    const handle = rowGrip(item, 'clip-handle track-handle', `reorder ${record.name}, use arrow keys`, trackLiftConfig);
-
-    const play = document.createElement('button');
-    play.className = 'clip-play';
-    play.type = 'button';
-    play.setAttribute('aria-label', `play ${record.name}`);
-    play.textContent = '▶';
-    play.addEventListener('click', (event) => {
-        event.stopPropagation();
-        if (playingId === record.id) togglePlayback();
-        else playTrack(record.id);
-    });
-
-    const name = document.createElement('span');
-    name.className = 'track-name';
-    name.textContent = record.name;
-    name.title = record.name;
-
-    let mark = null;
-    if (record.clipId) {
-        mark = document.createElement('span');
-        mark.className = 'track-mark';
-        mark.textContent = 'clip';
-        mark.title = 'linked to a recording on the audio page';
-    }
-
-    const length = document.createElement('span');
-    length.className = 'clip-label';
-    length.textContent = clockFace(record.duration);
-
-    const remove = document.createElement('button');
-    remove.className = 'track-drop';
-    remove.type = 'button';
-    remove.textContent = '×';
-    remove.setAttribute('aria-label', `bin ${record.name}`);
-    remove.title = 'bin this song';
-    remove.addEventListener('click', (event) => {
-        event.stopPropagation();
-        dropTrack(record.id);
-    });
-
-    item.append(handle, play, name, ...(mark ? [mark] : []), length, remove);
-    item.addEventListener('dblclick', () => playTrack(record.id));
-    trackList.append(item);
-}
-
-function renderTrackRows() {
-    trackList.innerHTML = '';
-    tracks.forEach(addTrackRow);
-    refreshPlayerState();
-}
-
-function dropTrack(id) {
-    if (playingId === id) stopPlayback();
-    const record = tracks.find((item) => item.id === id);
-    const at = tracks.findIndex((item) => item.id === id);
-    if (record) rememberDeleted({ type: 'track', item: record, index: at });
-    const row = trackList.querySelector(`[data-track-id="${id}"]`);
-    if (row) row.remove();
-    tracks = tracks.filter((item) => item.id !== id);
-    forgetTrack(id);
-    rememberTrackOrder();
-    refreshPlayerState();
-}
-
-/* --- playing --- */
-
-async function trackAudio(record) {
-    if (record.blob) return record.blob;
-    if (!record.clipId) return null;
-    try {
-        const db = await openClipDb();
-        const clip = await new Promise((resolve, reject) => {
-            const request = db.transaction(CLIP_STORE, 'readonly')
-                .objectStore(CLIP_STORE).get(record.clipId);
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-        return clip ? clip.blob : null;
-    } catch (error) {
-        return null;
-    }
-}
-
-async function playTrack(id) {
-    const record = tracks.find((item) => item.id === id);
-    if (!record) return;
-    const sound = await trackAudio(record);
-    if (!sound) {
-        setPlayerStatus(`"${record.name}" is a link to a clip that's gone`);
-        return;
-    }
-    if (playingUrl) URL.revokeObjectURL(playingUrl);
-    playingUrl = URL.createObjectURL(sound);
-    playingId = id;
-    songPlayer.src = playingUrl;
-    songPlayer.play().catch(() => setPlayerStatus('that one would not play'));
-    refreshPlayerState();
-}
-
-function togglePlayback() {
-    if (!playingId) {
-        if (tracks.length) playTrack(tracks[0].id);
-        return;
-    }
-    if (songPlayer.paused) songPlayer.play().catch(() => {});
-    else songPlayer.pause();
-    refreshPlayerState();
-}
-
-function stopPlayback() {
-    songPlayer.pause();
-    songPlayer.removeAttribute('src');
-    songPlayer.load();
-    if (playingUrl) URL.revokeObjectURL(playingUrl);
-    playingUrl = '';
-    playingId = null;
-    refreshPlayerState();
-}
-
-function stepTrack(step) {
-    if (!tracks.length) return;
-    if (shuffleOn && tracks.length > 1) {
-        let next;
-        do {
-            next = tracks[Math.floor(Math.random() * tracks.length)];
-        } while (next.id === playingId);
-        playTrack(next.id);
-        return;
-    }
-    const at = tracks.findIndex((item) => item.id === playingId);
-    const to = (at + step + tracks.length) % tracks.length;
-    playTrack(tracks[to].id);
-}
-
-/* the row that's on wears the black, the way an open deck does */
-function refreshPlayerState() {
-    const playing = Boolean(playingId) && !songPlayer.paused;
-    playToggle.innerHTML = playing ? MARK_PAUSE : MARK_PLAY;
-    playToggle.setAttribute('aria-label', playing ? 'pause' : 'play');
-    playToggle.title = playing ? 'pause' : 'play';
-
-    trackList.querySelectorAll('.track-item').forEach((row) => {
-        const on = row.dataset.trackId === playingId;
-        row.classList.toggle('is-playing', on);
-        const mark = row.querySelector('.clip-play');
-        if (mark) mark.textContent = on && playing ? '⏸' : '▶';
-    });
-
-    const current = tracks.find((item) => item.id === playingId);
-    nowTitle.textContent = current ? current.name : '';
-    nowTitle.title = current ? current.name : '';
-
-    railNow.hidden = !current;
-    railTitle.textContent = current ? current.name : '';
-    railTitle.title = current ? current.name : '';
-    railToggle.innerHTML = playing ? MARK_PAUSE : MARK_PLAY;
-    railToggle.setAttribute('aria-label', playing ? 'pause' : 'play');
-    railToggle.title = playing ? 'pause' : 'play';
-
-    clearTracksButton.disabled = tracks.length === 0;
-    [playToggle, playPrev, playNext, railToggle, railPrev, railNext].forEach((button) => {
-        button.disabled = tracks.length === 0;
-    });
-    if (!playingId) {
-        playerFill.style.width = '0%';
-        railFill.style.width = '0%';
-        nowElapsed.textContent = '0:00';
-        nowTotal.textContent = '0:00';
-    } else if (Number.isFinite(songPlayer.duration)) {
-        nowElapsed.textContent = clockFace(songPlayer.currentTime);
-        nowTotal.textContent = clockFace(songPlayer.duration);
-    }
-    refreshTrackEmpty();
-}
-
-function refreshTrackEmpty() {
-    const existing = trackList.querySelector('.empty-message');
-    if (!tracks.length && !existing) {
-        const note = document.createElement('li');
-        note.className = 'empty-message';
-        note.textContent = 'no songs yet ʕ•ᴥ•ʔ';
-        trackList.append(note);
-    } else if (tracks.length && existing) {
-        existing.remove();
-    }
-}
-
-songPlayer.addEventListener('timeupdate', () => {
-    if (!songPlayer.duration || !Number.isFinite(songPlayer.duration)) return;
-    const through = `${(songPlayer.currentTime / songPlayer.duration) * 100}%`;
-    playerFill.style.width = through;
-    railFill.style.width = through;
-    nowElapsed.textContent = clockFace(songPlayer.currentTime);
-    nowTotal.textContent = clockFace(songPlayer.duration);
-});
-songPlayer.addEventListener('play', refreshPlayerState);
-songPlayer.addEventListener('pause', refreshPlayerState);
-songPlayer.addEventListener('ended', () => {
-    if (repeatOn) {
-        songPlayer.currentTime = 0;
-        songPlayer.play().catch(() => {});
-        return;
-    }
-    stepTrack(1);
-});
-
-/* --- wiring --- */
-
-addTracksButton.addEventListener('click', () => trackInput.click());
-trackInput.addEventListener('change', () => {
-    addTrackFiles(trackInput.files);
-    trackInput.value = '';   // the same file can be picked again
-});
-[playToggle, railToggle].forEach((b) => b.addEventListener('click', togglePlayback));
-[playPrev, railPrev].forEach((b) => b.addEventListener('click', () => stepTrack(-1)));
-[playNext, railNext].forEach((b) => b.addEventListener('click', () => stepTrack(1)));
-
-// both scrubbers seek
-[playerTrack, railTrack].forEach((bar) => {
-    bar.addEventListener('click', (event) => {
-        if (!playingId || !Number.isFinite(songPlayer.duration)) return;
-        const box = bar.getBoundingClientRect();
-        const at = (event.clientX - box.left) / box.width;
-        songPlayer.currentTime = Math.max(0, Math.min(1, at)) * songPlayer.duration;
-    });
-});
-
-shuffleToggle.addEventListener('click', () => {
-    shuffleOn = !shuffleOn;
-    shuffleToggle.classList.toggle('is-on', shuffleOn);
-    shuffleToggle.setAttribute('aria-pressed', String(shuffleOn));
-});
-repeatToggle.addEventListener('click', () => {
-    repeatOn = !repeatOn;
-    repeatToggle.classList.toggle('is-on', repeatOn);
-    repeatToggle.setAttribute('aria-pressed', String(repeatOn));
-});
-
-linkClipsButton.addEventListener('click', async () => {
-    let clips = [];
-    try {
-        const db = await openClipDb();
-        clips = await readAll(db, CLIP_STORE);
-    } catch (error) {
-        setPlayerStatus('could not read the clips');
-        return;
-    }
-
-    const linked = new Set(tracks.map((item) => item.clipId).filter(Boolean));
-    const fresh = clips.filter((clip) => !linked.has(clip.id));
-    if (!fresh.length) {
-        setPlayerStatus(clips.length ? 'every clip is already here' : 'no clips recorded yet');
-        return;
-    }
-
-    for (const clip of fresh) {
-        const record = {
-            id: `track-${clip.id}`,
-            name: clip.name || `clip ${clip.number}`,
-            clipId: clip.id,
-            duration: await readDuration(clip.blob)
-        };
-        try {
-            await saveTrack(record);
-        } catch (error) {
-            continue;
-        }
-        tracks.push(record);
-        addTrackRow(record);
-    }
-    rememberTrackOrder();
-    refreshPlayerState();
-    setPlayerStatus(`linked ${fresh.length} clip${fresh.length === 1 ? '' : 's'}`);
-});
-
-const volumeMark = document.getElementById('volumeMark');
-
-function paintVolume() {
-    const level = Number(playerVolume.value);
-    volumeMark.dataset.level = String(
-        level <= 0 ? 0 : level < 34 ? 1 : level < 70 ? 2 : 3
-    );
-}
-
-let volShown = Number(playerVolume.value);
-let volGoal = volShown;
-let volFrame = 0;
-
-function paintVolumeNow() {
-    playerVolume.value = String(Math.round(volShown));
-    songPlayer.volume = Math.max(0, Math.min(1, volShown / 100));
-    paintVolume();
-}
-
-function glideVolume(last) {
-    volFrame = 0;
-    const now = performance.now();
-    const step = Math.min((now - (last || now)) / 1000, 0.1);
-    volShown += (volGoal - volShown) * Math.min(step * 18, 1);
-    if (Math.abs(volGoal - volShown) < 0.35) volShown = volGoal;
-    paintVolumeNow();
-    if (volShown !== volGoal) volFrame = window.requestAnimationFrame(() => glideVolume(now));
-}
-
-function aimVolume(value) {
-    volGoal = Math.max(0, Math.min(100, value));
-    if (!volFrame) volFrame = window.requestAnimationFrame(() => glideVolume());
-}
-
-function volumeAt(clientX) {
-    const box = playerVolume.getBoundingClientRect();
-    const bead = parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.85;
-    const run = Math.max(1, box.width - bead);
-    return ((clientX - box.left - bead / 2) / run) * 100;
-}
-
-playerVolume.addEventListener('pointerdown', (event) => {
-    if (event.button) return;
-    event.preventDefault();
-    playerVolume.focus();
-    aimVolume(volumeAt(event.clientX));
-    try {
-        playerVolume.setPointerCapture(event.pointerId);
-    } catch (error) {
-        // no capture; the drag simply ends if the pointer wanders off
-    }
-
-    const move = (moveEvent) => aimVolume(volumeAt(moveEvent.clientX));
-    const stop = () => {
-        playerVolume.removeEventListener('pointermove', move);
-        playerVolume.removeEventListener('pointerup', stop);
-        playerVolume.removeEventListener('pointercancel', stop);
-    };
-    playerVolume.addEventListener('pointermove', move);
-    playerVolume.addEventListener('pointerup', stop);
-    playerVolume.addEventListener('pointercancel', stop);
-});
-
-// the arrow keys, and anything else that writes the value itself
-playerVolume.addEventListener('input', () => {
-    const typed = Number(playerVolume.value);
-    if (Math.abs(typed - volShown) < 0.6) return;
-    aimVolume(typed);
-});
-paintVolume();
-
-const playerSplitter = wireSplit({
-    split: playerSplit,
-    body: playerBody,
-    other: stageSide,
-    pane: document.querySelector('.queue-side'),
-    variable: '--queue-col',
-    key: 'player-column',
-    fallback: 55
-});
-
-clearTracksButton.addEventListener('click', async (event) => {
-    event.stopPropagation();
-    if (clearTracksButton.disabled) return;
-    const total = tracks.length;
-    const sure = await askConfirm(`bin all ${total} song${total === 1 ? '' : 's'}? no undo`, clearTracksButton);
-    if (!sure) return;
-    stopPlayback();
-    tracks.forEach((item) => forgetTrack(item.id));
-    tracks = [];
-    renderTrackRows();
-    rememberTrackOrder();
-});
-
-// songs the browser is already holding, back in the order you left them
-async function loadStoredTracks() {
-    try {
-        const db = await openTrackDb();
-        const stored = await readAll(db, TRACK_STORE);
-        const order = savedTrackOrder();
-        stored.sort((a, b) => {
-            const ai = order.indexOf(a.id), bi = order.indexOf(b.id);
-            return (ai === -1 ? order.length : ai) - (bi === -1 ? order.length : bi);
-        });
-        tracks = stored;
-    } catch (error) {
-        tracks = [];
-    }
-    renderTrackRows();
-}
-
-if (playerSplitter) playerSplitter.load();
-loadStoredTracks();
 
 /* ---------- 14. the bar's own three  (clock · storage · binned) ---------- */
 
@@ -4690,8 +4115,8 @@ let themeReady = false;   // true once the page has settled on load
 function paintTheme(on) {
     document.documentElement.classList.toggle('inverted', on);
     themeSwap.setAttribute('aria-pressed', String(on));
-    themeSwap.title = on ? 'back to the light' : 'turn the lights off';
-    themeSwap.setAttribute('aria-label', on ? 'back to the light' : 'turn the lights off');
+    themeSwap.title = on ? 'light' : 'dark';
+    themeSwap.setAttribute('aria-label', on ? 'light' : 'dark');
     try {
         window.localStorage.setItem(THEME_KEY, on ? 'yes' : 'no');
     } catch (error) {
@@ -4866,12 +4291,11 @@ const WIDGETS = [
             body.innerHTML = '';
 
             if (size === 'small') {
-                body.append(bigReading(String(clips + tracks.length), 'kept'));
+                body.append(bigReading(String(clips), clips === 1 ? 'clip' : 'clips'));
                 return;
             }
             body.append(tallyRow([
                 [clips, clips === 1 ? 'clip' : 'clips'],
-                [tracks.length, tracks.length === 1 ? 'song' : 'songs'],
                 [binned, 'in the bin']
             ]));
         }
@@ -7740,8 +7164,8 @@ function paintChatShape() {
     startGo.hidden = ready;
     startHead.textContent = ready ? 'nobody yet' : 'chat';
     startSay.textContent = ready
-        ? 'add someone by the username they signed up with. what you two say is sealed to the pair of you.'
-        : 'sign in here :)';
+        ? 'add yur homie ^.^ WARNING SECURITY IS ASS!!'
+        : 'sign in here !! >>';
     if (!chatBody.hidden && chatSplitter) chatSplitter.reclamp();
 }
 
@@ -7907,7 +7331,7 @@ function saidAt(ms) {
 /* --- who you are --- */
 
 function paintChatBar() {
-    const said = chatMe ? 'your account' : 'log in';
+    const said = chatMe ? 'account' : 'log in';
     chatMeButton.classList.toggle('is-solid', Boolean(chatMe));
     chatMeButton.setAttribute('aria-label', said);
     chatMeButton.title = said;

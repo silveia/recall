@@ -7,7 +7,7 @@
 #
 # run by the pre-commit hook, so the copies can never fall behind.
 cd "$(git rev-parse --show-toplevel)" || exit 1
-for section in home cards audio player chat; do
+for section in home cards audio chat; do
     mkdir -p "$section"
     # the note goes after the doctype — anything before it drops the
     # page into quirks mode

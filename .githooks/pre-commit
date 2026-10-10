@@ -1,2 +1,2 @@
 #!/bin/sh
-sh .githooks/pages.sh && git add home/index.html cards/index.html audio/index.html player/index.html chat/index.html
+sh .githooks/pages.sh && git add home/index.html cards/index.html audio/index.html chat/index.html
