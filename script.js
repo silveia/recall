@@ -5395,6 +5395,20 @@ function searchPages() {
     pageFound.hidden = false;
 }
 pageSearchField.addEventListener('input', searchPages);
+// the run on home is a frame, and a frame only hears keys once it has been clicked — so space and up
+// are handed to it from here, unless something else on the page wants them
+document.addEventListener('keydown', (event) => {
+    if (event.code !== 'Space' && event.code !== 'ArrowUp') return;
+    if (activeSectionId !== 'home' || isModalOpen()) return;
+    const at = document.activeElement;
+    if (at && (at.matches('input, textarea, select, button, a, [contenteditable="true"]'))) return;
+    const run = document.querySelector('.home-run');
+    if (!run || !run.contentWindow) return;
+    event.preventDefault();
+    try {
+        run.contentWindow.dispatchEvent(new KeyboardEvent('keydown', { code: event.code, key: event.key, repeat: event.repeat, bubbles: true }));
+    } catch (error) { /* not loaded yet */ }
+});
 // words searched for on the front door arrive as ?find=…: shown here, on home, as if typed
 (() => {
     let asked = '';

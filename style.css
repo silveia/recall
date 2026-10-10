@@ -3466,7 +3466,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .home-run {
 	flex: none;
 	width: 100%;
-	height: 11.5rem;    /* over the search: just the score, the words and the run */
+	height: 12.5rem;    /* over the search: the score, the words, the run and room for 'died' */
 	min-height: 0;
 	border: 0;
 	background: var(--paper);

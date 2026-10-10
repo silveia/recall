@@ -83,7 +83,10 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 	}
 	.seek-go:hover { transform: translate(2px, -50%); }
 	.seek-go svg { width: 70%; height: 70%; }
-	html.embedded .door { transform: translate(-50%, -50%) scale(var(--fit, 1)); transform-origin: 50% 50%; }
+	/* framed, what shows — the score down to the ground line, 36px over the run to 100px into it — is
+	   centred in the frame: its middle is 32px below the run's top, so that point goes to the middle */
+	html.embedded .door { transform: translate(-50%, calc(-32px * var(--fit, 1))) scale(var(--fit, 1)); transform-origin: 50% 0; }
+	html.embedded .hint { margin-top: -32px; }   /* just under the ground, inside the frame */
 	html.embedded, html.embedded body { min-height: 0; overflow: hidden; }
 	/* the words over the run, under the best score; press them (or jump) to begin. Nothing on this
 	   page moves on its own but the enter pill: they are simply there, or not */
@@ -393,8 +396,8 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
     let fit = 1;
     const fitDoor = () => {
         const framed = document.documentElement.classList.contains('embedded');
-        const above = framed ? (door.offsetHeight + 40) / 2 : door.offsetHeight - pill.offsetHeight / 2 + 40;   // the score sits 36px over the run
-        fit = Math.min(1, (window.innerWidth - 32) / door.offsetWidth, (window.innerHeight / 2 - 16) / above);
+        const above = framed ? 92 : door.offsetHeight - pill.offsetHeight / 2 + 40;   // the score sits 36px over the run; framed, 'died' reaches 92px below the middle
+        fit = Math.min(1, (window.innerWidth - 32) / door.offsetWidth, (window.innerHeight / 2 - (framed ? 4 : 16)) / above);
         document.documentElement.style.setProperty('--fit', fit);
     };
     window.addEventListener('resize', fitDoor);

@@ -788,9 +788,12 @@ the width less the gaps, and both the fixed tile and the board's rows use
 it. A board saved before this lost its first time tile once
 (`board-key`), since the fixed one replaces it.
 
-**Over the search bar, first thing on home, is the front door's dino run** (11.5rem tall), the same page framed
-(`.home-run` → `index.html?embed`). Framed it hides the enter pill,
-centres the run and follows the page's lights as they change.
+**Over the search bar, first thing on home, is the front door's dino run** (12.5rem tall), the same page framed
+(`.home-run` → `index.html?embed`). Framed it hides the enter pill
+and the search, centres what shows (score down to the ground line) in the
+frame so it sits midway between the strip and the search bar, and follows
+the page's lights. **Space and up reach it from home** without clicking it
+first — the page hands them to the frame unless a field or button has focus.
 
 
 **As many tiles as you like, and as many of a kind as you like.** Every
