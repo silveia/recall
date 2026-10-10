@@ -631,7 +631,7 @@ const deckSplit = wireSplit({
     pane: document.querySelector('.deck-side'),
     variable: '--deck-col',
     key: 'deck-column',
-    least: 200,
+    least: 215,
     leastOther: 304,   /* the card side's own 19rem floor */
     snap: true,
     fallback: 50,

@@ -139,7 +139,7 @@ never chunked — a document is read whole.
 
 Switched by the tabs in the top strip.
 
-**cards** — the original flashcard app. In create, the `+` on the answer opens a small white window (`#optionsPanel`, `select other answer options for this question`) under the answer field, its right edge on the field's and one `--tight` below it. A small capitals `DECKS` label sits right over the `new deck` field. Decks with drag-reorder, right-click
+**cards** — the original flashcard app. In create, the `+` on the answer opens a small white window (`#optionsPanel`, `select other answer options for this question`) under the answer field, its right edge on the field's and one `--tight` below it. A small label sits right over the `new deck` field: `DECKS - we love studying!!` — only DECKS in capitals, the phrase lowercase. Decks with drag-reorder, right-click
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
 with four multiple-choice answers mapped to keyboard quadrants.
 
@@ -1368,7 +1368,7 @@ split's two sides have a least size (`least`, `leastOther` on
 `wireSplit`, in pixels or a function): the playlist box is as narrow as
 its `playlist` heading still whole (`headingRoom()` measures the words
 plus what the pane puts round them), the ai card maker as short as its
-head row, the decks 200px, the card side its 19rem, the clips 300px, the
+head row, the decks 215px (so `new deck` shows whole), the card side its 19rem, the clips 300px, the
 deck stage 140px. With `snap`, pulling a side past its least **shuts it**
 once you are more than halfway past, and holds it at the least short of
 that; pulling it back opens it straight to the least. A snap **travels** (`travel()`, 200ms, eased out) rather than arriving — both sides are opened for the trip and the far one may shrink past its own floor, then the shut classes go on at the end. The other side
