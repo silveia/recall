@@ -5413,6 +5413,7 @@ function placeBelowLeft(panel, anchor) {
 
 // the fixed time tile: it tells the time, and a press opens the board's settings
 const homeKey = document.getElementById('homeKey');
+const keyEdit = document.getElementById('keyEdit');
 const keyMenu = document.getElementById('keyMenu');
 const keyBody = document.getElementById('keyBody');
 function paintKey() {
@@ -5424,16 +5425,16 @@ function paintKey() {
 function closeKeyMenu() {
     if (keyMenu.hidden) return;
     shutPop(keyMenu);
-    homeKey.setAttribute('aria-expanded', 'false');
+    keyEdit.setAttribute('aria-expanded', 'false');
 }
-homeKey.addEventListener('click', (event) => {
+keyEdit.addEventListener('click', (event) => {
     event.stopPropagation();
     if (!keyMenu.hidden) { closeKeyMenu(); return; }
     closeWidgetPicks();
     paintKey();
     keyMenu.classList.remove('is-leaving');
     keyMenu.hidden = false;
-    homeKey.setAttribute('aria-expanded', 'true');
+    keyEdit.setAttribute('aria-expanded', 'true');
     placeBelowLeft(keyMenu, homeKey);
 });
 keyMenu.addEventListener('click', (event) => event.stopPropagation());

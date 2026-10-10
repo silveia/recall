@@ -230,11 +230,13 @@
 
                             <!-- the leftmost tile is fixed: the time, and the board's settings behind a press -->
                             <div class="board-row">
-                                <button class="home-key" id="homeKey" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="keyMenu" title="board settings">
-                                    <span class="widget-head"><h3>time</h3></span>
-                                    <span class="widget-body" id="keyBody"></span>
-                                    <svg class="key-gear" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2L5.6 5.6"/></svg>
-                                </button>
+                                <div class="home-key" id="homeKey">
+                                    <div class="widget-head"><h3>time</h3></div>
+                                    <div class="widget-body" id="keyBody"></div>
+                                    <button class="key-edit" id="keyEdit" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="keyMenu" aria-label="edit the board" title="edit the board">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+                                    </button>
+                                </div>
                                 <div class="widget-list" id="widgetList"></div>
                             </div>
                             <div class="widget-bin" id="widgetBin" hidden aria-hidden="true">

@@ -3278,12 +3278,26 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	font: inherit;
 	text-align: left;
 	overflow: hidden;
-	cursor: var(--cur-tap);
-	transition: transform var(--quick) var(--ease);
 }
-.home-key:hover, .home-key[aria-expanded="true"] { transform: translateY(-2px); }
-.home-key .widget-body { pointer-events: none; }
-.key-gear { position: absolute; right: 0.7rem; bottom: 0.7rem; width: 1rem; height: 1rem; }
+/* the tile itself is still; only its pen in the corner is pressed */
+.key-edit {
+	position: absolute;
+	right: 0.55rem;
+	bottom: 0.55rem;
+	display: grid;
+	place-items: center;
+	width: 1.9rem;
+	height: 1.9rem;
+	padding: 0;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	cursor: var(--cur-tap);
+	transition: background-color 0.18s var(--ease), color 0.18s var(--ease), transform var(--quick) var(--ease);
+}
+.key-edit svg { width: 0.95rem; height: 0.95rem; }
+.key-edit:hover, .key-edit[aria-expanded="true"] { color: var(--paper); background: var(--ink); transform: scale(1.06); }
 .board-foot[hidden] { display: none; }
 .widget-head {
 	display: grid;

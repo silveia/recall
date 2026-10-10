@@ -777,8 +777,9 @@ Pressing one (or Enter for the first) switches to that page and outlines
 where the word is for a moment if it is on show.
 
 **Five tiles across, and the first is fixed** (by request). The leftmost
-tile (`#homeKey`) is always the time and can't be moved or removed; a
-press opens its menu (`#keyMenu`, under it on its left edge): `arrange
+tile (`#homeKey`) is always the time and can't be moved or removed. The tile
+itself does nothing on hover or press; **the round pen in its bottom-right
+corner** (`#keyEdit`) opens its menu (`#keyMenu`, under it on its left edge): `arrange
 the board` / `done arranging`, `add a widget`, `lights off/on`. The pen
 and plus that sat under the board are hidden (`.board-foot[hidden]`) and
 the code behind them is kept. The movable board beside it is the other
