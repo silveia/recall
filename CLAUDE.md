@@ -1485,6 +1485,8 @@ paths still reach the root. It used to be a one-line hop on to
 `app.html?go=cards`, and every refresh showed it: a white page for a
 beat and `app.html?go=…` in the address bar before the real page came.
 
+**Each copy loads `script.js?v=…` and `style.css?v=…`**, a fingerprint of the file's contents written by `pages.sh`. Github pages lets a browser keep those files ten minutes, and a push could otherwise run the old script under the new page — which is how a chat reset still showed the old accounts.
+
 **Never edit the copies — edit `app.html`.** `.githooks/pages.sh` writes
 all five, and the pre-commit hook runs it, so they cannot fall behind
 (`git config core.hooksPath .githooks` is what turns the hook on, and a

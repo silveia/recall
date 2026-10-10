@@ -7168,6 +7168,15 @@ const CHAT_GONE = ['chat-me', 'chat-known', 'chat-with', 'chat-room', 'chat-plac
 CHAT_GONE.forEach((key) => {
     try { window.localStorage.removeItem(key); } catch (error) { /* nothing kept */ }
 });
+// once per reset: everything else the old board left here goes too — pictures and all
+try {
+    if (window.localStorage.getItem(`chat-reset-${CHAT_ERA}`) !== 'yes') {
+        Object.keys(window.localStorage)
+            .filter((key) => key.startsWith('chat-') && !key.endsWith(`-${CHAT_ERA}`) && key !== 'chat-era-test')
+            .forEach((key) => window.localStorage.removeItem(key));
+        window.localStorage.setItem(`chat-reset-${CHAT_ERA}`, 'yes');
+    }
+} catch (error) { /* nothing kept */ }
 const TALK_KEEP = 300;          // how much of a thread each browser keeps
 const SAME_BREATH = 5 * 60 * 1000;
 
