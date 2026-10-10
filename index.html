@@ -65,19 +65,19 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		isolation: isolate;
 		transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 	}
+	/* the white grows as a circle out of wherever the pointer came in, and shrinks back to where it left */
 	.enter::after {
 		content: '';
 		position: absolute;
 		inset: 0;
 		background: #fff;
-		border-radius: inherit;
 		mix-blend-mode: difference;
-		transform: scaleX(0);
-		transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+		clip-path: circle(0 at var(--x, 50%) var(--y, 50%));
+		transition: clip-path 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 		pointer-events: none;
 	}
-	.enter:hover { transform: translateY(-3px); animation: enter-wiggle 0.5s ease; }
-	.enter:hover::after { transform: scaleX(1); }
+	.enter:hover { transform: translateY(-3px); animation: enter-wiggle 0.6s cubic-bezier(0.37, 0, 0.63, 1); }
+	.enter:hover::after { clip-path: circle(150% at var(--x, 50%) var(--y, 50%)); }
 	.enter:active { transform: translateY(-1px); }
 	@keyframes enter-wiggle {
 		0%   { rotate: 0deg; }
@@ -223,6 +223,16 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         jump();
     });
     canvas.addEventListener('pointerdown', (event) => { event.preventDefault(); jump(); });
+
+    // the white on the enter pill spreads from where the pointer crossed into it
+    const enter = document.querySelector('.enter');
+    const aim = (event) => {
+        const box = enter.getBoundingClientRect();
+        enter.style.setProperty('--x', `${event.clientX - box.left}px`);
+        enter.style.setProperty('--y', `${event.clientY - box.top}px`);
+    };
+    enter.addEventListener('pointerenter', aim);
+    enter.addEventListener('pointerleave', aim);
 
     colours();
     reset();

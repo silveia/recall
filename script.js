@@ -7194,9 +7194,21 @@ function shortWhen(ms) {
     return when.toLocaleDateString([], { day: 'numeric', month: 'short' }).toLowerCase();
 }
 
-/* the app is always there, signed in or not: the main pane shows a welcome until a thread is open */
+/* the log-in form lives in the log-in window, and is carried onto the page while signed out —
+   one form, so nothing has to be kept in step */
+const chatLogin = document.getElementById('chatLogin');
+const doorBody = chatScreen.querySelector('.ask-body');
+function placeDoor(onPage) {
+    const home = onPage ? document.getElementById('loginSlot') : chatScreen;
+    if (doorBody.parentElement !== home) home.append(doorBody);
+}
+
+/* signed out: a log-in screen. signed in: the app, with a welcome until a thread is open */
 function paintChatShape() {
     const ready = Boolean(chatMe);
+    chatLogin.hidden = ready;
+    chatBody.hidden = !ready;
+    if (!ready && chatScreen.hidden) { placeDoor(true); paintChatDoor(); }
     talkWelcome.hidden = Boolean(chatWith);
     document.getElementById('welcomeGo').hidden = ready;
     document.getElementById('welcomeHead').textContent = ready ? `hi, ${displayName(chatMe.name)}` : 'chat';
@@ -7267,6 +7279,7 @@ function openWith(who) {
     paintChatShape();
 
     const handle = document.getElementById('talkHandle');
+    document.getElementById('talkFace').hidden = !chatWith;   // only the person you're talking to has a face up here
     if (!chatWith) {
         talkName.textContent = 'home';
         handle.textContent = '';
@@ -7501,8 +7514,6 @@ function wearFace(slot, mine) {
 function paintFaces() {
     const signed = Boolean(chatMe);
     wearFace(document.getElementById('chatMePic'), signed);
-    document.getElementById('meName').textContent = signed ? displayName(chatMe.name) : 'not logged in';
-    document.getElementById('meHandle').textContent = signed ? `@${chatMe.name}` : 'press to log in';
     if (signed) wearFace(document.getElementById('accFacePic'), true);
 }
 function ditherFace(file) {
@@ -7802,10 +7813,7 @@ chatMeButton.addEventListener('click', (event) => {
     paintAccount();
     accountPop.hidden = false;
     chatMeButton.setAttribute('aria-expanded', 'true');
-    // above your card, left edges together, growing up out of it — discord's corner
-    const card = chatMeButton.getBoundingClientRect();
-    accountPop.style.left = `${Math.round(card.left)}px`;
-    accountPop.style.top = `${Math.round(Math.max(8, card.top - accountPop.offsetHeight - 8))}px`;
+    placeUnder(accountPop, chatMeButton);   // the top-right corner, where an account lives on every site
 });
 accountPop.addEventListener('click', (event) => event.stopPropagation());
 document.addEventListener('click', closeAccount);
@@ -7814,6 +7822,8 @@ document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cl
 function paintChatDoor() {
     if (doorBusy) return;      // it is saying what it is doing
     chatDoorTitle.textContent = chatDoorNew ? 'sign up' : 'log in';
+    document.getElementById('loginTitle').textContent = chatDoorNew ? 'make an account' : 'welcome back';
+    document.getElementById('loginSay').textContent = chatDoorNew ? 'pick a username and a password' : 'log in to see your chats';
     chatGo.textContent = chatDoorNew ? 'sign up' : 'log in';
     chatSwap.textContent = chatDoorNew ? 'already have an account?' : 'need an account?';
 }
@@ -7823,6 +7833,14 @@ function openChatDoor(signingUp) {
     chatDoorNew = signingUp === true;
     saySomethingChat('');
     paintChatDoor();
+    // signed out the form is already on the page; adding a second account still uses the window
+    if (!chatMe && !addingFrom) {
+        placeDoor(true);
+        if (activeSectionId !== 'chat') switchSection('chat');
+        chatHandle.focus();
+        return;
+    }
+    placeDoor(false);
     showScreen(chatScreen);
 }
 

@@ -1566,7 +1566,14 @@ get two accounts. The button carries the state (`checking the name…`,
 swap beside it. `paintChatDoor` returns early while it is busy, or it
 would paint the label back.
 
-**The chat is always laid out as a messaging app**, signed in or not,
+**Signed out, the chat is a log-in screen** — a centred card with a
+picture mark, `welcome back` / `make an account`, the username and
+password fields and the button right there on the page. It is the same
+form as the log-in window, carried onto the page (`placeDoor`) and back
+into the window when `add account` needs it, so there is one form and
+one set of listeners.
+
+**Signed in, the chat is always laid out as a messaging app**,
 nobody added or not — by request, after an empty page with things
 floating in the middle read as unfinished. Two outlined panes:
 
@@ -1574,8 +1581,7 @@ floating in the middle read as unfinished. Two outlined panes:
   field, `direct messages`, then one row per person — picture, name,
   the last line (`you: …` if yours) and its time, WhatsApp-style. With
   nobody yet it shows three dashed placeholder rows and a line saying
-  what to do. At its foot is **your card** (Discord's corner): picture,
-  nickname, `@username` and a gear; signed out it says `not logged in`.
+  what to do.
 - **The talk (right)**: a header with the open person's picture, name
   and handle and the `sealed` chip. With no thread open it shows a
   greeting (`hi, <nickname>` or `chat` with log in / sign up when signed
@@ -1584,9 +1590,10 @@ floating in the middle read as unfinished. Two outlined panes:
   picture, the name, and "this is the start of your messages with …".
   The box at the bottom reads `message @name`.
 
-**Your card opens the account panel**, placed above it with left edges
-together so it grows up out of the corner; signed out it opens the
-log-in window directly (on **log in**, not sign up). The panel is
+**Your account is a round picture in the top-right corner** of the
+chat (the end of the thread header) — kept there on purpose, since that
+is where every other site puts it; a card at the foot of the list was
+tried and read as confusing. It opens the account panel under it. The panel is
 Google-style: a
 large round picture at the top with a pencil on it — **pressing it
 opens account settings** (there is no separate settings button) — your
