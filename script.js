@@ -7135,6 +7135,15 @@ let chatPeople = {};            // every account the board has told us of
 let chatFriends = [];           // the ones you added — the only ones shown
 let chatDms = {};               // their name (lowercased) -> the lines between you
 let chatSealed = [];            // sealed posts waiting on a key to read them
+// what is never to be read again: a deleted line, or a note that has already done its work.
+// a public board can't forget a post, so this browser does
+const CHAT_SKIP = `chat-skip-${CHAT_ERA}`;
+let chatSkip = new Set((() => { try { return JSON.parse(window.localStorage.getItem(CHAT_SKIP) || '[]'); } catch (error) { return []; } })());
+function keepSkip() { try { window.localStorage.setItem(CHAT_SKIP, JSON.stringify([...chatSkip].slice(-4000))); } catch (error) { /* fine */ } }
+// a line can carry a note instead of words — a file, an edit, a deletion. it starts with this
+const CHAT_NOTE = '\u0000';
+const FILE_TOPIC = `${CHAT_TOPIC}-files`;
+const CHAT_FILE_MOST = 15 * 1024 * 1024;   // what the board will carry, and it keeps it three hours
 let chatProfiles = [];          // signed profile changes waiting to be checked
 let chatPriv = null;            // your own private key, this browser only
 let chatWith = null;            // whose thread is open, lowercased
@@ -7294,6 +7303,7 @@ function takePost(post) {
     }
     if (post.k === 'dm' && post.id && post.from && post.to) {
         if (!chatMe) return false;
+        if (chatSkip.has(post.id)) return false;
         if (chatSealed.some((one) => one.id === post.id)) return false;
         if (Object.values(chatDms).some((lines) => lines.some((one) => one.id === post.id))) return false;
         chatSealed.push(post);          // whose it is is worked out when it is opened, after any renames
@@ -7387,10 +7397,23 @@ async function openWhatIsWaiting() {
         if (!them || !them.pub) { stillWaiting.push(post); continue; }
         try {
             const key = await betweenKey(chatPriv, them.pub);
-            const said = await openWords(key, post.iv, post.body);
+            let said = await openWords(key, post.iv, post.body);
+            let file = null;
+            if (said.startsWith(CHAT_NOTE)) {
+                let note = null;
+                try { note = JSON.parse(said.slice(1)); } catch (error) { note = null; }
+                if (note && (note.gone || note.edit)) {
+                    lineChanged(other, note, from);
+                    chatSkip.add(post.id);
+                    keepSkip();
+                    opened = true;
+                    continue;
+                }
+                if (note && note.file) { file = note.file; said = ''; } else continue;
+            }
             const held = chatDms[other] || [];
             if (held.some((one) => one.id === post.id)) continue;
-            chatDms[other] = [...held, { id: post.id, by: from, said, at: post.at || 0 }]
+            chatDms[other] = [...held, { id: post.id, by: from, said, at: post.at || 0, ...(file ? { file } : {}) }]
                 .sort((one, two) => (one.at || 0) - (two.at || 0))
                 .slice(-TALK_KEEP);
             // someone who writes to you turns up in your list, added or not — otherwise a message
@@ -7404,6 +7427,23 @@ async function openWhatIsWaiting() {
     if (opened) keepKnown();
     if (arrived) paintPeople();
     return opened;
+}
+
+// a deletion or an edit, from whoever wrote the line — nobody else's counts
+function lineChanged(other, note, from) {
+    const lines = chatDms[other] || [];
+    const id = note.gone || note.edit;
+    const line = lines.find((one) => one.id === id);
+    if (note.gone) {
+        chatSkip.add(id);
+        keepSkip();
+        if (line && whoIs(line.by) === from) chatDms[other] = lines.filter((one) => one.id !== id);
+        return;
+    }
+    if (line && whoIs(line.by) === from && typeof note.said === 'string') {
+        line.said = note.said.slice(0, 1200);
+        line.edited = true;
+    }
 }
 
 function sayAgainWhatIsMissing(onBoard) {
@@ -7465,7 +7505,7 @@ function paintPeople() {
         name.textContent = displayName(key);
         const last = (chatDms[key] || []).slice(-1)[0];
         const line2 = document.createElement('small');
-        line2.textContent = last ? `${chatMe && whoIs(last.by) === chatMe.name.toLowerCase() ? 'you: ' : ''}${last.said}` : (them && them.pub ? 'say hi' : 'hasn\'t opened the chat yet');
+        line2.textContent = last ? `${chatMe && whoIs(last.by) === chatMe.name.toLowerCase() ? 'you: ' : ''}${last.file ? `file · ${last.file.name}` : last.said}` : (them && them.pub ? 'say hi' : 'hasn\'t opened the chat yet');
         words.append(name, line2);
         const when = document.createElement('span');
         when.className = 'room-when';
@@ -7625,6 +7665,30 @@ function openWith(who) {
         : `message @${them ? them.name : chatWith}`;
 }
 
+// files: the clip opens the picker, and anything dropped on the thread is sent too
+const talkFile = document.getElementById('talkFile');
+document.getElementById('talkAttach').addEventListener('click', () => {
+    if (!chatMe || !chatWith) return;
+    talkFile.click();
+});
+talkFile.addEventListener('change', async () => {
+    const files = [...talkFile.files];
+    talkFile.value = '';
+    for (const file of files) await sendFile(chatWith, file);
+});
+talkLog.addEventListener('dragover', (event) => {
+    if (!chatWith || !event.dataTransfer || ![...event.dataTransfer.types].includes('Files')) return;
+    event.preventDefault();
+    talkLog.classList.add('is-dropping');
+});
+talkLog.addEventListener('dragleave', () => talkLog.classList.remove('is-dropping'));
+talkLog.addEventListener('drop', async (event) => {
+    talkLog.classList.remove('is-dropping');
+    if (!chatWith || !event.dataTransfer || !event.dataTransfer.files.length) return;
+    event.preventDefault();
+    for (const file of [...event.dataTransfer.files]) await sendFile(chatWith, file);
+});
+
 talkForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const words = talkSay.value.trim();
@@ -7633,11 +7697,11 @@ talkForm.addEventListener('submit', async (event) => {
     await sendSealed(chatWith, words.slice(0, 1200));
 });
 
-async function sendSealed(other, words) {
+// seals words for the two of you and makes the post; nothing is sent yet
+async function sealedPost(other, words) {
     const them = chatPeople[other];
-    if (!them || !them.pub) { saySomethingChat('no key for them yet — they need to open the chat once'); return; }
-    if (!chatPriv) { saySomethingChat('this browser has no key of yours. sign in again'); return; }
-
+    if (!them || !them.pub) { saySomethingChat('no key for them yet — they need to open the chat once'); return null; }
+    if (!chatPriv) { saySomethingChat('this browser has no key of yours. sign in again'); return null; }
     const post = { k: 'dm', id: newId(), from: chatMe.name, to: them.name, at: Date.now() };
     try {
         const key = await betweenKey(chatPriv, them.pub);
@@ -7646,15 +7710,283 @@ async function sendSealed(other, words) {
         post.body = sealed.body;
     } catch (error) {
         saySomethingChat('that would not seal');
-        return;
+        return null;
     }
+    return post;
+}
 
-    chatDms[other] = [...(chatDms[other] || []), { id: post.id, by: chatMe.name, said: words, at: post.at }]
+async function sendSealed(other, words, file) {
+    const post = await sealedPost(other, file ? CHAT_NOTE + JSON.stringify({ file }) : words);
+    if (!post) return null;
+    chatDms[other] = [...(chatDms[other] || []), { id: post.id, by: chatMe.name, said: file ? '' : words, at: post.at, ...(file ? { file } : {}) }]
         .slice(-TALK_KEEP);
     keepKnown();
     paintTalk();
+    paintPeople();
     postToBoard(CHAT_TOPIC, post).catch(() => saySomethingChat('that line did not reach the board'));
+    return post;
 }
+
+// a note that changes a line already said (an edit, a deletion); it is never a line itself
+async function sendNote(other, note) {
+    const post = await sealedPost(other, CHAT_NOTE + JSON.stringify(note));
+    if (!post) return;
+    chatSkip.add(post.id);
+    keepSkip();
+    postToBoard(CHAT_TOPIC, post).catch(() => saySomethingChat('that did not reach the board'));
+}
+
+/* --- files: sealed in this browser, carried by the board for three hours, kept here after --- */
+function fileShelf(mode) {
+    return new Promise((resolve, reject) => {
+        const open = indexedDB.open('chat-files', 1);
+        open.onupgradeneeded = () => open.result.createObjectStore('files');
+        open.onsuccess = () => resolve(open.result.transaction('files', mode).objectStore('files'));
+        open.onerror = () => reject(open.error);
+    });
+}
+async function fileKept(id) {
+    try {
+        const shelf = await fileShelf('readonly');
+        return await new Promise((resolve) => {
+            const ask = shelf.get(id);
+            ask.onsuccess = () => resolve(ask.result || null);
+            ask.onerror = () => resolve(null);
+        });
+    } catch (error) { return null; }
+}
+async function keepFile(id, blob) {
+    try { (await fileShelf('readwrite')).put(blob, id); } catch (error) { /* it will be fetched again */ }
+}
+const filesOpen = new Map();   // id -> the file, opened, for this visit
+async function fileOf(other, line) {
+    if (filesOpen.has(line.id)) return filesOpen.get(line.id);
+    let blob = await fileKept(line.id);
+    if (!blob) {
+        const them = chatPeople[other];
+        if (!them || !them.pub || !chatPriv || !line.file || !line.file.url) return null;
+        try {
+            const got = await fetch(line.file.url);
+            if (!got.ok) return null;
+            const key = await betweenKey(chatPriv, them.pub);
+            const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(line.file.iv) }, key, await got.arrayBuffer());
+            blob = new Blob([plain], { type: line.file.type || 'application/octet-stream' });
+            keepFile(line.id, blob);
+        } catch (error) { return null; }
+    }
+    filesOpen.set(line.id, blob);
+    return blob;
+}
+function fileSize(bytes) {
+    if (bytes < 1024) return `${bytes} b`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} kb`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} mb`;
+}
+async function sendFile(other, file) {
+    if (!file) return;
+    if (file.size > CHAT_FILE_MOST) { saySomethingChat('that file is too big — 15 mb at most'); return; }
+    const them = chatPeople[other];
+    if (!them || !them.pub) { saySomethingChat('no key for them yet — they need to open the chat once'); return; }
+    if (!chatPriv) { saySomethingChat('this browser has no key of yours. sign in again'); return; }
+    saySomethingChat(`sending ${file.name}…`);
+    try {
+        const key = await betweenKey(chatPriv, them.pub);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const sealed = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, await file.arrayBuffer());
+        const put = await fetch(`${CHAT_BOARD}/${FILE_TOPIC}`, { method: 'PUT', body: new Blob([sealed]), headers: { Filename: 'sealed.bin' } });
+        if (!put.ok) throw new Error(String(put.status));
+        const answer = await put.json();
+        if (!answer.attachment || !answer.attachment.url) throw new Error('no file');
+        const meta = { url: answer.attachment.url, iv: toB64(iv), name: file.name.slice(0, 120), type: file.type || '', size: file.size };
+        const post = await sendSealed(other, '', meta);
+        if (post) { filesOpen.set(post.id, file); keepFile(post.id, file); paintTalk(); }
+        saySomethingChat('');
+    } catch (error) {
+        saySomethingChat('that file did not reach the board');
+    }
+}
+// a picture, in black and white only — dithered the way the faces are
+function ditherPicture(blob, widest) {
+    return new Promise((resolve) => {
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+            const scale = Math.min(1, widest / img.width);
+            const w = Math.max(1, Math.round(img.width * scale));
+            const h = Math.max(1, Math.round(img.height * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const pen = canvas.getContext('2d');
+            pen.fillStyle = '#fff';
+            pen.fillRect(0, 0, w, h);
+            pen.drawImage(img, 0, 0, w, h);
+            const data = pen.getImageData(0, 0, w, h);
+            const px = data.data;
+            const lum = new Float32Array(w * h);
+            for (let i = 0; i < lum.length; i += 1) lum[i] = px[i * 4] * 0.299 + px[i * 4 + 1] * 0.587 + px[i * 4 + 2] * 0.114;
+            for (let y = 0; y < h; y += 1) {
+                for (let x = 0; x < w; x += 1) {
+                    const at = y * w + x;
+                    const v = lum[at] < 128 ? 0 : 255;
+                    const err = lum[at] - v;
+                    lum[at] = v;
+                    if (x + 1 < w) lum[at + 1] += err * 7 / 16;
+                    if (y + 1 < h) {
+                        if (x > 0) lum[at + w - 1] += err * 3 / 16;
+                        lum[at + w] += err * 5 / 16;
+                        if (x + 1 < w) lum[at + w + 1] += err / 16;
+                    }
+                }
+            }
+            for (let i = 0; i < lum.length; i += 1) { px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = lum[i]; px[i * 4 + 3] = 255; }
+            pen.putImageData(data, 0, 0);
+            URL.revokeObjectURL(url);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+        img.src = url;
+    });
+}
+function saveBlob(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name || 'file';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+function fileBox(other, line) {
+    const box = document.createElement('button');
+    box.type = 'button';
+    box.className = 'said-file';
+    box.title = 'save the file';
+    const name = document.createElement('span');
+    name.className = 'said-file-name';
+    name.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4"/></svg>';
+    const called = document.createElement('span');
+    called.textContent = line.file.name || 'file';
+    const size = document.createElement('small');
+    size.textContent = fileSize(line.file.size || 0);
+    name.append(called, size);
+    box.append(name);
+    if ((line.file.type || '').startsWith('image/')) {
+        fileOf(other, line).then(async (blob) => {
+            if (!blob) { gone(); return; }
+            const pic = await ditherPicture(blob, 480);
+            if (!pic) return;
+            const img = document.createElement('img');
+            img.src = pic;
+            img.alt = line.file.name || 'picture';
+            box.append(img);
+        });
+    }
+    const gone = () => {
+        if (box.querySelector('.said-file-note')) return;
+        const note = document.createElement('span');
+        note.className = 'said-file-note';
+        note.textContent = 'gone from the board — files keep three hours';
+        box.append(note);
+    };
+    box.addEventListener('click', async () => {
+        const blob = await fileOf(other, line);
+        if (blob) saveBlob(blob, line.file.name);
+        else gone();
+    });
+    return box;
+}
+
+/* --- the three dots on a line --- */
+const TOOL_MARKS = {
+    more: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M4 20l.6-3.8 11-11 3.2 3.2-11 11zM13.6 7.2l3.2 3.2"/></svg>',
+    save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg>',
+    bin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 6.5h15M10 6.5V4.5h4v2M6.8 6.5l.9 13h8.6l.9-13"/></svg>'
+};
+function lineTools(row, other, line, words) {
+    const mine = chatMe && whoIs(line.by) === chatMe.name.toLowerCase();
+    const tools = document.createElement('div');
+    tools.className = 'said-tools';
+    const mark = (name, title, act) => {
+        const press = document.createElement('button');
+        press.type = 'button';
+        press.className = 'tool-mark';
+        press.title = title;
+        press.setAttribute('aria-label', title);
+        press.innerHTML = TOOL_MARKS[name];
+        press.addEventListener('click', (event) => { event.stopPropagation(); act(press); });
+        tools.append(press);
+        return press;
+    };
+    if (line.said) mark('copy', 'copy', () => {
+        navigator.clipboard.writeText(line.said).then(() => saySomethingChat('copied'), () => {});
+        tools.classList.remove('is-open');
+    });
+    if (line.file) mark('save', 'save the file', async () => {
+        const blob = await fileOf(other, line);
+        if (blob) saveBlob(blob, line.file.name); else saySomethingChat('that file has gone from the board');
+    });
+    if (mine && line.said) mark('edit', 'edit', () => { tools.classList.remove('is-open'); editLine(row, other, line, words); });
+    mark('bin', mine ? 'delete' : 'remove for me', (press) => {
+        if (!press.classList.contains('is-armed')) {          // a second press, so one slip deletes nothing
+            press.classList.add('is-armed');
+            press.title = 'press again';
+            window.setTimeout(() => { press.classList.remove('is-armed'); press.title = mine ? 'delete' : 'remove for me'; }, 2200);
+            return;
+        }
+        chatDms[other] = (chatDms[other] || []).filter((one) => one.id !== line.id);
+        chatSkip.add(line.id);
+        keepSkip();
+        keepKnown();
+        paintTalk();
+        paintPeople();
+        if (mine) sendNote(other, { gone: line.id });
+    });
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'said-more';
+    more.title = 'more';
+    more.setAttribute('aria-label', 'more');
+    more.innerHTML = TOOL_MARKS.more;
+    more.addEventListener('click', (event) => {
+        event.stopPropagation();
+        talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => { if (one !== tools) one.classList.remove('is-open'); });
+        tools.classList.toggle('is-open');
+    });
+    tools.append(more);
+    row.append(tools);
+}
+function editLine(row, other, line, words) {
+    const field = document.createElement('input');
+    field.className = 'said-edit';
+    field.value = line.said;
+    field.setAttribute('aria-label', 'edit the message');
+    words.replaceWith(field);
+    field.focus();
+    field.select();
+    const done = (keep) => {
+        const said = field.value.trim();
+        if (keep && said && said !== line.said) {
+            line.said = said.slice(0, 1200);
+            line.edited = true;
+            keepKnown();
+            sendNote(other, { edit: line.id, said: line.said });
+        }
+        paintTalk();
+        paintPeople();
+    };
+    field.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') { event.preventDefault(); done(true); }
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); done(false); }
+    });
+    field.addEventListener('blur', () => done(true), { once: true });
+}
+document.addEventListener('click', () => {
+    if (typeof talkLog !== 'undefined') talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => one.classList.remove('is-open'));
+});
 
 function whatIsSaid() {
     return (chatWith && chatDms[chatWith]) || [];
@@ -7704,7 +8036,18 @@ function paintTalk() {
         const words = document.createElement('p');
         words.className = 'said-words';
         words.textContent = one.said || '';
+        if (one.edited) {
+            const was = document.createElement('span');
+            was.className = 'said-edited';
+            was.textContent = '(edited)';
+            words.append(was);
+        }
+        if (one.file) {
+            words.textContent = '';
+            words.append(fileBox(chatWith, one));
+        }
         row.append(words);
+        lineTools(row, chatWith, one, words);
         talkLog.append(row);
         lastBy = one.by;
         lastAt = one.at || 0;

@@ -1728,6 +1728,26 @@ a line said. `takePost` is the only thing that writes state, and it is
 deliberately idempotent — the same post read from history, from the
 live stream and from a republish must land once.
 
+**Files.** The clip at the left of the message box (or dropping files on
+the thread) sends them, up to 15 MB each. A file is sealed in the browser
+with the same key as the words, uploaded to ntfy as an attachment on its
+own topic (`FILE_TOPIC`, a `PUT` — CORS checked: allowed), and a line
+whose sealed words are a note — `CHAT_NOTE` (U+0000) and JSON
+`{file:{url, iv, name, type, size}}` — goes on the thread. **The board
+keeps attachments three hours**, so every browser keeps its own copy once
+it has opened one (IndexedDB `chat-files`); after that a file nobody
+opened says it has gone. Pictures show dithered to black and white
+(`ditherPicture`), the way faces are; pressing the box saves the original.
+Verified: a file sealed, uploaded, fetched back and opened byte for byte.
+
+**The three dots on a line** show on hover and open into marks: copy,
+save (a file), edit (your own words), and the bin — delete for both on
+your own line, remove for me on someone else's. The bin asks for a
+second press. A public board can't take a post back, so a deletion or an
+edit is itself a sealed note (`{gone: id}` / `{edit: id, said}`), obeyed
+only when it comes from whoever wrote the line (`lineChanged`), and every
+deleted line or spent note goes in `chatSkip` so it is never read again.
+
 **A line you typed goes up before it is sent.** Waiting on somebody
 else's server to see your own words is the difference between a chat
 and a form.

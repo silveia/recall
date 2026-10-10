@@ -4365,6 +4365,96 @@ html.booting .booting-mark { display: flex; }
 }
 .talk-bar input::placeholder { color: var(--ink); opacity: 1; }
 .talk-bar input:disabled { opacity: 1; }
+.talk-bar:has(.talk-attach) { padding-left: 0.35rem; }
+.talk-attach {
+	flex: none;
+	display: grid;
+	place-items: center;
+	width: 1.9rem;
+	height: 1.9rem;
+	padding: 0;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	border-radius: 999px;
+	cursor: var(--cur-tap);
+	transition: transform var(--quick) var(--ease);
+}
+.talk-attach svg { width: 1.05rem; height: 1.05rem; }
+.talk-attach:hover { transform: rotate(-12deg); }
+.talk-log.is-dropping { outline: 1px dashed var(--line); outline-offset: -4px; border-radius: var(--radius); }
+
+/* a file in a thread: a box with its name and size, and a picture of it if it is one */
+.said-file {
+	display: inline-flex;
+	flex-direction: column;
+	gap: var(--tight);
+	max-width: min(22rem, 100%);
+	margin-top: 0.2rem;
+	padding: 0.6rem 0.8rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font: inherit;
+	text-align: left;
+	cursor: var(--cur-tap);
+}
+.said-file:hover { outline: 1px solid var(--line); }
+.said-file-name { display: flex; align-items: center; gap: 0.5rem; min-width: 0; font-size: 0.85rem; }
+.said-file-name span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.said-file-name small { flex: none; font-family: var(--num-font); font-size: 0.95rem; }
+.said-file-name svg { flex: none; width: 1rem; height: 1rem; }
+.said-file img { display: block; max-width: 100%; max-height: 14rem; border-radius: calc(var(--radius) - 4px); image-rendering: pixelated; }
+.said-file-note { font-size: 0.75rem; }
+.said-edited { margin-left: 0.4rem; font-size: 0.7rem; }
+
+/* the three dots on a message: shown on hover, and they open into a row of small marks */
+.said-row { position: relative; }
+.said-tools {
+	position: absolute;
+	top: 0.1rem;
+	right: 0.4rem;
+	display: none;
+	align-items: center;
+	gap: 2px;
+	padding: 2px;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+}
+.said-row:hover .said-tools, .said-tools.is-open { display: flex; }
+.said-tools button {
+	display: grid;
+	place-items: center;
+	width: 1.7rem;
+	height: 1.7rem;
+	padding: 0;
+	color: var(--ink);
+	background: var(--paper);
+	border: 0;
+	border-radius: 50%;
+	cursor: var(--cur-tap);
+	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.said-tools button svg { width: 0.95rem; height: 0.95rem; }
+.said-tools button:hover, .said-tools button.is-armed { color: var(--paper); background: var(--ink); }
+.said-tools .tool-mark { display: none; }
+.said-tools.is-open .tool-mark { display: grid; animation: confirm-in 0.18s var(--ease); }
+.said-tools.is-open .said-more { color: var(--paper); background: var(--ink); }
+.said-edit {
+	width: 100%;
+	height: 2rem;
+	margin-top: 0.15rem;
+	padding: 0 0.7rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font: inherit;
+	font-size: 0.9rem;
+	outline: none;
+}
 .field-go {
 	flex: none;
 	display: grid;
