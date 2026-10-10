@@ -448,18 +448,21 @@
                                 </div>
                             </div>
                             <div class="chat-body" id="chatBody">
-                                <aside class="room-side" id="roomSide">
-                                    <div class="room-top">
-                                        <h2 class="room-title">chats</h2>
-                                        <span class="room-count" id="roomCount"></span>
-                                    </div>
+                                <!-- the find-or-add field is a box of its own over the list, as the new-deck field is on cards -->
+                                <div class="room-column" id="roomSide">
                                     <form class="room-make" id="roomMake" novalidate>
                                         <input id="roomName" type="text" aria-label="add someone by name" placeholder="find or add someone">
-                                        <button class="field-go" type="submit" aria-label="add them" title="add them"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg></button>
+                                        <button class="square-button is-solid" type="submit" aria-label="add them" title="add them"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg></button>
                                     </form>
-                                    <p class="room-label">direct messages</p>
-                                    <div class="room-scroll"><ol class="room-list" id="roomList"></ol></div>
-                                </aside>
+                                    <aside class="room-side">
+                                        <div class="room-top">
+                                            <h2 class="room-title">chats</h2>
+                                            <span class="room-count" id="roomCount"></span>
+                                        </div>
+                                        <p class="room-label">direct messages</p>
+                                        <div class="room-scroll"><ol class="room-list" id="roomList"></ol></div>
+                                    </aside>
+                                </div>
 
                                 <div class="pane-split chat-split" id="chatSplit" role="separator"
                                      aria-orientation="vertical" tabindex="0"

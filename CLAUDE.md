@@ -1600,8 +1600,9 @@ one set of listeners.
 nobody added or not — by request, after an empty page with things
 floating in the middle read as unfinished. Two outlined panes:
 
-- **The list (left)**: `chats` with a count, a `find or add someone`
-  field, `direct messages`, then one row per person — picture, name,
+- **The list (left)**: the `find or add someone` field as a box of its
+  own above the list (with a solid square `+` beside it, the way `new deck`
+  sits on cards), then the list box: `chats` with a count, `direct messages`, then one row per person — picture, name,
   the last line (`you: …` if yours) and its time, WhatsApp-style. With
   nobody yet it shows one line in the middle of the empty list, `you have
   no friends...` (the user's wording), and nothing else.

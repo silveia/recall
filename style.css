@@ -4108,7 +4108,15 @@ html.booting .booting-mark { display: flex; }
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
-.room-side { flex: 0 1 var(--room-col, 28%); min-width: 0; overflow: hidden; }
+.room-column {
+	display: flex;
+	flex: 0 1 var(--room-col, 28%);
+	flex-direction: column;
+	gap: var(--group);
+	min-width: 0;
+	min-height: 0;
+}
+.room-side { flex: 1; min-width: 0; overflow: hidden; }
 .talk-side { flex: 1; min-width: 0; padding-bottom: var(--group); }
 
 .room-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--tight); }
@@ -4169,7 +4177,7 @@ html.booting .booting-mark { display: flex; }
 .room-list:has(.room-hint) { flex: 1; justify-content: center; }
 .room-hint { padding: var(--tight) 0.6rem; text-align: center; font-size: 0.85rem; }
 
-.room-make.is-off { border-style: dashed; }
+.room-make.is-off input { border-style: dashed; }
 
 /* your account: a round picture in the top-right corner of the chat, as on most sites */
 .chat-me {
@@ -4188,7 +4196,21 @@ html.booting .booting-mark { display: flex; }
 .chat-me:hover, .chat-me[aria-expanded="true"] { transform: scale(1.06); outline: 1px solid var(--line); outline-offset: 2px; }
 .chat-me .face-pic svg { width: 58%; height: 58%; }
 
-.room-make, .talk-bar {
+.room-make { display: flex; flex: none; gap: var(--tight); min-width: 0; }
+.room-make input {
+	flex: 1;
+	min-width: 0;
+	height: var(--field);
+	padding: 0 0.75rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font: inherit;
+	outline: none;
+}
+.room-make input::placeholder { color: var(--muted); }
+.talk-bar {
 	display: flex;
 	flex: none;
 	align-items: center;
@@ -4200,7 +4222,7 @@ html.booting .booting-mark { display: flex; }
 	border: 1px solid var(--line);
 	border-radius: 999px;
 }
-.room-make input, .talk-bar input {
+.talk-bar input {
 	flex: 1;
 	min-width: 0;
 	height: 100%;
@@ -4212,7 +4234,7 @@ html.booting .booting-mark { display: flex; }
 	font-size: 0.85rem;
 	outline: none;
 }
-.room-make input::placeholder, .talk-bar input::placeholder { color: var(--ink); opacity: 1; }
+.talk-bar input::placeholder { color: var(--ink); opacity: 1; }
 .talk-bar input:disabled { opacity: 1; }
 .field-go {
 	flex: none;
