@@ -7,6 +7,8 @@
 <!-- the front door: a tiny dino run in the middle, and the way in -->
 <script>
 try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElement.classList.add('inverted'); } catch (error) {}
+// framed under the home board: the run alone, no way in (you're already in)
+if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add('embedded');
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,6 +43,9 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		transform: translate(-50%, calc(-100% + 1.2rem)) scale(var(--fit, 1));
 		transform-origin: 50% calc(100% - 1.2rem);   /* the pill's middle stays the screen's middle */
 	}
+	html.embedded .enter { display: none; }
+	html.embedded .door { transform: translate(-50%, -50%) scale(var(--fit, 1)); transform-origin: 50% 50%; }
+	html.embedded, html.embedded body { min-height: 0; overflow: hidden; }
 	/* the words over the run, under the best score; press them (or jump) to begin. Nothing on this
 	   page moves on its own but the enter pill: they are simply there, or not */
 	.start {
@@ -133,7 +138,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		<span class="score" id="score">hi 0000 · 0000</span>
 	</div>
 	<p class="hint" id="hint"></p>
-	<a class="enter" href="home/" aria-label="enter"><span class="enter-pill">^_^<span class="enter-ink" aria-hidden="true">^_^</span></span></a>
+	<a class="enter" href="home/" aria-label="enter"><span class="enter-pill">^_^<span class="enter-ink" aria-hidden="true">o_o</span></span></a>
 </main>
 <script>
 (function () {
@@ -321,7 +326,8 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
     const door = document.querySelector('.door');
     let fit = 1;
     const fitDoor = () => {
-        const above = door.offsetHeight - pill.offsetHeight / 2 + 40;      // the score sits 36px over the run
+        const framed = document.documentElement.classList.contains('embedded');
+        const above = framed ? (door.offsetHeight + 40) / 2 : door.offsetHeight - pill.offsetHeight / 2 + 40;   // the score sits 36px over the run
         fit = Math.min(1, (window.innerWidth - 32) / door.offsetWidth, (window.innerHeight / 2 - 16) / above);
         document.documentElement.style.setProperty('--fit', fit);
     };
@@ -330,6 +336,20 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 
     colours();
     reset();
+
+    // framed, it follows the page's lights as they change
+    if (document.documentElement.classList.contains('embedded')) {
+        try {
+            const host = window.parent.document.documentElement;
+            const follow = () => {
+                document.documentElement.classList.toggle('inverted', host.classList.contains('inverted'));
+                colours();
+                draw();
+            };
+            new MutationObserver(follow).observe(host, { attributes: true, attributeFilter: ['class'] });
+            follow();
+        } catch (error) { /* not ours to read; it keeps the light it started with */ }
+    }
 }());
 </script>
 </body>

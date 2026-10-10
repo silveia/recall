@@ -4492,7 +4492,7 @@ function widgetById(id) {
 
 /* --- the board's own arithmetic --- */
 
-const BOARD_COLS = 4;
+const BOARD_COLS = 4;   // the movable four; the fixed time tile is the fifth, to their left
 const BOARD_ROWS = 1;
 const BOARD_SPAN = { small: [1, 1], wide: [2, 1] };
 
@@ -4564,8 +4564,17 @@ function loadWidgets() {
                 col: Number.isInteger(entry.col) ? entry.col : null,
                 row: Number.isInteger(entry.row) ? entry.row : null
             }))
-        : [{ id: 'clock', key: nextWidgetKey('clock'), size: 'small', col: null, row: null },
-           { id: 'decks', key: nextWidgetKey('decks'), size: 'wide', col: null, row: null }];
+        : [{ id: 'decks', key: nextWidgetKey('decks'), size: 'wide', col: null, row: null }];
+
+    // once: the time tile that used to start the board is now the fixed one beside it
+    try {
+        if (window.localStorage.getItem('board-key') !== 'yes') {
+            const first = taken.filter((entry) => entry.id === 'clock')
+                .sort((a, b) => (a.col ?? 9) - (b.col ?? 9))[0];
+            if (first) taken.splice(taken.indexOf(first), 1);
+            window.localStorage.setItem('board-key', 'yes');
+        }
+    } catch (error) { /* keeps the board as it was */ }
 
     homeWidgets = [];
     taken.forEach((entry) => {
@@ -4900,7 +4909,7 @@ function growInto(card, was, ms) {
 document.addEventListener('pointerdown', (event) => {
     if (!editingHome) return;
     const inside = event.target.closest
-        && event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks, .context-menu');
+        && event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks, .context-menu, .home-key, #keyMenu');
     if (inside) return;
     setHomeEditing(false);
 });
@@ -4908,6 +4917,8 @@ document.addEventListener('pointerdown', (event) => {
 function setHomeEditing(on) {
     editingHome = on;
     homePanel.classList.toggle('is-editing', on);
+    const arrange = document.querySelector('#keyArrange span');
+    if (arrange) arrange.textContent = on ? 'done arranging' : 'arrange the board';
     paintBoardDepth();
     widgetEdit.setAttribute('aria-pressed', String(on));
     widgetEdit.title = on ? 'stop arranging' : 'arrange the board';
@@ -5266,18 +5277,72 @@ widgetEdit.addEventListener('click', (event) => {
     setHomeEditing(!editingHome);
 });
 
+function openWidgetPicks(anchor) {
+    renderWidgetPicks();
+    widgetPicks.classList.remove('is-leaving');
+    widgetPicks.hidden = false;
+    widgetAdd.setAttribute('aria-expanded', 'true');
+    if (anchor === widgetAdd) placeBeside(widgetPicks, anchor);
+    else placeBelowLeft(widgetPicks, anchor);
+}
 widgetAdd.addEventListener('click', (event) => {
     event.stopPropagation();
     const wasOpen = !widgetPicks.hidden;
     closeWidgetPicks();
     if (wasOpen) return;
-    renderWidgetPicks();
-    widgetPicks.classList.remove('is-leaving');
-    widgetPicks.hidden = false;
-    widgetAdd.setAttribute('aria-expanded', 'true');
-    placeBeside(widgetPicks, widgetAdd);
+    openWidgetPicks(widgetAdd);
 });
 widgetPicks.addEventListener('click', (event) => event.stopPropagation());
+
+// under a tile, lined up on its left edge — the board starts against the bar, so nothing may hang left
+function placeBelowLeft(panel, anchor) {
+    const spot = anchor.getBoundingClientRect();
+    panel.style.left = `${Math.round(spot.left)}px`;
+    panel.style.top = `${Math.round(spot.bottom + 8)}px`;
+}
+
+// the fixed time tile: it tells the time, and a press opens the board's settings
+const homeKey = document.getElementById('homeKey');
+const keyMenu = document.getElementById('keyMenu');
+const keyBody = document.getElementById('keyBody');
+function paintKey() {
+    const clock = widgetById('clock');
+    if (clock && keyBody) clock.fill(keyBody, 'small', 'digits');
+    const lights = document.querySelector('#keyLights span');
+    if (lights) lights.textContent = document.documentElement.classList.contains('inverted') ? 'lights on' : 'lights off';
+}
+function closeKeyMenu() {
+    if (keyMenu.hidden) return;
+    shutPop(keyMenu);
+    homeKey.setAttribute('aria-expanded', 'false');
+}
+homeKey.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (!keyMenu.hidden) { closeKeyMenu(); return; }
+    closeWidgetPicks();
+    paintKey();
+    keyMenu.classList.remove('is-leaving');
+    keyMenu.hidden = false;
+    homeKey.setAttribute('aria-expanded', 'true');
+    placeBelowLeft(keyMenu, homeKey);
+});
+keyMenu.addEventListener('click', (event) => event.stopPropagation());
+document.getElementById('keyArrange').addEventListener('click', () => {
+    closeKeyMenu();
+    setHomeEditing(!editingHome);
+});
+document.getElementById('keyAdd').addEventListener('click', () => {
+    closeKeyMenu();
+    openWidgetPicks(homeKey);
+});
+document.getElementById('keyLights').addEventListener('click', () => {
+    closeKeyMenu();
+    setInverted(!document.documentElement.classList.contains('inverted'));
+});
+document.addEventListener('click', () => closeKeyMenu());
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeKeyMenu(); });
+paintKey();
+window.setInterval(paintKey, 15000);
 
 startClock();
 paintStorage();

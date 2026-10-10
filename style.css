@@ -627,6 +627,7 @@ html:not(.inverted) .rail-left {
 .quick-panel, .recorder-panel, .home-panel, .chat-panel { width: 100%; }
 
 .home-panel {
+	--tile: calc((100cqw - 4 * var(--group)) / 5);   /* five tiles across the page, the fixed one included */
 	position: relative;
 	container-type: inline-size;   /* the board's rows are worked out from its width */
 	display: flex;
@@ -3126,11 +3127,11 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
    ========================================================= */
 .widget-list {
 	display: grid;
-	flex: 0 1 auto;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	flex: 1;
+	grid-template-columns: repeat(4, minmax(0, 1fr));   /* the movable four: BOARD_COLS in script.js */
 	/* apple's grid: a small tile is square, so a row is exactly as tall as a column is wide */
-	grid-template-rows: repeat(var(--board-rows, 1), calc((100cqw - 3 * var(--group)) / 4));
-	grid-auto-rows: calc((100cqw - 3 * var(--group)) / 4);
+	grid-template-rows: repeat(var(--board-rows, 1), var(--tile));
+	grid-auto-rows: var(--tile);
 	gap: var(--group);
 	min-height: 0;
 	overflow-y: auto;
@@ -3196,6 +3197,31 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	text-align: left;
 }
 
+/* the fixed tile and the board beside it, one row */
+.board-row { display: flex; align-items: flex-start; gap: var(--group); min-width: 0; }
+.home-key {
+	position: relative;
+	display: flex;
+	flex: none;
+	flex-direction: column;
+	gap: var(--tight);
+	width: var(--tile);
+	height: var(--tile);
+	padding: var(--widget-pad);
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 1.4rem;
+	font: inherit;
+	text-align: left;
+	overflow: hidden;
+	cursor: var(--cur-tap);
+	transition: transform var(--quick) var(--ease);
+}
+.home-key:hover, .home-key[aria-expanded="true"] { transform: translateY(-2px); }
+.home-key .widget-body { pointer-events: none; }
+.key-gear { position: absolute; right: 0.7rem; bottom: 0.7rem; width: 1rem; height: 1rem; }
+.board-foot[hidden] { display: none; }
 .widget-head {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
@@ -3204,7 +3230,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	min-height: 0.95rem;
 }
 .widget-head > * { grid-area: 1 / 1; }
-.home-panel.is-editing .widget-head h3 { padding-left: 1.3rem; }
+.home-panel.is-editing .widget-card .widget-head h3 { padding-left: 1.3rem; }
 .widget-head h3 {
 	min-width: 0;
 	margin: 0;
@@ -3339,6 +3365,14 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 
 /* ---------- edit mode ---------- */
 
+/* under the board: the front door's dino run, the same page, framed */
+.home-run {
+	flex: 1;
+	width: 100%;
+	min-height: 0;
+	border: 0;
+	background: var(--paper);
+}
 .board-foot {
 	position: relative;    /* the add button hides behind the pen in here */
 	display: flex;
@@ -3454,7 +3488,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	touch-action: none;
 	user-select: none;
 }
-.home-panel.is-editing .widget-body { padding-bottom: 1.2rem; pointer-events: none; }
+.home-panel.is-editing .widget-card .widget-body { padding-bottom: 1.2rem; pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) {
 	.widget-card { transition: none; }

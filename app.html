@@ -117,6 +117,14 @@
         <div class="pick-list" id="optionsPicks"></div>
     </div>
 
+    <div class="pop-panel pop-picks" id="keyMenu" hidden>
+        <div class="pick-list">
+            <button class="option-pick widget-pick" id="keyArrange" type="button"><span>arrange the board</span></button>
+            <button class="option-pick widget-pick" id="keyAdd" type="button"><span>add a widget</span></button>
+            <button class="option-pick widget-pick" id="keyLights" type="button"><span>lights off</span></button>
+        </div>
+    </div>
+
     <div class="pop-panel pop-picks" id="widgetPicks" hidden>
         <div class="pick-list" id="widgetPickList"></div>
     </div>
@@ -213,7 +221,15 @@
                 <main class="app-content">
                     <section class="screen" id="homeScreen" data-title="home" aria-label="home">
                         <section class="home-panel" id="homePanel" hidden>
-                            <div class="widget-list" id="widgetList"></div>
+                            <!-- the leftmost tile is fixed: the time, and the board's settings behind a press -->
+                            <div class="board-row">
+                                <button class="home-key" id="homeKey" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="keyMenu" title="board settings">
+                                    <span class="widget-head"><h3>time</h3></span>
+                                    <span class="widget-body" id="keyBody"></span>
+                                    <svg class="key-gear" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2L5.6 5.6"/></svg>
+                                </button>
+                                <div class="widget-list" id="widgetList"></div>
+                            </div>
                             <div class="widget-bin" id="widgetBin" hidden aria-hidden="true">
                                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M4.5 6.5h15"/>
@@ -224,7 +240,7 @@
                                 <span>let go to remove</span>
                             </div>
 
-                            <div class="board-foot">
+                            <div class="board-foot" hidden>
                                 <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks" aria-label="add a widget" title="add a widget">
                                     <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
                                         <path d="M12 5 V19 M5 12 H19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -237,6 +253,8 @@
                                     </svg>
                                 </button>
                             </div>
+
+                            <iframe class="home-run" src="index.html?embed" title="dino run" loading="lazy"></iframe>
                         </section>
 
                         <div class="home-body" id="homeBody">

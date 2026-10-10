@@ -767,6 +767,22 @@ page scrolls sideways.
 
 ## The home board
 
+**Five tiles across, and the first is fixed** (by request). The leftmost
+tile (`#homeKey`) is always the time and can't be moved or removed; a
+press opens its menu (`#keyMenu`, under it on its left edge): `arrange
+the board` / `done arranging`, `add a widget`, `lights off/on`. The pen
+and plus that sat under the board are hidden (`.board-foot[hidden]`) and
+the code behind them is kept. The movable board beside it is the other
+four columns (`BOARD_COLS = 4`); `--tile` on `.home-panel` is a fifth of
+the width less the gaps, and both the fixed tile and the board's rows use
+it. A board saved before this lost its first time tile once
+(`board-key`), since the fixed one replaces it.
+
+**Under the board is the front door's dino run**, the same page framed
+(`.home-run` → `index.html?embed`). Framed it hides the enter pill,
+centres the run and follows the page's lights as they change.
+
+
 **As many tiles as you like, and as many of a kind as you like.** Every
 entry carries a `key` of its own (`nextWidgetKey`) — the `id` says what
 kind of widget it is, the `key` says which one. Every lookup on the
@@ -1740,7 +1756,7 @@ doesn't restart it on the spot.
 
 `morie.top` is a tiny dino run and an `enter` pill that goes to
 `home/`. **The enter pill sits at the exact middle of the screen**, the
-run above it. It is black with white words; on hover **a white circle
+run above it. It is black with white words; the white that grows in on hover carries `o_o` where the black carries `^_^`, so the face changes inside the white as it spreads; on hover **a white circle
 grows out of the exact point the pointer came in** (`.enter-ink`, a white copy of the pill over the black one, uncovered by a
 growing `clip-path` circle — a blended circle clipped by the rounded box left a
 hairline of black along the edge as the pill moved), sized to just reach the far corner
