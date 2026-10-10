@@ -1707,7 +1707,7 @@ and restart. A held key is one jump (`event.repeat` ignored), and a
 crash can't be restarted for 350ms, so a jump pressed as it hits
 doesn't restart it on the spot.
 
-A big `start` in Bitcount Prop Double sits over the run; pressing it (or jumping) begins, it fades away while the run goes — keeping its place so nothing moves — and comes back on a crash, over `died`.
+`start to start` (an inside joke — keep the wording) in Bitcount Prop Double, 2.1rem, lies over the run, centred, level with the score and a touch lower; pressing it (or jumping) begins, it fades away while the run goes and comes back on a crash. The enter pill reads `^_^` (labelled `enter` for screen readers).
 
 `morie.top` is a tiny dino run and an `enter` pill that goes to
 `home/`. **The enter pill sits at the exact middle of the screen**, the

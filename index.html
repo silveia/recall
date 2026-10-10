@@ -42,18 +42,24 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		animation: door-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 	}
 	@keyframes door-in { from { transform: translate(-50%, calc(-100% + 1.2rem + 14px)); } }
-	/* the big word over the run; press it (or jump) to begin. It keeps its place while the run goes,
-	   only fading, so nothing under it moves */
+	/* the words over the run, level with the score and a touch lower; press them (or jump) to begin.
+	   They only fade while the run goes, so nothing under them moves */
 	.start {
-		margin: 0 0 4px;
+		position: absolute;
+		top: 10px;
+		left: 50%;
+		z-index: 1;
+		margin: 0;
 		padding: 0;
 		color: var(--ink);
 		background: none;
 		border: 0;
 		font-family: 'Bitcount Prop Double', 'Courier New', monospace;
-		font-size: 4.2rem;
+		font-size: 2.1rem;
 		line-height: 1;
+		white-space: nowrap;
 		cursor: var(--cur-tap);
+		transform: translateX(-50%);
 		transition: opacity 0.3s ease, translate 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.start:focus { outline: none; }
@@ -62,7 +68,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	canvas { display: block; cursor: var(--cur-tap); touch-action: manipulation; }
 	.score { position: absolute; top: 0; right: 0; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
 	/* keeps its height empty, so nothing jumps; sits nearer the run than the pill */
-	.hint { min-height: 1.4em; margin: -6px 0 14px; font-size: 0.8rem; line-height: 1.4; }
+	.hint { min-height: 1.4em; margin: -10px 0 4px; font-size: 0.8rem; line-height: 1.4; }
 	/* the link itself never moves: it is the steady thing the pointer is over, a few pixels bigger
 	   than the pill all round, so the pill can rise and wobble without slipping out from under it */
 	.enter {
@@ -120,13 +126,13 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 </head>
 <body>
 <main class="door">
-	<button class="start" id="start" type="button">start</button>
 	<div class="run">
+		<button class="start" id="start" type="button">start to start</button>
 		<canvas id="run" aria-label="dino run"></canvas>
 		<span class="score" id="score">0</span>
 	</div>
 	<p class="hint" id="hint"></p>
-	<a class="enter" href="home/"><span class="enter-pill">enter<span class="enter-ink" aria-hidden="true">enter</span></span></a>
+	<a class="enter" href="home/" aria-label="enter"><span class="enter-pill">^_^<span class="enter-ink" aria-hidden="true">^_^</span></span></a>
 </main>
 <script>
 (function () {
