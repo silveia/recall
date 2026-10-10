@@ -1709,10 +1709,17 @@ doesn't restart it on the spot.
 
 `morie.top` is a tiny dino run and an `enter` pill that goes to
 `home/`. **The enter pill sits at the exact middle of the screen**, the
-run above it. It is black with white words; on hover white wipes out
-from its middle as a `mix-blend-mode: difference` layer — so the words
-flip with it and no frame is ever grey — and it lifts and wiggles like
-the create/practice tiles. One press after a crash both resets and runs
+run above it. It is black with white words; on hover **a white circle
+grows out of the exact point the pointer came in** (`.enter-ink`, a
+`mix-blend-mode: difference` layer after the word, so the word flips
+with it and no frame is ever grey), sized to just reach the far corner
+from that point so the spread is seen the whole way (~0.5s), and it
+lifts and wiggles like the create/practice tiles. The circle is placed
+first and grown after, by script: done with CSS `:hover` it started
+growing before the pointer's position was known, which is why it
+seemed to come from the middle. It listens for the first move as well
+as the enter event. Don't name anything in that script `ink` — the game
+already uses it for its colour, and the clash stopped the whole page. One press after a crash both resets and runs
 (it used to take two, which felt like a glitch). Space, up or a tap jumps; the best
 score is kept under `front-dino`. It is all inline in `index.html` and
 does not load `style.css`, so the two cursor tokens are **copied** in

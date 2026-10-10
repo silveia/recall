@@ -65,19 +65,23 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		isolation: isolate;
 		transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 	}
-	/* the white grows as a circle out of wherever the pointer came in, and shrinks back to where it left */
-	.enter::after {
-		content: '';
+	/* the white is a circle placed exactly where the pointer came in, then grown from that point;
+	   placed first and grown after, so it can never start from anywhere else */
+	.enter-ink {
 		position: absolute;
-		inset: 0;
+		left: 0;
+		top: 0;
+		width: 0;
+		height: 0;
 		background: #fff;
+		border-radius: 50%;
 		mix-blend-mode: difference;
-		clip-path: circle(0 at var(--x, 50%) var(--y, 50%));
-		transition: clip-path 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+		transform: scale(0);
+		transition: transform 0.55s cubic-bezier(0.33, 0.9, 0.4, 1);
 		pointer-events: none;
 	}
+	.enter.is-lit .enter-ink { transform: scale(1); }
 	.enter:hover { transform: translateY(-3px); animation: enter-wiggle 0.6s cubic-bezier(0.37, 0, 0.63, 1); }
-	.enter:hover::after { clip-path: circle(150% at var(--x, 50%) var(--y, 50%)); }
 	.enter:active { transform: translateY(-1px); }
 	@keyframes enter-wiggle {
 		0%   { rotate: 0deg; }
@@ -86,7 +90,6 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		75%  { rotate: -1.5deg; }
 		100% { rotate: 0deg; }
 	}
-	html.inverted .enter::after { background: #fff; }
 </style>
 </head>
 <body>
@@ -96,7 +99,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		<span class="score" id="score">0</span>
 	</div>
 	<p class="hint" id="hint">space or tap to jump</p>
-	<a class="enter" href="home/">enter</a>
+	<a class="enter" href="home/">enter<span class="enter-ink" aria-hidden="true"></span></a>
 </main>
 <script>
 (function () {
@@ -226,13 +229,26 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 
     // the white on the enter pill spreads from where the pointer crossed into it
     const enter = document.querySelector('.enter');
-    const aim = (event) => {
+    const blot = enter.querySelector('.enter-ink');
+    const light = (event) => {
+        if (enter.classList.contains('is-lit')) return;
         const box = enter.getBoundingClientRect();
-        enter.style.setProperty('--x', `${event.clientX - box.left}px`);
-        enter.style.setProperty('--y', `${event.clientY - box.top}px`);
+        blot.style.transition = 'none';                       // jump there while still a dot
+        const x = event.clientX - box.left;
+        const y = event.clientY - box.top;
+        // just big enough to reach the far corner from here, so the spread is seen the whole way
+        const reach = Math.ceil(Math.hypot(Math.max(x, box.width - x), Math.max(y, box.height - y))) + 2;
+        blot.style.left = `${x - reach}px`;
+        blot.style.top = `${y - reach}px`;
+        blot.style.width = blot.style.height = `${reach * 2}px`;
+        void blot.offsetWidth;
+        blot.style.transition = '';
+        enter.classList.add('is-lit');
     };
-    enter.addEventListener('pointerenter', aim);
-    enter.addEventListener('pointerleave', aim);
+    const dim = () => enter.classList.remove('is-lit');
+    // whichever arrives first — some browsers skip the enter event, but never the first move
+    ['pointerenter', 'mouseenter', 'pointermove', 'mousemove'].forEach((name) => enter.addEventListener(name, light));
+    ['pointerleave', 'mouseleave'].forEach((name) => enter.addEventListener(name, dim));
 
     colours();
     reset();
