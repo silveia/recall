@@ -4119,7 +4119,6 @@ html.booting .booting-mark { display: flex; }
 .room-side { flex: 1; min-width: 0; overflow: hidden; }
 .talk-side { flex: 1; min-width: 0; padding-bottom: var(--group); }
 
-.room-label { margin: 0; font-family: var(--head-font); font-size: 0.72rem; }
 
 .room-scroll {
 	flex: 1;
