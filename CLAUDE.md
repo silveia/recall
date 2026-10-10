@@ -793,7 +793,7 @@ it. A board saved before this lost its first time tile once
 and the search, centres what shows (score down to the ground line) in the
 frame so it sits midway between the strip and the search bar, and follows
 the page's lights. Framed, **the ground runs the frame's whole width** (the search bar's length; `sizeCanvas()` on resize, and the fit is by height only), and **the dino starts at the left and runs forward** to 28% of the width with the world holding still before the view keeps up with it (`followAt()`). The front door keeps its 480px run with the dino fixed. **Space and up reach it from home** without clicking it
-first — the page hands them to the frame unless a field or button has focus.
+first — the page hands them to the frame unless a box you type in has focus (a button keeping focus after a click — the home tab — must not block it; that was why space did nothing).
 
 
 **As many tiles as you like, and as many of a kind as you like.** Every

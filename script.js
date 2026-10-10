@@ -5401,7 +5401,9 @@ document.addEventListener('keydown', (event) => {
     if (event.code !== 'Space' && event.code !== 'ArrowUp') return;
     if (activeSectionId !== 'home' || isModalOpen()) return;
     const at = document.activeElement;
-    if (at && (at.matches('input, textarea, select, button, a, [contenteditable="true"]'))) return;
+    // only a box you type in keeps space for itself — a tab or button still holding focus from the
+    // last click (the home tab, say) used to swallow it, so the dino never jumped
+    if (at && at.matches('input, textarea, select, [contenteditable="true"]')) return;
     const run = document.querySelector('.home-run');
     if (!run || !run.contentWindow) return;
     event.preventDefault();
