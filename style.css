@@ -313,7 +313,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E"),
 		linear-gradient(var(--bar), var(--bar));
 	background-repeat: repeat-y, no-repeat;
-	background-size: var(--wave-w) var(--wave-h), calc(var(--wave-out) + 1px) 100%;
+	background-size: var(--wave-w) var(--wave-h), calc(var(--wave-w) * 6 / 39) 100%;   /* the strip that hides the seams stops exactly at the dips: any wider and it poked out of each inner corner */
 	background-position: 0 0;
 	clip-path: inset(0 calc(var(--wave-w) / 2 - var(--wave-out) - 1px) 0 0);
 }
@@ -328,7 +328,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: var(--wave-w);
 	pointer-events: none;
 	/* stroke 39/32 so it lands on 1px; nudged half of it out — redo if --wave-w changes */
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.61 0 A 37.5 37.5 0 0 1 6.61 66' fill='none' stroke='%23ffffff' stroke-width='1.21875'/%3E%3C/svg%3E");
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.61 0 A 37.5 37.5 0 0 1 6.61 66' fill='none' stroke='%23ffffff' stroke-width='1.21875' stroke-linecap='round'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: var(--wave-w) var(--wave-h);
 }
@@ -471,7 +471,7 @@ html:not(.inverted) .rail-left {
 	justify-content: flex-start;
 	gap: var(--group);
 	padding: var(--group);
-	padding-left: calc(var(--wave-out) + var(--group));   /* the boxes sit a full step off the crests */
+	padding-left: calc(var(--wave-out) + 12px);   /* 10 read as tight against the crests, 16 as too far */
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }

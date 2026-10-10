@@ -840,8 +840,8 @@ so this is a single line.
 **The left edge is the exception, asked for.** The bumps already reach
 `--wave-out` into the page, so a full `--group` past them read as a
 white strip between the bar and the boxes. The left inset is
-`--wave-out + --group` — the boxes sit 16px off the crests. 4px read as
-jammed against them, and 10px still not enough. Under 760px,
+`--wave-out + 12px` — the boxes sit 12px off the crests. 4px read as
+jammed against them, 10px still tight, 16px too far. Under 760px,
 where the bar lies down and there are no bumps, it goes back to
 `--group`.
 
@@ -1333,6 +1333,14 @@ notes above about a crest under the strip are the older layout.
 The outline is drawn at stroke 39/32 because the tile is drawn 39 wide
 and shown at 32 — at 1 it came out 0.82px, thinner than the strip's
 line.
+
+## The inner corners of the bumps
+
+The black strip under the bumps (it hides the seams between tiles) must
+stop exactly at the dips — `--wave-w * 6 / 39`, where the tile's path
+starts. It was `--wave-out + 1px`, a pixel wider, and poked a tiny nub out
+of every inner corner, plain once zoomed in. The outline's ends are round
+so the two arcs meet at a dip without a notch.
 
 ## Two bugs worth not repeating
 
