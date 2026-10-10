@@ -5395,6 +5395,16 @@ function searchPages() {
     pageFound.hidden = false;
 }
 pageSearchField.addEventListener('input', searchPages);
+// words searched for on the front door arrive as ?find=…: shown here, on home, as if typed
+(() => {
+    let asked = '';
+    try { asked = new URLSearchParams(window.location.search).get('find') || ''; } catch (error) { return; }
+    if (!asked.trim()) return;
+    try { window.history.replaceState(window.history.state, '', window.location.pathname); } catch (error) { /* stays in the bar */ }
+    if (activeSectionId !== 'home') switchSection('home');
+    pageSearchField.value = asked.trim();
+    window.setTimeout(() => { searchPages(); pageSearchField.focus(); }, 120);
+})();
 document.getElementById('pageSearchGo').addEventListener('click', () => {
     if (!pageSearchField.value.trim()) { pageSearchField.focus(); return; }
     searchPages();

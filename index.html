@@ -43,7 +43,45 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 		transform: translate(-50%, calc(-100% + 1.2rem)) scale(var(--fit, 1));
 		transform-origin: 50% calc(100% - 1.2rem);   /* the pill's middle stays the screen's middle */
 	}
-	html.embedded .enter { display: none; }
+	html.embedded .enter, html.embedded .seek { display: none; }
+	/* the search, a smaller copy of the one on home */
+	.seek { position: relative; width: 17rem; margin: 0; }
+	.seek input {
+		width: 100%;
+		height: 2.1rem;
+		box-sizing: border-box;
+		padding: 0 2.4rem 0 2.1rem;
+		color: var(--ink);
+		background: var(--paper);
+		border: 1px solid var(--ink);
+		border-radius: 999px;
+		font: inherit;
+		font-size: 0.82rem;
+		outline: none;
+		cursor: text;
+		-webkit-appearance: none;
+		appearance: none;
+	}
+	.seek input::-webkit-search-cancel-button { display: none; }
+	.seek input::placeholder { color: var(--ink); opacity: 1; }
+	.seek-mark { position: absolute; left: 0.75rem; top: 50%; width: 0.9rem; height: 0.9rem; transform: translateY(-50%); pointer-events: none; }
+	.seek-go {
+		position: absolute;
+		right: 4px;
+		top: 50%;
+		display: grid;
+		place-items: center;
+		width: calc(2.1rem - 8px);
+		height: calc(2.1rem - 8px);
+		padding: 0;
+		color: var(--paper);
+		background: var(--ink);
+		border: 0;
+		border-radius: 50%;
+		cursor: var(--cur-tap);
+		transform: translateY(-50%);
+	}
+	.seek-go svg { width: 55%; height: 55%; }
 	html.embedded .door { transform: translate(-50%, -50%) scale(var(--fit, 1)); transform-origin: 50% 50%; }
 	html.embedded, html.embedded body { min-height: 0; overflow: hidden; }
 	/* the words over the run, under the best score; press them (or jump) to begin. Nothing on this
@@ -145,6 +183,12 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 		<span class="score" id="score">hi 0000 · 0000</span>
 	</div>
 	<p class="hint" id="hint"></p>
+	<!-- the home page's search, smaller: it hands the words to home, which shows where they are -->
+	<form class="seek" id="seek" action="home/" method="get" role="search">
+		<svg class="seek-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
+		<input name="find" type="search" placeholder="search page..." aria-label="search page" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+		<button class="seek-go" type="submit" aria-label="go"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+	</form>
 	<a class="enter" href="home/" aria-label="enter"><span class="enter-pill">^_^<span class="enter-ink" aria-hidden="true">o_o</span></span></a>
 </main>
 <script>
