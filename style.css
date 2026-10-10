@@ -3464,8 +3464,9 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 
 /* under the board: the front door's dino run, the same page, framed */
 .home-run {
-	flex: 1;
+	flex: none;
 	width: 100%;
+	height: 11.5rem;    /* over the search: just the score, the words and the run */
 	min-height: 0;
 	border: 0;
 	background: var(--paper);
