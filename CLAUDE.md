@@ -1609,12 +1609,12 @@ with one name while only one of them could read their own messages.
 a page that turns somebody away over a missing digit is pretending to
 protect something it cannot.
 
-**The door says what it is doing.** Making an account is three slow
-things in a row — the board, a key pair, and the pbkdf2 wrapping — and
-in silence that reads as a press that did nothing, which is how you
-get two accounts. The button carries the state (`checking the name…`,
-`making your keys…`) and is locked while it holds it, along with the
-swap beside it. `paintChatDoor` returns early while it is busy, or it
+**The door is locked while it works.** Making an account is three slow
+things in a row — the board, a key pair, and the pbkdf2 wrapping — so the
+button and the swap beside it are disabled until it is done, which is what
+stops two accounts. By request the button **keeps its own word** (`log in`
+/ `sign up`) the whole time: the `checking the name…` / `unlocking your
+key…` labels flashed past and were taken out. `paintChatDoor` returns early while it is busy, or it
 would paint the label back.
 
 **Signed out, the chat is a log-in screen** — a centred card with a

@@ -8157,8 +8157,9 @@ function doorWorking(words) {
     doorBusy = Boolean(words);
     chatGo.disabled = doorBusy;
     chatSwap.disabled = doorBusy;
-    chatGo.classList.toggle('is-working', doorBusy);
-    chatGo.textContent = words || (chatDoorNew ? 'sign up' : 'log in');
+    // the button keeps its own word the whole time — no 'unlocking your key…' flashing past;
+    // it is only locked, so a second press can't start a second account
+    chatGo.textContent = chatDoorNew ? 'sign up' : 'log in';
 }
 
 chatGo.addEventListener('click', async () => {
