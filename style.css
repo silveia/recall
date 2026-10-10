@@ -483,7 +483,8 @@ html:not(.inverted) .rail-left {
 	display: grid;
 	place-items: center;
 	padding: var(--gap);
-	background: var(--veil);
+	/* nothing behind a window changes: a see-through wash turned the black bar and every edge grey */
+	background: none;
 	animation: veil-in 0.26s var(--ease);
 }
 @keyframes veil-in {
@@ -4516,6 +4517,7 @@ html.booting .booting-mark { display: flex; }
 	align-items: center;
 	justify-content: center;
 	gap: var(--tight);
+	padding-bottom: 3.5rem;    /* the eye's middle sits above the box's: the words go up a little */
 	text-align: center;
 }
 .talk-welcome[hidden] { display: none; }

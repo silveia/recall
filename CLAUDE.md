@@ -1057,6 +1057,12 @@ is two movements at once, and the fade waited 160ms before starting,
 which is the wait you could feel. Measured: 37% open at 100ms, 87% at
 200ms, settled by 300ms.
 
+## Nothing behind a window changes
+
+The veil behind every window is see-through (`background: none`). It was a
+72% wash of the page colour, which turned the black bar and every outline
+grey behind the log-in window and read as the whole page changing.
+
 ## A window must not close on a drag that ends outside it
 
 `click` fires on whatever the press and the release have in common —
@@ -1549,11 +1555,11 @@ The password itself never leaves.
 
 **The board knows every account on it; that is not a list of people
 you want to hear from.** You add someone by the name they signed up
-with, and only the people you added are shown. Right-click drops
-someone; nothing is deleted anywhere, and adding them back brings the
-thread with them.
+with, and only the people you added (or who wrote to you) are shown.
+**Right-click does nothing to a conversation** — it used to drop the
+person, which read as the conversation being deleted.
 
-**Someone who writes to you turns up in your list** whether you added them or not (`openWhatIsWaiting`) — a message from your own other account sat in a thread nothing on screen led to. **You can add yourself**: a thread with yourself is a place for notes, sealed to your own key.
+**Someone who writes to you turns up in your list** whether you added them or not (`openWhatIsWaiting`) — a message from your own other account sat in a thread nothing on screen led to.
 
 Someone added who has never opened the chat has no key to seal
 anything to, so their row goes **dashed** and the field says why
@@ -1594,7 +1600,7 @@ checked **only when an account is made**. A word that was allowed when
 the account was made has to go on being allowed, or the rule locks out
 the very people it was meant to look after.
 
-**Bumping `CHAT_ERA` is the reset.** There is no way to delete a post
+**Bumping `CHAT_ERA` is the reset** (now `v3`; v2 was reset by request, and its keys — `chat-accounts-v2` included — are cleared on sight). `localStorage.chat-era-test` points a test at a board of its own. There is no way to delete a post
 from a public board and no account to close — what there is, is
 another board. A new era is an empty one: no accounts, no threads,
 nobody. The three localStorage keys carry the same number so a
@@ -1638,11 +1644,11 @@ floating in the middle read as unfinished. Two outlined panes:
   nobody yet it shows one line in the middle of the empty list, `you have
   no friends...` (the user's wording), and nothing else.
 - **The talk (right)**: a header with the open person's picture, name
-  and handle and the `sealed` chip — no rule under it, and nothing in it
+  and handle (the `sealed` chip was taken out) — no rule under it, and nothing in it
   but your picture while no one is open (no `home`), and the message box
   says nothing until someone is picked. With no thread open it shows, in the middle of the pane, a
-  `(^_^)/`, `pick a friend on the left to start yapping`, a tally
-  (`3 friends · 42 messages`, figures in VT323) and a `back to <name>`
+  `^_^` (set a little above the pane's middle), `pick a friend on the left to start yapping`, a friend count
+  (`3 friends`, in VT323 — the message count was taken out) and a `back to <name>`
   button for the last person you talked to (`paintWelcome()`). The
   greeting, log-in buttons and cards that were here before are gone.
   An open thread starts like Discord's: a big
@@ -1711,6 +1717,10 @@ when opened, since a rename can make an old post yours.
 **Logging out is asked first** (inside the button, see above): the key
 this browser holds goes with it, and every thread goes dark until the
 password is typed again.
+
+**Logging in reads the board again as you.** The first read happens before anyone is logged in and passes over every line it can't own, so without a second read a new browser came up with no friends and no threads. Verified with three separate Chrome profiles on a test board: A and B message both ways live, and C, a fresh profile logging in as B, gets the whole thread.
+
+**Accounts are put back by whoever knows them.** Each browser re-posts its friends' accounts and its own other accounts when the board has lost them (`sayAgainWhatIsMissing`), so an account doesn't disappear because its owner hasn't been round in twelve hours.
 
 **The board forgets after twelve hours**, which is the one real cost of
 needing nothing set up. So every browser keeps its own copy of what it

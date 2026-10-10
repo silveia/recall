@@ -7135,7 +7135,7 @@ const roomList = document.getElementById('roomList');
 const roomMake = document.getElementById('roomMake');
 const roomNameField = document.getElementById('roomName');
 const talkName = document.getElementById('talkName');
-const talkSealed = document.getElementById('talkSealed');
+const talkSealed = { hidden: true };   // the 'sealed' chip was taken out; kept so its old writes land nowhere
 const talkLog = document.getElementById('talkLog');
 const talkWelcome = document.getElementById('talkWelcome');
 const talkStart = document.getElementById('talkStart');
@@ -7157,12 +7157,14 @@ if (chatWord) {
 }
 
 const CHAT_BOARD = 'https://ntfy.sh';
-const CHAT_ERA = 'v2';
+// a test can point the chat at a board of its own (localStorage chat-era-test); nobody else sets it
+const CHAT_ERA = (() => { try { return window.localStorage.getItem('chat-era-test') || 'v3'; } catch (error) { return 'v3'; } })();
 const CHAT_TOPIC = `morie-top-chat-${CHAT_ERA}`;
 const CHAT_ME = `chat-me-${CHAT_ERA}`;
 const CHAT_KNOWN = `chat-known-${CHAT_ERA}`;
 const CHAT_WITH = `chat-with-${CHAT_ERA}`;
-const CHAT_GONE = ['chat-me', 'chat-known', 'chat-with', 'chat-room', 'chat-place'];
+const CHAT_GONE = ['chat-me', 'chat-known', 'chat-with', 'chat-room', 'chat-place',
+    'chat-me-v2', 'chat-known-v2', 'chat-with-v2', 'chat-skip-v2', 'chat-accounts-v2'];   // the v2 board, reset by request
 CHAT_GONE.forEach((key) => {
     try { window.localStorage.removeItem(key); } catch (error) { /* nothing kept */ }
 });
@@ -7496,6 +7498,15 @@ function sayAgainWhatIsMissing(onBoard) {
     }
     const me = chatMe && chatPeople[chatMe.name.toLowerCase()];
     if (me && me.lastMe && !onBoard.has(`me:${me.lastMe.id}`)) missing.push(me.lastMe);
+    // the board forgets an account after twelve hours; whoever knows it puts it back, so a friend
+    // (or another of your own accounts) who hasn't been round lately can still be found and logged into
+    const known = new Set([...chatFriends, ...heldAccounts().map((one) => one.name.toLowerCase())]);
+    known.forEach((key) => {
+        const them = chatPeople[key];
+        if (!them || !them.pub || !them.word || onBoard.has(`who:${key}`)) return;
+        if (chatMe && key === chatMe.name.toLowerCase()) return;   // already handled above
+        missing.push({ k: 'who', name: them.name, word: them.word, pub: them.pub, keep: them.keep, at: Date.now() });
+    });
     missing.slice(0, 12).forEach((post, at) => {
         window.setTimeout(() => postToBoard(CHAT_TOPIC, post).catch(() => {}), at * 400);
     });
@@ -7556,10 +7567,6 @@ function paintPeople() {
         if (!(them && them.pub)) tap.classList.add('is-waiting');
         if (chatWith === key) tap.classList.add('is-on');
         tap.addEventListener('click', () => openWith(key));
-        tap.addEventListener('contextmenu', (event) => {
-            event.preventDefault();
-            dropSomeone(key);
-        });
         line.append(tap);
         roomList.append(line);
     });
@@ -7593,10 +7600,9 @@ function placeDoor(onPage) {
 
 // the empty talk side: how many friends and lines you have, and the last person you talked to
 function paintWelcome() {
-    const lines = chatFriends.reduce((sum, key) => sum + (chatDms[key] || []).length, 0);
     const tally = document.getElementById('welcomeTally');
     tally.innerHTML = '';
-    [[chatFriends.length, chatFriends.length === 1 ? 'friend' : 'friends'], [lines, lines === 1 ? 'message' : 'messages']]
+    [[chatFriends.length, chatFriends.length === 1 ? 'friend' : 'friends']]   // the message count was taken out
         .forEach(([count, word], at) => {
             if (at) tally.append(' · ');
             const figure = document.createElement('span');
@@ -7640,7 +7646,7 @@ async function addSomeone(typed, complain) {
     if (!called) return false;
     if (!chatMe) { openChatDoor(); return false; }
     const key = called.toLowerCase();
-    // yourself is allowed: a thread with yourself is a place for notes, the way most messengers keep one
+    if (whoIs(key) === chatMe.name.toLowerCase()) { complain('that is you'); return false; }
     if (chatFriends.includes(key)) { complain('they are already here'); openWith(key); return false; }
 
     if (!chatPeople[key]) {
@@ -8636,8 +8642,11 @@ chatGo.addEventListener('click', async () => {
         } else {
             if (!known) { saySomethingChat('no account by that name'); return; }
             if (known.word !== hash) { saySomethingChat('that password is not the one'); return; }
+            // this account's own key, never whichever one this browser held last — a key left over
+            // from another account sealed every line to the wrong person and opened none
+            const heldHere = heldAccounts().find((one) => one.name.toLowerCase() === known.name.toLowerCase());
+            chatPriv = (heldHere && heldHere.priv) || null;
             if (!chatPriv && known.keep) {
-                doorWorking('unlocking your key…');
                 try {
                     chatPriv = await unwrapPriv(known.keep, word);
                 } catch (error) {
@@ -8657,7 +8666,11 @@ chatGo.addEventListener('click', async () => {
         saySomethingChat('');
         paintChatBar();
         paintPeople();
+        // the board was read before anyone was logged in, and lines nobody owned were passed over —
+        // read it again as this account, so a new browser has your threads straight away
+        await catchUp();
         await openWhatIsWaiting();
+        paintPeople();
         openWith(whoWasOpen());
         closeModal();
     } finally {
