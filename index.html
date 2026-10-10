@@ -202,11 +202,23 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
     const scoreEl = document.getElementById('score');
     const hintEl = document.getElementById('hint');
     const startEl = document.getElementById('start');
-    const W = 480, H = 120, GROUND = 100, P = 3;   // css size, ground line, one art pixel
+    const H = 120, GROUND = 100, P = 3;   // css height, ground line, one art pixel
+    // framed on home, the ground runs the whole width of the frame (the search bar's length);
+    // on the front door it is 480 wide
+    const FRAMED = document.documentElement.classList.contains('embedded');
+    let W = 480;
     const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
-    pen.scale(dpr, dpr);
+    function sizeCanvas() {
+        W = FRAMED ? Math.max(320, Math.floor(window.innerWidth)) : 480;
+        canvas.width = W * dpr; canvas.height = H * dpr;
+        canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
+        pen.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    sizeCanvas();
+    // framed, the dino starts at the left and runs on until FOLLOW_AT before the view keeps up with it
+    const START_X = 30;
+    const followAt = () => (FRAMED ? Math.max(START_X, Math.round(W * 0.28)) : START_X);
+    let dinoX = START_X;
 
     // 1-bit art, one character per art pixel
     const DINO = [
@@ -239,6 +251,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 
     function reset() {
         dino = { y: 0, v: 0 };
+        dinoX = START_X;
         cacti = [];
         speed = 4;
         score = 0;
@@ -291,7 +304,10 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         dino.y = Math.max(0, dino.y + dino.v * s);
         if (dino.y === 0) dino.v = 0;
 
-        cacti.forEach((one) => { one.x -= speed * s; });
+        // until it reaches its spot the dino does the running and the world holds still; after, the
+        // world moves past it
+        if (dinoX < followAt()) dinoX = Math.min(followAt(), dinoX + speed * s);
+        else cacti.forEach((one) => { one.x -= speed * s; });
         cacti = cacti.filter((one) => one.x > -30);
         nextGap -= speed * s;
         if (nextGap <= 0) {
@@ -306,7 +322,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         showScore(score);
 
         // a little inside each box, so a near miss is a miss
-        const dx = 30, dw = 8 * P - 6, dh = DINO.length * P - 4, dy = GROUND - dino.y - dh;
+        const dx = dinoX, dw = 8 * P - 6, dh = DINO.length * P - 4, dy = GROUND - dino.y - dh;
         const hit = cacti.some((one) => {
             const cw = one.art[0].length * P - 4, ch = one.art.length * P - 2;
             return one.x + 2 < dx + dw && one.x + 2 + cw > dx && GROUND - ch < dy + dh;
@@ -333,7 +349,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         pen.fillRect(0, GROUND, W, 1);
         const rows = DINO.slice(0, -2).concat(dino.y > 0 || state !== 'run'
             ? DINO.slice(-2) : [DINO_STEP[Math.floor(legs / 6) % 2], DINO.at(-1)]);
-        sprite(rows, 30, GROUND - dino.y - DINO.length * P);
+        sprite(rows, dinoX, GROUND - dino.y - DINO.length * P);
         cacti.forEach((one) => sprite(one.art, one.x, GROUND - one.art.length * P));
     }
 
@@ -397,10 +413,10 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
     const fitDoor = () => {
         const framed = document.documentElement.classList.contains('embedded');
         const above = framed ? 92 : door.offsetHeight - pill.offsetHeight / 2 + 40;   // the score sits 36px over the run; framed, 'died' reaches 92px below the middle
-        fit = Math.min(1, (window.innerWidth - 32) / door.offsetWidth, (window.innerHeight / 2 - (framed ? 4 : 16)) / above);
+        fit = Math.min(1, framed ? Infinity : (window.innerWidth - 32) / door.offsetWidth, (window.innerHeight / 2 - (framed ? 4 : 16)) / above);
         document.documentElement.style.setProperty('--fit', fit);
     };
-    window.addEventListener('resize', fitDoor);
+    window.addEventListener('resize', () => { if (FRAMED) { sizeCanvas(); draw(); } fitDoor(); });
     fitDoor();
 
     colours();
