@@ -45,34 +45,33 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 	}
 	html.embedded .enter, html.embedded .seek { display: none; }
 	/* the search, a smaller copy of the one on home */
-	.seek { position: relative; width: 17rem; margin: 0; }
+	.seek { position: relative; width: 20rem; margin: 0 0 22px; }   /* halfway between the ground and the pill */
 	.seek input {
 		width: 100%;
-		height: 2.1rem;
+		height: 42px;                /* the site's --field, the height of every box you type in */
 		box-sizing: border-box;
-		padding: 0 2.4rem 0 2.1rem;
+		padding: 0 3rem 0 2.6rem;
 		color: var(--ink);
 		background: var(--paper);
 		border: 1px solid var(--ink);
 		border-radius: 999px;
 		font: inherit;
-		font-size: 0.82rem;
 		outline: none;
 		cursor: text;
 		-webkit-appearance: none;
 		appearance: none;
 	}
 	.seek input::-webkit-search-cancel-button { display: none; }
-	.seek input::placeholder { color: var(--ink); opacity: 1; }
-	.seek-mark { position: absolute; left: 0.75rem; top: 50%; width: 0.9rem; height: 0.9rem; transform: translateY(-50%); pointer-events: none; }
+	.seek input::placeholder { color: #8a8a8a; opacity: 1; }   /* the site's --muted, placeholders only */
+	.seek-mark { position: absolute; left: 0.95rem; top: 50%; width: 1.05rem; height: 1.05rem; transform: translateY(-50%); pointer-events: none; }
 	.seek-go {
 		position: absolute;
-		right: 4px;
+		right: 5px;
 		top: 50%;
 		display: grid;
 		place-items: center;
-		width: calc(2.1rem - 8px);
-		height: calc(2.1rem - 8px);
+		width: 32px;
+		height: 32px;
 		padding: 0;
 		color: var(--paper);
 		background: var(--ink);
@@ -119,7 +118,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 	/* keeps its height empty, so nothing jumps; its middle is exactly halfway between the ground
 	   line and the pill — the ground is 19px above the canvas foot, so the bottom margin is the
 	   top one plus those 19px */
-	.hint { min-height: 1.4em; margin: -14px 0 5px; font-size: 0.8rem; line-height: 1.4; }
+	.hint { position: relative; z-index: 1; min-height: 1.4em; margin: -25px 0 -6px; font-size: 0.8rem; line-height: 1.4; }
 	/* the link itself never moves: it is the steady thing the pointer is over, a few pixels bigger
 	   than the pill all round, so the pill can rise and wobble without slipping out from under it */
 	.enter {
