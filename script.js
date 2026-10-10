@@ -415,7 +415,7 @@ let editingStageField = 'question';   // which line of it took the caret
 /* --- a draggable divider between two panes --- */
 
 function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOther,
-                     down, skinAt = 68, max = 75, fallback = 50, onDrag }) {
+                     down, skinAt = 68, max = 75, fallback = 50, least = 0, onDrag }) {
     if (!split || !body || !other) return null;
 
     const across = (box) => (down ? box.height : box.width);
@@ -445,8 +445,14 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
         return Math.max(0, Math.min(max, (across(box) - between() - floor) / across(box) * 100));
     };
 
+    // a pane that must never shut gives the smallest it may be, in pixels
+    const floorAt = () => {
+        const room = across(body.getBoundingClientRect());
+        return room && least ? Math.min(ceiling(), least / room * 100) : 0;
+    };
+
     const set = (percent) => {
-        const width = Math.max(0, Math.min(ceiling(), percent));
+        const width = Math.max(floorAt(), Math.min(ceiling(), percent));
         body.style.setProperty(variable, `${width}%`);
         if (pane) pane.classList.toggle('is-shut', width <= 0);
 
@@ -7960,6 +7966,8 @@ chatSplitter = wireSplit({
     variable: '--room-col',
     key: 'room-column',
     keepOther: 50,
+    // the list never closes: its field and the plus need this much, and the gap stays a full step
+    least: 250,
     skinAt: 36,
     fallback: 26
 });

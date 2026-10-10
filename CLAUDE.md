@@ -1388,6 +1388,8 @@ hold at 749.0 from full width down to 12px.
 pane tracks the cursor within a pixel from 4px wide upward, and both
 edges of the row stay at 0.0px at every width.
 
+**The chat's list is the exception: it never shuts.** `least: 250` (pixels) on its splitter holds it wide enough for the `find or add someone` field and its plus, and the gap between the two panes stays a full step — pushed shut, both went and it looked broken.
+
 The clip list always keeps at least half the row — `keepOther: 50` on
 its splitter, not a `max`, so the grip and the gap are measured rather
 than assumed.
