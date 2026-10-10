@@ -45,7 +45,8 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	.run { position: relative; }
 	canvas { display: block; cursor: var(--cur-tap); touch-action: manipulation; }
 	.score { position: absolute; top: 0; right: 0; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
-	.hint { min-height: 1.4em; margin: 0; font-size: 0.8rem; line-height: 1.4; }   /* keeps its height empty, so nothing jumps */
+	/* keeps its height empty, so nothing jumps; sits nearer the run than the pill */
+	.hint { min-height: 1.4em; margin: -6px 0 14px; font-size: 0.8rem; line-height: 1.4; }
 	/* black with white words; on hover white wipes out from the middle — drawn as a difference
 	   layer, so the words flip with it and nothing is ever grey — and it gives a little wiggle */
 	.enter {
@@ -96,10 +97,10 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 <body>
 <main class="door">
 	<div class="run">
-		<canvas id="run" aria-label="dino run — press space or tap to jump"></canvas>
+		<canvas id="run" aria-label="dino run"></canvas>
 		<span class="score" id="score">0</span>
 	</div>
-	<p class="hint" id="hint">space or tap to jump</p>
+	<p class="hint" id="hint"></p>
 	<a class="enter" href="home/">enter<span class="enter-ink" aria-hidden="true"></span></a>
 </main>
 <script>
@@ -205,7 +206,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         const got = Math.floor(score);
         if (got > best) { best = got; try { localStorage.setItem('front-dino', String(best)); } catch (error) {} }
         scoreEl.textContent = `hi ${best} · ${got}`;
-        hintEl.textContent = '(×_×) again?';
+        hintEl.textContent = 'died';
     }
 
     function draw() {
