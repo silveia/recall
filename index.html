@@ -82,8 +82,14 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		pointer-events: none;
 	}
 	.enter.is-lit .enter-ink { transform: scale(1); }
-	/* hover: it only rises (and the white grows inside); the wiggle is for the press */
-	.enter:hover { transform: translateY(-3px); }
+	/* hover: it rises with a light shake (and the white grows inside); the press gets the full wiggle */
+	.enter:hover { transform: translateY(-3px); animation: enter-shake 0.45s cubic-bezier(0.37, 0, 0.63, 1); }
+	@keyframes enter-shake {
+		0%   { rotate: 0deg; }
+		30%  { rotate: -1.2deg; }
+		60%  { rotate: 1.2deg; }
+		100% { rotate: 0deg; }
+	}
 	.enter:active { transform: translateY(-1px); animation: enter-wiggle 0.5s cubic-bezier(0.37, 0, 0.63, 1); }
 	@keyframes enter-wiggle {
 		0%   { rotate: 0deg; }
