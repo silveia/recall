@@ -4119,10 +4119,7 @@ html.booting .booting-mark { display: flex; }
 .room-side { flex: 1; min-width: 0; overflow: hidden; }
 .talk-side { flex: 1; min-width: 0; padding-bottom: var(--group); }
 
-.room-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--tight); }
-.room-title { margin: 0; font-family: var(--head-font); font-size: 1.15rem; font-weight: 400; }
-.room-count { font-family: var(--num-font); font-size: 1.2rem; line-height: 1; }
-.room-label { margin: var(--tight) 0 0; font-family: var(--head-font); font-size: 0.72rem; }
+.room-label { margin: 0; font-family: var(--head-font); font-size: 0.72rem; }
 
 .room-scroll {
 	flex: 1;

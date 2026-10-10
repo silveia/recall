@@ -7279,7 +7279,6 @@ function paintPeople() {
         hint.textContent = 'you have no friends...';
         roomList.append(hint);
     }
-    document.getElementById('roomCount').textContent = chatFriends.length ? String(chatFriends.length) : '';
     paintChatShape();
 }
 
