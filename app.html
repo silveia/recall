@@ -76,7 +76,8 @@
         <input id="accFaceFile" type="file" accept="image/*" hidden>
         <p class="account-name" id="accName"></p>
         <p class="account-handle" id="accHandle"></p>
-        <button class="basic-button account-switch" id="accSwitch" type="button">switch account</button>
+        <ul class="acc-list" id="accList" aria-label="accounts on this browser"></ul>
+        <button class="basic-button acc-add" id="accAdd" type="button">add account</button>
         <div class="account-leave-wrap">
             <button class="basic-button account-leave" id="chatSignOut" type="button">log out</button>
             <div class="leave-split" id="leaveSplit" hidden>
@@ -378,46 +379,27 @@
 
 
                         <section class="chat-panel" id="chatPanel" hidden>
-                            <div class="chat-bar">
-                                <p class="chat-who" id="chatWho" hidden>not signed in</p>
-                                <button class="square-button chat-me" id="chatMeButton" type="button" aria-label="log in" title="log in" aria-expanded="false">
-                                    <span class="face-pic" id="chatMePic" hidden></span>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
-                                        <circle cx="12" cy="9" r="3.6"/>
-                                        <path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/>
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <div class="chat-start" id="chatStart" hidden>
-                                <div class="chat-start-words">
-                                    <h2 class="chat-start-head" id="startHead">nobody yet</h2>
-                                    <p class="chat-start-say" id="startSay">add someone by the name they signed up with. what you two say is sealed to the pair of you.</p>
-                                </div>
-                                <form class="room-make chat-start-add" id="startAdd" novalidate>
-                                    <input id="startName" type="text" aria-label="add someone by name" placeholder="their username">
-                                    <button class="field-go" type="submit" aria-label="add them" title="add them">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                            <path d="M12 5.5v13M5.5 12h13"/>
-                                        </svg>
-                                    </button>
-                                </form>
-                                <button class="basic-button is-solid chat-start-go" id="startGo" type="button" hidden>log in</button>
-                                <p class="chat-start-note" id="startNote" aria-live="polite"></p>
-                            </div>
-
-                            <div class="chat-body" id="chatBody" hidden>
+                            <p class="chat-who" id="chatWho" hidden>not signed in</p>
+                            <div class="chat-body" id="chatBody">
                                 <aside class="room-side" id="roomSide">
-                                    <div class="panel-head"><h2>people</h2></div>
-                                    <div class="room-scroll"><ol class="room-list" id="roomList"></ol></div>
+                                    <div class="room-top">
+                                        <h2 class="room-title">chats</h2>
+                                        <span class="room-count" id="roomCount"></span>
+                                    </div>
                                     <form class="room-make" id="roomMake" novalidate>
-                                        <input id="roomName" type="text" aria-label="add someone by name" placeholder="add someone">
-                                        <button class="field-go" type="submit" aria-label="add them" title="add them">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                                <path d="M12 5.5v13M5.5 12h13"/>
-                                            </svg>
-                                        </button>
+                                        <input id="roomName" type="text" aria-label="add someone by name" placeholder="find or add someone">
+                                        <button class="field-go" type="submit" aria-label="add them" title="add them"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg></button>
                                     </form>
+                                    <p class="room-label">direct messages</p>
+                                    <div class="room-scroll"><ol class="room-list" id="roomList"></ol></div>
+                                    <button class="me-card" id="chatMeButton" type="button" aria-label="log in" title="log in" aria-expanded="false">
+                                        <span class="me-face face-pic" id="chatMePic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>
+                                        <span class="me-words">
+                                            <b id="meName">not logged in</b>
+                                            <small id="meHandle">press to log in</small>
+                                        </span>
+                                        <span class="me-gear" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2L5.6 5.6"/></svg></span>
+                                    </button>
                                 </aside>
 
                                 <div class="pane-split chat-split" id="chatSplit" role="separator"
@@ -425,21 +407,40 @@
                                      aria-label="resize the people list"></div>
 
                                 <section class="talk-side" id="talkSide">
-                                    <div class="panel-head talk-head">
-                                        <h2 id="talkName">nobody open</h2>
+                                    <div class="talk-head">
+                                        <span class="talk-face face-pic" id="talkFace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>
+                                        <span class="talk-names">
+                                            <h2 id="talkName">home</h2>
+                                            <small id="talkHandle"></small>
+                                        </span>
                                         <p class="talk-sealed" id="talkSealed" hidden title="only you two can read this">sealed</p>
                                     </div>
 
                                     <div class="talk-log" id="talkLog">
-                                        <p class="empty-message" id="talkEmpty">nothing said yet</p>
+                                        <div class="talk-welcome" id="talkWelcome">
+                                            <h3 class="welcome-head" id="welcomeHead">chat</h3>
+                                            <p class="welcome-say" id="welcomeSay">sign in here !! &gt;&gt;</p>
+                                            <div class="welcome-go" id="welcomeGo">
+                                                <button class="basic-button is-solid" id="startGo" type="button">log in</button>
+                                                <button class="basic-button welcome-quiet" id="startSignUp" type="button">sign up</button>
+                                            </div>
+                                            <div class="welcome-cards">
+                                                <button class="welcome-card" type="button" data-go="add"><b>add someone</b><small>type their username in the box on the left</small></button>
+                                                <button class="welcome-card" type="button" data-go="face"><b>pick a picture</b><small>it shows on your messages</small></button>
+                                                <div class="welcome-card is-still"><b>sealed both ways</b><small>only the two of you can read a thread</small></div>
+                                            </div>
+                                        </div>
+                                        <div class="talk-start" id="talkStart" hidden>
+                                            <span class="talk-start-face face-pic" id="talkStartFace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>
+                                            <h3 id="talkStartName"></h3>
+                                            <p id="talkStartSay"></p>
+                                        </div>
                                     </div>
 
                                     <form class="talk-bar" id="talkForm" novalidate>
                                         <input id="talkSay" type="text" aria-label="say something" placeholder="say something" disabled>
                                         <button class="field-go" type="submit" aria-label="send it" title="send it">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                                <path d="M5 12h12.5M12 6.2 18.2 12 12 17.8"/>
-                                            </svg>
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h12.5M12 6.2 18.2 12 12 17.8"/></svg>
                                         </button>
                                     </form>
                                 </section>

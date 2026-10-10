@@ -970,6 +970,7 @@ function closeModal() {
         keyScreen.hidden = true;
         chatScreen.hidden = true;
         accountScreen.hidden = true;
+        if (typeof addingAbandoned === 'function') addingAbandoned();
         returnNotesPanel();
     }, MODAL_EXIT_MS);
 }
@@ -6785,7 +6786,8 @@ const roomNameField = document.getElementById('roomName');
 const talkName = document.getElementById('talkName');
 const talkSealed = document.getElementById('talkSealed');
 const talkLog = document.getElementById('talkLog');
-const talkEmpty = document.getElementById('talkEmpty');
+const talkWelcome = document.getElementById('talkWelcome');
+const talkStart = document.getElementById('talkStart');
 const talkForm = document.getElementById('talkForm');
 const talkSay = document.getElementById('talkSay');
 const chatHandle = document.getElementById('chatHandle');
@@ -6793,17 +6795,11 @@ const chatWord = document.getElementById('chatWord');
 const chatGo = document.getElementById('chatGo');
 const chatSwap = document.getElementById('chatSwap');
 const chatDoorTitle = document.getElementById('chatDoorTitle');
-const startHead = document.getElementById('startHead');
-const startSay = document.getElementById('startSay');
 const startGo = document.getElementById('startGo');
 const chatNote = document.getElementById('chatNote');
 const chatBody = document.getElementById('chatBody');
-const chatStart = document.getElementById('chatStart');
-const startAdd = document.getElementById('startAdd');
-const startName = document.getElementById('startName');
-const startNote = document.getElementById('startNote');
 
-[roomNameField, talkSay, chatHandle, startName].forEach((field) => field && stopGuessing(field));
+[roomNameField, talkSay, chatHandle].forEach((field) => field && stopGuessing(field));
 
 if (chatWord) {
     if (!(window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc'))) chatWord.type = 'password';
@@ -7010,6 +7006,11 @@ async function wakeChat() {
         try { return JSON.parse(window.localStorage.getItem(CHAT_ME) || 'null'); } catch (error) { return null; }
     })();
     if (mine && mine.name && mine.word) chatMe = mine;
+    if (chatMe && !heldAccounts().some((one) => one.name.toLowerCase() === chatMe.name.toLowerCase())) stashAccount();
+    try {   // a picture saved before pictures were kept per account belongs to this one
+        const old = window.localStorage.getItem(FACE_KEY);
+        if (old && chatMe) { window.localStorage.setItem(faceKey(chatMe.name), old); window.localStorage.removeItem(FACE_KEY); }
+    } catch (error) { /* fine */ }
     paintPeople();
     paintTalk();
     paintChatShape();
@@ -7139,9 +7140,24 @@ function paintPeople() {
         tap.className = 'room-row';
         tap.type = 'button';
         tap.dataset.key = key;
-        tap.textContent = displayName(key);
+        // like any messaging app: their picture, their name, and the last thing said with the time
+        const face = document.createElement('span');
+        face.className = 'room-face';
+        face.innerHTML = PERSON_MARK;
+        const words = document.createElement('span');
+        words.className = 'room-words';
+        const name = document.createElement('b');
+        name.textContent = displayName(key);
+        const last = (chatDms[key] || []).slice(-1)[0];
+        const line2 = document.createElement('small');
+        line2.textContent = last ? `${chatMe && whoIs(last.by) === chatMe.name.toLowerCase() ? 'you: ' : ''}${last.said}` : (them && them.pub ? 'say hi' : 'hasn\'t opened the chat yet');
+        words.append(name, line2);
+        const when = document.createElement('span');
+        when.className = 'room-when';
+        when.textContent = last && last.at ? shortWhen(last.at) : '';
+        tap.append(face, words, when);
         // no key of theirs means nothing can be sealed to them yet
-        tap.title = them && them.pub ? tap.textContent : `${tap.textContent} — no key yet`;
+        tap.title = them && them.pub ? displayName(key) : `${displayName(key)} — no key yet`;
         if (!(them && them.pub)) tap.classList.add('is-waiting');
         if (chatWith === key) tap.classList.add('is-on');
         tap.addEventListener('click', () => openWith(key));
@@ -7152,21 +7168,48 @@ function paintPeople() {
         line.append(tap);
         roomList.append(line);
     });
+    // nobody yet: placeholder rows, so the list reads as a list waiting to fill
+    if (!chatFriends.length) {
+        for (let at = 0; at < 3; at += 1) {
+            const ghost = document.createElement('li');
+            ghost.className = 'room-ghost';
+            ghost.innerHTML = '<span class="room-face"></span><span class="room-words"><b></b><small></small></span>';
+            roomList.append(ghost);
+        }
+        const hint = document.createElement('li');
+        hint.className = 'room-hint';
+        hint.textContent = chatMe ? 'no chats yet — add someone above' : 'log in to see your chats';
+        roomList.append(hint);
+    }
+    document.getElementById('roomCount').textContent = chatFriends.length ? String(chatFriends.length) : '';
     paintChatShape();
 }
 
+// 3:04 pm today, otherwise the day
+function shortWhen(ms) {
+    const when = new Date(ms);
+    if (when.toDateString() === new Date().toDateString()) {
+        return when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+    }
+    return when.toLocaleDateString([], { day: 'numeric', month: 'short' }).toLowerCase();
+}
+
+/* the app is always there, signed in or not: the main pane shows a welcome until a thread is open */
 function paintChatShape() {
     const ready = Boolean(chatMe);
-    chatBody.hidden = !ready || chatFriends.length === 0;
-    chatStart.hidden = ready && chatFriends.length > 0;
-
-    startAdd.hidden = !ready;
-    startGo.hidden = ready;
-    startHead.textContent = ready ? 'nobody yet' : 'chat';
-    startSay.textContent = ready
+    talkWelcome.hidden = Boolean(chatWith);
+    document.getElementById('welcomeGo').hidden = ready;
+    document.getElementById('welcomeHead').textContent = ready ? `hi, ${displayName(chatMe.name)}` : 'chat';
+    document.getElementById('welcomeSay').textContent = ready
         ? 'add yur homie ^.^ WARNING SECURITY IS ASS!!'
         : 'sign in here !! >>';
-    if (!chatBody.hidden && chatSplitter) chatSplitter.reclamp();
+    roomMake.classList.toggle('is-off', !ready);
+    roomNameField.disabled = !ready;
+    if (!chatWith) {
+        talkSay.disabled = true;
+        talkSay.placeholder = ready ? 'pick someone to talk to' : 'log in to send messages';
+    }
+    if (chatSplitter) chatSplitter.reclamp();
 }
 
 async function addSomeone(typed, complain) {
@@ -7203,10 +7246,13 @@ roomMake.addEventListener('submit', async (event) => {
     if (await addSomeone(roomNameField.value, saySomethingChat)) roomNameField.value = '';
 });
 
-startAdd.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const complain = (words) => { startNote.textContent = words || ''; };
-    if (await addSomeone(startName.value, complain)) startName.value = '';
+document.getElementById('startSignUp').addEventListener('click', () => openChatDoor(true));
+talkWelcome.querySelectorAll('[data-go]').forEach((card) => {
+    card.addEventListener('click', () => {
+        if (!chatMe) { openChatDoor(false); return; }
+        if (card.dataset.go === 'add') roomNameField.focus();
+        if (card.dataset.go === 'face') { paintAccountSettings(); openSetRow(accountScreen.querySelector('[data-set="face"]')); showScreen(accountScreen); }
+    });
 });
 
 function openWith(who) {
@@ -7220,19 +7266,22 @@ function openWith(who) {
     paintTalk();
     paintChatShape();
 
+    const handle = document.getElementById('talkHandle');
     if (!chatWith) {
-        talkName.textContent = 'nobody open';
+        talkName.textContent = 'home';
+        handle.textContent = '';
         talkSealed.hidden = true;
         talkSay.disabled = true;
         return;
     }
     const them = chatPeople[chatWith];
     talkName.textContent = displayName(chatWith);
+    handle.textContent = `@${them ? them.name : chatWith}`;
     talkSealed.hidden = false;
     talkSay.disabled = !chatOn || !them || !them.pub || !chatPriv;
     talkSay.placeholder = talkSay.disabled && them && !them.pub
         ? 'they have not opened the chat yet'
-        : 'say something';
+        : `message @${them ? them.name : chatWith}`;
 }
 
 talkForm.addEventListener('submit', async (event) => {
@@ -7273,7 +7322,13 @@ function whatIsSaid() {
 function paintTalk() {
     talkLog.querySelectorAll('.said-row').forEach((row) => row.remove());
     const said = whatIsSaid();
-    talkEmpty.hidden = said.length > 0;
+    // like discord: an open thread begins with who it is with
+    talkStart.hidden = !chatWith;
+    if (chatWith) {
+        const them = chatPeople[chatWith];
+        document.getElementById('talkStartName').textContent = displayName(chatWith);
+        document.getElementById('talkStartSay').textContent = `this is the start of your messages with @${them ? them.name : chatWith}. only the two of you can read them.`;
+    }
     if (!said.length) return;
 
     const stuck = talkLog.scrollHeight - talkLog.scrollTop - talkLog.clientHeight < 60;
@@ -7390,8 +7445,14 @@ function moveAccount(fromKey, toName) {
     if (chatDms[fromKey]) { chatDms[toKey] = [...(chatDms[toKey] || []), ...chatDms[fromKey]]; delete chatDms[fromKey]; }
     if (chatWith === fromKey) chatWith = toKey;
     if (chatMe && chatMe.name.toLowerCase() === fromKey) {
+        keepAccounts(heldAccounts().filter((one) => one.name.toLowerCase() !== fromKey));
+        try {
+            const pic = window.localStorage.getItem(faceKey(fromKey));
+            if (pic) { window.localStorage.setItem(faceKey(toName), pic); window.localStorage.removeItem(faceKey(fromKey)); }
+        } catch (error) { /* fine */ }
         chatMe = { ...chatMe, name: toName };
         window.localStorage.setItem(CHAT_ME, JSON.stringify(chatMe));
+        stashAccount();
     }
 }
 
@@ -7410,6 +7471,7 @@ function paintAccount() {
     document.getElementById('accName').textContent = displayName(chatMe.name);
     document.getElementById('accHandle').textContent = `@${chatMe.name}`;
     paintFaces();
+    paintAccountList();
 }
 
 function paintAccountSettings() {
@@ -7422,9 +7484,12 @@ function paintAccountSettings() {
 /* your picture: kept in this browser only, squeezed to 96px and dithered to pure black and white */
 const FACE_KEY = 'chat-face';
 const PERSON_MARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg>';
-function myFace() {
-    try { return window.localStorage.getItem(FACE_KEY) || ''; } catch (error) { return ''; }
+// one picture per account, under its own name
+function faceKey(name) { return `${FACE_KEY}:${String(name || '').toLowerCase()}`; }
+function faceOf(name) {
+    try { return window.localStorage.getItem(faceKey(name)) || ''; } catch (error) { return ''; }
 }
+function myFace() { return chatMe ? faceOf(chatMe.name) : ''; }
 
 // a picture if it is yours and you have set one; the person mark otherwise — never a letter
 function wearFace(slot, mine) {
@@ -7435,13 +7500,10 @@ function wearFace(slot, mine) {
 
 function paintFaces() {
     const signed = Boolean(chatMe);
-    const pic = document.getElementById('chatMePic');
-    pic.hidden = !signed || !myFace();
-    chatMeButton.querySelector(':scope > svg').style.display = pic.hidden ? '' : 'none';
-    if (signed) {
-        wearFace(pic, true);
-        wearFace(document.getElementById('accFacePic'), true);
-    }
+    wearFace(document.getElementById('chatMePic'), signed);
+    document.getElementById('meName').textContent = signed ? displayName(chatMe.name) : 'not logged in';
+    document.getElementById('meHandle').textContent = signed ? `@${chatMe.name}` : 'press to log in';
+    if (signed) wearFace(document.getElementById('accFacePic'), true);
 }
 function ditherFace(file) {
     return new Promise((resolve, reject) => {
@@ -7494,7 +7556,7 @@ accFaceFile.addEventListener('change', async () => {
     accFaceFile.value = '';
     if (!file) return;
     try {
-        window.localStorage.setItem(FACE_KEY, await ditherFace(file));
+        window.localStorage.setItem(faceKey(chatMe.name), await ditherFace(file));
     } catch (error) {
         return;
     }
@@ -7503,7 +7565,7 @@ accFaceFile.addEventListener('change', async () => {
     if (!accountScreen.hidden) { paintAccountSettings(); setSay('picture changed'); }
 });
 document.getElementById('accFaceClear').addEventListener('click', () => {
-    try { window.localStorage.removeItem(FACE_KEY); } catch (error) {}
+    try { window.localStorage.removeItem(faceKey(chatMe.name)); } catch (error) {}
     paintFaces();
     paintTalk();
     paintAccountSettings();
@@ -7598,6 +7660,7 @@ async function changeAccount(what, one, two) {
 
 function closeAccount() {
     accountPop.hidden = true;
+    accList.querySelectorAll('.acc-menu').forEach((menu) => { menu.hidden = true; });
     chatMeButton.setAttribute('aria-expanded', 'false');
     shutLeave();
 }
@@ -7610,7 +7673,127 @@ function shutLeave() {
 }
 document.getElementById('leaveNo').addEventListener('click', shutLeave);
 document.getElementById('leaveYes').addEventListener('click', () => { closeAccount(); logOut(); });
-document.getElementById('accSwitch').addEventListener('click', () => { logOut(); openChatDoor(false); });
+/* --- every account logged in on this browser ---
+   the one in use lives in the usual places (chatMe, chatPriv, chatFriends, chatDms); the others
+   wait in chat-accounts with their own key, people and threads, and switching swaps them over */
+const ACCOUNTS_KEY = `chat-accounts-${CHAT_ERA}`;
+let addingFrom = null;              // the account to fall back to if adding one is abandoned
+
+function heldAccounts() {
+    try { return JSON.parse(window.localStorage.getItem(ACCOUNTS_KEY) || '[]'); } catch (error) { return []; }
+}
+function keepAccounts(list) {
+    try { window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list)); } catch (error) { /* no room */ }
+}
+// the account in use, written back into the list
+function stashAccount() {
+    if (!chatMe) return;
+    const list = heldAccounts().filter((one) => one.name.toLowerCase() !== chatMe.name.toLowerCase());
+    list.push({ name: chatMe.name, word: chatMe.word, priv: chatPriv, friends: chatFriends, dms: chatDms, with: chatWith });
+    keepAccounts(list);
+}
+function clearSignedIn() {
+    chatMe = null;
+    chatPriv = null;
+    chatFriends = [];
+    chatDms = {};
+    chatSealed = [];
+    chatWith = null;
+    window.localStorage.removeItem(CHAT_ME);
+}
+async function useAccount(name) {
+    const held = heldAccounts().find((one) => one.name.toLowerCase() === name.toLowerCase());
+    if (!held) return;
+    stashAccount();
+    chatMe = { name: held.name, word: held.word };
+    chatPriv = held.priv || null;
+    chatFriends = held.friends || [];
+    chatDms = held.dms || {};
+    chatSealed = [];
+    chatWith = held.with || null;
+    window.localStorage.setItem(CHAT_ME, JSON.stringify(chatMe));
+    keepKnown();
+    paintChatBar();
+    paintPeople();
+    if (chatOn) await catchUp();         // reads this account's sealed posts off the board
+    openWith(whoWasOpen());
+    paintAccount();
+}
+function forgetAccount(name) {
+    keepAccounts(heldAccounts().filter((one) => one.name.toLowerCase() !== name.toLowerCase()));
+    if (chatMe && chatMe.name.toLowerCase() === name.toLowerCase()) { logOut(); return; }
+    paintAccount();
+}
+
+const accList = document.getElementById('accList');
+function paintAccountList() {
+    accList.innerHTML = '';
+    const list = heldAccounts();
+    if (chatMe && !list.some((one) => one.name.toLowerCase() === chatMe.name.toLowerCase())) list.unshift({ name: chatMe.name });
+    list.forEach((one) => {
+        const here = chatMe && one.name.toLowerCase() === chatMe.name.toLowerCase();
+        const row = document.createElement('li');
+        row.className = `acc-row${here ? ' is-here' : ''}`;
+        const pick = document.createElement('button');
+        pick.className = 'acc-pick';
+        pick.type = 'button';
+        const face = document.createElement('span');
+        face.className = 'acc-face';
+        const pic = faceOf(one.name);
+        face.style.backgroundImage = pic ? `url("${pic}")` : '';
+        face.innerHTML = pic ? '' : PERSON_MARK;
+        const words = document.createElement('span');
+        words.className = 'acc-words';
+        const nick = document.createElement('b');
+        nick.textContent = displayName(one.name);
+        const handle = document.createElement('small');
+        handle.textContent = `@${one.name}`;
+        words.append(nick, handle);
+        pick.append(face, words);
+        pick.addEventListener('click', () => { if (!here) useAccount(one.name); });
+        const dots = document.createElement('button');
+        dots.className = 'acc-dots';
+        dots.type = 'button';
+        dots.setAttribute('aria-label', `more for @${one.name}`);
+        dots.title = 'more';
+        dots.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/></svg>';
+        const menu = document.createElement('div');
+        menu.className = 'acc-menu';
+        menu.hidden = true;
+        const drop = document.createElement('button');
+        drop.type = 'button';
+        drop.textContent = 'remove';
+        drop.addEventListener('click', () => forgetAccount(one.name));
+        menu.append(drop);
+        dots.addEventListener('click', () => {
+            const open = menu.hidden;
+            accList.querySelectorAll('.acc-menu').forEach((other) => { other.hidden = true; });
+            menu.hidden = !open;
+        });
+        row.append(pick, dots, menu);
+        accList.append(row);
+    });
+}
+
+document.getElementById('accAdd').addEventListener('click', () => {
+    stashAccount();
+    addingFrom = chatMe ? chatMe.name : null;
+    clearSignedIn();
+    keepKnown();
+    paintChatBar();
+    paintPeople();
+    paintTalk();
+    paintChatShape();
+    openChatDoor(false);
+});
+
+// the log-in window shut without logging anyone in: back to the account you were using
+function addingAbandoned() {
+    if (!addingFrom || chatMe) { addingFrom = null; return; }
+    const back = addingFrom;
+    addingFrom = null;
+    useAccount(back);
+}
 
 chatMeButton.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -7619,7 +7802,10 @@ chatMeButton.addEventListener('click', (event) => {
     paintAccount();
     accountPop.hidden = false;
     chatMeButton.setAttribute('aria-expanded', 'true');
-    placeUnder(accountPop, chatMeButton);
+    // above your card, left edges together, growing up out of it — discord's corner
+    const card = chatMeButton.getBoundingClientRect();
+    accountPop.style.left = `${Math.round(card.left)}px`;
+    accountPop.style.top = `${Math.round(Math.max(8, card.top - accountPop.offsetHeight - 8))}px`;
 });
 accountPop.addEventListener('click', (event) => event.stopPropagation());
 document.addEventListener('click', closeAccount);
@@ -7716,6 +7902,10 @@ chatGo.addEventListener('click', async () => {
 
         chatMe = { name: known ? known.name : called, word: hash };
         window.localStorage.setItem(CHAT_ME, JSON.stringify(chatMe));
+        const held = heldAccounts().find((one) => one.name.toLowerCase() === chatMe.name.toLowerCase());
+        if (held) { chatFriends = held.friends || []; chatDms = held.dms || {}; chatWith = held.with || null; if (!chatPriv) chatPriv = held.priv || null; }
+        addingFrom = null;
+        stashAccount();
         keepKnown();
         chatWord.value = '';
         saySomethingChat('');
@@ -7737,13 +7927,11 @@ chatSignOut.addEventListener('click', () => {
 
 function logOut() {
     closeAccount();
-    chatMe = null;
-    chatPriv = null;      // the key goes with the account, not the browser
-    chatDms = {};
-    chatSealed = [];
-    chatWith = null;
-    window.localStorage.removeItem(CHAT_ME);
+    if (chatMe) keepAccounts(heldAccounts().filter((one) => one.name.toLowerCase() !== chatMe.name.toLowerCase()));
+    clearSignedIn();      // the key goes with the account, not the browser
     keepKnown();
+    const next = heldAccounts()[0];
+    if (next) { useAccount(next.name); return; }
     talkSay.disabled = true;
     talkSealed.hidden = true;
     paintChatBar();

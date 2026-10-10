@@ -3910,20 +3910,8 @@ html.booting .booting-mark { display: flex; }
 	min-height: 0;
 }
 
-.chat-bar {
-	position: relative;
-	display: flex;
-	flex: none;
-	align-items: center;
-	gap: var(--tight);
-}
-.chat-bar { position: absolute; top: 0; right: 0; z-index: 2; justify-content: flex-end; }   /* takes no room, so the page centres on itself */
-.chat-panel { position: relative; }
-.chat-panel:has(#chatBody:not([hidden])) .chat-bar { position: static; }   /* with the panes up it takes its own row again */
 #accSignUp { color: var(--ink); background: var(--paper); border-color: var(--line); }
 #accSignUp:hover { color: var(--paper); background: var(--ink); }
-.chat-me { border-radius: 50%; }
-.chat-me svg { width: 58%; height: 58%; }
 
 .account-pop {   /* after google's account popup: centred, round, the face at the top */
 	display: flex;
@@ -3932,7 +3920,7 @@ html.booting .booting-mark { display: flex; }
 	width: 19rem;
 	padding: 1.6rem 1rem 1rem;
 	border-radius: 1.75rem;
-	transform-origin: top right;
+	transform-origin: bottom left;
 }
 .face-pic {
 	display: grid;
@@ -3944,7 +3932,6 @@ html.booting .booting-mark { display: flex; }
 	background-position: center;
 	image-rendering: pixelated;
 }
-.chat-me .face-pic { font-size: 1rem; }
 .account-face {
 	position: relative;
 	width: 5rem;
@@ -3976,9 +3963,94 @@ html.booting .booting-mark { display: flex; }
 .account-handle { max-width: 100%; margin: 0.15rem 0 1rem; overflow: hidden; font-size: 0.8rem; white-space: nowrap; text-overflow: ellipsis; }
 .face-pic svg, .said-face svg { width: 62%; height: 62%; }
 .account-face .face-pic svg { width: 58%; }
-.account-switch, .account-leave, .leave-split .basic-button { width: 100%; height: var(--field); padding: calc(var(--drop) * 2) 0 0; }
-.account-switch { margin-top: 0.4rem; color: var(--ink); background: var(--paper); border-color: var(--line); }
-.account-switch:hover { color: var(--paper); background: var(--ink); }
+.account-leave, .leave-split .basic-button { width: 100%; height: var(--field); padding: calc(var(--drop) * 2) 0 0; }
+
+/* every account on this browser, the one in use filled */
+.acc-list { display: flex; flex-direction: column; gap: var(--tight); width: 100%; margin: 0.4rem 0 0; padding: 0; list-style: none; }
+.acc-row { position: relative; display: flex; align-items: center; gap: 0.3rem; border: 1px solid var(--line); border-radius: 999px; }
+.acc-row.is-here { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.acc-pick {
+	display: flex;
+	flex: 1;
+	align-items: center;
+	gap: 0.6rem;
+	min-width: 0;
+	padding: 0.3rem 0.4rem;
+	color: inherit;
+	background: none;
+	border: 0;
+	font: inherit;
+	text-align: left;
+	cursor: var(--cur-tap);
+}
+.acc-row.is-here .acc-pick { cursor: var(--cur-dot); }
+.acc-face {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 2rem;
+	height: 2rem;
+	color: var(--paper);
+	background: var(--ink) center / cover;
+	border-radius: 50%;
+	image-rendering: pixelated;
+}
+.acc-row.is-here .acc-face { color: var(--ink); background-color: var(--paper); }
+.acc-face svg { width: 62%; height: 62%; }
+.acc-words { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.acc-words b, .acc-words small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.acc-words b { font-size: 0.88rem; }
+.acc-words small { font-size: 0.72rem; }
+.acc-dots {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 2rem;
+	height: 2rem;
+	margin-right: 0.3rem;
+	padding: 0;
+	color: inherit;
+	background: none;
+	border: 0;
+	border-radius: 50%;
+	cursor: var(--cur-tap);
+}
+.acc-dots svg { width: 1.1rem; height: 1.1rem; fill: currentColor; }
+.acc-dots:hover { outline: 1px solid currentColor; }
+.acc-menu {
+	position: absolute;
+	top: calc(100% + 4px);
+	right: 0;
+	z-index: 2;
+	padding: 4px;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	animation: confirm-in 0.16s var(--ease);
+}
+.acc-menu[hidden] { display: none; }
+.acc-menu button {
+	padding: 0.35rem 0.9rem;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	border-radius: calc(var(--radius) - 4px);
+	font: inherit;
+	font-size: 0.85rem;
+	cursor: var(--cur-tap);
+}
+.acc-menu button:hover { color: var(--paper); background: var(--ink); }
+.acc-add {
+	align-self: flex-end;
+	height: 2rem;
+	margin-top: var(--tight);
+	padding: calc(var(--drop) * 2) 1rem 0;
+	color: var(--ink);
+	background: var(--paper);
+	border-color: var(--line);
+	font-size: 0.85rem;
+}
+.acc-add:hover { color: var(--paper); background: var(--ink); }
 .account-leave-wrap { width: 100%; margin-top: var(--tight); }
 .leave-split { display: flex; gap: var(--tight); }
 /* log out divides: both halves start stacked on the middle as the one black pill, then slide
@@ -4037,61 +4109,29 @@ html.booting .booting-mark { display: flex; }
 	font-size: 0.9rem;
 }
 
-.chat-start {
-	display: grid;
-	flex: 1;
-	grid-template-rows: 1fr auto 1fr;   /* the button sits dead centre, the words above it */
-	justify-items: center;
-	align-content: stretch;
-	row-gap: var(--group);
-	min-height: 0;
-	padding: 0 var(--gap);
-	text-align: center;
-}
-.chat-start-head {
-	margin: 0;
-	font-family: var(--head-font);
-	font-weight: 400;
-	font-size: 1.2rem;
-	letter-spacing: 0.02em;
-}
-.chat-start-say {
-	max-width: 28rem;
-	margin: 0;
-	font-size: 0.85rem;
-	line-height: 1.6;
-}
-.chat-start-words { display: flex; flex-direction: column; align-items: center; gap: var(--group); align-self: end; }
-.chat-start-add { width: min(20rem, 100%); }
-.chat-start-go { min-width: 9rem; }
-.chat-start-note {
-	align-self: start;
-	min-height: 1em;
-	margin: 0;
-	font-size: 0.8rem;
-}
-
 .chat-body {
 	display: flex;
 	flex: 1;
 	gap: 0;
 	min-height: 0;
 }
+/* two outlined panes, the way every other page here is built: the list, and the talk */
 .room-side, .talk-side {
 	display: flex;
 	flex-direction: column;
-	gap: var(--group);
+	gap: var(--tight);
 	min-height: 0;
+	padding: var(--group);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
 }
-.room-side {
-	flex: 0 1 var(--room-col, 26%);
-	min-width: 0;
-	overflow: hidden;
-}
-.talk-side {
-	flex: 1;
-	min-width: 0;
-}
+.room-side { flex: 0 1 var(--room-col, 28%); min-width: 0; overflow: hidden; }
+.talk-side { flex: 1; min-width: 0; padding-bottom: var(--group); }
+
+.room-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--tight); }
+.room-title { margin: 0; font-family: var(--head-font); font-size: 1.15rem; font-weight: 400; }
+.room-count { font-family: var(--num-font); font-size: 1.2rem; line-height: 1; }
+.room-label { margin: var(--tight) 0 0; font-family: var(--head-font); font-size: 0.72rem; }
 
 .room-scroll {
 	flex: 1;
@@ -4101,35 +4141,89 @@ html.booting .booting-mark { display: flex; }
 	scrollbar-width: none;
 }
 .room-scroll::-webkit-scrollbar { display: none; }
-.room-list {
-	display: flex;
-	flex-direction: column;
-	gap: var(--tight);
-	margin: 0;
-	padding: 0;
-	list-style: none;
-}
+.room-list { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
 
-.room-row {
-	display: block;
+/* a conversation: picture, name, the last line, the time — whatsapp's row in this site's colours */
+.room-row, .room-ghost {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
 	width: 100%;
-	padding: calc(0.5rem + var(--drop) * 2) 0.8rem calc(0.5rem - var(--drop) * 2);
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	min-width: 0;
+	padding: 0.45rem 0.6rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid transparent;
+	border-radius: 0.9rem;
+	font: inherit;
 	text-align: left;
+	cursor: var(--cur-tap);
+}
+.room-row:hover { border-color: var(--line); }
+.room-row.is-on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.room-row.is-waiting .room-face { border-style: dashed; }
+.room-face {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 2.3rem;
+	height: 2.3rem;
+	color: var(--paper);
+	background: var(--ink);
+	border: 1px solid var(--ink);
+	border-radius: 50%;
+}
+.room-row.is-on .room-face { color: var(--ink); background: var(--paper); }
+.room-face svg { width: 60%; height: 60%; }
+.room-words { display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.3; }
+.room-words b, .room-words small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.room-words b { font-size: 0.9rem; }
+.room-words small { font-size: 0.75rem; }
+.room-when { flex: none; align-self: flex-start; margin-top: 0.15rem; font-family: var(--num-font); font-size: 0.95rem; }
+/* the rows that stand in while there are none: dashed shapes where a chat would be */
+.room-ghost { cursor: default; }
+.room-ghost .room-face { background: var(--paper); border: 1px dashed var(--line); }
+.room-ghost b, .room-ghost small { display: block; height: 0.55rem; border: 1px dashed var(--line); border-radius: 999px; }
+.room-ghost b { width: 60%; margin-bottom: 0.4rem; }
+.room-ghost small { width: 85%; }
+.room-hint { padding: var(--tight) 0.6rem; font-size: 0.8rem; }
+
+.room-make.is-off { border-style: dashed; }
+
+/* you, at the foot of the list — discord's corner */
+.me-card {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: 0.65rem;
+	width: 100%;
+	min-width: 0;
+	margin-top: var(--tight);
+	padding: 0.5rem 0.6rem;
 	color: var(--ink);
 	background: var(--paper);
 	border: 1px solid var(--line);
-	border-radius: 999px;
+	border-radius: 0.9rem;
 	font: inherit;
-	font-size: 0.85rem;
+	text-align: left;
 	cursor: var(--cur-tap);
 }
-.room-row:hover,
-.room-row.is-on { color: var(--paper); background: var(--ink); }
-
-.room-row.is-waiting { border-style: dashed; }
+.me-card:hover, .me-card[aria-expanded="true"] { color: var(--paper); background: var(--ink); }
+.me-face {
+	flex: none;
+	width: 2.3rem;
+	height: 2.3rem;
+	color: var(--paper);
+	background-color: var(--ink);
+	border: 1px solid var(--ink);
+}
+.me-card:hover .me-face, .me-card[aria-expanded="true"] .me-face { color: var(--ink); background-color: var(--paper); }
+.me-words { display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.3; }
+.me-words b, .me-words small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.me-words b { font-size: 0.9rem; }
+.me-words small { font-size: 0.75rem; }
+.me-gear { display: grid; flex: none; place-items: center; width: 1.3rem; height: 1.3rem; }
+.me-gear svg { width: 100%; height: 100%; }
 
 .room-make, .talk-bar {
 	display: flex;
@@ -4156,7 +4250,6 @@ html.booting .booting-mark { display: flex; }
 	outline: none;
 }
 .room-make input::placeholder, .talk-bar input::placeholder { color: var(--ink); opacity: 1; }
-
 .talk-bar input:disabled { opacity: 1; }
 .field-go {
 	flex: none;
@@ -4174,18 +4267,34 @@ html.booting .booting-mark { display: flex; }
 .field-go svg { display: block; width: 1rem; height: 1rem; }
 .field-go:hover { color: var(--paper); background: var(--ink); }
 
+/* the thread's header: who, their handle, and that it is sealed */
 .talk-head {
 	display: flex;
-	align-items: baseline;
-	gap: var(--tight);
+	flex: none;
+	align-items: center;
+	gap: 0.65rem;
+	padding: 0 0 var(--group);
+	border-bottom: 1px solid var(--line);
 }
-.talk-head h2 {
-	flex: 1;
-	min-width: 0;
+.talk-face {
+	flex: none;
+	width: 2.3rem;
+	height: 2.3rem;
+	color: var(--paper);
+	background-color: var(--ink);
+	border: 1px solid var(--ink);
+}
+.talk-names { display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.25; }
+.talk-names h2 {
+	margin: 0;
 	overflow: hidden;
+	font-family: var(--head-font);
+	font-size: 1.05rem;
+	font-weight: 400;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
+.talk-names small { font-size: 0.75rem; }
 .talk-sealed {
 	flex: none;
 	margin: 0;
@@ -4194,6 +4303,50 @@ html.booting .booting-mark { display: flex; }
 	border-radius: 999px;
 	font-size: 0.7rem;
 }
+
+/* home, before a thread is open: a greeting and three things to do, from the top-left */
+.talk-welcome { display: flex; flex-direction: column; gap: var(--group); padding: var(--group) 0.1rem 0; }
+.talk-welcome[hidden] { display: none; }
+.welcome-head { margin: 0; font-family: var(--head-font); font-size: 1.6rem; font-weight: 400; }
+.welcome-say { margin: -0.4rem 0 0; font-size: 0.9rem; }
+.welcome-go { display: flex; gap: var(--tight); }
+.welcome-go[hidden] { display: none; }
+.welcome-go .basic-button { height: var(--field); padding: calc(var(--drop) * 2) 1.6rem 0; }
+.welcome-quiet { color: var(--ink); background: var(--paper); border-color: var(--line); }
+.welcome-quiet:hover { color: var(--paper); background: var(--ink); }
+.welcome-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--group); margin-top: var(--tight); }
+.welcome-card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	min-height: 6.5rem;
+	padding: var(--group);
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font: inherit;
+	text-align: left;
+	cursor: var(--cur-tap);
+	transition: transform var(--quick) var(--ease);
+}
+.welcome-card:hover { transform: translateY(-3px); }
+.welcome-card.is-still { cursor: default; }
+.welcome-card.is-still:hover { transform: none; }
+.welcome-card b { font-family: var(--head-font); font-size: 0.85rem; font-weight: 400; }
+.welcome-card small { font-size: 0.8rem; line-height: 1.45; }
+
+/* the top of an open thread, as discord starts one */
+.talk-start { display: flex; flex-direction: column; gap: 0.45rem; padding: var(--group) 0.5rem var(--group); }
+.talk-start[hidden] { display: none; }
+.talk-start-face {
+	width: 4.5rem;
+	height: 4.5rem;
+	color: var(--paper);
+	background-color: var(--ink);
+}
+.talk-start h3 { margin: 0.3rem 0 0; font-family: var(--head-font); font-size: 1.4rem; font-weight: 400; }
+.talk-start p { margin: 0; font-size: 0.85rem; }
 
 .talk-log {
 	display: flex;
@@ -4207,7 +4360,6 @@ html.booting .booting-mark { display: flex; }
 	scrollbar-width: none;
 }
 .talk-log::-webkit-scrollbar { display: none; }
-.talk-log > .empty-message { margin: auto; }
 
 .said-row {
 	display: grid;
@@ -4218,7 +4370,7 @@ html.booting .booting-mark { display: flex; }
 	margin-top: 1rem;
 	border-radius: var(--radius);
 }
-.said-row:first-of-type { margin-top: auto; }
+.said-row:first-of-type { margin-top: 0; }
 .said-row.is-run-on { margin-top: 0; }
 .said-row:hover { outline: 1px dotted var(--line); outline-offset: -1px; }   /* discord's hover, without the grey */
 .said-face {

@@ -1495,18 +1495,9 @@ password (pbkdf2, 150k rounds) is posted to the board — which is what
 lets you sign in on another machine and still read your own messages.
 The password itself never leaves.
 
-**Signed out, the page says so in the middle of itself.** Showing
-neither the empty state nor the panes left a blank page with a button
-in the corner, which reads as the chat being broken rather than as
-being logged out. `chat-start` covers all three states: signed out,
-signed in with nobody added, and the panes.
-
 **The board knows every account on it; that is not a list of people
 you want to hear from.** You add someone by the name they signed up
-with, and only the people you added are shown. Until there is one,
-there are no panes at all — an empty people column beside an empty
-thread is two boxes saying the same nothing, so `chat-start` says it
-once and hands over the one field that fixes it. Right-click drops
+with, and only the people you added are shown. Right-click drops
 someone; nothing is deleted anywhere, and adding them back brings the
 thread with them.
 
@@ -1575,17 +1566,46 @@ get two accounts. The button carries the state (`checking the name…`,
 swap beside it. `paintChatDoor` returns early while it is busy, or it
 would paint the label back.
 
-**One round button in the chat's top-right corner** is the whole of
-the account bar. Signed out it opens the log-in window directly (on
-**log in**, not sign up). Signed in it opens a Google-style panel: a
+**The chat is always laid out as a messaging app**, signed in or not,
+nobody added or not — by request, after an empty page with things
+floating in the middle read as unfinished. Two outlined panes:
+
+- **The list (left)**: `chats` with a count, a `find or add someone`
+  field, `direct messages`, then one row per person — picture, name,
+  the last line (`you: …` if yours) and its time, WhatsApp-style. With
+  nobody yet it shows three dashed placeholder rows and a line saying
+  what to do. At its foot is **your card** (Discord's corner): picture,
+  nickname, `@username` and a gear; signed out it says `not logged in`.
+- **The talk (right)**: a header with the open person's picture, name
+  and handle and the `sealed` chip. With no thread open it shows a
+  greeting (`hi, <nickname>` or `chat` with log in / sign up when signed
+  out) and three cards — add someone, pick a picture, sealed both ways —
+  from the top-left. An open thread starts like Discord's: a big
+  picture, the name, and "this is the start of your messages with …".
+  The box at the bottom reads `message @name`.
+
+**Your card opens the account panel**, placed above it with left edges
+together so it grows up out of the corner; signed out it opens the
+log-in window directly (on **log in**, not sign up). The panel is
+Google-style: a
 large round picture at the top with a pencil on it — **pressing it
 opens account settings** (there is no separate settings button) — your
-nickname large under it with `@username` small, then a white
-`switch account` and `log out` at the foot. **Log out asks inside its
+nickname large under it with `@username` small, then **every account
+logged in on this browser** as a list (the one in use filled black,
+each with a three-dot menu holding `remove`), a small `add account` at
+the right, and `log out` at the foot. **Log out asks inside its
 own button**: it divides — both halves start stacked as the one black
 pill and slide apart into `confirm` and `cancel`, cancel snapping to
 white once they part (a colour fade would pass through grey).
-Switch account logs out and opens the log-in window.
+**Several accounts per browser.** The one in use lives where it always
+did (`chatMe`, `chatPriv`, `chatFriends`, `chatDms`); the others wait in
+`chat-accounts-v2`, each with its own key, people and threads, and
+`useAccount()` swaps them, reading that account's sealed posts off the
+board again. `add account` stashes the current one and opens log in;
+shutting that window without logging in puts you back where you were
+(`addingAbandoned`, called from `closeModal`). Log out drops the account
+from the list and moves to the next one if there is one. Pictures are
+kept per account (`chat-face:<name>`).
 
 **Faces are never letters.** With no picture set it is the person mark
 (`PERSON_MARK`). Your picture is kept in this browser only
@@ -1680,8 +1700,13 @@ and restart. A held key is one jump (`event.repeat` ignored), and a
 crash can't be restarted for 350ms, so a jump pressed as it hits
 doesn't restart it on the spot.
 
-`morie.top` is a tiny dino run in the middle of the screen and an
-`enter` pill that goes to `home/`. Space, up or a tap jumps; the best
+`morie.top` is a tiny dino run and an `enter` pill that goes to
+`home/`. **The enter pill sits at the exact middle of the screen**, the
+run above it. It is black with white words; on hover white wipes out
+from its middle as a `mix-blend-mode: difference` layer — so the words
+flip with it and no frame is ever grey — and it lifts and wiggles like
+the create/practice tiles. One press after a crash both resets and runs
+(it used to take two, which felt like a glitch). Space, up or a tap jumps; the best
 score is kept under `front-dino`. It is all inline in `index.html` and
 does not load `style.css`, so the two cursor tokens are **copied** in
 and must be copied again if they are redrawn. One bit: the art is
