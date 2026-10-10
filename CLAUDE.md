@@ -1713,7 +1713,7 @@ run above it. It is black with white words; on hover **a white circle
 grows out of the exact point the pointer came in** (`.enter-ink`, a
 `mix-blend-mode: difference` layer after the word, so the word flips
 with it and no frame is ever grey), sized to just reach the far corner
-from that point so the spread is seen the whole way (~0.5s). On hover it
+from that point so the spread is seen the whole way (~0.5s). **The link never moves; the pill inside it does** (`.enter` is a still hit area 6px bigger than `.enter-pill` all round), so hovering at the edge doesn't flicker on and off as the pill slips out from under the pointer. On hover it
 rises 3px with a small natural wobble (under a degree of tilt plus a pixel of drift, settling out); the pill is kept on its own layer (`will-change`, `backface-visibility`) because a tilted 1px outline otherwise broke up as it turned; the full wiggle plays on the press. The circle is placed
 first and grown after, by script: done with CSS `:hover` it started
 growing before the pointer's position was known, which is why it

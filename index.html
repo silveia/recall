@@ -47,9 +47,22 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	.score { position: absolute; top: 0; right: 0; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
 	/* keeps its height empty, so nothing jumps; sits nearer the run than the pill */
 	.hint { min-height: 1.4em; margin: -6px 0 14px; font-size: 0.8rem; line-height: 1.4; }
-	/* black with white words; on hover white wipes out from the middle — drawn as a difference
-	   layer, so the words flip with it and nothing is ever grey — and it gives a little wiggle */
+	/* the link itself never moves: it is the steady thing the pointer is over, a few pixels bigger
+	   than the pill all round, so the pill can rise and wobble without slipping out from under it */
 	.enter {
+		display: block;
+		padding: 6px;
+		margin: -6px;
+		color: inherit;
+		text-decoration: none;
+		cursor: var(--cur-tap);
+		-webkit-tap-highlight-color: transparent;
+	}
+	.enter:focus { outline: none; }
+	.enter:focus-visible .enter-pill { outline: 1px dashed var(--ink); outline-offset: 3px; }
+	/* black with white words; on hover the white grows out from the pointer — drawn as a difference
+	   layer, so the words flip with it and nothing is ever grey */
+	.enter-pill {
 		position: relative;
 		display: grid;
 		place-items: center;
@@ -61,8 +74,6 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		border: 1px solid var(--ink);
 		border-radius: 999px;
 		font-size: 0.95rem;
-		text-decoration: none;
-		cursor: var(--cur-tap);
 		isolation: isolate;
 		will-change: transform, rotate, translate;
 		backface-visibility: hidden;
@@ -84,8 +95,8 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		pointer-events: none;
 	}
 	.enter.is-lit .enter-ink { transform: scale(1); }
-	/* hover: it rises with a light shake (and the white grows inside); the press gets the full wiggle */
-	.enter:hover { transform: translateY(-3px); animation: enter-shake 0.55s cubic-bezier(0.37, 0, 0.63, 1); }
+	/* hover: it rises with a small wobble (and the white grows inside); the press gets the full wiggle */
+	.enter:hover .enter-pill { transform: translateY(-3px); animation: enter-shake 0.55s cubic-bezier(0.37, 0, 0.63, 1); }
 	/* a small natural wobble — a hair of tilt with a little drift, settling out; kept on its own
 	   layer so the 1px outline turns as one picture instead of breaking up */
 	@keyframes enter-shake {
@@ -94,7 +105,8 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		45%  { rotate: 0.7deg;  translate: 1px 0; }
 		70%  { rotate: -0.35deg; translate: -0.5px 0; }
 		100% { rotate: 0deg;    translate: 0 0; }
-	}	.enter:active { transform: translateY(-1px); animation: enter-wiggle 0.5s cubic-bezier(0.37, 0, 0.63, 1); }
+	}
+	.enter:active .enter-pill { transform: translateY(-1px); animation: enter-wiggle 0.5s cubic-bezier(0.37, 0, 0.63, 1); }
 	@keyframes enter-wiggle {
 		0%   { rotate: 0deg; }
 		25%  { rotate: -3deg; }
@@ -111,7 +123,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		<span class="score" id="score">0</span>
 	</div>
 	<p class="hint" id="hint"></p>
-	<a class="enter" href="home/">enter<span class="enter-ink" aria-hidden="true"></span></a>
+	<a class="enter" href="home/"><span class="enter-pill">enter<span class="enter-ink" aria-hidden="true"></span></span></a>
 </main>
 <script>
 (function () {
@@ -241,10 +253,11 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 
     // the white on the enter pill spreads from where the pointer crossed into it
     const enter = document.querySelector('.enter');
+    const pill = enter.querySelector('.enter-pill');
     const blot = enter.querySelector('.enter-ink');
     const light = (event) => {
         if (enter.classList.contains('is-lit')) return;
-        const box = enter.getBoundingClientRect();
+        const box = pill.getBoundingClientRect();
         blot.style.transition = 'none';                       // jump there while still a dot
         const x = event.clientX - box.left;
         const y = event.clientY - box.top;
