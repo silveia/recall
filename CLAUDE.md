@@ -1707,12 +1707,14 @@ and restart. A held key is one jump (`event.repeat` ignored), and a
 crash can't be restarted for 350ms, so a jump pressed as it hits
 doesn't restart it on the spot.
 
+A big `start` in Bitcount Prop Double sits over the run; pressing it (or jumping) begins, it fades away while the run goes — keeping its place so nothing moves — and comes back on a crash, over `died`.
+
 `morie.top` is a tiny dino run and an `enter` pill that goes to
 `home/`. **The enter pill sits at the exact middle of the screen**, the
 run above it. It is black with white words; on hover **a white circle
-grows out of the exact point the pointer came in** (`.enter-ink`, a
-`mix-blend-mode: difference` layer after the word, so the word flips
-with it and no frame is ever grey), sized to just reach the far corner
+grows out of the exact point the pointer came in** (`.enter-ink`, a white copy of the pill over the black one, uncovered by a
+growing `clip-path` circle — a blended circle clipped by the rounded box left a
+hairline of black along the edge as the pill moved), sized to just reach the far corner
 from that point so the spread is seen the whole way (~0.5s). **The link never moves; the pill inside it does** (`.enter` is a still hit area 6px bigger than `.enter-pill` all round), so hovering at the edge doesn't flicker on and off as the pill slips out from under the pointer. On hover it
 rises 3px with a small natural wobble (under a degree of tilt plus a pixel of drift, settling out); the pill is kept on its own layer (`will-change`, `backface-visibility`) because a tilted 1px outline otherwise broke up as it turned; the full wiggle plays on the press. Both are played from the script (`pill.animate`), not CSS: as CSS animations, letting go of a press restarted the hover one, and leaving mid-wobble snapped the tilt back. The circle is placed
 first and grown after, by script: done with CSS `:hover` it started

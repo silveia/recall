@@ -10,7 +10,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400&amp;family=VT323&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400&amp;family=Bitcount+Prop+Double:wght@400&amp;family=VT323&amp;display=swap">
 <style>
 	:root {
 		--paper: #fff;
@@ -42,6 +42,22 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		animation: door-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 	}
 	@keyframes door-in { from { transform: translate(-50%, calc(-100% + 1.2rem + 14px)); } }
+	/* the big word over the run; press it (or jump) to begin. It keeps its place while the run goes,
+	   only fading, so nothing under it moves */
+	.start {
+		margin: 0 0 4px;
+		padding: 0;
+		color: var(--ink);
+		background: none;
+		border: 0;
+		font-family: 'Bitcount Prop Double', 'Courier New', monospace;
+		font-size: 4.2rem;
+		line-height: 1;
+		cursor: var(--cur-tap);
+		transition: opacity 0.3s ease, translate 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.start:focus { outline: none; }
+	.start.is-gone { opacity: 0; translate: 0 -6px; pointer-events: none; }
 	.run { position: relative; }
 	canvas { display: block; cursor: var(--cur-tap); touch-action: manipulation; }
 	.score { position: absolute; top: 0; right: 0; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
@@ -68,33 +84,34 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		place-items: center;
 		height: 2.4rem;
 		padding: 0.18em 1.8rem 0;
-		overflow: hidden;
 		color: var(--paper);
 		background: var(--ink);
 		border: 1px solid var(--ink);
 		border-radius: 999px;
 		font-size: 0.95rem;
-		isolation: isolate;
 		will-change: transform, rotate, translate;
 		backface-visibility: hidden;
 		transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 	}
-	/* the white is a circle placed exactly where the pointer came in, then grown from that point;
-	   placed first and grown after, so it can never start from anywhere else */
+	/* the white is a second, white copy of the pill lying exactly over the black one, uncovered by a
+	   circle that grows from where the pointer came in. Cut out with clip-path rather than a blended
+	   circle in a clipped box: that left a hairline of black along the rounded edge as it moved */
 	.enter-ink {
 		position: absolute;
-		left: 0;
-		top: 0;
-		width: 0;
-		height: 0;
-		background: #fff;
-		border-radius: 50%;
-		mix-blend-mode: difference;
-		transform: scale(0);
-		transition: transform 0.55s cubic-bezier(0.33, 0.9, 0.4, 1);
+		inset: -1px;
+		display: grid;
+		place-items: center;
+		padding: 0.18em 1.8rem 0;
+		color: var(--ink);
+		background: var(--paper);
+		border: 1px solid var(--ink);
+		border-radius: 999px;
+		box-sizing: border-box;
+		clip-path: circle(0px at var(--at-x, 50%) var(--at-y, 50%));
+		transition: clip-path 0.55s cubic-bezier(0.33, 0.9, 0.4, 1);
 		pointer-events: none;
 	}
-	.enter.is-lit .enter-ink { transform: scale(1); }
+	.enter.is-lit .enter-ink { clip-path: circle(var(--reach, 120px) at var(--at-x, 50%) var(--at-y, 50%)); }
 	/* hover only rises; the wobble and the press wiggle are played by the script, so each runs to
 	   its end — as css animations a release restarted the hover one, and leaving cut the tilt off */
 	.enter:hover .enter-pill { transform: translateY(-3px); }
@@ -103,12 +120,13 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 </head>
 <body>
 <main class="door">
+	<button class="start" id="start" type="button">start</button>
 	<div class="run">
 		<canvas id="run" aria-label="dino run"></canvas>
 		<span class="score" id="score">0</span>
 	</div>
 	<p class="hint" id="hint"></p>
-	<a class="enter" href="home/"><span class="enter-pill">enter<span class="enter-ink" aria-hidden="true"></span></span></a>
+	<a class="enter" href="home/"><span class="enter-pill">enter<span class="enter-ink" aria-hidden="true">enter</span></span></a>
 </main>
 <script>
 (function () {
@@ -116,6 +134,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
     const pen = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
     const hintEl = document.getElementById('hint');
+    const startEl = document.getElementById('start');
     const W = 480, H = 120, GROUND = 100, P = 3;   // css size, ground line, one art pixel
     const dpr = Math.max(1, Math.round(window.devicePixelRatio || 1));
     canvas.width = W * dpr; canvas.height = H * dpr;
@@ -170,7 +189,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
             if (performance.now() - overAt < 350) return;   // no instant restart off the crash
             reset();                                          // and one press both resets and runs
         }
-        if (state === 'ready') { state = 'run'; hintEl.textContent = ''; last = performance.now(); requestAnimationFrame(tick); }
+        if (state === 'ready') { state = 'run'; hintEl.textContent = ''; startEl.classList.add('is-gone'); last = performance.now(); requestAnimationFrame(tick); }
         if (dino.y === 0) dino.v = 9.5;
     }
 
@@ -214,6 +233,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         if (got > best) { best = got; try { localStorage.setItem('front-dino', String(best)); } catch (error) {} }
         scoreEl.textContent = `hi ${best} · ${got}`;
         hintEl.textContent = 'died';
+        startEl.classList.remove('is-gone');
     }
 
     function draw() {
@@ -235,6 +255,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         jump();
     });
     canvas.addEventListener('pointerdown', (event) => { event.preventDefault(); jump(); });
+    startEl.addEventListener('pointerdown', (event) => { event.preventDefault(); jump(); });
 
     // the white on the enter pill spreads from where the pointer crossed into it
     const enter = document.querySelector('.enter');
@@ -248,9 +269,9 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         const y = event.clientY - box.top;
         // just big enough to reach the far corner from here, so the spread is seen the whole way
         const reach = Math.ceil(Math.hypot(Math.max(x, box.width - x), Math.max(y, box.height - y))) + 2;
-        blot.style.left = `${x - reach}px`;
-        blot.style.top = `${y - reach}px`;
-        blot.style.width = blot.style.height = `${reach * 2}px`;
+        blot.style.setProperty('--at-x', `${x}px`);
+        blot.style.setProperty('--at-y', `${y}px`);
+        blot.style.setProperty('--reach', `${reach}px`);
         void blot.offsetWidth;
         blot.style.transition = '';
         enter.classList.add('is-lit');
