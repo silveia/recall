@@ -1611,8 +1611,8 @@ floating in the middle read as unfinished. Two outlined panes:
   but your picture while no one is open (no `home`), and the message box
   says nothing until someone is picked. With no thread open it shows a
   greeting (`hi, <nickname>` or `chat` with log in / sign up when signed
-  out) and three cards — add someone, pick a picture, sealed both ways —
-  from the top-left. An open thread starts like Discord's: a big
+  out), from the top-left (the three cards that sat under it were taken
+  out by request). An open thread starts like Discord's: a big
   picture, the name, and "this is the start of your messages with …".
   The box at the bottom reads `message @name`.
 

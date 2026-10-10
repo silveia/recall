@@ -7356,13 +7356,6 @@ roomMake.addEventListener('submit', async (event) => {
 });
 
 document.getElementById('startSignUp').addEventListener('click', () => openChatDoor(true));
-talkWelcome.querySelectorAll('[data-go]').forEach((card) => {
-    card.addEventListener('click', () => {
-        if (!chatMe) { openChatDoor(false); return; }
-        if (card.dataset.go === 'add') roomNameField.focus();
-        if (card.dataset.go === 'face') { paintAccountSettings(); openSetRow(accountScreen.querySelector('[data-set="face"]')); showScreen(accountScreen); }
-    });
-});
 
 function openWith(who) {
     chatWith = who && chatFriends.includes(who) ? who : null;

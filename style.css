@@ -4295,27 +4295,6 @@ html.booting .booting-mark { display: flex; }
 .welcome-go .basic-button { height: var(--field); padding: calc(var(--drop) * 2) 1.6rem 0; }
 .welcome-quiet { color: var(--ink); background: var(--paper); border-color: var(--line); }
 .welcome-quiet:hover { color: var(--paper); background: var(--ink); }
-.welcome-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--group); margin-top: var(--tight); }
-.welcome-card {
-	display: flex;
-	flex-direction: column;
-	gap: 0.35rem;
-	min-height: 6.5rem;
-	padding: var(--group);
-	color: var(--ink);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	font: inherit;
-	text-align: left;
-	cursor: var(--cur-tap);
-	transition: transform var(--quick) var(--ease);
-}
-.welcome-card:hover { transform: translateY(-3px); }
-.welcome-card.is-still { cursor: default; }
-.welcome-card.is-still:hover { transform: none; }
-.welcome-card b { font-family: var(--head-font); font-size: 0.85rem; font-weight: 400; }
-.welcome-card small { font-size: 0.8rem; line-height: 1.45; }
 
 /* the top of an open thread, as discord starts one */
 .talk-start { display: flex; flex-direction: column; gap: 0.45rem; padding: var(--group) 0.5rem var(--group); }
