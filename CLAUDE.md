@@ -1371,7 +1371,7 @@ plus what the pane puts round them), the ai card maker as short as its
 head row, the decks 200px, the card side its 19rem, the clips 300px, the
 deck stage 140px. With `snap`, pulling a side past its least **shuts it**
 once you are more than halfway past, and holds it at the least short of
-that; pulling it back opens it straight to the least. The other side
+that; pulling it back opens it straight to the least. A snap **travels** (`travel()`, 200ms, eased out) rather than arriving — both sides are opened for the trip and the far one may shrink past its own floor, then the shut classes go on at the end. The other side
 shut gets `.split-shut` (display none) and the pane takes the row; the
 grip shrinks to nothing at either end. The chat's list has `least: 250`
 and no snap — it never shuts at all.

@@ -457,6 +457,53 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
         return room && least ? Math.min(ceiling(), px(least) / room * 100) : 0;
     };
 
+    // draws the split at a width, without deciding anything about it
+    const paint = (width) => {
+        body.style.setProperty(variable, `${width}%`);
+        const room = across(body.getBoundingClientRect());
+        if (room) {
+            const full = gripWidth();
+            const open = room * width / 100;
+            const grip = Math.max(0, Math.min(full, open, room - open));
+            split.style.setProperty('--grip', `${grip}px`);
+            if (pane) pane.style.setProperty('--skin', String(Math.min(1, open / skinAt)));
+            split.classList.toggle('is-tight', grip < 10);
+        }
+    };
+    const settle = (width) => {
+        if (pane) pane.classList.toggle('is-shut', width <= 0);
+        other.classList.toggle('split-shut', width >= 100);
+        other.style.minWidth = other.style.minHeight = '';
+    };
+
+    // a snap travels — quick, eased — rather than arriving: shut or open, it slides there
+    let glide = null;
+    let aim = null;
+    const travel = (to) => {
+        if (glide && glide.to === to) return;
+        if (glide) cancelAnimationFrame(glide.frame);
+        const from = parseFloat(body.style.getPropertyValue(variable));
+        const start = Number.isFinite(from) ? from : to;
+        // open both sides for the trip, and let the far one shrink past its own floor
+        if (pane) pane.classList.remove('is-shut');
+        other.classList.remove('split-shut');
+        other.style[down ? 'minHeight' : 'minWidth'] = '0';
+        const began = performance.now();
+        glide = { to, frame: 0 };
+        const step = (time) => {
+            const k = Math.min(1, (time - began) / 200);
+            const eased = 1 - Math.pow(1 - k, 3);
+            paint(start + (to - start) * eased);
+            if (k < 1) {
+                glide.frame = requestAnimationFrame(step);
+            } else {
+                glide = null;
+                settle(to);
+            }
+        };
+        glide.frame = requestAnimationFrame(step);
+    };
+
     const set = (percent) => {
         const low = floorAt();
         const high = ceiling();
@@ -469,19 +516,17 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
             width = Math.max(low, Math.min(high, width));
         }
         width = Math.max(0, Math.min(100, width));
-        body.style.setProperty(variable, `${width}%`);
-        if (pane) pane.classList.toggle('is-shut', width <= 0);
-        other.classList.toggle('split-shut', width >= 100);
-
-        const room = across(body.getBoundingClientRect());
-        if (room) {
-            const full = gripWidth();
-            const open = room * width / 100;
-            const grip = Math.max(0, Math.min(full, open, room - open));
-            split.style.setProperty('--grip', `${grip}px`);
-            if (pane) pane.style.setProperty('--skin', String(Math.min(1, open / skinAt)));
-            split.classList.toggle('is-tight', grip < 10);
+        aim = width;
+        const shown = parseFloat(body.style.getPropertyValue(variable));
+        const jump = snap && Number.isFinite(shown) && Math.abs(width - shown) > 3
+            && (width === 0 || width === 100 || width === low || width === high || shown === 0 || shown === 100);
+        if (jump || (glide && glide.to === width)) {
+            travel(width);
+            return width;
         }
+        if (glide) { cancelAnimationFrame(glide.frame); glide = null; }
+        paint(width);
+        settle(width);
         return width;
     };
 
@@ -527,7 +572,7 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
             window.removeEventListener('pointercancel', drop);
             split.classList.remove('is-dragging');
             document.documentElement.classList.remove('splitting', 'splitting-down');
-            remember(now());
+            remember(aim === null ? now() : aim);
         };
         window.addEventListener('pointermove', drag);
         window.addEventListener('pointerup', drop);
