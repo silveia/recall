@@ -475,13 +475,12 @@
                                     </div>
 
                                     <div class="talk-log" id="talkLog">
+                                        <!-- no thread open: a face, one line, your tally, and the way back to the last chat -->
                                         <div class="talk-welcome" id="talkWelcome">
-                                            <h3 class="welcome-head" id="welcomeHead">chat</h3>
-                                            <p class="welcome-say" id="welcomeSay">sign in here !! &gt;&gt;</p>
-                                            <div class="welcome-go" id="welcomeGo">
-                                                <button class="basic-button is-solid" id="startGo" type="button">log in</button>
-                                                <button class="basic-button welcome-quiet" id="startSignUp" type="button">sign up</button>
-                                            </div>
+                                            <p class="welcome-face" aria-hidden="true">(^_^)/</p>
+                                            <p class="welcome-say">pick a friend on the left to start yapping</p>
+                                            <p class="welcome-tally" id="welcomeTally"></p>
+                                            <button class="basic-button welcome-quiet" id="welcomeBack" type="button" hidden></button>
                                         </div>
                                         <div class="talk-start" id="talkStart" hidden>
                                             <span class="talk-start-face face-pic" id="talkStartFace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>

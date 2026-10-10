@@ -6899,7 +6899,6 @@ const chatWord = document.getElementById('chatWord');
 const chatGo = document.getElementById('chatGo');
 const chatSwap = document.getElementById('chatSwap');
 const chatDoorTitle = document.getElementById('chatDoorTitle');
-const startGo = document.getElementById('startGo');
 const chatNote = document.getElementById('chatNote');
 const chatBody = document.getElementById('chatBody');
 
@@ -7300,6 +7299,32 @@ function placeDoor(onPage) {
     if (doorBody.parentElement !== home) home.append(doorBody);
 }
 
+// the empty talk side: how many friends and lines you have, and the last person you talked to
+function paintWelcome() {
+    const lines = chatFriends.reduce((sum, key) => sum + (chatDms[key] || []).length, 0);
+    const tally = document.getElementById('welcomeTally');
+    tally.innerHTML = '';
+    [[chatFriends.length, chatFriends.length === 1 ? 'friend' : 'friends'], [lines, lines === 1 ? 'message' : 'messages']]
+        .forEach(([count, word], at) => {
+            if (at) tally.append(' · ');
+            const figure = document.createElement('span');
+            figure.className = 'welcome-num';
+            figure.textContent = String(count);
+            tally.append(figure, ` ${word}`);
+        });
+    let latest = null;
+    chatFriends.forEach((key) => {
+        const last = (chatDms[key] || []).slice(-1)[0];
+        if (last && (!latest || last.at > latest.at)) latest = { key, at: last.at };
+    });
+    const back = document.getElementById('welcomeBack');
+    back.hidden = !latest;
+    if (latest) {
+        back.dataset.who = latest.key;
+        back.textContent = `back to ${displayName(latest.key)}`;
+    }
+}
+
 /* signed out: a log-in screen. signed in: the app, with a welcome until a thread is open */
 function paintChatShape() {
     const ready = Boolean(chatMe);
@@ -7307,11 +7332,8 @@ function paintChatShape() {
     chatBody.hidden = !ready;
     if (!ready && chatScreen.hidden) { placeDoor(true); paintChatDoor(); }
     talkWelcome.hidden = Boolean(chatWith);
-    document.getElementById('welcomeGo').hidden = ready;
-    document.getElementById('welcomeHead').textContent = ready ? `hi, ${displayName(chatMe.name)}` : 'chat';
-    document.getElementById('welcomeSay').textContent = ready
-        ? 'add yur homie ^.^ WARNING SECURITY IS ASS!!'
-        : 'sign in here !! >>';
+    document.getElementById('talkForm').hidden = !chatWith;   // no thread, no box to type in
+    paintWelcome();
     roomMake.classList.toggle('is-off', !ready);
     roomNameField.disabled = !ready;
     if (!chatWith) {
@@ -7355,7 +7377,11 @@ roomMake.addEventListener('submit', async (event) => {
     if (await addSomeone(roomNameField.value, saySomethingChat)) roomNameField.value = '';
 });
 
-document.getElementById('startSignUp').addEventListener('click', () => openChatDoor(true));
+// back to whoever you talked to last
+document.getElementById('welcomeBack').addEventListener('click', (event) => {
+    const who = event.currentTarget.dataset.who;
+    if (who) openWith(who);
+});
 
 function openWith(who) {
     chatWith = who && chatFriends.includes(who) ? who : null;
@@ -7934,7 +7960,6 @@ function openChatDoor(signingUp) {
     showScreen(chatScreen);
 }
 
-startGo.addEventListener('click', () => openChatDoor(false));
 chatSwap.addEventListener('click', () => {
     chatDoorNew = !chatDoorNew;
     saySomethingChat('');

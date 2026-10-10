@@ -4286,13 +4286,22 @@ html.booting .booting-mark { display: flex; }
 }
 
 /* home, before a thread is open: a greeting and three things to do, from the top-left */
-.talk-welcome { display: flex; flex-direction: column; gap: var(--group); padding: var(--group) 0.1rem 0; }
+.talk-welcome {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--tight);
+	text-align: center;
+}
 .talk-welcome[hidden] { display: none; }
-.welcome-head { margin: 0; font-family: var(--head-font); font-size: 1.6rem; font-weight: 400; }
-.welcome-say { margin: -0.4rem 0 0; font-size: 0.9rem; }
-.welcome-go { display: flex; gap: var(--tight); }
-.welcome-go[hidden] { display: none; }
-.welcome-go .basic-button { height: var(--field); padding: calc(var(--drop) * 2) 1.6rem 0; }
+#talkForm[hidden] { display: none; }
+.welcome-face { margin: 0 0 var(--tight); font-size: 2.6rem; line-height: 1; }
+.welcome-say { margin: 0; font-size: 0.95rem; }
+.welcome-tally { margin: 0; font-size: 0.85rem; }
+.welcome-num { font-family: var(--num-font); font-size: 1.15rem; }
+.talk-welcome .basic-button { height: var(--field); margin-top: var(--tight); padding: calc(var(--drop) * 2) 1.6rem 0; }
 .welcome-quiet { color: var(--ink); background: var(--paper); border-color: var(--line); }
 .welcome-quiet:hover { color: var(--paper); background: var(--ink); }
 

@@ -1609,12 +1609,14 @@ floating in the middle read as unfinished. Two outlined panes:
 - **The talk (right)**: a header with the open person's picture, name
   and handle and the `sealed` chip — no rule under it, and nothing in it
   but your picture while no one is open (no `home`), and the message box
-  says nothing until someone is picked. With no thread open it shows a
-  greeting (`hi, <nickname>` or `chat` with log in / sign up when signed
-  out), from the top-left (the three cards that sat under it were taken
-  out by request). An open thread starts like Discord's: a big
+  says nothing until someone is picked. With no thread open it shows, in the middle of the pane, a
+  `(^_^)/`, `pick a friend on the left to start yapping`, a tally
+  (`3 friends · 42 messages`, figures in VT323) and a `back to <name>`
+  button for the last person you talked to (`paintWelcome()`). The
+  greeting, log-in buttons and cards that were here before are gone.
+  An open thread starts like Discord's: a big
   picture, the name, and "this is the start of your messages with …".
-  The box at the bottom reads `message @name`.
+  The box at the bottom reads `message @name`, and is not there at all while no thread is open.
 
 **Your account is a round picture in the top-right corner** of the
 chat (the end of the thread header) — kept there on purpose, since that
