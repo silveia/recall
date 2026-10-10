@@ -3871,7 +3871,7 @@ function startRecording() {
     });
 
     recordToggle.classList.add('recording');
-    recordToggle.textContent = 'stop';
+    recordToggle.setAttribute('aria-label', 'stop');
     senseToggle.hidden = false;
 
     liveLabel.textContent = '';
@@ -3961,7 +3961,7 @@ function stopCapture() {
     senseReadout.hidden = true;
     senseReadout.textContent = 'change 0.0';
     recordToggle.classList.remove('recording');
-    recordToggle.textContent = 'record';
+    recordToggle.setAttribute('aria-label', 'record');
     senseToggle.hidden = true;
     setRecordStatus('', false);
     refreshEmptyMessage();

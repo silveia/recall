@@ -349,18 +349,18 @@
 
                         <section class="recorder-panel" id="audioPanel" hidden>
                             <div class="audio-bar">
-                                <button class="basic-button" id="recordToggle" type="button">record</button>
-
-                                <div class="bar-meter">
-                                    <p class="record-status" id="recordStatus" aria-live="polite"></p>
-                                    <div class="meter-idle">nofing T_T</div>
-                                    <div class="live-meter">
+                                <!-- the whole long box is the record button; while recording it is the meter, and a press stops -->
+                                <button class="bar-meter" id="recordToggle" type="button" aria-label="record">
+                                    <span class="record-status" id="recordStatus" aria-live="polite"></span>
+                                    <span class="meter-idle">record</span>
+                                    <span class="live-meter">
                                         <span class="clip-pulse"></span>
                                         <canvas id="levelCanvas" width="600" height="10"></canvas>
                                         <span class="clip-label" id="liveLabel"></span>
                                         <span class="switch-count" id="switchCount">0 switches</span>
-                                    </div>
-                                </div>
+                                        <span class="live-stop">stop</span>
+                                    </span>
+                                </button>
 
                                 <button class="square-button" id="senseToggle" type="button" aria-expanded="false" aria-label="sensing settings" title="sensing settings">
                                     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

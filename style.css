@@ -2246,13 +2246,19 @@ html:not(.inverted) .rail-left {
 }
 .audio-stage::-webkit-scrollbar { display: none; }
 .audio-stage.is-open { display: flex; }
-#recordToggle.recording {
-	color: var(--ink);
-	background: var(--paper);
-	border-color: var(--line);
-}
 
-.bar-meter { position: relative; flex: 1; min-width: 0; }
+.bar-meter {
+	position: relative;
+	display: block;
+	flex: 1;
+	min-width: 0;
+	padding: 0;
+	color: inherit;
+	background: none;
+	border: 0;
+	font: inherit;
+	cursor: var(--cur-tap);
+}
 
 .meter-idle,
 .live-meter {
@@ -2266,7 +2272,17 @@ html:not(.inverted) .rail-left {
 	border-radius: var(--radius);
 	font-size: 0.85rem;
 }
-.meter-idle { justify-content: center; background: var(--paper); }
+/* idle, the long box is the record button: black, the word in the middle */
+.meter-idle {
+	justify-content: center;
+	padding-top: calc(var(--drop) * 2);
+	color: var(--paper);
+	background: var(--ink);
+	border-color: var(--ink);
+	font-size: 1rem;
+}
+.bar-meter:hover .meter-idle { color: var(--ink); background: var(--paper); border-color: var(--line); }
+.live-stop { flex: none; font-size: 0.78rem; }
 .live-meter { color: var(--paper); background: var(--ink); }
 .live-meter #levelCanvas { flex: 1; min-width: 0; height: 10px; }
 .live-meter .clip-label { flex: none; font-size: 0.78rem; }

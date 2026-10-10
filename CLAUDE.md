@@ -143,7 +143,7 @@ Switched by the tabs in the top strip.
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
 with four multiple-choice answers mapped to keyboard quadrants.
 
-**audio** — a Chrome tab recorder that splits clips by speaker. This is the
+**audio** — a Chrome tab recorder that splits clips by speaker. There is no separate record button: the long box across the top is it — black with `record` in the middle; while recording it is the live meter, and a press on it stops. This is the
 part under active work.
 
 **chat** — sealed messages between people who add each other.
