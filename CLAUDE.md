@@ -1578,8 +1578,9 @@ would paint the label back.
 **One round button in the chat's top-right corner** is the whole of
 the account bar. Signed out it opens the log-in window directly (on
 **log in**, not sign up). Signed in it opens a Google-style panel: a
-large round picture at the top (press it to change it), your nickname
-large under it with `@username` small, `account settings`, then a white
+large round picture at the top with a pencil on it — **pressing it
+opens account settings** (there is no separate settings button) — your
+nickname large under it with `@username` small, then a white
 `switch account` and `log out` at the foot. **Log out asks inside its
 own button**: it divides — both halves start stacked as the one black
 pill and slide apart into `confirm` and `cancel`, cancel snapping to

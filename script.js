@@ -7488,7 +7488,6 @@ function ditherFace(file) {
 }
 
 const accFaceFile = document.getElementById('accFaceFile');
-document.getElementById('accFace').addEventListener('click', () => accFaceFile.click());
 document.getElementById('setFacePick').addEventListener('click', () => accFaceFile.click());
 accFaceFile.addEventListener('change', async () => {
     const file = accFaceFile.files && accFaceFile.files[0];
@@ -7509,7 +7508,8 @@ document.getElementById('accFaceClear').addEventListener('click', () => {
     paintTalk();
     paintAccountSettings();
 });
-document.getElementById('accSettings').addEventListener('click', () => {
+// the picture is the way into account settings, the pencil on it says it can be edited
+document.getElementById('accFace').addEventListener('click', () => {
     closeAccount();
     paintAccountSettings();
     openSetRow(null);

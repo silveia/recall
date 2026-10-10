@@ -3976,10 +3976,8 @@ html.booting .booting-mark { display: flex; }
 .account-handle { max-width: 100%; margin: 0.15rem 0 1rem; overflow: hidden; font-size: 0.8rem; white-space: nowrap; text-overflow: ellipsis; }
 .face-pic svg, .said-face svg { width: 62%; height: 62%; }
 .account-face .face-pic svg { width: 58%; }
-.account-settings { height: var(--field); padding: calc(var(--drop) * 2) 1.4rem 0; color: var(--ink); background: var(--paper); border-color: var(--line); }
-.account-settings:hover { color: var(--paper); background: var(--ink); }
 .account-switch, .account-leave, .leave-split .basic-button { width: 100%; height: var(--field); padding: calc(var(--drop) * 2) 0 0; }
-.account-switch { margin-top: 1.4rem; color: var(--ink); background: var(--paper); border-color: var(--line); }
+.account-switch { margin-top: 0.4rem; color: var(--ink); background: var(--paper); border-color: var(--line); }
 .account-switch:hover { color: var(--paper); background: var(--ink); }
 .account-leave-wrap { width: 100%; margin-top: var(--tight); }
 .leave-split { display: flex; gap: var(--tight); }
