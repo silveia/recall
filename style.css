@@ -3197,6 +3197,69 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	text-align: left;
 }
 
+/* the search over every page, across the top of home */
+.page-search { position: relative; flex: none; z-index: 20; }
+.page-search input {
+	width: 100%;
+	height: var(--field);
+	padding: 0 1rem 0 2.6rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font: inherit;
+	outline: none;
+	-webkit-appearance: none;
+	appearance: none;
+}
+.page-search input::-webkit-search-cancel-button { display: none; }
+.page-search input::placeholder { color: var(--muted); }
+.page-search-mark { position: absolute; left: 0.95rem; top: 50%; width: 1.05rem; height: 1.05rem; transform: translateY(-50%); pointer-events: none; }
+.page-found {
+	position: absolute;
+	top: calc(100% + var(--tight));
+	left: 0;
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+	max-height: 22rem;
+	margin: 0;
+	padding: var(--tight);
+	overflow-y: auto;
+	list-style: none;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	animation: confirm-in 0.18s var(--ease);
+}
+.page-found[hidden] { display: none; }
+.page-hit {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: baseline;
+	gap: var(--group);
+	width: 100%;
+	padding: 0.6rem 0.9rem;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	font: inherit;
+	text-align: left;
+	cursor: var(--cur-tap);
+	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
+}
+.page-hit:hover, .page-hit.is-first { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.page-hit b { font-family: var(--head-font); font-size: 0.95rem; font-weight: 400; }
+.page-hit span { overflow: hidden; font-size: 0.82rem; white-space: nowrap; text-overflow: ellipsis; }
+.page-hit small { font-family: var(--num-font); font-size: 1rem; }
+.page-hit mark { color: var(--paper); background: var(--ink); border-radius: 3px; padding: 0 2px; }
+.page-hit:hover mark, .page-hit.is-first mark { color: var(--ink); background: var(--paper); }
+.page-none { padding: 0.5rem 0.9rem; font-size: 0.85rem; }
+/* where a found word sits, outlined for a moment after the jump */
+.found-here { outline: 2px dashed var(--ink); outline-offset: 3px; border-radius: 4px; }
+
 /* the fixed tile and the board beside it, one row */
 .board-row { display: flex; align-items: flex-start; gap: var(--group); min-width: 0; }
 .home-key {

@@ -767,6 +767,15 @@ page scrolls sideways.
 
 ## The home board
 
+**A search bar runs across the top of home** (`#pageSearch`, a pill with
+a magnifier). It searches every page: a page answers to its name and to
+any words on it — its text, placeholders, titles, button labels and its
+`function` note (`pageWords()`, walked live from `PAGE_ROOTS`, so a new
+page only needs adding there). One result per page, most matches first:
+the name, the first place the word appears with it marked, and a count.
+Pressing one (or Enter for the first) switches to that page and outlines
+where the word is for a moment if it is on show.
+
 **Five tiles across, and the first is fixed** (by request). The leftmost
 tile (`#homeKey`) is always the time and can't be moved or removed; a
 press opens its menu (`#keyMenu`, under it on its left edge): `arrange
@@ -1752,7 +1761,7 @@ and restart. A held key is one jump (`event.repeat` ignored), and a
 crash can't be restarted for 350ms, so a jump pressed as it hits
 doesn't restart it on the spot.
 
-`start to start` (an inside joke — keep the wording) in Bitcount Prop Double, 2.1rem, lies over the run at its top, centred, with the score 36px above it; pressing it (or jumping) begins, and it is gone until the page is refreshed — not back after a crash. **The score never moves or goes away**: top centre, always `hi 0123 · 0045`, four digits each. 9999 is the top: reaching it ends the run with `u have passd` where `died` goes. That line sits exactly halfway between the ground line and the pill. **Nothing on this page animates except the enter pill and `start to start`** — no fades or slide-ins on the run or the page's arrival. `start to start` floats up and down like 8-bit art: whole-pixel steps (0, 2, 4, 2px) it jumps between with `steps(1)`, never a glide. The enter pill reads `^_^` (labelled `enter` for screen readers).
+`start to start` (an inside joke — keep the wording) in Bitcount Prop Double, 2.1rem, lies over the run at its top, centred, with the score 36px above it; pressing it (or jumping) begins, and it is gone until the page is refreshed — not back after a crash. **The score never moves or goes away**: top centre, always `hi 0123 · 0045`, four digits each. 9999 is the top: reaching it ends the run with `u have passd` where `died` goes. That line sits exactly halfway between the ground line and the pill. **Nothing on this page animates except the enter pill and `start to start`** — no fades or slide-ins on the run or the page's arrival. `start to start` floats up and down like 8-bit art: two whole-pixel positions (0 and 3px up) it jumps between every 1.2s with `steps(1)`, never a glide — casual, not busy. The enter pill reads `^_^` (labelled `enter` for screen readers).
 
 `morie.top` is a tiny dino run and an `enter` pill that goes to
 `home/`. **The enter pill sits at the exact middle of the screen**, the

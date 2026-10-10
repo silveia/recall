@@ -5294,6 +5294,116 @@ widgetAdd.addEventListener('click', (event) => {
 });
 widgetPicks.addEventListener('click', (event) => event.stopPropagation());
 
+// one search over every page. A page answers to its own name, and to any words on it — what is
+// written there, what its fields say before you type, what its buttons are called.
+const PAGE_ROOTS = {
+    home: () => [document.getElementById('homePanel')],
+    cards: () => [document.getElementById('homeBody'), document.getElementById('makerScreen'), document.getElementById('studyScreen')],
+    audio: () => [document.getElementById('audioPanel')],
+    chat: () => [document.getElementById('chatPanel')]
+};
+function pageWords(id) {
+    const found = [];
+    const note = document.querySelector(`.help-note[data-section="${id}"]`);
+    if (note) found.push({ text: note.textContent.trim(), at: null });
+    PAGE_ROOTS[id]().filter(Boolean).forEach((root) => {
+        const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+            acceptNode(node) {
+                if (node.nodeType === 1) {
+                    const tag = node.tagName.toLowerCase();
+                    if (['script', 'style', 'svg', 'iframe', 'canvas'].includes(tag) || node.closest('.page-search')) return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_SKIP;
+                }
+                return node.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+            }
+        });
+        while (walk.nextNode()) found.push({ text: walk.currentNode.textContent.trim(), at: walk.currentNode.parentElement });
+        root.querySelectorAll('[placeholder], [title], button[aria-label]').forEach((el) => {
+            if (el.closest('.page-search')) return;
+            ['placeholder', 'title', 'aria-label'].forEach((name) => {
+                const said = el.getAttribute(name);
+                if (said && said.trim()) found.push({ text: said.trim(), at: el });
+            });
+        });
+    });
+    return found;
+}
+function snippet(text, query) {
+    const at = text.toLowerCase().indexOf(query);
+    const from = Math.max(0, at - 24);
+    const piece = text.slice(from, at + query.length + 40);
+    const lead = from > 0 ? '…' : '';
+    const holder = document.createElement('span');
+    const start = at - from;
+    holder.append(lead + piece.slice(0, start));
+    const mark = document.createElement('mark');
+    mark.textContent = piece.slice(start, start + query.length);
+    holder.append(mark, piece.slice(start + query.length));
+    return holder;
+}
+const pageSearchField = document.getElementById('pageSearchField');
+const pageFound = document.getElementById('pageFound');
+let pageHits = [];
+function goToHit(hit) {
+    pageFound.hidden = true;
+    pageSearchField.value = '';
+    pageSearchField.blur();
+    switchSection(hit.id);
+    if (!hit.at) return;
+    window.setTimeout(() => {
+        if (!hit.at.isConnected || !hit.at.getClientRects().length) return;   // there, but not on show
+        hit.at.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        hit.at.classList.add('found-here');
+        window.setTimeout(() => hit.at.classList.remove('found-here'), 1400);
+    }, 380);
+}
+function searchPages() {
+    const query = pageSearchField.value.trim().toLowerCase();
+    pageFound.innerHTML = '';
+    pageHits = [];
+    if (!query) { pageFound.hidden = true; return; }
+    sections.forEach((section) => {
+        const words = pageWords(section.id).filter((one) => one.text.toLowerCase().includes(query));
+        const named = section.name.includes(query);
+        if (!named && !words.length) return;
+        pageHits.push({ id: section.id, name: section.name, words, named, at: words[0] ? words[0].at : null });
+    });
+    pageHits.sort((a, b) => (b.named - a.named) || (b.words.length - a.words.length));
+    pageHits.forEach((hit, index) => {
+        const row = document.createElement('li');
+        const press = document.createElement('button');
+        press.type = 'button';
+        press.className = 'page-hit';
+        if (index === 0) press.classList.add('is-first');
+        const name = document.createElement('b');
+        name.textContent = hit.name;
+        const where = hit.words.length ? snippet(hit.words[0].text, query) : document.createElement('span');
+        if (!hit.words.length) where.textContent = 'the page itself';
+        const count = document.createElement('small');
+        count.textContent = hit.words.length ? String(hit.words.length) : '';
+        press.append(name, where, count);
+        press.addEventListener('click', () => goToHit(hit));
+        row.append(press);
+        pageFound.append(row);
+    });
+    if (!pageHits.length) {
+        const none = document.createElement('li');
+        none.className = 'page-none';
+        none.textContent = 'nothing on any page says that';
+        pageFound.append(none);
+    }
+    pageFound.hidden = false;
+}
+pageSearchField.addEventListener('input', searchPages);
+pageSearchField.addEventListener('focus', () => { if (pageSearchField.value.trim()) searchPages(); });
+pageSearchField.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && pageHits[0]) { event.preventDefault(); goToHit(pageHits[0]); }
+    if (event.key === 'Escape') { pageSearchField.value = ''; pageFound.hidden = true; pageSearchField.blur(); }
+});
+document.addEventListener('pointerdown', (event) => {
+    if (!event.target.closest || !event.target.closest('.page-search')) pageFound.hidden = true;
+});
+
 // under a tile, lined up on its left edge — the board starts against the bar, so nothing may hang left
 function placeBelowLeft(panel, anchor) {
     const spot = anchor.getBoundingClientRect();

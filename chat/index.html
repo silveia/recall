@@ -223,6 +223,13 @@
                 <main class="app-content">
                     <section class="screen" id="homeScreen" data-title="home" aria-label="home">
                         <section class="home-panel" id="homePanel" hidden>
+                            <!-- one search over every page: a page's name, or any word on it -->
+                            <div class="page-search" id="pageSearch">
+                                <svg class="page-search-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
+                                <input id="pageSearchField" type="search" placeholder="search the pages" aria-label="search the pages" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                <ol class="page-found" id="pageFound" hidden></ol>
+                            </div>
+
                             <!-- the leftmost tile is fixed: the time, and the board's settings behind a press -->
                             <div class="board-row">
                                 <button class="home-key" id="homeKey" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="keyMenu" title="board settings">
