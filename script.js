@@ -5395,6 +5395,11 @@ function searchPages() {
     pageFound.hidden = false;
 }
 pageSearchField.addEventListener('input', searchPages);
+document.getElementById('pageSearchGo').addEventListener('click', () => {
+    if (!pageSearchField.value.trim()) { pageSearchField.focus(); return; }
+    searchPages();
+    if (pageHits[0]) goToHit(pageHits[0]);
+});
 pageSearchField.addEventListener('focus', () => { if (pageSearchField.value.trim()) searchPages(); });
 pageSearchField.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && pageHits[0]) { event.preventDefault(); goToHit(pageHits[0]); }

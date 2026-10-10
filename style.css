@@ -3202,7 +3202,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .page-search input {
 	width: 100%;
 	height: var(--field);
-	padding: 0 1rem 0 2.6rem;
+	padding: 0 3rem 0 2.6rem;
 	color: var(--ink);
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -3214,6 +3214,26 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 .page-search input::-webkit-search-cancel-button { display: none; }
 .page-search input::placeholder { color: var(--muted); }
+/* the round black go at the far right, inside the bar, the way the chat's send sits in its field */
+.page-search-go {
+	position: absolute;
+	right: 5px;
+	top: 50%;
+	display: grid;
+	place-items: center;
+	width: calc(var(--field) - 10px);
+	height: calc(var(--field) - 10px);
+	padding: 0;
+	color: var(--paper);
+	background: var(--ink);
+	border: 1px solid var(--ink);
+	border-radius: 50%;
+	cursor: var(--cur-tap);
+	transform: translateY(-50%);
+	transition: transform var(--quick) var(--ease);
+}
+.page-search-go:hover { transform: translateY(-50%) scale(1.08); }
+.page-search-go svg { width: 55%; height: 55%; }
 .page-search-mark { position: absolute; left: 0.95rem; top: 50%; width: 1.05rem; height: 1.05rem; transform: translateY(-50%); pointer-events: none; }
 .page-found {
 	position: absolute;

@@ -773,7 +773,7 @@ any words on it — its text, placeholders, titles, button labels and its
 `function` note (`pageWords()`, walked live from `PAGE_ROOTS`, so a new
 page only needs adding there). One result per page, most matches first:
 the name, the first place the word appears with it marked, and a count.
-Pressing one (or Enter for the first) switches to that page and outlines
+A round black go button with a white arrow sits at the bar's far right. Pressing a result (or Enter, or the go button, for the first) switches to that page and outlines
 where the word is for a moment if it is on show.
 
 **Five tiles across, and the first is fixed** (by request). The leftmost
