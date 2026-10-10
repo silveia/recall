@@ -7316,7 +7316,7 @@ function paintChatShape() {
     roomNameField.disabled = !ready;
     if (!chatWith) {
         talkSay.disabled = true;
-        talkSay.placeholder = ready ? 'pick someone to talk to' : 'log in to send messages';
+        talkSay.placeholder = ready ? '' : 'log in to send messages';
     }
     if (chatSplitter) chatSplitter.reclamp();
 }
@@ -7378,7 +7378,7 @@ function openWith(who) {
     const handle = document.getElementById('talkHandle');
     document.getElementById('talkFace').hidden = !chatWith;   // only the person you're talking to has a face up here
     if (!chatWith) {
-        talkName.textContent = 'home';
+        talkName.textContent = '';
         handle.textContent = '';
         talkSealed.hidden = true;
         talkSay.disabled = true;

@@ -1607,7 +1607,9 @@ floating in the middle read as unfinished. Two outlined panes:
   nobody yet it shows one line in the middle of the empty list, `you have
   no friends...` (the user's wording), and nothing else.
 - **The talk (right)**: a header with the open person's picture, name
-  and handle and the `sealed` chip. With no thread open it shows a
+  and handle and the `sealed` chip — no rule under it, and nothing in it
+  but your picture while no one is open (no `home`), and the message box
+  says nothing until someone is picked. With no thread open it shows a
   greeting (`hi, <nickname>` or `chat` with log in / sign up when signed
   out) and three cards — add someone, pick a picture, sealed both ways —
   from the top-left. An open thread starts like Discord's: a big

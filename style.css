@@ -4256,7 +4256,6 @@ html.booting .booting-mark { display: flex; }
 	align-items: center;
 	gap: 0.65rem;
 	padding: 0 0 var(--group);
-	border-bottom: 1px solid var(--line);
 }
 .talk-face {
 	flex: none;
