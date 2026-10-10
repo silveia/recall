@@ -414,8 +414,12 @@ let editingStageField = 'question';   // which line of it took the caret
 
 /* --- a draggable divider between two panes --- */
 
+// least / leastOther: the smallest each side may be, in pixels (a number or a function), so its
+// heading is still whole. With snap, pulling a side past its least shuts it instead — halfway
+// past and it goes, short of that it holds at the least — so a pane is either readable or gone.
 function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOther,
-                     down, skinAt = 68, max = 75, fallback = 50, least = 0, onDrag }) {
+                     down, skinAt = 68, max = 75, fallback = 50, least = 0, leastOther = 0,
+                     snap = false, onDrag }) {
     if (!split || !body || !other) return null;
 
     const across = (box) => (down ? box.height : box.width);
@@ -436,31 +440,44 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
         return fullGrip;
     };
 
+    const px = (value) => (typeof value === 'function' ? value() : value) || 0;
+
     const ceiling = () => {
         const box = body.getBoundingClientRect();
         if (!across(box)) return max;
+        if (leastOther) return Math.max(0, (across(box) - between() - px(leastOther)) / across(box) * 100);
         const floor = keepOther
             ? across(box) * keepOther / 100
             : parseFloat(window.getComputedStyle(other)[down ? 'minHeight' : 'minWidth']) || 0;
         return Math.max(0, Math.min(max, (across(box) - between() - floor) / across(box) * 100));
     };
 
-    // a pane that must never shut gives the smallest it may be, in pixels
     const floorAt = () => {
         const room = across(body.getBoundingClientRect());
-        return room && least ? Math.min(ceiling(), least / room * 100) : 0;
+        return room && least ? Math.min(ceiling(), px(least) / room * 100) : 0;
     };
 
     const set = (percent) => {
-        const width = Math.max(floorAt(), Math.min(ceiling(), percent));
+        const low = floorAt();
+        const high = ceiling();
+        let width = percent;
+        if (snap) {
+            if (width < low) width = width < low / 2 ? 0 : low;
+            if (leastOther && width > high) width = width > (high + 100) / 2 ? 100 : high;
+            else width = Math.min(width, high);
+        } else {
+            width = Math.max(low, Math.min(high, width));
+        }
+        width = Math.max(0, Math.min(100, width));
         body.style.setProperty(variable, `${width}%`);
         if (pane) pane.classList.toggle('is-shut', width <= 0);
+        other.classList.toggle('split-shut', width >= 100);
 
         const room = across(body.getBoundingClientRect());
         if (room) {
             const full = gripWidth();
             const open = room * width / 100;
-            const grip = Math.min(full, open);
+            const grip = Math.max(0, Math.min(full, open, room - open));
             split.style.setProperty('--grip', `${grip}px`);
             if (pane) pane.style.setProperty('--skin', String(Math.min(1, open / skinAt)));
             split.classList.toggle('is-tight', grip < 10);
@@ -538,6 +555,30 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
     };
 }
 
+// how wide a pane must be for its heading to show whole: the words' own width, plus whatever the
+// pane puts around them (measured while it is open, and kept for when it isn't)
+const headingChrome = new WeakMap();
+function headingRoom(pane, title) {
+    if (!pane || !title) return 0;
+    const words = document.createRange();
+    words.selectNodeContents(title);
+    const zoom = window.pageZoom ? window.pageZoom() : 1;
+    const wide = words.getBoundingClientRect().width / zoom;
+    const head = title.parentElement;   // the heading's row spans the pane's inside
+    if (!pane.classList.contains('is-shut') && head.clientWidth > wide) {
+        headingChrome.set(pane, pane.offsetWidth - head.clientWidth);
+    }
+    return Math.ceil(wide + (headingChrome.get(pane) || 48) + 4);
+}
+// how tall a pane must be to show its head row whole
+function headRoomDown(pane, head) {
+    if (!pane || !head) return 0;
+    if (!pane.classList.contains('is-shut') && pane.offsetHeight > head.offsetHeight) {
+        headingChrome.set(pane, head.getBoundingClientRect().bottom - pane.getBoundingClientRect().top + 12);
+    }
+    return Math.ceil(headingChrome.get(pane) || 64);
+}
+
 const deckSplit = wireSplit({
     split: paneSplit,
     body: homeBody,
@@ -545,6 +586,9 @@ const deckSplit = wireSplit({
     pane: document.querySelector('.deck-side'),
     variable: '--deck-col',
     key: 'deck-column',
+    least: 200,
+    leastOther: 304,   /* the card side's own 19rem floor */
+    snap: true,
     fallback: 50,
     onDrag: () => { if (!sharePanel.hidden) placeSharePanel(); }
 });
@@ -558,6 +602,9 @@ const notesSplit = wireSplit({
     key: 'notes-row',
     down: true,
     fromRight: true,
+    least: () => headRoomDown(document.getElementById('notesHome'), document.querySelector('#notesHome .notes-head')),
+    leastOther: 140,
+    snap: true,
     // it wears a --tight all round rather than the clip box's --group
     skinAt: 36,
     max: 70,
@@ -4027,8 +4074,10 @@ const clipSplitter = wireSplit({
     variable: '--clip-col',
     key: 'clip-column',
     fromRight: true,
-    // the clips keep half the row whatever you do to the box
-    keepOther: 50,
+    // each side holds where its words are still whole, and snaps shut past that
+    least: () => headingRoom(document.getElementById('clipSide'), document.querySelector('#clipSide .panel-head h2')),
+    leastOther: 300,
+    snap: true,
     // it wears a --tight all round, like every other box
     skinAt: 36,
     fallback: 50

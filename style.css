@@ -774,6 +774,15 @@ html:not(.inverted) .rail-left {
 	gap: var(--group);
 	min-height: 0;
 }
+/* a small capitals label right over the new-deck field */
+.deck-label {
+	margin: 0 0 calc(var(--tight) - var(--group));
+	padding-left: 0.2rem;
+	font-size: 0.68rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	line-height: 1;
+}
 .deck-side {
 	flex: 0 1 var(--deck-col, 50%);
 	min-width: 0;
@@ -2225,6 +2234,8 @@ html:not(.inverted) .rail-left {
 }
 
 .clip-side.is-shut, .notes-home.is-shut { padding: 0; border-width: 0; }
+/* the other side of a split, snapped shut: gone, and the pane takes the row */
+.split-shut { display: none !important; }
 
 .audio-stage {
 	position: fixed;
@@ -2281,6 +2292,7 @@ html:not(.inverted) .rail-left {
 	border-color: var(--ink);
 	font-size: 1rem;
 }
+.meter-idle { transition: background-color 0.3s var(--ease), color 0.3s var(--ease), border-color 0.3s var(--ease); }
 .bar-meter:hover .meter-idle { color: var(--ink); background: var(--paper); border-color: var(--line); }
 .live-stop { flex: none; font-size: 0.78rem; }
 .live-meter { color: var(--paper); background: var(--ink); }

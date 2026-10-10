@@ -139,7 +139,7 @@ never chunked — a document is read whole.
 
 Switched by the tabs in the top strip.
 
-**cards** — the original flashcard app. Decks with drag-reorder, right-click
+**cards** — the original flashcard app. A small capitals `DECKS` label sits right over the `new deck` field. Decks with drag-reorder, right-click
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
 with four multiple-choice answers mapped to keyboard quadrants.
 
@@ -1360,6 +1360,21 @@ Works on both axes and both directions, whatever the geometry.
 draws the white line along the scalloped edge; at the same `z-index` as
 the carve above it, the carve painted last and buried it — present in
 the stylesheet, absent from the screen. It sits at `z-index: 4` now.
+
+## A pane is readable or it is shut
+
+By request, this replaces "every pane narrows to nothing" below. Each
+split's two sides have a least size (`least`, `leastOther` on
+`wireSplit`, in pixels or a function): the playlist box is as narrow as
+its `playlist` heading still whole (`headingRoom()` measures the words
+plus what the pane puts round them), the ai card maker as short as its
+head row, the decks 200px, the card side its 19rem, the clips 300px, the
+deck stage 140px. With `snap`, pulling a side past its least **shuts it**
+once you are more than halfway past, and holds it at the least short of
+that; pulling it back opens it straight to the least. The other side
+shut gets `.split-shut` (display none) and the pane takes the row; the
+grip shrinks to nothing at either end. The chat's list has `least: 250`
+and no snap — it never shuts at all.
 
 ## Every pane narrows to nothing
 
