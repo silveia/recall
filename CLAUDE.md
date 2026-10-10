@@ -1714,7 +1714,7 @@ grows out of the exact point the pointer came in** (`.enter-ink`, a
 `mix-blend-mode: difference` layer after the word, so the word flips
 with it and no frame is ever grey), sized to just reach the far corner
 from that point so the spread is seen the whole way (~0.5s). On hover it
-rises 3px with a light shake (±1.2°); the full wiggle plays on the press. The circle is placed
+rises 3px with a light sideways shake (±2px — a tilt broke the 1px outline up as it turned); the full wiggle plays on the press. The circle is placed
 first and grown after, by script: done with CSS `:hover` it started
 growing before the pointer's position was known, which is why it
 seemed to come from the middle. It listens for the first move as well

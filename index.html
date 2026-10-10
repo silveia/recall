@@ -84,11 +84,13 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	.enter.is-lit .enter-ink { transform: scale(1); }
 	/* hover: it rises with a light shake (and the white grows inside); the press gets the full wiggle */
 	.enter:hover { transform: translateY(-3px); animation: enter-shake 0.45s cubic-bezier(0.37, 0, 0.63, 1); }
+	/* a sideways shake, not a tilt: a tilted 1px outline breaks up into pieces as it turns */
 	@keyframes enter-shake {
-		0%   { rotate: 0deg; }
-		30%  { rotate: -1.2deg; }
-		60%  { rotate: 1.2deg; }
-		100% { rotate: 0deg; }
+		0%   { translate: 0 0; }
+		25%  { translate: -2px 0; }
+		55%  { translate: 2px 0; }
+		80%  { translate: -1px 0; }
+		100% { translate: 0 0; }
 	}
 	.enter:active { transform: translateY(-1px); animation: enter-wiggle 0.5s cubic-bezier(0.37, 0, 0.63, 1); }
 	@keyframes enter-wiggle {
