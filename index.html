@@ -44,7 +44,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	   page moves on its own but the enter pill: they are simply there, or not */
 	.start {
 		position: absolute;
-		top: 28px;
+		top: 0;
 		left: 50%;
 		z-index: 1;
 		margin: 0;
@@ -65,7 +65,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	canvas { display: block; cursor: var(--cur-tap); touch-action: manipulation; }
 	.score { position: absolute; top: 0; right: 0; white-space: nowrap; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
 	/* before a run and after one the score sits top centre, over the words; while running, top right */
-	.score.is-middle { right: auto; left: 50%; transform: translateX(-50%); }
+	.score.is-middle { top: -36px; right: auto; left: 50%; transform: translateX(-50%); }
 	/* keeps its height empty, so nothing jumps; its middle is exactly halfway between the ground
 	   line and the pill — the ground is 19px above the canvas foot, so the bottom margin is the
 	   top one plus those 19px */

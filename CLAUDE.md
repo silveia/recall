@@ -1707,7 +1707,7 @@ and restart. A held key is one jump (`event.repeat` ignored), and a
 crash can't be restarted for 350ms, so a jump pressed as it hits
 doesn't restart it on the spot.
 
-`start to start` (an inside joke — keep the wording) in Bitcount Prop Double, 2.1rem, lies over the run, centred, under the score; pressing it (or jumping) begins, it is hidden while the run goes and comes back on a crash. The score sits **top centre** before and after a run (`hi 0123`, then `hi 0123 · 0045`) and **top right** while running, always four digits. 9999 is the top: reaching it ends the run with `u have passd` where `died` goes. That line sits exactly halfway between the ground line and the pill. **Nothing on this page animates except the enter pill** — by request, no fades or slide-ins on the run, the words or the page's arrival. The enter pill reads `^_^` (labelled `enter` for screen readers).
+`start to start` (an inside joke — keep the wording) in Bitcount Prop Double, 2.1rem, lies over the run at its top, centred, with the score 36px above it; pressing it (or jumping) begins, it is hidden while the run goes and comes back on a crash. The score sits **top centre** before and after a run (`hi 0123`, then `hi 0123 · 0045`) and **top right** while running, always four digits. 9999 is the top: reaching it ends the run with `u have passd` where `died` goes. That line sits exactly halfway between the ground line and the pill. **Nothing on this page animates except the enter pill** — by request, no fades or slide-ins on the run, the words or the page's arrival. The enter pill reads `^_^` (labelled `enter` for screen readers).
 
 `morie.top` is a tiny dino run and an `enter` pill that goes to
 `home/`. **The enter pill sits at the exact middle of the screen**, the
