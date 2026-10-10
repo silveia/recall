@@ -1768,7 +1768,7 @@ seemed to come from the middle. It listens for the first move as well
 as the enter event. Don't name anything in that script `ink` — the game
 already uses it for its colour, and the clash stopped the whole page. One press after a crash both resets and runs
 (it used to take two, which felt like a glitch). Space, up or a tap jumps; the best
-score is kept under `front-dino`. It is all inline in `index.html` and
+score is kept under `front-dino` — written the moment it is beaten, so a refresh mid-run keeps it, and shared live (`storage` event) between the front door and the run framed under the home board. It belongs to the browser, not to a chat account. It is all inline in `index.html` and
 does not load `style.css`, so the two cursor tokens are **copied** in
 and must be copied again if they are redrawn. One bit: the art is
 drawn in whole pixels on a canvas sized to the screen's pixel ratio, so

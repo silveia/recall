@@ -206,7 +206,20 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 
     const MAX = 9999;
     const four = (n) => String(Math.min(MAX, Math.floor(n))).padStart(4, '0');
-    const showScore = (got) => { scoreEl.textContent = `hi ${four(best)} · ${four(got)}`; };
+    let shown = 0;
+    const showScore = (got) => { shown = got; scoreEl.textContent = `hi ${four(best)} · ${four(got)}`; };
+    // the best is kept the moment it is beaten, not only at the crash, so a refresh mid-run keeps it
+    const keepBest = (got) => {
+        if (got <= best) return;
+        best = got;
+        try { localStorage.setItem('front-dino', String(best)); } catch (error) {}
+    };
+    // the front door and the run under the home board share one best: whichever beats it, both show it
+    window.addEventListener('storage', (event) => {
+        if (event.key !== 'front-dino') return;
+        best = Math.max(best, Number(event.newValue) || 0);
+        showScore(shown);
+    });
 
     let overAt = 0;
     function jump() {
@@ -243,6 +256,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         score = Math.min(MAX, score + 0.1 * s);
         speed = 4 + Math.min(score / 100, 5);
         legs += s;
+        keepBest(Math.floor(score));
         showScore(score);
 
         // a little inside each box, so a near miss is a miss
@@ -261,7 +275,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         state = 'over';
         overAt = performance.now();
         const got = Math.floor(score);
-        if (got > best) { best = got; try { localStorage.setItem('front-dino', String(best)); } catch (error) {} }
+        keepBest(got);
         showScore(got);
         hintEl.textContent = passed ? 'u have passd' : 'died';
     }
