@@ -45,7 +45,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 	}
 	html.embedded .enter, html.embedded .seek { display: none; }
 	/* the search, a smaller copy of the one on home */
-	.seek { position: relative; width: 20rem; margin: 0 0 22px; }   /* halfway between the ground and the pill */
+	.seek { position: relative; width: 24rem; margin: 0 0 22px; }   /* halfway between the ground and the pill */
 	.seek input {
 		width: 100%;
 		height: 42px;                /* the site's --field, the height of every box you type in */
@@ -73,13 +73,15 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 		width: 32px;
 		height: 32px;
 		padding: 0;
-		color: var(--paper);
-		background: var(--ink);
-		border: 0;
+		color: var(--ink);
+		background: var(--paper);
+		border: 1px solid var(--ink);
 		border-radius: 50%;
 		cursor: var(--cur-tap);
 		transform: translateY(-50%);
+		transition: background-color 0.18s ease, color 0.18s ease;
 	}
+	.seek-go:hover { color: var(--paper); background: var(--ink); }
 	.seek-go svg { width: 55%; height: 55%; }
 	html.embedded .door { transform: translate(-50%, -50%) scale(var(--fit, 1)); transform-origin: 50% 50%; }
 	html.embedded, html.embedded body { min-height: 0; overflow: hidden; }
