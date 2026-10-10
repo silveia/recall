@@ -95,25 +95,10 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		pointer-events: none;
 	}
 	.enter.is-lit .enter-ink { transform: scale(1); }
-	/* hover: it rises with a small wobble (and the white grows inside); the press gets the full wiggle */
-	.enter:hover .enter-pill { transform: translateY(-3px); animation: enter-shake 0.55s cubic-bezier(0.37, 0, 0.63, 1); }
-	/* a small natural wobble — a hair of tilt with a little drift, settling out; kept on its own
-	   layer so the 1px outline turns as one picture instead of breaking up */
-	@keyframes enter-shake {
-		0%   { rotate: 0deg;    translate: 0 0; }
-		20%  { rotate: -0.9deg; translate: -1px 0; }
-		45%  { rotate: 0.7deg;  translate: 1px 0; }
-		70%  { rotate: -0.35deg; translate: -0.5px 0; }
-		100% { rotate: 0deg;    translate: 0 0; }
-	}
-	.enter:active .enter-pill { transform: translateY(-1px); animation: enter-wiggle 0.5s cubic-bezier(0.37, 0, 0.63, 1); }
-	@keyframes enter-wiggle {
-		0%   { rotate: 0deg; }
-		25%  { rotate: -3deg; }
-		50%  { rotate: 3deg; }
-		75%  { rotate: -1.5deg; }
-		100% { rotate: 0deg; }
-	}
+	/* hover only rises; the wobble and the press wiggle are played by the script, so each runs to
+	   its end — as css animations a release restarted the hover one, and leaving cut the tilt off */
+	.enter:hover .enter-pill { transform: translateY(-3px); }
+	.enter:active .enter-pill { transform: translateY(-1px); }
 </style>
 </head>
 <body>
@@ -271,6 +256,26 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         enter.classList.add('is-lit');
     };
     const dim = () => enter.classList.remove('is-lit');
+
+    // a small natural wobble on the way in, the full wiggle on a press; a new one replaces the last
+    // the pill is kept on its own layer so the 1px outline turns whole
+    let moving = null;
+    const play = (frames, duration) => {
+        if (moving) moving.cancel();
+        moving = pill.animate(frames, { duration, easing: 'cubic-bezier(0.37, 0, 0.63, 1)' });
+    };
+    const wobble = () => play([
+        { rotate: '0deg', translate: '0 0' },
+        { rotate: '-0.9deg', translate: '-1px 0', offset: 0.2 },
+        { rotate: '0.7deg', translate: '1px 0', offset: 0.45 },
+        { rotate: '-0.35deg', translate: '-0.5px 0', offset: 0.7 },
+        { rotate: '0deg', translate: '0 0' }
+    ], 550);
+    const wiggle = () => play([
+        { rotate: '0deg' }, { rotate: '-3deg' }, { rotate: '3deg' }, { rotate: '-1.5deg' }, { rotate: '0deg' }
+    ], 500);
+    enter.addEventListener('pointerenter', (event) => { if (event.pointerType !== 'touch') wobble(); });
+    enter.addEventListener('pointerdown', wiggle);
     // whichever arrives first — some browsers skip the enter event, but never the first move
     ['pointerenter', 'mouseenter', 'pointermove', 'mousemove'].forEach((name) => enter.addEventListener(name, light));
     ['pointerleave', 'mouseleave'].forEach((name) => enter.addEventListener(name, dim));
