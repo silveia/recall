@@ -1713,8 +1713,8 @@ run above it. It is black with white words; on hover **a white circle
 grows out of the exact point the pointer came in** (`.enter-ink`, a
 `mix-blend-mode: difference` layer after the word, so the word flips
 with it and no frame is ever grey), sized to just reach the far corner
-from that point so the spread is seen the whole way (~0.5s), and it
-lifts and wiggles like the create/practice tiles. The circle is placed
+from that point so the spread is seen the whole way (~0.5s). On hover it
+only rises 3px; the wiggle plays on the press, not the hover. The circle is placed
 first and grown after, by script: done with CSS `:hover` it started
 growing before the pointer's position was known, which is why it
 seemed to come from the middle. It listens for the first move as well
