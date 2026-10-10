@@ -94,6 +94,14 @@ const levelContext = levelCanvas.getContext('2d');
 
 /* ---------- 2. state ---------- */
 
+// words handed over by the front door's search, read before anything tidies the address bar
+const ARRIVED_WITH = (() => {
+    try {
+        const asked = new URLSearchParams(window.location.search);
+        return { spot: (asked.get('spot') || '').trim().toLowerCase(), find: (asked.get('find') || '').trim() };
+    } catch (error) { return { spot: '', find: '' }; }
+})();
+
 const sections = [
     { id: 'home', name: 'home' },
     { id: 'cards', name: 'cards' },
@@ -5346,6 +5354,7 @@ const pageFound = document.getElementById('pageFound');
 let pageHits = [];
 function goToHit(hit) {
     pageFound.hidden = true;
+    document.getElementById('pageSearch').classList.remove('is-open');
     pageSearchField.value = '';
     pageSearchField.blur();
     switchSection(hit.id);
@@ -5361,7 +5370,7 @@ function searchPages() {
     const query = pageSearchField.value.trim().toLowerCase();
     pageFound.innerHTML = '';
     pageHits = [];
-    if (!query) { pageFound.hidden = true; return; }
+    if (!query) { pageFound.hidden = true; pageFound.closest('.page-search').classList.remove('is-open'); return; }
     sections.forEach((section) => {
         const words = pageWords(section.id).filter((one) => one.text.toLowerCase().includes(query));
         const named = section.name.includes(query);
@@ -5381,6 +5390,7 @@ function searchPages() {
         if (!hit.words.length) where.textContent = 'the page itself';
         const count = document.createElement('small');
         count.textContent = hit.words.length ? String(hit.words.length) : '';
+        press.insertAdjacentHTML('afterbegin', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4"/></svg>');
         press.append(name, where, count);
         press.addEventListener('click', () => goToHit(hit));
         row.append(press);
@@ -5393,6 +5403,7 @@ function searchPages() {
         pageFound.append(none);
     }
     pageFound.hidden = false;
+    pageFound.closest('.page-search').classList.add('is-open');
 }
 pageSearchField.addEventListener('input', searchPages);
 // the run on home is a frame, and a frame only hears keys once it has been clicked — so space and up
@@ -5411,11 +5422,40 @@ document.addEventListener('keydown', (event) => {
         run.contentWindow.dispatchEvent(new KeyboardEvent('keydown', { code: event.code, key: event.key, repeat: event.repeat, bubbles: true }));
     } catch (error) { /* not loaded yet */ }
 });
+// a result picked on the front door arrives as ?spot=…: this page is already the one it named, so
+// the word on it is outlined for a moment, the same as a result picked here
+(() => {
+    const spot = ARRIVED_WITH.spot;
+    if (!spot) return;
+    try { window.history.replaceState(window.history.state, '', window.location.pathname); } catch (error) { /* stays in the bar */ }
+    // once the page has drawn: the first place the word is on show (the function note doesn't count)
+    // the lists are drawn again from storage as the page comes in, which throws away whatever was
+    // outlined — so it is looked for afresh every beat for the moment it shows
+    const began = performance.now();
+    let shownAt = 0;                    // it shows for 1.8s from when it is first on screen
+    let held = null;
+    const beat = window.setInterval(() => {
+        const first = pageWords(activeSectionId)
+            .find((one) => one.at && one.at.getClientRects().length && one.text.toLowerCase().includes(spot));
+        if (first && !shownAt) shownAt = performance.now();
+        const over = (shownAt && performance.now() - shownAt > 1800) || performance.now() - began > 8000;
+        if (held && held !== (first && first.at)) held.classList.remove('found-here');
+        if (over || !first) {
+            if (held) held.classList.remove('found-here');
+            if (over) window.clearInterval(beat);
+            return;
+        }
+        if (held !== first.at) {
+            if (!held) first.at.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            held = first.at;
+            held.classList.add('found-here');
+        }
+    }, 150);
+})();
 // words searched for on the front door arrive as ?find=…: shown here, on home, as if typed
 (() => {
-    let asked = '';
-    try { asked = new URLSearchParams(window.location.search).get('find') || ''; } catch (error) { return; }
-    if (!asked.trim()) return;
+    const asked = ARRIVED_WITH.find;
+    if (!asked) return;
     try { window.history.replaceState(window.history.state, '', window.location.pathname); } catch (error) { /* stays in the bar */ }
     if (activeSectionId !== 'home') switchSection('home');
     pageSearchField.value = asked.trim();
@@ -5429,10 +5469,10 @@ document.getElementById('pageSearchGo').addEventListener('click', () => {
 pageSearchField.addEventListener('focus', () => { if (pageSearchField.value.trim()) searchPages(); });
 pageSearchField.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && pageHits[0]) { event.preventDefault(); goToHit(pageHits[0]); }
-    if (event.key === 'Escape') { pageSearchField.value = ''; pageFound.hidden = true; pageSearchField.blur(); }
+    if (event.key === 'Escape') { pageSearchField.value = ''; pageFound.hidden = true; document.getElementById('pageSearch').classList.remove('is-open'); pageSearchField.blur(); }
 });
 document.addEventListener('pointerdown', (event) => {
-    if (!event.target.closest || !event.target.closest('.page-search')) pageFound.hidden = true;
+    if (!event.target.closest || !event.target.closest('.page-search')) { pageFound.hidden = true; document.getElementById('pageSearch').classList.remove('is-open'); }
 });
 
 // under a tile, lined up on its left edge — the board starts against the bar, so nothing may hang left

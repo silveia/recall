@@ -83,6 +83,46 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 	}
 	.seek-go:hover { transform: translate(2px, -50%); }
 	.seek-go svg { width: 70%; height: 70%; }
+	/* results the way chrome lists them: the bar opens downward into one box, the rows are plain,
+	   and a row only shows its edge under the pointer */
+	.seek.is-open input { border-radius: 21px 21px 0 0; border-bottom-color: transparent; }
+	.seek-found {
+		position: absolute;
+		top: 41px;
+		left: 0;
+		right: 0;
+		z-index: 5;
+		margin: 0;
+		padding: 0 6px 8px;
+		list-style: none;
+		background: var(--paper);
+		border: 1px solid var(--ink);
+		border-top: 0;
+		border-radius: 0 0 21px 21px;
+		text-align: left;
+	}
+	.seek-found[hidden] { display: none; }
+	.seek-found::before { content: ''; display: block; height: 1px; margin: 0 10px 6px; background: var(--ink); }
+	.seek-hit {
+		display: grid;
+		grid-template-columns: 1.1rem minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 0.7rem;
+		padding: 0.45rem 0.7rem;
+		color: var(--ink);
+		border: 1px solid transparent;
+		border-radius: 14px;
+		text-decoration: none;
+		cursor: var(--cur-tap);
+	}
+	.seek-hit:hover, .seek-hit.is-on { border-color: var(--ink); }
+	.seek-hit svg { width: 0.95rem; height: 0.95rem; }
+	.seek-hit-words { display: flex; flex-direction: column; min-width: 0; }
+	.seek-hit-words b { font-weight: 400; font-size: 0.9rem; }
+	.seek-hit-words span { overflow: hidden; font-size: 0.78rem; white-space: nowrap; text-overflow: ellipsis; }
+	.seek-hit small { font-family: 'VT323', monospace; font-size: 1rem; }
+	.seek-hit mark { color: var(--paper); background: var(--ink); border-radius: 3px; padding: 0 2px; }
+	.seek-none { padding: 0.5rem 0.8rem; font-size: 0.82rem; }
 	/* framed, what shows — the score down to the ground line, 36px over the run to 100px into it — is
 	   centred in the frame: its middle is 32px below the run's top, so that point goes to the middle */
 	html.embedded .door { transform: translate(-50%, calc(-32px * var(--fit, 1))) scale(var(--fit, 1)); transform-origin: 50% 0; }
@@ -187,10 +227,11 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 		<span class="score" id="score">hi 0000 · 0000</span>
 	</div>
 	<p class="hint" id="hint"></p>
-	<!-- the home page's search, smaller: it hands the words to home, which shows where they are -->
-	<form class="seek" id="seek" action="home/" method="get" role="search">
+	<!-- the site's search, here: it reads the pages itself and lists them as you type -->
+	<form class="seek" id="seek" action="home/" method="get" role="search" autocomplete="off">
 		<svg class="seek-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
 		<input name="find" type="search" placeholder="search page..." aria-label="search page" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+		<ol class="seek-found" id="seekFound" hidden></ol>
 		<button class="seek-go" type="submit" aria-label="go"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
 	</form>
 	<a class="enter" href="home/" aria-label="enter"><span class="enter-pill">^_^<span class="enter-ink" aria-hidden="true">o_o</span></span></a>
@@ -356,7 +397,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
     window.addEventListener('keydown', (event) => {
         if (event.code !== 'Space' && event.code !== 'ArrowUp') return;
         if (event.repeat) { event.preventDefault(); return; }    // a held key is one jump, not a restart
-        if (document.activeElement && document.activeElement.classList.contains('enter')) return;
+        if (document.activeElement && (document.activeElement.classList.contains('enter') || document.activeElement.matches('input'))) return;
         event.preventDefault();
         jump();
     });
@@ -418,6 +459,109 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
     };
     window.addEventListener('resize', () => { if (FRAMED) { sizeCanvas(); draw(); } fitDoor(); });
     fitDoor();
+
+    // the search: it reads the site's own pages (app.html) once, then lists matches as you type —
+    // a page by its name, or any word on it — and a result goes straight to that page
+    const seek = document.getElementById('seek');
+    const seekField = seek.querySelector('input');
+    const seekFound = document.getElementById('seekFound');
+    const PAGES = [
+        { id: 'home', roots: ['homePanel'] },
+        { id: 'cards', roots: ['homeBody', 'makerScreen', 'studyScreen'] },
+        { id: 'audio', roots: ['audioPanel'] },
+        { id: 'chat', roots: ['chatPanel'] }
+    ];
+    let pageWords = null;
+    let seekHits = [];
+    let seekOn = 0;
+    const readPages = () => pageWords || (pageWords = fetch('app.html').then((got) => got.text()).then((html) => {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return PAGES.map((page) => {
+            const words = [];
+            const note = doc.querySelector(`.help-note[data-section="${page.id}"]`);
+            if (note) words.push(note.textContent.trim());
+            page.roots.map((id) => doc.getElementById(id)).filter(Boolean).forEach((root) => {
+                root.querySelectorAll('script, style, svg, iframe, canvas, .page-search').forEach((gone) => gone.remove());
+                const walk = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                while (walk.nextNode()) { const said = walk.currentNode.textContent.trim(); if (said) words.push(said); }
+                root.querySelectorAll('[placeholder], [title], button[aria-label]').forEach((el) => {
+                    ['placeholder', 'title', 'aria-label'].forEach((name) => { const said = (el.getAttribute(name) || '').trim(); if (said) words.push(said); });
+                });
+            });
+            return { id: page.id, words };
+        });
+    }).catch(() => { pageWords = null; return []; }));
+    const PAGE_MARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4"/></svg>';
+    const snippet = (text, query) => {
+        const at = text.toLowerCase().indexOf(query);
+        const from = Math.max(0, at - 24);
+        const piece = text.slice(from, at + query.length + 40);
+        const holder = document.createElement('span');
+        holder.append((from > 0 ? '…' : '') + piece.slice(0, at - from));
+        const mark = document.createElement('mark');
+        mark.textContent = piece.slice(at - from, at - from + query.length);
+        holder.append(mark, piece.slice(at - from + query.length));
+        return holder;
+    };
+    const shut = () => { seekFound.hidden = true; seek.classList.remove('is-open'); };
+    const showOn = () => seekFound.querySelectorAll('.seek-hit').forEach((row, at) => row.classList.toggle('is-on', at === seekOn));
+    const findNow = async () => {
+        const query = seekField.value.trim().toLowerCase();
+        if (!query) { shut(); return; }
+        const pages = await readPages();
+        if (seekField.value.trim().toLowerCase() !== query) return;   // typed on since
+        seekHits = pages.map((page) => ({ id: page.id, named: page.id.includes(query), words: page.words.filter((one) => one.toLowerCase().includes(query)) }))
+            .filter((hit) => hit.named || hit.words.length)
+            .sort((a, b) => (b.named - a.named) || (b.words.length - a.words.length));
+        seekOn = -1;                     // nothing outlined until the pointer or the arrows pick one
+        seekFound.innerHTML = '';
+        seekHits.forEach((hit) => {
+            const row = document.createElement('li');
+            const link = document.createElement('a');
+            link.className = 'seek-hit';
+            link.href = `${hit.id}/?spot=${encodeURIComponent(query)}`;
+            link.innerHTML = PAGE_MARK;
+            const words = document.createElement('span');
+            words.className = 'seek-hit-words';
+            const name = document.createElement('b');
+            name.textContent = hit.id;
+            words.append(name, hit.words.length ? snippet(hit.words[0], query) : Object.assign(document.createElement('span'), { textContent: 'the page itself' }));
+            const count = document.createElement('small');
+            count.textContent = hit.words.length ? String(hit.words.length) : '';
+            link.append(words, count);
+            row.append(link);
+            seekFound.append(row);
+        });
+        if (!seekHits.length) {
+            const none = document.createElement('li');
+            none.className = 'seek-none';
+            none.textContent = 'nothing on any page says that';
+            seekFound.append(none);
+        }
+        showOn();
+        seekFound.hidden = false;
+        seek.classList.add('is-open');
+    };
+    seekField.addEventListener('input', findNow);
+    seekField.addEventListener('focus', () => { readPages(); if (seekField.value.trim()) findNow(); });
+    seekField.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') { seekField.value = ''; shut(); seekField.blur(); }
+        if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && seekHits.length) {
+            event.preventDefault();
+            seekOn = seekOn < 0 ? (event.key === 'ArrowDown' ? 0 : seekHits.length - 1)
+                : (seekOn + (event.key === 'ArrowDown' ? 1 : -1) + seekHits.length) % seekHits.length;
+            showOn();
+        }
+        if (event.key === ' ') event.stopPropagation();   // a space typed here is a space, not a jump
+    });
+    seek.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const row = seekFound.querySelectorAll('.seek-hit')[Math.max(0, seekOn)];
+        if (row) window.location.href = row.href;
+        else if (seekField.value.trim()) findNow();
+        else seekField.focus();
+    });
+    document.addEventListener('pointerdown', (event) => { if (!seek.contains(event.target)) shut(); });
 
     colours();
     reset();
