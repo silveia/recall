@@ -1550,6 +1550,8 @@ with, and only the people you added are shown. Right-click drops
 someone; nothing is deleted anywhere, and adding them back brings the
 thread with them.
 
+**Someone who writes to you turns up in your list** whether you added them or not (`openWhatIsWaiting`) — a message from your own other account sat in a thread nothing on screen led to. **You can add yourself**: a thread with yourself is a place for notes, sealed to your own key.
+
 Someone added who has never opened the chat has no key to seal
 anything to, so their row goes **dashed** and the field says why
 rather than failing on the press.

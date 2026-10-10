@@ -7349,6 +7349,7 @@ async function openWhatIsWaiting() {
     chatSealed = [];
     const stillWaiting = [];
     let opened = false;
+    let arrived = false;
 
     const mine = chatMe.name.toLowerCase();
     for (const post of waiting) {
@@ -7366,12 +7367,16 @@ async function openWhatIsWaiting() {
             chatDms[other] = [...held, { id: post.id, by: from, said, at: post.at || 0 }]
                 .sort((one, two) => (one.at || 0) - (two.at || 0))
                 .slice(-TALK_KEEP);
+            // someone who writes to you turns up in your list, added or not — otherwise a message
+            // (one from your own other account, say) sat in a thread nothing on screen led to
+            if (!chatFriends.includes(other)) { chatFriends = [...chatFriends, other]; arrived = true; }
             opened = true;
         } catch (error) {
         }
     }
     chatSealed = stillWaiting;
     if (opened) keepKnown();
+    if (arrived) paintPeople();
     return opened;
 }
 
@@ -7529,7 +7534,7 @@ async function addSomeone(typed, complain) {
     if (!called) return false;
     if (!chatMe) { openChatDoor(); return false; }
     const key = called.toLowerCase();
-    if (whoIs(key) === chatMe.name.toLowerCase()) { complain('that is you'); return false; }
+    // yourself is allowed: a thread with yourself is a place for notes, the way most messengers keep one
     if (chatFriends.includes(key)) { complain('they are already here'); openWith(key); return false; }
 
     if (!chatPeople[key]) {
