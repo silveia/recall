@@ -1775,7 +1775,11 @@ optionsToggle.addEventListener('click', (event) => {
     renderOptionPicker();
     optionsPanel.hidden = false;
     optionsToggle.setAttribute('aria-expanded', 'true');
-    placeUnder(optionsPanel, optionsToggle);
+    // under the answer field, its right edge on the field's, one --tight below — the same step
+    // as between the two fields above it
+    const field = optionsToggle.closest('.maker-field') || optionsToggle;
+    placeUnder(optionsPanel, field);
+    optionsPanel.style.top = `${Math.round(field.getBoundingClientRect().bottom + 8)}px`;
 });
 optionsPanel.addEventListener('click', (event) => event.stopPropagation());
 

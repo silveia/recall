@@ -2851,6 +2851,14 @@ html:not(.inverted) .rail-left {
 	border: 0;
 	box-shadow: none;
 }
+/* the answer picker is a small window of its own, so what is behind it doesn't show through */
+#optionsPanel {
+	width: 15rem;
+	padding: 0.8rem;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
 .pick-list .widget-pick {
 	justify-content: center;
 	width: 100%;

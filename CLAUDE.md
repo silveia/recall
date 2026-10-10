@@ -139,7 +139,7 @@ never chunked — a document is read whole.
 
 Switched by the tabs in the top strip.
 
-**cards** — the original flashcard app. A small capitals `DECKS` label sits right over the `new deck` field. Decks with drag-reorder, right-click
+**cards** — the original flashcard app. In create, the `+` on the answer opens a small white window (`#optionsPanel`, `select other answer options for this question`) under the answer field, its right edge on the field's and one `--tight` below it. A small capitals `DECKS` label sits right over the `new deck` field. Decks with drag-reorder, right-click
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
 with four multiple-choice answers mapped to keyboard quadrants.
 
