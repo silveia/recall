@@ -294,7 +294,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .app-shell {
 	position: relative;
 	display: flex;
-	height: 100vh;
+	height: calc(var(--vh, 1vh) * 100);
 	overflow: hidden;
 	transition: opacity 0.34s var(--ease);
 }
@@ -471,7 +471,7 @@ html:not(.inverted) .rail-left {
 	justify-content: flex-start;
 	gap: var(--group);
 	padding: var(--group);
-	padding-left: calc(var(--wave-out) + 10px);
+	padding-left: calc(var(--wave-out) + var(--group));   /* the boxes sit a full step off the crests */
 	overflow: hidden;     /* the page never scrolls — the boxes do */
 	text-align: left;
 }
@@ -679,7 +679,9 @@ html:not(.inverted) .rail-left {
 /* =========================================================
    8. home — deck bar
    ========================================================= */
-.deck-bar { display: flex; align-items: center; gap: var(--group); }
+/* boxes sit a full step apart; an icon sits only --tight off whatever is beside it, so it reads as
+   part of that box's row rather than a box of its own */
+.deck-bar { display: flex; align-items: center; gap: var(--tight); }
 
 .square-button {
 	display: grid;
@@ -700,7 +702,7 @@ html:not(.inverted) .rail-left {
 	border-color: var(--ink);
 }
 
-.deck-form { display: flex; flex: 1; min-width: 0; gap: var(--group); }
+.deck-form { display: flex; flex: 1; min-width: 0; gap: var(--tight); }
 .deck-form input {
 	flex: 1;
 	min-width: 0;
@@ -729,7 +731,7 @@ html:not(.inverted) .rail-left {
 	flex-direction: column;
 	gap: 0.35rem;
 	width: 28rem;
-	max-width: 78vw;
+	max-width: calc(var(--vw, 1vw) * 78);
 	padding: var(--tight);
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -1463,7 +1465,7 @@ html:not(.inverted) .rail-left {
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
-	font-size: clamp(1.3rem, 4vw, 2.1rem);
+	font-size: clamp(1.3rem, calc(var(--vw, 1vw) * 4), 2.1rem);
 	line-height: 1.3;
 	text-align: center;
 	overflow-wrap: anywhere;
@@ -1652,6 +1654,7 @@ html:not(.inverted) .rail-left {
 }
 .audio-bar .basic-button { height: var(--field); padding: calc(var(--drop) * 2) 1.4rem 0; }
 .audio-bar .record-status { flex: 1; margin: 0 0 0 0.5rem; }
+.audio-bar > #senseToggle { margin-left: calc(var(--tight) - var(--group)); }   /* an icon: tight */
 
 @keyframes confirm-in {
 	from { opacity: 0; transform: translateY(-6px) scale(0.97); }
@@ -1664,7 +1667,7 @@ html:not(.inverted) .rail-left {
 	flex-direction: column;
 	gap: var(--tight);
 	width: 17rem;
-	max-width: 78vw;
+	max-width: calc(var(--vw, 1vw) * 78);
 	padding: 0.8rem;
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -1716,14 +1719,14 @@ html:not(.inverted) .rail-left {
 	grid-template-columns: auto 1fr auto;
 	flex: none;
 	align-items: center;
-	gap: var(--group);
+	gap: var(--tight);
 	min-width: 0;
 	padding: 0 0 var(--group);
 }
 .clip-folder-side {
 	display: flex;
 	align-items: center;
-	gap: var(--group);
+	gap: var(--tight);
 	min-width: 0;
 }
 .clip-folder-side.is-right { justify-content: flex-end; }
@@ -1974,7 +1977,7 @@ html:not(.inverted) .rail-left {
 	position: relative;     /* the dots wait in here */
 	flex: 1;
 	min-width: 0;
-	height: min(74vh, 36rem);
+	height: min(calc(var(--vh, 1vh) * 74), 36rem);
 	min-height: 18rem;
 	background: var(--paper);
 	border-radius: var(--radius);
@@ -2232,8 +2235,8 @@ html:not(.inverted) .rail-left {
 	flex-direction: column;
 	transform: translate(-50%, -50%);
 	gap: var(--tight);
-	width: min(640px, calc(100vw - 2rem));
-	max-height: calc(100vh - 5rem);
+	width: min(640px, calc(calc(var(--vw, 1vw) * 100) - 2rem));
+	max-height: calc(calc(var(--vh, 1vh) * 100) - 5rem);
 	padding: var(--tight);
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -2334,8 +2337,8 @@ html:not(.inverted) .rail-left {
 	line-height: 0;
 }
 .preview-wrap.showing-video {
-	height: min(46vh, 22rem);
-	max-height: 60vh;
+	height: min(calc(var(--vh, 1vh) * 46), 22rem);
+	max-height: calc(var(--vh, 1vh) * 60);
 	padding: 0;
 	line-height: 0;
 	overflow: auto;
@@ -2718,77 +2721,19 @@ html:not(.inverted) .rail-left {
 
 /* =========================================================
    19. small screens
+   There is one layout. A screen narrower than 800px is drawn at 800 and
+   shrunk to fit (see the head of app.html), so nothing below that width
+   ever re-arranges. vh and vw are written as var(--vh) and var(--vw)
+   everywhere, because the shrink scales the real units down with it.
    ========================================================= */
 @media (max-width: 1000px) {
 	:root { --rail: 15rem; }
-}
-
-@media (max-width: 900px) {
-	.home-body { flex-direction: column; gap: var(--group); }
-	.deck-side, .card-side {
-		flex: 1;
-		width: auto;
-		min-width: 0;
-		min-height: 0;
-	}
-	.pane-split { display: none; }
-}
-
-@media (max-width: 760px) {
-	.app-shell { flex-direction: column; }
-	.app-right { order: 1; min-height: 0; }
-	.rail-left {
-		order: 2;
-		flex: none;
-		max-height: 38%;
-		padding-top: var(--rail-pad);
-	}
-	.help-box { flex: 1; min-height: 0; overflow-y: auto; }
-	.app-shell::after, .app-shell::before { display: none; }   /* its edge goes with it */
-	.topbar { left: 0; padding-left: var(--gap); }   /* the bar is under the page here */
-	.topbar::after { left: 0; }                      /* so the line is solid all the way */
-	.topbar::before { display: none; }
-	#homeScreen { padding-left: var(--group); }   /* no bumps to sit against */
 }
 
 @media (max-width: 1100px) {
 	.section-tab { font-size: 0.9rem; }
 	.section-tab.active { font-size: 1.3rem; }
 	.topbar .section-tabs { gap: 0.5rem; }
-}
-
-@media (max-width: 700px) {
-	.section-tab { font-size: 0.95rem; }
-	.section-tab.active { font-size: 1.35rem; }
-	.topbar .section-tabs { gap: 0.5rem; }
-}
-
-@media (max-width: 520px) {
-	.section-tab { font-size: 0.78rem; }
-	.section-tab.active { font-size: 1.05rem; }
-	.topbar .section-tabs { gap: 0.3rem; }
-	.topbar { padding-left: calc(var(--tight) + 13px); padding-right: var(--tight); }
-}
-
-@media (max-width: 560px) {
-	.screen { gap: 1.25rem; padding: 2.5rem 1rem 2.5rem; }
-	h1 { font-size: 1.6rem; }
-	.deck-bar { flex-direction: column; }
-	.deck-form { width: 100%; }
-	.answer-options { gap: 0.5rem; }
-	.answer-button {
-		min-height: 3.25rem;
-		padding: 0.6rem 0.7rem;
-		font-size: 0.9rem;
-	}
-	#studyQuestion { min-height: 6rem; padding: 1.25rem 1rem; }
-}
-
-@media (max-width: 380px) {
-	.screen { padding: 2rem 0.75rem 2rem; }
-	.answer-button { min-height: 3rem; font-size: 0.85rem; }
-	.quick-action { min-height: 4.5rem; }
-	.quick-action small { font-size: 1.25rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2834,7 +2779,7 @@ html:not(.inverted) .rail-left {
 	position: fixed;
 	z-index: 60;
 	width: 20rem;
-	max-width: calc(100vw - 2rem);
+	max-width: calc(calc(var(--vw, 1vw) * 100) - 2rem);
 	padding: 0.8rem;
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -3622,7 +3567,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	display: flex;
 	flex-direction: column;
 	gap: 0.35rem;
-	max-height: 40vh;
+	max-height: calc(var(--vh, 1vh) * 40);
 	margin: 0;
 	padding: 0;
 	overflow-y: auto;
@@ -4040,15 +3985,15 @@ html.booting .booting-mark { display: flex; }
 	cursor: var(--cur-tap);
 }
 .acc-menu button:hover { color: var(--paper); background: var(--ink); }
+/* the same pill as log out, only white */
 .acc-add {
-	align-self: flex-end;
-	height: 2rem;
+	width: 100%;
+	height: var(--field);
 	margin-top: var(--tight);
-	padding: calc(var(--drop) * 2) 1rem 0;
+	padding: calc(var(--drop) * 2) 0 0;
 	color: var(--ink);
 	background: var(--paper);
 	border-color: var(--line);
-	font-size: 0.85rem;
 }
 .acc-add:hover { color: var(--paper); background: var(--ink); }
 .account-leave-wrap { width: 100%; margin-top: var(--tight); }
@@ -4144,7 +4089,7 @@ html.booting .booting-mark { display: flex; }
 .room-list { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
 
 /* a conversation: picture, name, the last line, the time — whatsapp's row in this site's colours */
-.room-row, .room-ghost {
+.room-row {
 	display: flex;
 	align-items: center;
 	gap: 0.65rem;
@@ -4181,12 +4126,10 @@ html.booting .booting-mark { display: flex; }
 .room-words small { font-size: 0.75rem; }
 .room-when { flex: none; align-self: flex-start; margin-top: 0.15rem; font-family: var(--num-font); font-size: 0.95rem; }
 /* the rows that stand in while there are none: dashed shapes where a chat would be */
-.room-ghost { cursor: default; }
-.room-ghost .room-face { background: var(--paper); border: 1px dashed var(--line); }
-.room-ghost b, .room-ghost small { display: block; height: 0.55rem; border: 1px dashed var(--line); border-radius: 999px; }
-.room-ghost b { width: 60%; margin-bottom: 0.4rem; }
-.room-ghost small { width: 85%; }
-.room-hint { padding: var(--tight) 0.6rem; font-size: 0.8rem; }
+/* nobody yet: one line in the middle of the empty list, nothing else */
+.room-scroll:has(.room-hint) { display: flex; flex-direction: column; }
+.room-list:has(.room-hint) { flex: 1; justify-content: center; }
+.room-hint { padding: var(--tight) 0.6rem; text-align: center; font-size: 0.85rem; }
 
 .room-make.is-off { border-style: dashed; }
 
@@ -4454,8 +4397,3 @@ html.booting .booting-mark { display: flex; }
 }
 .ask-note:empty { display: none; }
 
-@media (max-width: 760px) {
-	.chat-body { flex-direction: column; }
-	.room-side { flex: none; }
-	.talk-log { min-height: 12rem; }
-}

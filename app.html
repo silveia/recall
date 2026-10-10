@@ -3,6 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- one layout everywhere: a screen narrower than 800px gets the same page, shrunk to fit.
+         A phone is told to draw it 800 wide, which the browser fits for us; a narrow or zoomed-in
+         window on a computer is shrunk with css zoom, and everything the script measures with is
+         divided back out so the script still works in the page's own pixels -->
+    <script>
+        (function () {
+            var FLOOR = 800;
+            var root = document.documentElement;
+            if (screen.width < FLOOR) {
+                document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=' + FLOOR);
+            }
+            function nativeGetter(object, name) {
+                for (var o = object; o; o = Object.getPrototypeOf(o)) {
+                    var d = Object.getOwnPropertyDescriptor(o, name);
+                    if (d && d.get) return d.get;
+                }
+                return null;
+            }
+            var wGet = nativeGetter(window, 'innerWidth');
+            var hGet = nativeGetter(window, 'innerHeight');
+            var realW = function () { return wGet ? wGet.call(window) : root.clientWidth; };
+            var realH = function () { return hGet ? hGet.call(window) : root.clientHeight; };
+            var z = 1;
+            function fit() {
+                z = Math.min(1, realW() / FLOOR);
+                root.style.zoom = z === 1 ? '' : String(z);
+                root.style.setProperty('--vw', (realW() / z / 100) + 'px');
+                root.style.setProperty('--vh', (realH() / z / 100) + 'px');
+            }
+            fit();
+            window.addEventListener('resize', fit);
+            window.pageZoom = function () { return z; };
+
+            // the browser hands back what is on screen; the page writes in its own pixels
+            var rect = Element.prototype.getBoundingClientRect;
+            Element.prototype.getBoundingClientRect = function () {
+                var r = rect.call(this);
+                return z === 1 ? r : new DOMRect(r.x / z, r.y / z, r.width / z, r.height / z);
+            };
+            ['clientX', 'clientY'].forEach(function (name) {
+                var get = nativeGetter(MouseEvent.prototype, name);
+                if (!get) return;
+                Object.defineProperty(MouseEvent.prototype, name, {
+                    configurable: true,
+                    get: function () { return get.call(this) / z; }
+                });
+            });
+            try {
+                Object.defineProperty(window, 'innerWidth', { configurable: true, get: function () { return realW() / z; } });
+                Object.defineProperty(window, 'innerHeight', { configurable: true, get: function () { return realH() / z; } });
+            } catch (error) { /* left as it is */ }
+            var at = Document.prototype.elementFromPoint;
+            Document.prototype.elementFromPoint = function (x, y) { return at.call(this, x * z, y * z); };
+        }());
+    </script>
     <!-- the exportify frame may load exportify and nothing else -->
     <meta http-equiv="Content-Security-Policy" content="frame-src 'self' https://exportify.net;">
     <title>:p</title>

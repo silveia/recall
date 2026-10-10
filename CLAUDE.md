@@ -704,10 +704,8 @@ thing in a white bar, and it keeps that job by being filled the other
 way — a white tile in a black column, on both sides of the swap.
 
 **Narrow, the bar loses width before it loses contents**: 19rem, then
-15rem under 1000px, and under 760px it lies down under the page at a
-third of the height rather than disappearing. It used to be hidden
-outright at that width, which was fine when it was empty and is not
-now.
+15rem under 1000px. Nothing re-arranges below that — see "one layout,
+shrunk to fit".
 
 **The wave is one size, in three tokens.** `--wave-w`, `--wave-h` and
 `--wave-out` in `:root` are the whole of it: the tile is drawn at
@@ -842,8 +840,8 @@ so this is a single line.
 **The left edge is the exception, asked for.** The bumps already reach
 `--wave-out` into the page, so a full `--group` past them read as a
 white strip between the bar and the boxes. The left inset is
-`--wave-out + 10px` — the boxes sit 10px off the crests. 4px was tried
-and read as jammed against them. Under 760px,
+`--wave-out + --group` — the boxes sit 16px off the crests. 4px read as
+jammed against them, and 10px still not enough. Under 760px,
 where the bar lies down and there are no bumps, it goes back to
 `--group`.
 
@@ -1580,8 +1578,8 @@ floating in the middle read as unfinished. Two outlined panes:
 - **The list (left)**: `chats` with a count, a `find or add someone`
   field, `direct messages`, then one row per person — picture, name,
   the last line (`you: …` if yours) and its time, WhatsApp-style. With
-  nobody yet it shows three dashed placeholder rows and a line saying
-  what to do.
+  nobody yet it shows one line in the middle of the empty list, `you have
+  no friends...` (the user's wording), and nothing else.
 - **The talk (right)**: a header with the open person's picture, name
   and handle and the `sealed` chip. With no thread open it shows a
   greeting (`hi, <nickname>` or `chat` with log in / sign up when signed
@@ -1599,8 +1597,8 @@ large round picture at the top with a pencil on it — **pressing it
 opens account settings** (there is no separate settings button) — your
 nickname large under it with `@username` small, then **every account
 logged in on this browser** as a list (the one in use filled black,
-each with a three-dot menu holding `remove`), a small `add account` at
-the right, and `log out` at the foot. **Log out asks inside its
+each with a three-dot menu holding `remove`), `add account` — the same full-width pill as
+`log out`, only white — and `log out` at the foot. **Log out asks inside its
 own button**: it divides — both halves start stacked as the one black
 pill and slide apart into `confirm` and `cancel`, cancel snapping to
 white once they part (a colour fade would pass through grey).
@@ -1625,9 +1623,10 @@ edit nickname, edit username, edit password, edit profile picture.
 - **Nickname** is shown everywhere a name is — the panel, the people
   list, the thread's heading, message rows (`displayName()`). Any
   characters, fancy text included, up to 32.
-Every box on a page sits one `--group` (16px) from the next — the deck
-bar, the audio bar and the clip toolbar used `--tight` between their
-boxes and now don't.
+Every box on a page sits one `--group` (16px) from the next, but **an icon
+button sits `--tight` (8px) off whatever is beside it on its row** — the
+deck bar, the sensing gear and the clip folder row — so the icons read as
+part of the row rather than standing out (asked for after an all-16px try).
 
 - **Username** is `a–z 0–9 _ - .` only, lowercased, up to 24
   (`NAME_OK`), checked on sign-up and on rename. Existing accounts from
@@ -1707,7 +1706,7 @@ and restart. A held key is one jump (`event.repeat` ignored), and a
 crash can't be restarted for 350ms, so a jump pressed as it hits
 doesn't restart it on the spot.
 
-`start to start` (an inside joke — keep the wording) in Bitcount Prop Double, 2.1rem, lies over the run at its top, centred, with the score 36px above it; pressing it (or jumping) begins, it is hidden while the run goes and comes back on a crash. The score sits **top centre** before and after a run (`hi 0123`, then `hi 0123 · 0045`) and **top right** while running, always four digits. 9999 is the top: reaching it ends the run with `u have passd` where `died` goes. That line sits exactly halfway between the ground line and the pill. **Nothing on this page animates except the enter pill** — by request, no fades or slide-ins on the run, the words or the page's arrival. The enter pill reads `^_^` (labelled `enter` for screen readers).
+`start to start` (an inside joke — keep the wording) in Bitcount Prop Double, 2.1rem, lies over the run at its top, centred, with the score 36px above it; pressing it (or jumping) begins, and it is gone until the page is refreshed — not back after a crash. **The score never moves or goes away**: top centre, always `hi 0123 · 0045`, four digits each. 9999 is the top: reaching it ends the run with `u have passd` where `died` goes. That line sits exactly halfway between the ground line and the pill. **Nothing on this page animates except the enter pill** — by request, no fades or slide-ins on the run, the words or the page's arrival. The enter pill reads `^_^` (labelled `enter` for screen readers).
 
 `morie.top` is a tiny dino run and an `enter` pill that goes to
 `home/`. **The enter pill sits at the exact middle of the screen**, the
@@ -1715,7 +1714,7 @@ run above it. It is black with white words; on hover **a white circle
 grows out of the exact point the pointer came in** (`.enter-ink`, a white copy of the pill over the black one, uncovered by a
 growing `clip-path` circle — a blended circle clipped by the rounded box left a
 hairline of black along the edge as the pill moved), sized to just reach the far corner
-from that point so the spread is seen the whole way (~0.5s). **The link never moves; the pill inside it does** (`.enter` is a still hit area 6px bigger than `.enter-pill` all round), so hovering at the edge doesn't flicker on and off as the pill slips out from under the pointer. On hover it
+from that point so the spread is seen the whole way (0.85s). Everything on the pill runs **at a casual pace** by request — the rise 0.45s, the hover wobble 0.9s, the press wiggle 0.8s. **The link never moves; the pill inside it does** (`.enter` is a still hit area 6px bigger than `.enter-pill` all round), so hovering at the edge doesn't flicker on and off as the pill slips out from under the pointer. On hover it
 rises 3px with a small natural wobble (under a degree of tilt plus a pixel of drift, settling out); the pill is kept on its own layer (`will-change`, `backface-visibility`) because a tilted 1px outline otherwise broke up as it turned; the full wiggle plays on the press. Both are played from the script (`pill.animate`), not CSS: as CSS animations, letting go of a press restarted the hover one, and leaving mid-wobble snapped the tilt back. The circle is placed
 first and grown after, by script: done with CSS `:hover` it started
 growing before the pointer's position was known, which is why it
@@ -1728,6 +1727,31 @@ does not load `style.css`, so the two cursor tokens are **copied** in
 and must be copied again if they are redrawn. One bit: the art is
 drawn in whole pixels on a canvas sized to the screen's pixel ratio, so
 nothing is ever painted grey.
+
+## One layout, shrunk to fit
+
+By request, a phone, a tiny window and a computer zoomed right in all get
+**the computer's layout, smaller**, never a re-arranged one. 800px is the
+floor. The inline script at the top of `app.html`'s head does it two ways:
+
+- **a phone** (`screen.width < 800`) has its viewport meta rewritten to
+  `width=800`, and the browser draws the page 800 wide and fits it to the
+  screen itself. Nothing else changes; the script sees an 800px window.
+- **a narrow or zoomed-in window on a computer** gets `zoom` on the root.
+  Chrome's standard zoom hands back *on-screen* pixels from
+  `getBoundingClientRect`, `clientX/Y` and `innerWidth`, while styles are
+  written in the page's own — so those four (and `elementFromPoint`) are
+  wrapped to divide the zoom back out, and the rest of `script.js` needed
+  no change. `window.pageZoom()` reads it.
+
+**`vh` and `vw` shrink with the zoom**, so every one in `style.css` is
+written `calc(var(--vh, 1vh) * N)`; the head script sets `--vh`/`--vw` to
+the real window. Write any new one the same way. Every `max-width` media
+query under 1000px was taken out: a query reads the real window, not the
+zoomed page, so they would re-arrange a page that is meant not to.
+
+The front door does its own: the whole group is scaled about the pill's
+middle (`--fit`) to fit the width and the half-height, so the spacing holds.
 
 ## Known limits — accepted, don't re-raise
 

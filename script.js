@@ -7168,17 +7168,11 @@ function paintPeople() {
         line.append(tap);
         roomList.append(line);
     });
-    // nobody yet: placeholder rows, so the list reads as a list waiting to fill
+    // nobody yet: one line in the emptiness, and nothing else
     if (!chatFriends.length) {
-        for (let at = 0; at < 3; at += 1) {
-            const ghost = document.createElement('li');
-            ghost.className = 'room-ghost';
-            ghost.innerHTML = '<span class="room-face"></span><span class="room-words"><b></b><small></small></span>';
-            roomList.append(ghost);
-        }
         const hint = document.createElement('li');
         hint.className = 'room-hint';
-        hint.textContent = chatMe ? 'no chats yet — add someone above' : 'log in to see your chats';
+        hint.textContent = 'you have no friends...';
         roomList.append(hint);
     }
     document.getElementById('roomCount').textContent = chatFriends.length ? String(chatFriends.length) : '';

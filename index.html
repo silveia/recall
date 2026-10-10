@@ -38,7 +38,8 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		flex-direction: column;
 		align-items: center;
 		gap: 16px;
-		transform: translate(-50%, calc(-100% + 1.2rem));
+		transform: translate(-50%, calc(-100% + 1.2rem)) scale(var(--fit, 1));
+		transform-origin: 50% calc(100% - 1.2rem);   /* the pill's middle stays the screen's middle */
 	}
 	/* the words over the run, under the best score; press them (or jump) to begin. Nothing on this
 	   page moves on its own but the enter pill: they are simply there, or not */
@@ -63,9 +64,8 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	.start.is-gone { visibility: hidden; }
 	.run { position: relative; }
 	canvas { display: block; cursor: var(--cur-tap); touch-action: manipulation; }
-	.score { position: absolute; top: 0; right: 0; white-space: nowrap; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
-	/* before a run and after one the score sits top centre, over the words; while running, top right */
-	.score.is-middle { top: -36px; right: auto; left: 50%; transform: translateX(-50%); }
+	/* the score never moves and never goes: top centre, over the words, best then this run */
+	.score { position: absolute; top: -36px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-family: 'VT323', monospace; font-size: 1.3rem; line-height: 1; }
 	/* keeps its height empty, so nothing jumps; its middle is exactly halfway between the ground
 	   line and the pill — the ground is 19px above the canvas foot, so the bottom margin is the
 	   top one plus those 19px */
@@ -98,7 +98,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		font-size: 0.95rem;
 		will-change: transform, rotate, translate;
 		backface-visibility: hidden;
-		transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+		transition: transform 0.45s cubic-bezier(0.25, 0.8, 0.35, 1);
 	}
 	/* the white is a second, white copy of the pill lying exactly over the black one, uncovered by a
 	   circle that grows from where the pointer came in. Cut out with clip-path rather than a blended
@@ -115,7 +115,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 		border-radius: 999px;
 		box-sizing: border-box;
 		clip-path: circle(0px at var(--at-x, 50%) var(--at-y, 50%));
-		transition: clip-path 0.55s cubic-bezier(0.33, 0.9, 0.4, 1);
+		transition: clip-path 0.85s cubic-bezier(0.3, 0.7, 0.35, 1);
 		pointer-events: none;
 	}
 	.enter.is-lit .enter-ink { clip-path: circle(var(--reach, 120px) at var(--at-x, 50%) var(--at-y, 50%)); }
@@ -130,7 +130,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
 	<div class="run">
 		<button class="start" id="start" type="button">start to start</button>
 		<canvas id="run" aria-label="dino run"></canvas>
-		<span class="score is-middle" id="score">hi 0000</span>
+		<span class="score" id="score">hi 0000 · 0000</span>
 	</div>
 	<p class="hint" id="hint"></p>
 	<a class="enter" href="home/" aria-label="enter"><span class="enter-pill">^_^<span class="enter-ink" aria-hidden="true">^_^</span></span></a>
@@ -186,16 +186,13 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         nextGap = 60;
         state = 'ready';
         try { best = Number(localStorage.getItem('front-dino')) || 0; } catch (error) { best = 0; }
-        showScore(`hi ${four(best)}`, true);
+        showScore(0);
         draw();
     }
 
     const MAX = 9999;
     const four = (n) => String(Math.min(MAX, Math.floor(n))).padStart(4, '0');
-    const showScore = (text, middle) => {
-        scoreEl.textContent = text;
-        scoreEl.classList.toggle('is-middle', middle);
-    };
+    const showScore = (got) => { scoreEl.textContent = `hi ${four(best)} · ${four(got)}`; };
 
     let overAt = 0;
     function jump() {
@@ -206,8 +203,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         if (state === 'ready') {
             state = 'run';
             hintEl.textContent = '';
-            startEl.classList.add('is-gone');
-            showScore(`hi ${four(best)} · 0000`, false);
+            startEl.classList.add('is-gone');   // gone for good: it only comes back on a refresh
             last = performance.now(); requestAnimationFrame(tick);
         }
         if (dino.y === 0) dino.v = 9.5;
@@ -233,7 +229,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         score = Math.min(MAX, score + 0.1 * s);
         speed = 4 + Math.min(score / 100, 5);
         legs += s;
-        scoreEl.textContent = `hi ${four(best)} · ${four(score)}`;
+        showScore(score);
 
         // a little inside each box, so a near miss is a miss
         const dx = 30, dw = 8 * P - 6, dh = DINO.length * P - 4, dy = GROUND - dino.y - dh;
@@ -252,9 +248,8 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         overAt = performance.now();
         const got = Math.floor(score);
         if (got > best) { best = got; try { localStorage.setItem('front-dino', String(best)); } catch (error) {} }
-        showScore(`hi ${four(best)} · ${four(got)}`, true);
+        showScore(got);
         hintEl.textContent = passed ? 'u have passd' : 'died';
-        startEl.classList.remove('is-gone');
     }
 
     function draw() {
@@ -286,10 +281,10 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         if (enter.classList.contains('is-lit')) return;
         const box = pill.getBoundingClientRect();
         blot.style.transition = 'none';                       // jump there while still a dot
-        const x = event.clientX - box.left;
-        const y = event.clientY - box.top;
+        const x = (event.clientX - box.left) / fit;
+        const y = (event.clientY - box.top) / fit;
         // just big enough to reach the far corner from here, so the spread is seen the whole way
-        const reach = Math.ceil(Math.hypot(Math.max(x, box.width - x), Math.max(y, box.height - y))) + 2;
+        const reach = Math.ceil(Math.hypot(Math.max(x, box.width / fit - x), Math.max(y, box.height / fit - y))) + 2;
         blot.style.setProperty('--at-x', `${x}px`);
         blot.style.setProperty('--at-y', `${y}px`);
         blot.style.setProperty('--reach', `${reach}px`);
@@ -304,7 +299,7 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
     let moving = null;
     const play = (frames, duration) => {
         if (moving) moving.cancel();
-        moving = pill.animate(frames, { duration, easing: 'cubic-bezier(0.37, 0, 0.63, 1)' });
+        moving = pill.animate(frames, { duration, easing: 'cubic-bezier(0.45, 0, 0.55, 1)' });
     };
     const wobble = () => play([
         { rotate: '0deg', translate: '0 0' },
@@ -312,15 +307,26 @@ try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElem
         { rotate: '0.7deg', translate: '1px 0', offset: 0.45 },
         { rotate: '-0.35deg', translate: '-0.5px 0', offset: 0.7 },
         { rotate: '0deg', translate: '0 0' }
-    ], 550);
+    ], 900);
     const wiggle = () => play([
         { rotate: '0deg' }, { rotate: '-3deg' }, { rotate: '3deg' }, { rotate: '-1.5deg' }, { rotate: '0deg' }
-    ], 500);
+    ], 800);
     enter.addEventListener('pointerenter', (event) => { if (event.pointerType !== 'touch') wobble(); });
     enter.addEventListener('pointerdown', wiggle);
     // whichever arrives first — some browsers skip the enter event, but never the first move
     ['pointerenter', 'mouseenter', 'pointermove', 'mousemove'].forEach((name) => enter.addEventListener(name, light));
     ['pointerleave', 'mouseleave'].forEach((name) => enter.addEventListener(name, dim));
+
+    // a narrow or short screen gets the same page, shrunk to fit — nothing re-arranges
+    const door = document.querySelector('.door');
+    let fit = 1;
+    const fitDoor = () => {
+        const above = door.offsetHeight - pill.offsetHeight / 2 + 40;      // the score sits 36px over the run
+        fit = Math.min(1, (window.innerWidth - 32) / door.offsetWidth, (window.innerHeight / 2 - 16) / above);
+        document.documentElement.style.setProperty('--fit', fit);
+    };
+    window.addEventListener('resize', fitDoor);
+    fitDoor();
 
     colours();
     reset();
