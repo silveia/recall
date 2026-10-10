@@ -4411,19 +4411,18 @@ html.booting .booting-mark { display: flex; }
 .said-file-note { font-size: 0.75rem; }
 .said-edited { margin-left: 0.4rem; font-size: 0.7rem; }
 
-/* the three dots on a message: shown on hover, and they open into a row of small marks */
+/* the three dots on a message: shown on hover, and they open into a row of small marks — no ring
+   round them and nothing moving, sitting halfway down the line they belong to */
 .said-row { position: relative; }
 .said-tools {
 	position: absolute;
-	top: 0.1rem;
+	top: 50%;
 	right: 0.4rem;
 	display: none;
 	align-items: center;
 	gap: 2px;
-	padding: 2px;
 	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 999px;
+	transform: translateY(-50%);
 }
 .said-row:hover .said-tools, .said-tools.is-open { display: flex; }
 .said-tools button {
@@ -4433,17 +4432,14 @@ html.booting .booting-mark { display: flex; }
 	height: 1.7rem;
 	padding: 0;
 	color: var(--ink);
-	background: var(--paper);
+	background: none;
 	border: 0;
-	border-radius: 50%;
 	cursor: var(--cur-tap);
-	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
 .said-tools button svg { width: 0.95rem; height: 0.95rem; }
-.said-tools button:hover, .said-tools button.is-armed { color: var(--paper); background: var(--ink); }
+.said-tools button.is-armed { color: var(--paper); background: var(--ink); border-radius: 50%; }   /* the bin, asking twice */
 .said-tools .tool-mark { display: none; }
-.said-tools.is-open .tool-mark { display: grid; animation: confirm-in 0.18s var(--ease); }
-.said-tools.is-open .said-more { color: var(--paper); background: var(--ink); }
+.said-tools.is-open .tool-mark { display: grid; }
 .said-edit {
 	width: 100%;
 	height: 2rem;

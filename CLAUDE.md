@@ -1740,7 +1740,7 @@ opened says it has gone. Pictures show dithered to black and white
 (`ditherPicture`), the way faces are; pressing the box saves the original.
 Verified: a file sealed, uploaded, fetched back and opened byte for byte.
 
-**The three dots on a line** show on hover and open into marks: copy,
+**The three dots on a line** show on hover, centred down the line, with no ring round them and no hover animation, and open into marks: copy,
 save (a file), edit (your own words), and the bin — delete for both on
 your own line, remove for me on someone else's. The bin asks for a
 second press. A public board can't take a post back, so a deletion or an
