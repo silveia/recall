@@ -4432,7 +4432,16 @@ html.booting .booting-mark { display: flex; }
 .said-tools button svg { width: 0.95rem; height: 0.95rem; }
 .said-tools button.is-armed { color: var(--paper); background: var(--ink); border-radius: 50%; }   /* the bin, asking twice */
 .said-tools .tool-mark { display: none; }
-.said-tools.is-open .tool-mark { display: grid; }
+.said-tools.is-open .tool-mark { display: grid; animation: tool-out 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+/* they slide out from under the dots, the nearest first */
+.said-tools.is-open .tool-mark:nth-last-of-type(2) { animation-delay: 0ms; }
+.said-tools.is-open .tool-mark:nth-last-of-type(3) { animation-delay: 40ms; }
+.said-tools.is-open .tool-mark:nth-last-of-type(4) { animation-delay: 80ms; }
+.said-tools.is-open .tool-mark:nth-last-of-type(5) { animation-delay: 120ms; }
+@keyframes tool-out {
+	from { opacity: 0; transform: translateX(14px) scale(0.85); }
+	to   { opacity: 1; transform: none; }
+}
 .said-edit {
 	width: 100%;
 	height: 2rem;

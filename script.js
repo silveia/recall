@@ -7738,18 +7738,34 @@ talkFile.addEventListener('change', async () => {
     talkFile.value = '';
     for (const file of files) await sendFile(chatWith, file);
 });
-talkLog.addEventListener('dragover', (event) => {
-    if (!chatWith || !event.dataTransfer || ![...event.dataTransfer.types].includes('Files')) return;
+// anywhere on the talk side takes a dropped file — the thread, the message box, the header —
+// and a picture pasted into the message box is sent too (png, jpg, webp, gif, anything)
+const talkSide = document.getElementById('talkSide');
+const carriesFiles = (event) => event.dataTransfer && [...event.dataTransfer.types].includes('Files');
+talkSide.addEventListener('dragover', (event) => {
+    if (!carriesFiles(event)) return;
     event.preventDefault();
-    talkLog.classList.add('is-dropping');
+    if (chatWith) talkLog.classList.add('is-dropping');
 });
-talkLog.addEventListener('dragleave', () => talkLog.classList.remove('is-dropping'));
-talkLog.addEventListener('drop', async (event) => {
+talkSide.addEventListener('dragleave', (event) => {
+    if (!talkSide.contains(event.relatedTarget)) talkLog.classList.remove('is-dropping');
+});
+talkSide.addEventListener('drop', async (event) => {
     talkLog.classList.remove('is-dropping');
-    if (!chatWith || !event.dataTransfer || !event.dataTransfer.files.length) return;
+    if (!carriesFiles(event)) return;
     event.preventDefault();
+    if (!chatWith) return;
     for (const file of [...event.dataTransfer.files]) await sendFile(chatWith, file);
 });
+talkSay.addEventListener('paste', async (event) => {
+    const files = event.clipboardData ? [...event.clipboardData.files] : [];
+    if (!files.length || !chatWith) return;
+    event.preventDefault();
+    for (const file of files) await sendFile(chatWith, file);
+});
+// a file let go anywhere else on the page must not open in place of the site
+window.addEventListener('dragover', (event) => { if (carriesFiles(event)) event.preventDefault(); });
+window.addEventListener('drop', (event) => { if (carriesFiles(event)) event.preventDefault(); });
 
 // how long a line may be. the board turns any post over 4096 bytes into a file nobody can read as
 // a line, which is why very long messages used to vanish: sealed and base64'd, a line grows by

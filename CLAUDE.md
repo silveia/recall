@@ -1741,8 +1741,11 @@ a line said. `takePost` is the only thing that writes state, and it is
 deliberately idempotent — the same post read from history, from the
 live stream and from a republish must land once.
 
-**Files.** The clip at the left of the message box (or dropping files on
-the thread) sends them, up to 15 MB each. A file is sealed in the browser
+**Files.** The clip at the left of the message box, a file dropped anywhere
+on the talk side (the box included), or a picture pasted into the box sends
+them — any type, png, jpg, webp and the rest. A file dropped anywhere else
+on the page is caught, so the browser never opens it in place of the site.
+They go up to 15 MB each, up to 15 MB each. A file is sealed in the browser
 with the same key as the words, uploaded to ntfy as an attachment on its
 own topic (`FILE_TOPIC`, a `PUT` — CORS checked: allowed), and a line
 whose sealed words are a note — `CHAT_NOTE` (U+0000) and JSON
@@ -1753,7 +1756,7 @@ opened says it has gone. Pictures show dithered to black and white
 (`ditherPicture`), the way faces are; pressing the box saves the original.
 Verified: a file sealed, uploaded, fetched back and opened byte for byte.
 
-**The three dots on a line** show on hover, centred down the line, with no ring round them and no hover animation, and open into marks: copy,
+**The three dots on a line** show on hover, centred down the line, with no ring round them and no hover animation, and open into marks that slide out from the right, the nearest first (0.26s, 40ms apart): copy,
 save (a file), edit (your own words), and the bin — delete for both on
 your own line, remove for me on someone else's. The bin asks for a
 second press. A public board can't take a post back, so a deletion or an
