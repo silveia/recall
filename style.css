@@ -4443,15 +4443,18 @@ html.booting .booting-mark { display: flex; }
 	from { opacity: 0; transform: translateX(14px) scale(0.85); }
 	to   { opacity: 1; transform: none; }
 }
-/* editing a line: the box sits exactly where the words were — same size of type, same line, its
-   own padding and outline taken back out with a negative margin, so nothing moves down */
+/* editing a line: a box round the words, as tall as they are (it grows as you type), opening the
+   line out a little — the words keep their place across, the row grows a touch top and bottom */
 .said-edit {
+	display: block;
 	grid-column: 2;
-	box-sizing: content-box;
-	width: calc(100% - 1rem - 2px);
-	height: calc(0.9rem * 1.45);
-	margin: calc(-0.25rem - 1px) 0 calc(-0.25rem - 1px) calc(-0.5rem - 1px);
-	padding: 0.25rem 0.5rem;
+	box-sizing: border-box;
+	width: calc(100% + 0.6rem);
+	min-height: 0;
+	margin: 0.2rem 0 0.2rem calc(-0.3rem - 1px);
+	padding: 0.3rem 0.3rem;
+	overflow: hidden;
+	resize: none;
 	color: var(--ink);
 	background: var(--paper);
 	border: 1px solid var(--line);
@@ -4460,7 +4463,9 @@ html.booting .booting-mark { display: flex; }
 	font-size: 0.9rem;
 	line-height: 1.45;
 	outline: none;
+	animation: edit-open 0.18s var(--ease);
 }
+@keyframes edit-open { from { padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; } }
 .field-go {
 	flex: none;
 	display: grid;

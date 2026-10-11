@@ -8093,12 +8093,19 @@ document.addEventListener('keydown', (event) => {
 }, true);
 
 function editLine(row, other, line, words) {
-    const field = document.createElement('input');
+    // a box that wraps the words and grows with them, so a long line is edited as the long line it is
+    const field = document.createElement('textarea');
     field.className = 'said-edit';
+    field.rows = 1;
     field.maxLength = TALK_MOST;
     field.value = line.said;
     field.setAttribute('aria-label', 'edit the message');
     words.replaceWith(field);
+    // border-box, so the two edges are added to what the words need; measured again once it has opened
+    const fit = () => { field.style.height = 'auto'; field.style.height = `${field.scrollHeight + 2}px`; };
+    fit();
+    field.addEventListener('input', fit);
+    field.addEventListener('animationend', fit, { once: true });
     field.focus();
     field.select();
     const done = (keep) => {

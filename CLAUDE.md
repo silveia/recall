@@ -1762,7 +1762,7 @@ your own line, remove for me on someone else's. The bin acts on one
 press, and **ctrl/cmd+z brings a deleted line back for thirty seconds**
 (`lineUndo`); the deletion is only sent to the board when those are up (or
 the tab is left), so an undo never chases a note the other side already
-obeyed. The dots and marks have nothing behind them and no pressed state. Editing puts the box exactly over the words (same type size and line; its padding and outline taken back with a negative margin), so the line doesn't drop. A public board can't take a post back, so a deletion or an
+obeyed. The dots and marks have nothing behind them and no pressed state. Editing opens a box round the words — a textarea as tall as the text, growing as you type — and the row opens out a little top and bottom, the words keeping their place across. A public board can't take a post back, so a deletion or an
 edit is itself a sealed note (`{gone: id}` / `{edit: id, said}`), obeyed
 only when it comes from whoever wrote the line (`lineChanged`), and every
 deleted line or spent note goes in `chatSkip` so it is never read again.
