@@ -7650,19 +7650,26 @@ function paintChatShape() {
     if (chatSplitter) chatSplitter.reclamp();
 }
 
+// a field that has something wrong with it shakes, rather than a line of words appearing under it
+function shake(field) {
+    if (!field) return;
+    field.classList.remove('is-shaking');
+    void field.offsetWidth;                 // so a second slip shakes again
+    field.classList.add('is-shaking');
+    field.addEventListener('animationend', () => field.classList.remove('is-shaking'), { once: true });
+    if (typeof field.focus === 'function' && field.matches('input')) field.focus();
+}
+
 async function addSomeone(typed, complain) {
     const called = typed.trim();
     if (!called) return false;
     if (!chatMe) { openChatDoor(); return false; }
     const key = called.toLowerCase();
-    if (whoIs(key) === chatMe.name.toLowerCase()) { complain('that is you'); return false; }
-    if (chatFriends.includes(key)) { complain('they are already here'); openWith(key); return false; }
+    if (whoIs(key) === chatMe.name.toLowerCase()) { shake(roomNameField); return false; }
+    if (chatFriends.includes(key)) { openWith(key); return false; }
 
-    if (!chatPeople[key]) {
-        complain('looking…');
-        await catchUp();
-    }
-    if (!chatPeople[key]) { complain('nobody signed up by that name'); return false; }
+    if (!chatPeople[key]) await catchUp();
+    if (!chatPeople[key]) { shake(roomNameField); return false; }
 
     chatFriends = [...chatFriends, key];
     keepKnown();
@@ -8565,10 +8572,10 @@ document.addEventListener('keydown', (event) => { if (event.key === 'Escape') cl
 function paintChatDoor() {
     if (doorBusy) return;      // it is saying what it is doing
     chatDoorTitle.textContent = chatDoorNew ? 'sign up' : 'log in';
-    document.getElementById('loginTitle').textContent = chatDoorNew ? 'make an account' : 'welcome back';
-    document.getElementById('loginSay').textContent = chatDoorNew ? 'pick a username and a password' : 'log in to see your chats';
-    chatGo.textContent = chatDoorNew ? 'sign up' : 'log in';
-    chatSwap.textContent = chatDoorNew ? 'already have an account?' : 'need an account?';
+    document.getElementById('loginTitle').textContent = chatDoorNew ? 'register' : 'login';
+    document.getElementById('loginSay').textContent = chatDoorNew ? 'create a nice account' : 'sign in with username and password';
+    chatGo.textContent = chatDoorNew ? 'sign up' : 'sign in';
+    chatSwap.textContent = chatDoorNew ? 'already have an account?' : 'dont have an account?';
 }
 
 function openChatDoor(signingUp) {
@@ -8607,8 +8614,8 @@ chatGo.addEventListener('click', async () => {
     if (doorBusy) return;
     let called = chatHandle.value.trim().slice(0, 24);
     const word = chatWord.value;
-    if (!called) { saySomethingChat('what should people call you?'); return; }
-    if (!word) { saySomethingChat('it wants a password too'); return; }
+    if (!called) { shake(chatHandle); return; }
+    if (!word) { shake(chatWord); return; }
 
     saySomethingChat('');
     doorWorking(chatDoorNew ? 'signing up…' : 'logging in…');
@@ -8616,7 +8623,7 @@ chatGo.addEventListener('click', async () => {
         if (!chatOn) await wakeChat();
         // a press while the chat is still starting waits for it rather than calling it dead
         for (let tries = 0; chatStarting && tries < 150; tries += 1) await new Promise((done) => window.setTimeout(done, 100));
-        if (!chatOn) { saySomethingChat('the chat board would not answer'); return; }
+        if (!chatOn) { shake(chatGo); return; }
 
         doorWorking(chatDoorNew ? 'checking the name…' : 'logging in…');
         await catchUp();
@@ -8627,12 +8634,12 @@ chatGo.addEventListener('click', async () => {
 
         if (chatDoorNew) {
             if (!NAME_OK.test(called.toLowerCase())) {
-                saySomethingChat('usernames are letters, numbers, _ - and . only');
+                shake(chatHandle);
                 return;
             }
             called = called.toLowerCase();
             if (known) {
-                saySomethingChat(`${known.name} is already taken — log in instead?`);
+                shake(chatHandle);
                 return;
             }
             doorWorking('making your keys…');
@@ -8649,8 +8656,8 @@ chatGo.addEventListener('click', async () => {
             takePost(post);
             await postToBoard(CHAT_TOPIC, post).catch(() => {});
         } else {
-            if (!known) { saySomethingChat('no account by that name'); return; }
-            if (known.word !== hash) { saySomethingChat('that password is not the one'); return; }
+            if (!known) { shake(chatHandle); return; }
+            if (known.word !== hash) { shake(chatWord); return; }
             // this account's own key, never whichever one this browser held last — a key left over
             // from another account sealed every line to the wrong person and opened none
             const heldHere = heldAccounts().find((one) => one.name.toLowerCase() === known.name.toLowerCase());

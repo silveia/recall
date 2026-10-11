@@ -2754,21 +2754,11 @@ html:not(.inverted) .rail-left {
 
 /* =========================================================
    19. small screens
-   There is one layout. A screen narrower than 800px is drawn at 800 and
+   There is one layout. A screen narrower than 1280px is drawn at 1280 and
    shrunk to fit (see the head of app.html), so nothing below that width
    ever re-arranges. vh and vw are written as var(--vh) and var(--vw)
    everywhere, because the shrink scales the real units down with it.
    ========================================================= */
-@media (max-width: 1000px) {
-	:root { --rail: 15rem; }
-}
-
-@media (max-width: 1100px) {
-	.section-tab { font-size: 0.9rem; }
-	.section-tab.active { font-size: 1.3rem; }
-	.topbar .section-tabs { gap: 0.5rem; }
-}
-
 @media (prefers-reduced-motion: reduce) {
 	* { transition: none !important; animation: none !important; }
 }
@@ -4665,3 +4655,14 @@ html.booting .booting-mark { display: flex; }
 }
 .ask-note:empty { display: none; }
 
+/* a field with something wrong in it shakes instead of growing a line of words under it */
+@keyframes field-shake {
+	0%, 100% { translate: 0 0; }
+	15% { translate: -7px 0; }
+	30% { translate: 6px 0; }
+	45% { translate: -5px 0; }
+	60% { translate: 4px 0; }
+	75% { translate: -2px 0; }
+	90% { translate: 1px 0; }
+}
+.is-shaking { animation: field-shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97); }

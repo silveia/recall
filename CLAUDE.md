@@ -703,9 +703,8 @@ The clock is the exception, and deliberately: it was the one filled
 thing in a white bar, and it keeps that job by being filled the other
 way — a white tile in a black column, on both sides of the swap.
 
-**Narrow, the bar loses width before it loses contents**: 19rem, then
-15rem under 1000px. Nothing re-arranges below that — see "one layout,
-shrunk to fit".
+**The bar is always 19rem.** Nothing re-arranges at any width — see "one
+layout, shrunk to fit".
 
 **The wave is one size, in three tokens.** `--wave-w`, `--wave-h` and
 `--wave-out` in `:root` are the whole of it: the tile is drawn at
@@ -1620,6 +1619,8 @@ with one name while only one of them could read their own messages.
 a page that turns somebody away over a missing digit is pretending to
 protect something it cannot.
 
+**A mistake shakes the field it is in**, by request, instead of a line of words appearing (`shake()`): no such account, a name that's taken or not allowed, or an empty username → the username shakes; a wrong or empty password → the password shakes; the board not answering → the button shakes. The same in `find or add someone` (nobody by that name, or yourself). No error lines are added under a box.
+
 **The door is locked while it works.** Making an account is three slow
 things in a row — the board, a key pair, and the pbkdf2 wrapping — so the
 button and the swap beside it are disabled until it is done, which is what
@@ -1826,12 +1827,14 @@ nothing is ever painted grey.
 ## One layout, shrunk to fit
 
 By request, a phone, a tiny window and a computer zoomed right in all get
-**the computer's layout, smaller**, never a re-arranged one. 800px is the
-floor. The inline script at the top of `app.html`'s head does it two ways:
+**the computer's layout, smaller**, never a re-arranged one. **1280px is the
+floor** (it was 800, and between 800 and 1280 tiles and boxes squeezed —
+the clock's digits ran out of their tile, the folder field shut up): anything
+narrower is the 1280 layout shrunk, every part by the same amount. The inline script at the top of `app.html`'s head does it two ways:
 
-- **a phone** (`screen.width < 800`) has its viewport meta rewritten to
-  `width=800`, and the browser draws the page 800 wide and fits it to the
-  screen itself. Nothing else changes; the script sees an 800px window.
+- **a phone** (`screen.width < 1280`) has its viewport meta rewritten to
+  `width=1280`, and the browser draws the page 1280 wide and fits it to the
+  screen itself. Nothing else changes; the script sees a 1280px window.
 - **a narrow or zoomed-in window on a computer** gets `zoom` on the root.
   Chrome's standard zoom hands back *on-screen* pixels from
   `getBoundingClientRect`, `clientX/Y` and `innerWidth`, while styles are
@@ -1841,8 +1844,7 @@ floor. The inline script at the top of `app.html`'s head does it two ways:
 
 **`vh` and `vw` shrink with the zoom**, so every one in `style.css` is
 written `calc(var(--vh, 1vh) * N)`; the head script sets `--vh`/`--vw` to
-the real window. Write any new one the same way. Every `max-width` media
-query under 1000px was taken out: a query reads the real window, not the
+the real window. Write any new one the same way. **Every `max-width` media query was taken out** (the 1000px and 1100px ones too, which narrowed the bar and the tabs): a query reads the real window, not the
 zoomed page, so they would re-arrange a page that is meant not to.
 
 The front door does its own: the whole group is scaled about the pill's

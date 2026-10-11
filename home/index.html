@@ -5,13 +5,13 @@
     <!-- made from app.html by .githooks/pages.sh. edit app.html, not this -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- one layout everywhere: a screen narrower than 800px gets the same page, shrunk to fit.
+    <!-- one layout everywhere: a screen narrower than 1280px gets the same page, shrunk to fit.
          A phone is told to draw it 800 wide, which the browser fits for us; a narrow or zoomed-in
          window on a computer is shrunk with css zoom, and everything the script measures with is
          divided back out so the script still works in the page's own pixels -->
     <script>
         (function () {
-            var FLOOR = 800;
+            var FLOOR = 1280;   // narrower than this, the whole page is drawn at 1280 and shrunk — never squeezed
             var root = document.documentElement;
             if (screen.width < FLOOR) {
                 document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=' + FLOOR);
@@ -75,7 +75,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;display=swap">
     <!-- the site's own pointer from the very first paint, before style.css has arrived -->
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
-    <link rel="stylesheet" href="style.css?v=2212841ada">
+    <link rel="stylesheet" href="style.css?v=b1aecd0559">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -757,6 +757,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=23a8283b81"></script>
+    <script src="script.js?v=c28784cc1d"></script>
 </body>
 </html>

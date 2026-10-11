@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- one layout everywhere: a screen narrower than 800px gets the same page, shrunk to fit.
+    <!-- one layout everywhere: a screen narrower than 1280px gets the same page, shrunk to fit.
          A phone is told to draw it 800 wide, which the browser fits for us; a narrow or zoomed-in
          window on a computer is shrunk with css zoom, and everything the script measures with is
          divided back out so the script still works in the page's own pixels -->
     <script>
         (function () {
-            var FLOOR = 800;
+            var FLOOR = 1280;   // narrower than this, the whole page is drawn at 1280 and shrunk — never squeezed
             var root = document.documentElement;
             if (screen.width < FLOOR) {
                 document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=' + FLOOR);
