@@ -75,7 +75,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;display=swap">
     <!-- the site's own pointer from the very first paint, before style.css has arrived -->
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
-    <link rel="stylesheet" href="style.css?v=a681c8853c">
+    <link rel="stylesheet" href="style.css?v=0aaa92c7cd">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -522,6 +522,8 @@
                                         </div>
                                     </div>
 
+                                    <!-- files waiting to go: they sit just over the message box and go with the next send -->
+                                    <ul class="talk-tray" id="talkTray" hidden></ul>
                                     <form class="talk-bar" id="talkForm" novalidate>
                                         <button class="talk-attach" id="talkAttach" type="button" aria-label="send a file" title="send a file">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>
@@ -757,6 +759,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=f1a02afd7e"></script>
+    <script src="script.js?v=78a1c31661"></script>
 </body>
 </html>

@@ -1742,8 +1742,14 @@ deliberately idempotent — the same post read from history, from the
 live stream and from a republish must land once.
 
 **Files.** The clip at the left of the message box, a file dropped anywhere
-on the talk side (the box included), or a picture pasted into the box sends
-them — any type, png, jpg, webp and the rest. A file dropped anywhere else
+on the talk side (the box included), or a picture pasted into the box puts
+them **in the tray just above the message box** (`#talkTray`, a chip each:
+a dithered thumbnail or a file mark, the name, the size, a cross to take it
+off). The send arrow sends the tray's files first, then the words; a chip
+that fails stays, dashed and shaken, to be sent again. Switching thread
+empties it. **Every chat status used to go to `#chatNote`, which lives in
+the log-in form and is hidden once you are in** — which is why a failed file
+said nothing at all. They go — any type, png, jpg, webp and the rest. A file dropped anywhere else
 on the page is caught, so the browser never opens it in place of the site.
 They go up to 15 MB each, up to 15 MB each. A file is sealed in the browser
 with the same key as the words, uploaded to ntfy as an attachment on its
@@ -1785,7 +1791,7 @@ of the box.
 **Message rows are laid out like Discord's**, by request: a round
 filled initial on the left, the name and `today at 3:04 pm` on top,
 the words under them, and lines from the same person within five
-minutes (`SAME_BREATH`, now ten) grouped under one head. Times are set like discord's: the body face (Amiko), small and greyed with `--muted` — by request, the one place besides placeholders the no-grey rule gives way — a little further off the name. Lines within ten minutes share a head, and **a new day gets a dividing line with its date** (`.said-day`) and starts a fresh head. A grouped line shows
+minutes (`SAME_BREATH`, now ten) grouped under one head. Times are set like discord's: the body face (Amiko), small (0.64rem) and greyed with `--muted` — by request, the one place besides placeholders the no-grey rule gives way — set well off the name (0.6rem gap plus 0.45rem). Lines within ten minutes share a head, and **a new day gets a dividing line with its date** (`.said-day`, in black — only the times are grey) and starts a fresh head. A grouped line shows
 its own short time in the left gutter on hover, and the hovered row
 gets a dotted outline — Discord's hover is a grey wash, which isn't
 allowed here. Your own messages look the same as everyone else's, as

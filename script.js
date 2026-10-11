@@ -7698,6 +7698,8 @@ document.getElementById('welcomeBack').addEventListener('click', (event) => {
 });
 
 function openWith(who) {
+    // files waiting in the tray were meant for the thread they were added in
+    try { if (who !== chatWith && traying.length) clearTray(); } catch (error) { /* not set up yet */ }
     chatWith = who && chatFriends.includes(who) ? who : null;
     if (chatWith) window.localStorage.setItem(CHAT_WITH, chatWith);
     else window.localStorage.removeItem(CHAT_WITH);
@@ -7733,10 +7735,10 @@ document.getElementById('talkAttach').addEventListener('click', () => {
     if (!chatMe || !chatWith) return;
     talkFile.click();
 });
-talkFile.addEventListener('change', async () => {
+talkFile.addEventListener('change', () => {
     const files = [...talkFile.files];
     talkFile.value = '';
-    for (const file of files) await sendFile(chatWith, file);
+    files.forEach(trayFile);
 });
 // anywhere on the talk side takes a dropped file — the thread, the message box, the header —
 // and a picture pasted into the message box is sent too (png, jpg, webp, gif, anything)
@@ -7755,13 +7757,13 @@ talkSide.addEventListener('drop', async (event) => {
     if (!carriesFiles(event)) return;
     event.preventDefault();
     if (!chatWith) return;
-    for (const file of [...event.dataTransfer.files]) await sendFile(chatWith, file);
+    [...event.dataTransfer.files].forEach(trayFile);
 });
 talkSay.addEventListener('paste', async (event) => {
     const files = event.clipboardData ? [...event.clipboardData.files] : [];
     if (!files.length || !chatWith) return;
     event.preventDefault();
-    for (const file of files) await sendFile(chatWith, file);
+    files.forEach(trayFile);
 });
 // a file let go anywhere else on the page must not open in place of the site
 window.addEventListener('dragover', (event) => { if (carriesFiles(event)) event.preventDefault(); });
@@ -7784,11 +7786,30 @@ talkSay.addEventListener('input', paintLeft);
 talkForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const words = talkSay.value.trim();
-    if (!words || !chatMe || !chatWith) return;
-    talkSay.value = '';
-    if (!fitsBoard(words)) { talkSay.value = words; saySomethingChat('that is too long to send — make it shorter'); return; }
-    await sendSealed(chatWith, words.slice(0, TALK_MOST));
-    paintLeft();
+    if ((!words && !traying.length) || !chatMe || !chatWith) return;
+    if (words && !fitsBoard(words)) { shake(talkForm); return; }
+    // the files first, each one marked on its own chip; any that fail stay in the tray to try again
+    const going = traying.filter((one) => !one.chip.classList.contains('is-sending'));
+    for (const held of going) {
+        if (held.file.size > CHAT_FILE_MOST) { shake(held.chip); continue; }
+        held.chip.classList.remove('is-failed');
+        held.chip.classList.add('is-sending');
+        const sent = await sendFile(chatWith, held.file);
+        held.chip.classList.remove('is-sending');
+        if (sent) {
+            traying = traying.filter((one) => one !== held);
+            held.chip.remove();
+        } else {
+            held.chip.classList.add('is-failed');
+            shake(held.chip);
+        }
+    }
+    paintTray();
+    if (words) {
+        talkSay.value = '';
+        await sendSealed(chatWith, words.slice(0, TALK_MOST));
+        paintLeft();
+    }
 });
 
 // seals words for the two of you and makes the post; nothing is sent yet
@@ -7876,13 +7897,11 @@ function fileSize(bytes) {
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} kb`;
     return `${(bytes / 1024 / 1024).toFixed(1)} mb`;
 }
+// sends one file; answers true or false — the tray shows which, on the file itself
 async function sendFile(other, file) {
-    if (!file) return;
-    if (file.size > CHAT_FILE_MOST) { saySomethingChat('that file is too big — 15 mb at most'); return; }
+    if (!file || file.size > CHAT_FILE_MOST) return false;
     const them = chatPeople[other];
-    if (!them || !them.pub) { saySomethingChat('no key for them yet — they need to open the chat once'); return; }
-    if (!chatPriv) { saySomethingChat('this browser has no key of yours. sign in again'); return; }
-    saySomethingChat(`sending ${file.name}…`);
+    if (!them || !them.pub || !chatPriv) return false;
     try {
         const key = await betweenKey(chatPriv, them.pub);
         const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -7893,11 +7912,69 @@ async function sendFile(other, file) {
         if (!answer.attachment || !answer.attachment.url) throw new Error('no file');
         const meta = { url: answer.attachment.url, iv: toB64(iv), name: file.name.slice(0, 120), type: file.type || '', size: file.size };
         const post = await sendSealed(other, '', meta);
-        if (post) { filesOpen.set(post.id, file); keepFile(post.id, file); paintTalk(); }
-        saySomethingChat('');
+        if (!post) return false;
+        filesOpen.set(post.id, file);
+        keepFile(post.id, file);
+        paintTalk();
+        return true;
     } catch (error) {
-        saySomethingChat('that file did not reach the board');
+        return false;
     }
+}
+
+/* --- the tray: files picked, dropped or pasted wait just above the message box until the send --- */
+const talkTray = document.getElementById('talkTray');
+let traying = [];          // { file, chip }
+function paintTray() {
+    talkTray.hidden = !traying.length;
+}
+function trayFile(file) {
+    if (!file || !chatWith) return;
+    const chip = document.createElement('li');
+    chip.className = 'tray-chip';
+    const look = document.createElement('span');
+    look.className = 'tray-look';
+    look.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4"/></svg>';
+    if ((file.type || '').startsWith('image/')) {
+        ditherPicture(file, 120).then((pic) => {
+            if (!pic) return;
+            look.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = pic;
+            img.alt = '';
+            look.append(img);
+        });
+    }
+    const words = document.createElement('span');
+    words.className = 'tray-words';
+    const name = document.createElement('span');
+    name.textContent = file.name || 'file';
+    const size = document.createElement('small');
+    size.textContent = fileSize(file.size || 0);
+    words.append(name, size);
+    const out = document.createElement('button');
+    out.type = 'button';
+    out.className = 'tray-out';
+    out.title = 'take it off';
+    out.setAttribute('aria-label', 'take it off');
+    out.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>';
+    const held = { file, chip };
+    out.addEventListener('click', () => {
+        traying = traying.filter((one) => one !== held);
+        chip.remove();
+        paintTray();
+    });
+    chip.append(look, words, out);
+    talkTray.append(chip);
+    traying.push(held);
+    if (file.size > CHAT_FILE_MOST) { chip.classList.add('is-failed'); size.textContent = 'over 15 mb'; shake(chip); }
+    paintTray();
+    talkSay.focus();
+}
+function clearTray() {
+    traying = [];
+    talkTray.innerHTML = '';
+    paintTray();
 }
 // a picture, in black and white only — dithered the way the faces are
 function ditherPicture(blob, widest) {
