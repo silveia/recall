@@ -8171,21 +8171,32 @@ document.addEventListener('keydown', (event) => {
 
 function editLine(row, other, line, words) {
     // a box that wraps the words and grows with them, so a long line is edited as the long line it is
+    const from = words.getBoundingClientRect().height;      // how tall the words were, to open out from
     const field = document.createElement('textarea');
     field.className = 'said-edit';
     field.rows = 1;
     field.maxLength = TALK_MOST;
     field.value = line.said;
     field.setAttribute('aria-label', 'edit the message');
+    row.classList.add('is-editing');                         // the dots step aside while the box is open
     words.replaceWith(field);
-    // border-box, so the two edges are added to what the words need; measured again once it has opened
+    // border-box, so the two edges are added to what the words need
     const fit = () => { field.style.height = 'auto'; field.style.height = `${field.scrollHeight + 2}px`; };
     fit();
+    // one movement, worked out from where the words were to where the box ends up: height, padding and
+    // the room above and below all travel together, so nothing jumps half-way
+    const end = getComputedStyle(field);
+    field.animate([
+        { height: `${from}px`, paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '0px' },
+        { height: field.style.height, paddingTop: end.paddingTop, paddingBottom: end.paddingBottom, marginTop: end.marginTop, marginBottom: end.marginBottom }
+    ], { duration: 200, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
     field.addEventListener('input', fit);
-    field.addEventListener('animationend', fit, { once: true });
     field.focus();
     field.select();
+    let closed = false;                                      // enter closes it, and so does the blur that follows
     const done = (keep) => {
+        if (closed) return;
+        closed = true;
         const said = field.value.trim();
         if (keep && said && said !== line.said) {
             line.said = said.slice(0, TALK_MOST);

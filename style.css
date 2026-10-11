@@ -4515,9 +4515,8 @@ html.booting .booting-mark { display: flex; }
 	font-size: 0.9rem;
 	line-height: 1.45;
 	outline: none;
-	animation: edit-open 0.18s var(--ease);
 }
-@keyframes edit-open { from { padding-top: 0; padding-bottom: 0; margin-top: 0; margin-bottom: 0; } }
+.said-row.is-editing .said-tools { display: none; }   /* the dots never sit over the box being typed in */
 .field-go {
 	flex: none;
 	display: grid;

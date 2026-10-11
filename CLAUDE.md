@@ -1768,7 +1768,7 @@ your own line, remove for me on someone else's. The bin acts on one
 press, and **ctrl/cmd+z brings a deleted line back for thirty seconds**
 (`lineUndo`); the deletion is only sent to the board when those are up (or
 the tab is left), so an undo never chases a note the other side already
-obeyed. The dots and marks have nothing behind them and no pressed state. Editing opens a box round the words — a textarea as tall as the text, growing as you type — and the row opens out a little top and bottom, the words keeping their place across. A public board can't take a post back, so a deletion or an
+obeyed. The dots and marks have nothing behind them and no pressed state. Editing opens a box round the words — a textarea as tall as the text, growing as you type — and the row opens out a little top and bottom, the words keeping their place across. The opening is one script animation (`field.animate`) from the words' own height to the box's, with padding and margins travelling together; a CSS animation of the padding alone fought the fixed height and jumped. The dots hide while editing (`.is-editing`), and the edit is sent once — Enter used to save it and the blur that followed saved it again. A public board can't take a post back, so a deletion or an
 edit is itself a sealed note (`{gone: id}` / `{edit: id, said}`), obeyed
 only when it comes from whoever wrote the line (`lineChanged`), and every
 deleted line or spent note goes in `chatSkip` so it is never read again.
