@@ -1698,8 +1698,8 @@ button sits `--tight` (8px) off whatever is beside it on its row** — the
 deck bar, the sensing gear and the clip folder row — so the icons read as
 part of the row rather than standing out (asked for after an all-16px try).
 
-- **Username** is `a–z 0–9 _ - .` only, lowercased, up to 24
-  (`NAME_OK`), checked on sign-up and on rename. Existing accounts from
+- **Username** is `a–z 0–9 _ - .` only, lowercased, up to 20
+  (`NAME_OK`, and the fields' `maxlength`), checked on sign-up and on rename. Existing accounts from
   before the rule keep working.
 - **Password** asks for the current one first.
 
@@ -1785,7 +1785,7 @@ of the box.
 **Message rows are laid out like Discord's**, by request: a round
 filled initial on the left, the name and `today at 3:04 pm` on top,
 the words under them, and lines from the same person within five
-minutes (`SAME_BREATH`) grouped under one head. A grouped line shows
+minutes (`SAME_BREATH`, now ten) grouped under one head. Times are set like discord's: the body face (Amiko), small and greyed with `--muted` — by request, the one place besides placeholders the no-grey rule gives way — a little further off the name. Lines within ten minutes share a head, and **a new day gets a dividing line with its date** (`.said-day`) and starts a fresh head. A grouped line shows
 its own short time in the left gutter on hover, and the hovered row
 gets a dotted outline — Discord's hover is a grey wash, which isn't
 allowed here. Your own messages look the same as everyone else's, as

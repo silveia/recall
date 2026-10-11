@@ -7178,7 +7178,7 @@ try {
     }
 } catch (error) { /* nothing kept */ }
 const TALK_KEEP = 300;          // how much of a thread each browser keeps
-const SAME_BREATH = 5 * 60 * 1000;
+const SAME_BREATH = 10 * 60 * 1000;   // lines this close together share one head, as on discord
 
 let chatOn = false;             // the board is answering
 let chatMe = null;              // { name, word } — the word is the hash
@@ -8127,7 +8127,7 @@ function whatIsSaid() {
 }
 
 function paintTalk() {
-    talkLog.querySelectorAll('.said-row').forEach((row) => row.remove());
+    talkLog.querySelectorAll('.said-row, .said-day').forEach((row) => row.remove());
     const said = whatIsSaid();
     // like discord: an open thread begins with who it is with
     talkStart.hidden = !chatWith;
@@ -8142,7 +8142,17 @@ function paintTalk() {
 
     let lastBy = '';
     let lastAt = 0;
+    let lastDay = '';
     said.forEach((one) => {
+        const day = one.at ? new Date(one.at).toDateString() : '';
+        if (day && day !== lastDay) {
+            const divide = document.createElement('div');
+            divide.className = 'said-day';
+            divide.textContent = new Date(one.at).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase();
+            talkLog.append(divide);
+            if (lastDay) lastBy = '';     // a new day starts a new head
+            lastDay = day;
+        }
         const row = document.createElement('article');
         row.className = 'said-row';
         const runOn = one.by === lastBy && (one.at || 0) - lastAt < SAME_BREATH;
@@ -8233,7 +8243,7 @@ function displayName(name) {
     return (them && (them.nick || them.name)) || name || '';
 }
 
-const NAME_OK = /^[a-z0-9_.-]{1,24}$/;   // usernames: lowercase letters, digits, _ - .
+const NAME_OK = /^[a-z0-9_.-]{1,20}$/;   // usernames: lowercase letters, digits, _ - .
 
 async function applyProfiles() {
     const waiting = chatProfiles.sort((one, two) => (one.at || 0) - (two.at || 0));
@@ -8667,7 +8677,7 @@ function doorWorking(words) {
 
 chatGo.addEventListener('click', async () => {
     if (doorBusy) return;
-    let called = chatHandle.value.trim().slice(0, 24);
+    let called = chatHandle.value.trim().slice(0, 20);
     const word = chatWord.value;
     if (!called) { shake(chatHandle); return; }
     if (!word) { shake(chatWord); return; }

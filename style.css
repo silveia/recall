@@ -4587,8 +4587,8 @@ html.booting .booting-mark { display: flex; }
 .said-gutter {
 	align-self: center;
 	visibility: hidden;
-	font-family: var(--num-font);
-	font-size: 0.8rem;
+	color: var(--muted);
+	font-size: 0.62rem;
 	text-align: center;
 }
 .said-row:hover .said-gutter { visibility: visible; }
@@ -4601,7 +4601,20 @@ html.booting .booting-mark { display: flex; }
 	font-size: 0.92rem;
 }
 .said-head b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.said-when { flex: none; font-family: var(--num-font); font-size: 0.85rem; }
+.said-head { gap: 0.6rem; }
+/* times the way discord sets them: the body face, small, and greyed (by request, the one place
+   besides placeholders the no-grey rule gives way), a little further off the name */
+.said-when { flex: none; margin-left: 0.15rem; color: var(--muted); font-size: 0.7rem; }
+/* a new day gets a line across the thread with its date, and the next line starts a new head */
+.said-day {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin: 1.1rem 0.5rem 0.2rem;
+	color: var(--muted);
+	font-size: 0.7rem;
+}
+.said-day::before, .said-day::after { content: ''; flex: 1; height: 1px; background: var(--muted); }
 .said-words {
 	grid-column: 2;
 	margin: 0;

@@ -600,7 +600,7 @@
 
                             <div class="ask-body">
                                 <div class="chat-door">
-                                    <input id="chatHandle" type="text" autocomplete="off" spellcheck="false" placeholder="username" aria-label="username">
+                                    <input id="chatHandle" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="username" aria-label="username">
                                     <!-- not type="password" on purpose: masked in css, see CLAUDE.md -->
                                     <input id="chatWord" type="text" class="word-field" name="morie-word" autocomplete="off" spellcheck="false" placeholder="password" aria-label="password">
                                     <button class="basic-button is-solid ask-go" id="chatGo" type="button">sign up</button>
@@ -625,7 +625,7 @@
                                 <div class="set-row" data-set="name">
                                     <button class="set-open" type="button"><span>edit username</span><span class="set-now" id="setNameNow"></span></button>
                                     <form class="set-edit" novalidate hidden>
-                                        <input type="text" maxlength="24" placeholder="new username" aria-label="new username">
+                                        <input type="text" maxlength="20" placeholder="new username" aria-label="new username">
                                         <button class="basic-button" type="submit">save</button>
                                     </form>
                                 </div>
