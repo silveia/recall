@@ -8024,21 +8024,7 @@ function lineTools(row, other, line, words) {
         if (blob) saveBlob(blob, line.file.name); else saySomethingChat('that file has gone from the board');
     });
     if (mine && line.said) mark('edit', 'edit', () => { tools.classList.remove('is-open'); editLine(row, other, line, words); });
-    mark('bin', mine ? 'delete' : 'remove for me', (press) => {
-        if (!press.classList.contains('is-armed')) {          // a second press, so one slip deletes nothing
-            press.classList.add('is-armed');
-            press.title = 'press again';
-            window.setTimeout(() => { press.classList.remove('is-armed'); press.title = mine ? 'delete' : 'remove for me'; }, 2200);
-            return;
-        }
-        chatDms[other] = (chatDms[other] || []).filter((one) => one.id !== line.id);
-        chatSkip.add(line.id);
-        keepSkip();
-        keepKnown();
-        paintTalk();
-        paintPeople();
-        if (mine) sendNote(other, { gone: line.id });
-    });
+    mark('bin', mine ? 'delete' : 'remove for me', () => deleteLine(other, line, mine));
     const more = document.createElement('button');
     more.type = 'button';
     more.className = 'said-more';
@@ -8053,6 +8039,59 @@ function lineTools(row, other, line, words) {
     tools.append(more);
     row.append(tools);
 }
+// a deleted line can be had back with ctrl/cmd+z for thirty seconds. the deletion only goes to the
+// board once those are up, so an undo never has to chase a note the other side already obeyed
+const UNDO_FOR = 30000;
+let lineUndo = [];
+function deleteLine(other, line, mine) {
+    const lines = chatDms[other] || [];
+    const at = lines.findIndex((one) => one.id === line.id);
+    if (at < 0) return;
+    chatDms[other] = lines.filter((one) => one.id !== line.id);
+    chatSkip.add(line.id);
+    keepSkip();
+    keepKnown();
+    paintTalk();
+    paintPeople();
+    const held = { other, line, at, timer: 0 };
+    held.timer = window.setTimeout(() => {
+        lineUndo = lineUndo.filter((one) => one !== held);
+        if (mine) sendNote(other, { gone: line.id });
+    }, UNDO_FOR);
+    lineUndo.push(held);
+}
+function undoDelete() {
+    const held = lineUndo.pop();
+    if (!held) return false;
+    window.clearTimeout(held.timer);
+    chatSkip.delete(held.line.id);
+    keepSkip();
+    const lines = [...(chatDms[held.other] || [])];
+    lines.splice(Math.min(held.at, lines.length), 0, held.line);
+    chatDms[held.other] = lines;
+    keepKnown();
+    paintTalk();
+    paintPeople();
+    return true;
+}
+// leaving the page sends what is still waiting, so a deletion isn't lost with the tab
+window.addEventListener('pagehide', () => {
+    lineUndo.forEach((held) => {
+        window.clearTimeout(held.timer);
+        if (chatMe && whoIs(held.line.by) === chatMe.name.toLowerCase()) sendNote(held.other, { gone: held.line.id });
+    });
+    lineUndo = [];
+});
+document.addEventListener('keydown', (event) => {
+    if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.key.toLowerCase() !== 'z') return;
+    if (activeSectionId !== 'chat' || !lineUndo.length) return;
+    const tag = event.target.tagName;
+    if ((tag === 'INPUT' || tag === 'TEXTAREA') && event.target.value) return;   // a field's own undo first
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    undoDelete();
+}, true);
+
 function editLine(row, other, line, words) {
     const field = document.createElement('input');
     field.className = 'said-edit';

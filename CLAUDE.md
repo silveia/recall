@@ -1758,8 +1758,11 @@ Verified: a file sealed, uploaded, fetched back and opened byte for byte.
 
 **The three dots on a line** show on hover, centred down the line, with no ring round them and no hover animation, and open into marks that slide out from the right, the nearest first (0.26s, 40ms apart): copy,
 save (a file), edit (your own words), and the bin — delete for both on
-your own line, remove for me on someone else's. The bin asks for a
-second press. A public board can't take a post back, so a deletion or an
+your own line, remove for me on someone else's. The bin acts on one
+press, and **ctrl/cmd+z brings a deleted line back for thirty seconds**
+(`lineUndo`); the deletion is only sent to the board when those are up (or
+the tab is left), so an undo never chases a note the other side already
+obeyed. The dots and marks have nothing behind them and no pressed state. Editing puts the box exactly over the words (same type size and line; its padding and outline taken back with a negative margin), so the line doesn't drop. A public board can't take a post back, so a deletion or an
 edit is itself a sealed note (`{gone: id}` / `{edit: id, said}`), obeyed
 only when it comes from whoever wrote the line (`lineChanged`), and every
 deleted line or spent note goes in `chatSkip` so it is never read again.
