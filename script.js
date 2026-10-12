@@ -4620,8 +4620,37 @@ function paintBoardDepth() {
     widgetList.style.setProperty('--board-rows', String(BOARD_ROWS));
 }
 
+// the board is always three tiles across the four columns — one wide, two small — so the row is full.
+// none can be added or taken away; a tile can only be changed to another kind, or moved along
+const BOARD_TILES = 3;
+const BOARD_START = ['decks', 'jump', 'kept'];
+function fillBoard() {
+    const seen = new Set();
+    let tiles = homeWidgets.filter((entry) => widgetById(entry.id) && !seen.has(entry.key) && seen.add(entry.key));
+    tiles.sort((a, b) => (a.col ?? 99) - (b.col ?? 99));
+    tiles = tiles.slice(0, BOARD_TILES);
+    for (const id of BOARD_START) {
+        if (tiles.length >= BOARD_TILES) break;
+        if (!tiles.some((entry) => entry.id === id)) tiles.push({ id, key: nextWidgetKey(id), size: 'small', look: null, col: 99, row: 0 });
+    }
+    while (tiles.length < BOARD_TILES) tiles.push({ id: 'decks', key: nextWidgetKey('decks'), size: 'small', look: null, col: 99, row: 0 });
+    let wide = tiles.findIndex((entry) => entry.size === 'wide');
+    if (wide < 0) wide = 0;
+    let col = 0;
+    tiles.forEach((entry, at) => {
+        entry.size = at === wide ? 'wide' : 'small';
+        entry.row = 0;
+        entry.col = col;
+        col += entry.size === 'wide' ? 2 : 1;
+    });
+    const changed = JSON.stringify(tiles) !== JSON.stringify(homeWidgets);
+    homeWidgets = tiles;
+    if (changed) saveWidgets();
+}
+
 function settleBoard() {
     if (boardDrag) return false;
+    fillBoard();
     const kept = [];
     let lost = 0;
 
@@ -4712,10 +4741,6 @@ function renderWidgets() {
             if (editingHome || event.target.closest('.widget-off, .widget-grip')) return;
             event.stopPropagation();
             openLookPicks(entry, card);
-        });
-        card.addEventListener('contextmenu', (event) => {
-            event.stopPropagation();
-            showContextMenu(event, { type: 'widget', id: entry.key });
         });
         widgetList.append(card);
     });
@@ -5135,9 +5160,8 @@ function startWidgetDrag(card, entry, event) {
     card.classList.add('is-dragging');
     showGhost(entry, entry.col, entry.row);
 
-    // the way out, offered only while there is something to throw away
-    widgetBin.hidden = false;
-    window.requestAnimationFrame(() => widgetBin.classList.add('is-up'));
+    boardDrag.fromX = spot.left;
+    boardDrag.fromY = spot.top;
 
     document.documentElement.classList.add('sorting-rows', 'sorting-grab');
     boardDrag.frame = window.requestAnimationFrame(carryOn);
@@ -5169,10 +5193,7 @@ function carryOn() {
         Math.round((boardDrag.atX - cell.box.left) / (cell.width + cell.gap))));
     const row = 0;      // one row: only which way along it is in question
 
-    const bin = widgetBin.getBoundingClientRect();
-    const overBin = boardDrag.wantY + boardDrag.grabY > bin.top
-        && boardDrag.wantX + boardDrag.grabX > bin.left
-        && boardDrag.wantX + boardDrag.grabX < bin.right;
+    const overBin = false;      // there is no bin: tiles are never thrown away
     if (overBin !== boardDrag.overBin) {
         boardDrag.overBin = overBin;
         widgetBin.classList.toggle('is-live', overBin);
@@ -5197,6 +5218,7 @@ function carryOn() {
 function endWidgetDrag() {
     if (!boardDrag) return;
     const { card, entry, col, row, frame, overBin, shadow } = boardDrag;
+    const boardDrag_from = { x: boardDrag.fromX, y: boardDrag.fromY };
     window.cancelAnimationFrame(frame);
     boardDrag = null;
 
@@ -5206,13 +5228,16 @@ function endWidgetDrag() {
     document.documentElement.classList.remove('sorting-rows', 'sorting-grab');
 
     const from = card.getBoundingClientRect();
+    const still = Math.hypot(from.left - boardDrag_from.x, from.top - boardDrag_from.y) < 6;
     hideGhost();
     widgetBin.classList.remove('is-up', 'is-live');
     window.setTimeout(() => { widgetBin.hidden = true; }, 240);
     card.classList.remove('is-dragging', 'is-going-out');
     ['width', 'height', 'left', 'top'].forEach((name) => card.style.removeProperty(name));
-    if (overBin) {
-        removeWidget(entry.key);
+    if (still) {                     // pressed, not carried: choose what this tile shows
+        renderWidgets();
+        const here = widgetList.querySelector(`.widget-card[data-widget-id="${entry.key}"]`);
+        openSwapPicks(entry, here || card);
         return;
     }
 
@@ -5247,6 +5272,7 @@ function shutPop(panel) {
 }
 
 function closeWidgetPicks() {
+    pickingFor = null;
     shutPop(widgetPicks);
     widgetAdd.setAttribute('aria-expanded', 'false');
 }
@@ -5260,12 +5286,32 @@ function renderWidgetPicks() {
         const text = document.createElement('span');
         text.textContent = widget.name;
         pick.append(text);
+        if (pickingFor && pickingFor.id === widget.id) pick.classList.add('is-on');
         pick.addEventListener('click', () => {
-            addWidget(widget.id);
+            if (pickingFor) {
+                const entry = homeWidgets.find((one) => one.key === pickingFor.key);
+                if (entry && entry.id !== widget.id) {
+                    entry.id = widget.id;
+                    entry.key = nextWidgetKey(widget.id);
+                    entry.look = null;
+                    saveWidgets();
+                    renderWidgets();
+                }
+            } else {
+                addWidget(widget.id);
+            }
             closeWidgetPicks();
         });
         widgetPickList.append(pick);
     });
+}
+let pickingFor = null;
+function openSwapPicks(entry, card) {
+    pickingFor = entry;
+    renderWidgetPicks();
+    widgetPicks.classList.remove('is-leaving');
+    widgetPicks.hidden = false;
+    placeBelowLeft(widgetPicks, card);
 }
 
 const helpToggle = document.getElementById('helpToggle');
@@ -5498,15 +5544,12 @@ function closeKeyMenu() {
     shutPop(keyMenu);
     keyEdit.setAttribute('aria-expanded', 'false');
 }
+// the pen turns arranging on and off: then a press on a tile changes what it is, a drag moves it
 keyEdit.addEventListener('click', (event) => {
     event.stopPropagation();
-    if (!keyMenu.hidden) { closeKeyMenu(); return; }
     closeWidgetPicks();
-    paintKey();
-    keyMenu.classList.remove('is-leaving');
-    keyMenu.hidden = false;
-    keyEdit.setAttribute('aria-expanded', 'true');
-    placeBelowLeft(keyMenu, homeKey);
+    setHomeEditing(!editingHome);
+    keyEdit.setAttribute('aria-pressed', String(editingHome));
 });
 keyMenu.addEventListener('click', (event) => event.stopPropagation());
 document.getElementById('keyArrange').addEventListener('click', () => {

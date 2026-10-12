@@ -4750,3 +4750,10 @@ html.booting .booting-mark { display: flex; }
 	90% { translate: 1px 0; }
 }
 .is-shaking { animation: field-shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+
+/* the board is three tiles that are only changed or moved: no cross, no resize corner, ever */
+.home-panel .widget-card .widget-off,
+.home-panel .widget-card .widget-grip { display: none !important; }
+.home-panel.is-editing .widget-card { cursor: var(--cur-grab); }
+.widget-pick.is-on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.key-edit[aria-pressed="true"] { color: var(--paper); background: var(--ink); }

@@ -775,6 +775,15 @@ the name, the first place the word appears with it marked, and a count.
 A round black go button with a white arrow sits at the bar's far right. Pressing a result (or Enter, or the go button, for the first) switches to that page and outlines
 where the word is for a moment if it is on show.
 
+**The movable board is exactly three tiles** (by request; `fillBoard()`):
+one wide and two small, filling the four columns, packed in order. None
+can be added or removed — no cross, no resize corner, no bin, no
+right-click — a board saved with more or fewer is made three again. **The
+pen on the time tile turns arranging on and off** (the menu it used to open
+is gone). While arranging, a press on a tile opens the widget list to change
+what it shows (`openSwapPicks`), and a drag moves it along the row; a press
+that travels less than 6px is a press, not a drag.
+
 **Five tiles across, and the first is fixed** (by request). The leftmost
 tile (`#homeKey`) is always the time and can't be moved or removed. The tile
 itself does nothing on hover or press; **the round pen in its bottom-right
