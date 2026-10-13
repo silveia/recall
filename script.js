@@ -891,6 +891,9 @@ function buildStageEditor(deck, card, index, field) {
         saveDecks();
     };
 
+    // another card being opened closes this one where it stands, so its cross slides back in
+    // rather than the whole list being drawn again (which put it back with no movement at all)
+    stageCloser = () => { if (editingStageIndex === index) commit(); };
     [question, answer].forEach((field) => {
         field.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
@@ -954,8 +957,8 @@ function beginStageEdit(index, field) {
     if (!card) return;
 
     if (editingStageIndex !== null) {
-        editingStageIndex = null;
-        renderStage();
+        if (stageCloser) stageCloser();
+        if (editingStageIndex !== null) { editingStageIndex = null; renderStage(); }
     }
     const item = deckCardList.querySelector(`.stage-card[data-card-index="${index}"]`);
     const text = item && item.querySelector('.stage-card-text');
@@ -969,11 +972,13 @@ function beginStageEdit(index, field) {
     disarmStageDelete();
     editingStageIndex = index;
     editingStageField = field === 'answer' ? 'answer' : 'question';
+    void item.offsetWidth;            // its cross is drawn where it is before it starts to go
     item.classList.add('editing');
     text.replaceWith(buildStageEditor(deck, card, index, field));
 }
 
 let armedDeleteRow = null;
+let stageCloser = null;
 
 function armStageDelete(item) {
     disarmStageDelete();

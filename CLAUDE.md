@@ -1016,6 +1016,16 @@ kept per tile in its own entry. The face carries no second hand — the
 board repaints on the minute, and a second hand that moved once a
 minute is a clock visibly telling the wrong time.
 
+## Switching which card is being edited
+
+Opening a second card while one is open closes the first **where it stands**
+(`stageCloser`, its own commit) rather than drawing the whole list again —
+the redraw put the first card's cross back with no movement and made the
+second card's cross vanish, since a row added to the page and given
+`editing` in the same instant has nothing to transition from. The row
+being opened is also read once (`offsetWidth`) before it takes `editing`.
+Measured: both crosses now fade over ~200ms, the old one in, the new one out.
+
 ## The mark lands in the middle, and the word holds still
 
 **Both answers turn white** when marked — the right one used to go solid black — so the tick or the cross drawn over it is plain to see.
