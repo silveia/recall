@@ -5980,7 +5980,7 @@ async function readyLocal(say) {
                 localTold = percent >= 100 || !fetched
                     ? 'getting the reader ready...'
                     : `getting the reader — ${fetched[1]}mb of ${LOCAL_SIZE}, once only`;
-                if (localSay) localSay(localTold);
+                if (localSay) localSay(localTold, fetched && percent < 100 ? { mb: Number(fetched[1]), part: report.progress || 0 } : null);
             }
         });
         localEngine = engine;
@@ -6022,7 +6022,7 @@ async function askLocal(text, onCards, say) {
 
     for (let index = 0; index < pieces.length; index += 1) {
         const where = pieces.length > 1 ? ` · part ${index + 1} of ${pieces.length}` : '';
-        if (say) say(`reading${where}...`);
+        if (say) say('making flashcards...', null);
         const answer = await engine.chat.completions.create({
             messages: [
                 { role: 'system', content: LOCAL_BRIEF },
@@ -6318,19 +6318,42 @@ async function askClaude(text, bits, onProgress) {
     };
 }
 
+// while it works, the button is the whole of what it says: 'making flashcards...', and once the
+// reader is coming down the line, how much of it has arrived with a bar along the bottom — nothing
+// is written under the box until the cards are there
+function goSay(words, part) {
+    notesGo.textContent = words;
+    notesGo.classList.toggle('is-loading', typeof part === 'number');
+    if (typeof part === 'number') notesGo.style.setProperty('--done', String(Math.max(0, Math.min(1, part))));
+}
 function setNotesBusy(busy) {
     notesBusy = busy;
     notesGo.disabled = busy;
     notesRead.disabled = busy;
     notesAttach.disabled = busy;
-    notesGo.textContent = busy ? 'reading...' : 'make flashcards';
+    if (busy) {
+        notesNote.textContent = '';
+        goSay('making flashcards...');
+    } else {
+        goSay('make flashcards');
+    }
+}
+// the reader's own words on the way, turned into what the button shows
+const LOCAL_TOTAL_MB = 1100;
+function goSayLocal(words, info) {
+    if (info && info.mb) {
+        const total = LOCAL_TOTAL_MB >= 1000 ? `${(LOCAL_TOTAL_MB / 1000).toFixed(1)} gb` : `${LOCAL_TOTAL_MB} mb`;
+        goSay(`${info.mb} mb / ${total}`, info.part);
+    } else {
+        goSay('making flashcards...');
+    }
 }
 
 async function makeCards() {
     if (notesBusy) return;
     const text = notesInput.value.trim();
     if (!text && !notesBitsHeld.length) {
-        notesNote.textContent = 'paste some notes, or drop a photo of them';
+        shake(notesInput);
         return;
     }
 
@@ -6341,15 +6364,8 @@ async function makeCards() {
             let gathered = text;
             for (let index = 0; index < notesBitsHeld.length; index += 1) {
                 const bit = notesBitsHeld[index];
-                if (bit.kind === 'pdf') {
-                    notesNote.textContent = 'a pdf is more than this can read on its own — see below';
-                    continue;
-                }
-                const which = notesBitsHeld.length > 1 ? ` (${index + 1} of ${notesBitsHeld.length})` : '';
-                notesNote.textContent = `reading the picture${which}...`;
-                const said = await readPicture(bit, (how) => {
-                    notesNote.textContent = how + which;
-                });
+                if (bit.kind === 'pdf') continue;
+                const said = await readPicture(bit, () => goSay('making flashcards...'));
                 if (said) gathered += (gathered ? '\n\n' : '') + said;
             }
             if (gathered !== text) {
@@ -6362,12 +6378,12 @@ async function makeCards() {
             } else if (await gpuThere()) {
                 if (!localEngine) {
                     const quick = readNotes(gathered);
-                    if (quick.length) renderFound(quick, `${quick.length} obvious ones — reading the rest...`);
+                    if (quick.length) renderFound(quick, '');
                 }
                 const cards = await askLocal(
                     gathered,
-                    (sofar, where) => renderFound([...sofar], `${sofar.length} cards${where}...`),
-                    (how) => { notesNote.textContent = how; }
+                    (sofar) => { renderFound([...sofar], ''); goSay(`making flashcards... ${sofar.length}`); },
+                    (how, info) => goSayLocal(how, info)
                 );
                 renderFound(cards, cards.length
                     ? `${cards.length} cards — drop any you don't want, then keep them`
@@ -6379,9 +6395,7 @@ async function makeCards() {
                     : "this browser can't run the reader — notes already in pairs are all it can do here");
             }
         } catch (error) {
-            notesNote.textContent = /quota/i.test(error.name + error.message)
-                ? 'no room in this browser for the reader — clear some space and try again'
-                : `couldn't read it — ${error.message}`;
+            shake(notesGo);
         }
         setNotesBusy(false);
         return;
@@ -6407,22 +6421,20 @@ async function makeCards() {
         for (let index = 0; index < runs.length; index += 1) {
             const run = runs[index];
             const where = runs.length > 1 ? ` · ${run.said || index + 1} of ${runs.length}` : '';
-            notesNote.textContent = `reading${where}...`;
+            goSay('making flashcards...');
             const answer = await askClaude(run.text, run.bits, (count) => {
-                notesNote.textContent = `${gathered.length + count} cards${where}...`;
+                goSay(`making flashcards... ${gathered.length + count}`);
             });
             if (!notesDeckName) notesDeckName = answer.deckName;
             mergeCards(gathered, answer.cards);
-            renderFound(gathered, `${gathered.length} cards${where}...`);
+            renderFound(gathered, '');
         }
 
         renderFound(gathered, gathered.length
             ? `${gathered.length} cards — drop any you don't want, then keep them`
             : 'nothing in there worth a card');
     } catch (error) {
-        notesNote.textContent = /x-api-key|authentication/i.test(error.message)
-            ? "the saved key was refused — open sharper reading and paste it again"
-            : `couldn't read it — ${error.message}`;
+        shake(notesGo);
     }
     setNotesBusy(false);
 }

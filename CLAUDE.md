@@ -60,7 +60,7 @@ more to read than the column holds — it *moves*, so there is one panel
 and one set of state, never two to keep in step. `#notesHome` is the
 slot it returns to.
 
-**One button: make flashcards**, and it works with nothing set up. It
+**One button: make flashcards**, and it works with nothing set up. **While it works, the button says what is happening and nothing is written under the box**: `making flashcards...` (with the count as cards arrive), and while the in-browser reader is downloading it turns white with `312 mb / 1.1 gb` on it and a black bar filling along its foot (`goSay`, `goSayLocal`). **Nothing is written under the buttons at all** (`.notes-note` and the `read the list myself` link are hidden, by request): an empty box shakes the box, a failure shakes the button. **`sharper reading` sits straight under `make flashcards`** as the same pill in white. It
 takes whatever is in the panel —
 prose, an essay, a transcript, a chapter, a photo of a handwritten page,
 a slide, a PDF, or any mix — and comes back with cards. The material
@@ -1017,6 +1017,8 @@ board repaints on the minute, and a second hand that moved once a
 minute is a clock visibly telling the wrong time.
 
 ## The mark lands in the middle, and the word holds still
+
+**Both answers turn white** when marked — the right one used to go solid black — so the tick or the cross drawn over it is plain to see.
 
 A tick or a cross on the tile you pressed. The word used to **slide down
 14px** to make room overhead and the mark came in above it — so the

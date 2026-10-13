@@ -1545,8 +1545,8 @@ html:not(.inverted) .rail-left {
 .answer-button.correct:hover, .answer-button.incorrect:hover { color: inherit; background: inherit; }
 
 .answer-button.correct {
-	color: var(--paper);
-	background: var(--ink);
+	color: var(--ink);
+	background: var(--paper);      /* white, by request, so the tick drawn over it stands out */
 	border-color: var(--ink);
 }
 .answer-button.correct:not(.is-right) { animation: pop 0.35s var(--ease); }
@@ -3720,6 +3720,23 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .notes-button.is-solid { color: var(--paper); background: var(--ink); font-weight: 700; }
 .notes-button:disabled { cursor: var(--cur-dot); opacity: 1; }
 .notes-button:disabled:hover { color: var(--ink); background: none; }
+/* making flashcards: the button stays as it is and carries the state. while the reader downloads it
+   turns white with the amount on it and a black bar filling along its foot */
+.notes-button.is-go { position: relative; overflow: hidden; transition: none; }   /* a fade from black to white passes through grey */
+.notes-button.is-go:disabled { color: var(--paper); background: var(--ink); }
+.notes-button.is-go.is-loading, .notes-button.is-go.is-loading:disabled { color: var(--ink); background: var(--paper); font-family: var(--num-font); font-size: 1rem; font-weight: 400; }
+.notes-button.is-go.is-loading::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	width: 100%;
+	height: 4px;
+	background: var(--ink);
+	transform: scaleX(var(--done, 0));
+	transform-origin: left;
+	transition: transform 0.3s var(--ease);
+}
 
 .notes-note {
 	margin: 0;
@@ -3768,19 +3785,20 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 }
 
 .notes-key-toggle {
-	align-self: center;
-	margin: -7px 0 0;
-	padding: 0;
+	flex: none;
+	padding: calc(0.5rem + var(--drop)) 0.6rem calc(0.5rem - var(--drop));
 	color: var(--ink);
-	background: none;
-	border: 0;
-	font-size: 0.7rem;
-	line-height: 1;
-	opacity: 0.75;
+	background: var(--paper);
+	border: 1px solid var(--ink);
+	border-radius: 999px;
+	font-size: 0.85rem;
 	cursor: var(--cur-tap);
-	transition: opacity 0.18s var(--ease);
+	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
-.notes-key-toggle:hover { opacity: 1; }
+.notes-key-toggle:hover { color: var(--paper); background: var(--ink); }
+/* nothing is written under the buttons — not the count, not the deck it went to, not the list
+   reader's quiet link; the buttons carry what is happening (by request) */
+.notes-note, #notesRead { display: none !important; }
 .notes-key { display: flex; flex-direction: column; gap: var(--tight); }
 
 .notes-head {
