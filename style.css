@@ -745,22 +745,32 @@ html:not(.inverted) .rail-left {
 .share-panel label { font-weight: 700; font-size: 0.85rem; }
 .share-panel label + .share-row { margin-bottom: 0.5rem; }
 
-.share-row { display: flex; align-items: stretch; gap: var(--tight); }
+.share-row { display: flex; align-items: center; gap: var(--tight); }
+/* the code boxes are exactly as tall as load and copy beside them, can't be dragged bigger, and
+   scroll on a hair of a black line instead of the system's thick bar */
 .share-row textarea {
 	flex: 1;
 	min-width: 0;
-	height: calc(2 * 1.4em + 1rem + 2px);
-	padding: 0.5rem 0.7rem;
+	box-sizing: border-box;
+	height: var(--field);
+	padding: calc((var(--field) - 2px - 0.8rem * 1.4) / 2) 0.7rem;
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-size: 0.8rem;
 	line-height: 1.4;
-	resize: vertical;
+	resize: none;
+	overflow-y: auto;
 	overflow-wrap: anywhere;
+	scrollbar-width: thin;
+	scrollbar-color: var(--ink) transparent;
 }
+.share-row textarea::-webkit-scrollbar { width: 3px; }
+.share-row textarea::-webkit-scrollbar-track { background: transparent; }
+.share-row textarea::-webkit-scrollbar-thumb { background: var(--ink); border-radius: 3px; }
+.share-row textarea::-webkit-resizer { display: none; }
 .share-row textarea::placeholder { color: var(--muted); }
-.share-row .basic-button { flex: none; align-self: stretch; padding: calc(var(--drop) * 2) 1.1rem 0; }
+.share-row .basic-button { flex: none; width: 5.2rem; height: var(--field); padding: calc(var(--drop) * 2) 0 0; }   /* one width, so both boxes line up */
 
 .share-note { min-height: 1.2rem; margin: 0; font-size: 0.8rem; }
 
@@ -1567,8 +1577,8 @@ html:not(.inverted) .rail-left {
 	left: 50%;
 	display: grid;
 	place-items: center;
-	width: 1.35rem;
-	height: 1.35rem;
+	width: 1.75rem;
+	height: 1.75rem;
 	transform: translate(-50%, -50%);
 	pointer-events: none;
 	animation: mark-in 0.3s var(--ease) backwards;
@@ -4783,3 +4793,8 @@ html.booting .booting-mark { display: flex; }
 .home-panel.is-editing .widget-card { cursor: var(--cur-grab); }
 .widget-pick.is-on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 .key-edit[aria-pressed="true"] { color: var(--paper); background: var(--ink); }
+
+/* the box you pressed shows only its mark once it is marked: white behind it, the word taken out
+   (kept in place, so the box keeps its size) */
+.answer-button.is-marked { color: var(--ink); background: var(--paper); }
+.answer-button.is-marked .answer-word { visibility: hidden; }

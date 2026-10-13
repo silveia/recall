@@ -139,7 +139,7 @@ never chunked — a document is read whole.
 
 Switched by the tabs in the top strip.
 
-**cards** — the original flashcard app. In create, the `+` on the answer opens a small white window (`#optionsPanel`, `select other answer options for this question`) under the answer field, its right edge on the field's and one `--tight` below it. A small spaced-out capitals label sits right over the `new deck` field, as a bit of motivation: `WE LOVE STUDYING !!!`. Decks with drag-reorder, right-click
+**cards** — the original flashcard app. The share window's two code boxes are exactly the height of `load` / `copy` beside them, can't be resized, and scroll on a 3px black line. In create, the `+` on the answer opens a small white window (`#optionsPanel`, `select other answer options for this question`) under the answer field, its right edge on the field's and one `--tight` below it. A small spaced-out capitals label sits right over the `new deck` field, as a bit of motivation: `WE LOVE STUDYING !!!`. Decks with drag-reorder, right-click
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
 with four multiple-choice answers mapped to keyboard quadrants.
 
@@ -1026,6 +1026,13 @@ deck and saves on blur (straight away, not on a timer), before every
 `renderStage()`, and on `pagehide` / `beforeunload` / the tab hiding. An
 editor that has been replaced by a redraw never commits (`wrap.isConnected`).
 
+## Practice holds its question
+
+After a wrong answer, pressing a key moves on to the next question — but
+`Tab`, `Shift`, `Meta`, `Alt`, `Control` and `CapsLock` don't. Any key used
+to, so tabbing away for a second (or cmd/alt-tabbing to another window)
+threw the question away.
+
 ## Switching which card is being edited
 
 Opening a second card while one is open closes the first **where it stands**
@@ -1038,7 +1045,7 @@ Measured: both crosses now fade over ~200ms, the old one in, the new one out.
 
 ## The mark lands in the middle, and the word holds still
 
-**The answer you pressed turns white** when marked, so the tick or the cross drawn over it is plain to see. **After a wrong pick, the right answer turns solid black** (`.correct:not(.is-right)`), so it is obvious which one it was.
+**The answer you pressed turns white and shows only its mark** — the word is hidden (kept in place, so the box keeps its size) and the tick or cross is a touch bigger (1.75rem). **After a wrong pick, the right answer turns solid black** (`.correct:not(.is-right)`), so it is obvious which one it was.
 
 A tick or a cross on the tile you pressed. The word used to **slide down
 14px** to make room overhead and the mark came in above it — so the

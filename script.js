@@ -2007,7 +2007,10 @@ document.addEventListener('keydown', (event) => {
         }
     }
 
+    // after a wrong answer a key moves on — but not tab, shift, or the keys pressed on the way to
+    // another window: tabbing away for a second used to throw the question away
     if (waitingForContinue) {
+        if (['Tab', 'Shift', 'Meta', 'Alt', 'Control', 'CapsLock', 'Fn', 'OS'].includes(event.key)) return;
         showNextQuestion();
         return;
     }
