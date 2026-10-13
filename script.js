@@ -126,6 +126,38 @@ let activeSectionId = 'home';
 let activeDeckId = 'starting-deck';
 let recentQuestions = [];
 let currentCard;
+// practice learns a little from you: how long each card takes and how often it is missed tilt the
+// draw towards it — never far (a card is at most about three times as likely), and every card is
+// still asked at least once in every two rounds of the deck
+let askedThisRound = new Set();
+let roundTurns = 0;
+let questionShownAt = 0;
+function cardWeight(card, cards) {
+    const kept = card.stats || {};
+    const times = cards.map((one) => one.stats && one.stats.ms).filter(Boolean).sort((a, b) => a - b);
+    const typical = times.length ? times[Math.floor(times.length / 2)] : 0;
+    const slow = typical && kept.ms ? Math.max(0, Math.min(1, kept.ms / typical - 1)) : 0;
+    const missed = Math.max(0, Math.min(1, kept.miss || 0));
+    return 1 + 1.3 * missed + 0.6 * slow;
+}
+function pickWeighted(cards, all) {
+    const weights = cards.map((card) => cardWeight(card, all));
+    let roll = Math.random() * weights.reduce((sum, w) => sum + w, 0);
+    for (let at = 0; at < cards.length; at += 1) {
+        roll -= weights[at];
+        if (roll <= 0) return cards[at];
+    }
+    return cards[cards.length - 1];
+}
+function noteAnswer(card, right) {
+    if (!card) return;
+    const took = Math.min(60000, Math.max(0, performance.now() - questionShownAt));
+    const kept = card.stats || (card.stats = {});
+    kept.seen = (kept.seen || 0) + 1;
+    kept.ms = kept.ms ? Math.round(kept.ms * 0.7 + took * 0.3) : Math.round(took);
+    kept.miss = Number(((kept.miss || 0) * 0.7 + (right ? 0 : 0.3)).toFixed(3));   // recent misses count most
+    saveDecks();
+}
 let waitingForContinue = false;
 let editingCardIndex = null;
 let pendingOptions = new Set();
@@ -1251,6 +1283,8 @@ function shuffle(items) {
 
 function startStudy() {
     recentQuestions = [];
+    askedThisRound = new Set();
+    roundTurns = 0;
     showScreen(studyScreen);
     showNextQuestion();
 }
@@ -1276,7 +1310,17 @@ function showNextQuestion() {
         if (availableCards.length === 0) availableCards = cards;
     }
 
-    currentCard = shuffle(availableCards)[0];
+    // a round is the deck once over. if a round has run as long as the deck and some card still
+    // hasn't come up, it is one of those next — so nothing is left out for long
+    askedThisRound = new Set([...askedThisRound].filter((card) => cards.includes(card)));   // cards since deleted
+    const waiting = availableCards.filter((card) => !askedThisRound.has(card));
+    const overdue = roundTurns >= cards.length && waiting.length;
+    currentCard = overdue ? shuffle(waiting)[0] : pickWeighted(shuffle(availableCards), cards);
+    if (askedThisRound.size === 0) roundTurns = 0;
+    askedThisRound.add(currentCard);
+    roundTurns += 1;
+    if (askedThisRound.size >= cards.length) { askedThisRound = new Set(); roundTurns = 0; }
+    questionShownAt = performance.now();
     recentQuestions.push(currentCard);
     if (recentQuestions.length > cooldownSize) recentQuestions.shift();
 
@@ -1344,6 +1388,7 @@ function checkAnswer(selectedButton, selectedAnswer) {
     answerOptions.classList.add('is-answered');
     studyFeedback.textContent = '';
 
+    noteAnswer(currentCard, selectedAnswer === currentCard.answer);
     if (selectedAnswer === currentCard.answer) {
         selectedButton.classList.add('is-right');
         markAnswer(selectedButton, true);

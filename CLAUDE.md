@@ -1026,6 +1026,20 @@ deck and saves on blur (straight away, not on a timer), before every
 `renderStage()`, and on `pagehide` / `beforeunload` / the tab hiding. An
 editor that has been replaced by a redraw never commits (`wrap.isConnected`).
 
+## Practice leans, a little, towards what you find hard
+
+Each card keeps `stats` with the deck: how many times it has been asked,
+how long it takes you (`ms`, a running average, capped at a minute) and
+how often you miss it lately (`miss`, a running average so getting better
+counts). The draw is weighted by `cardWeight()` — `1 + 1.3 × miss + 0.6 ×
+slow`, slow being how far past the deck's typical time it runs, both
+capped — so a hard card is at most about three times as likely. **Every
+card is still asked**: a round is the deck once over, and once a round has
+run as long as the deck, whatever hasn't come up comes next; the half-deck
+cooldown stays. Simulated over 800 questions on eight cards, one missed
+and slow: it came up 122 times against ~96 for the rest, and no card went
+more than 17 questions without coming up.
+
 ## Practice holds its question
 
 After a wrong answer, pressing a key moves on to the next question — but
