@@ -40,7 +40,7 @@ const sectionTabs = document.getElementById('sectionTabs');
 // the name in the top-left corner is the way home, like every site's name is
 document.getElementById('siteName').addEventListener('click', (event) => {
     event.preventDefault();
-    if (typeof hideTabTip === 'function') hideTabTip();
+    hideTabTip();
     switchSection('home');
 });
 const audioPanel = document.getElementById('audioPanel');
@@ -66,8 +66,6 @@ const clockTime = document.getElementById('clockTime');
 const clockSuffix = document.getElementById('clockSuffix');
 const themeSwap = document.getElementById('themeSwap');
 const clockDate = document.getElementById('clockDate');
-const storeAmount = document.getElementById('storeAmount');
-const storeFill = document.getElementById('storeFill');
 const railBinned = document.getElementById('railBinned');
 const binnedList = document.getElementById('binnedList');
 const binnedCount = document.getElementById('binnedCount');
@@ -299,17 +297,10 @@ function stopGuessing(field) {
 function switchSection(id) {
     if (isModalOpen()) showScreen(homeScreen);   // tabs work from anywhere
     if (id === activeSectionId) return;
-
-    const tabs = [...sectionTabs.querySelectorAll('.section-tab')];
-    const before = tabs.map((tab) => tab.getBoundingClientRect());
-
     activeSectionId = id;
     window.localStorage.setItem('active-section', activeSectionId);
     writeLink('pushState', id);
     renderSections();
-
-    // the pages are icons of one size now, so a switch has nothing to grow or shrink
-    void before;
 }
 
 // one simple mark per page, drawn in the site's own hairline
@@ -317,7 +308,7 @@ const PAGE_MARKS = {
     home: '<path d="M4 11.5 12 5l8 6.5M6.5 10v9.5h11V10"/>',
     cards: '<rect x="4.5" y="7.5" width="11" height="12.5" rx="2"/><path d="M8.5 4.5H17a2 2 0 0 1 2 2V16"/>',
     audio: '<path d="M5 10v4M8.5 7v10M12 4.5v15M15.5 8v8M19 10.5v3"/>',
-    chat: '<path d="M5.5 5.5h13a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h-1a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2z"/>'
+    chat: '<path d="M20 11.5c0 3.9-3.6 7-8 7-1.1 0-2.2-.2-3.1-.6L4.5 19.5l1.3-3.6C4.7 14.7 4 13.2 4 11.5c0-3.9 3.6-7 8-7s8 3.1 8 7z"/>'   // a round bubble, by request
 };
 const pageMark = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PAGE_MARKS[id] || ''}</svg>`;
 
@@ -330,8 +321,7 @@ const TIP_WARM = 300;    // after one has gone in, the next within this long com
 // to the bump), so the shape starts as exactly the bump and pushes out of it. open is the shape's own
 // round end. the curve travels from one to the other as an arc the whole way — a rounded inset clip
 // squashed its corners while it was short, and the front edge never matched the bump
-let tipNow = null;       // the one open or opening: { el, for, at (0 shut, 1 open), frame }
-const tipsGoing = [];    // ones sliding back in, each still finishing its own close
+const tips = new Map();  // each page's name out (or on its way in or out): { el, line, word, at (0 shut, 1 open), frame, sx, sy }
 let tipTimer = 0;
 let tipColdAt = 0;       // when the last one finished going in
 // the name's face is only fetched the first time something uses it, so ask for it up front
@@ -344,17 +334,46 @@ function tipEase(t) {
     for (let i = 0; i < 24; i += 1) { u = (lo + hi) / 2; if (at(u, x1, x2) < t) lo = u; else hi = u; }
     return at(u, 0, 1);
 }
-// the shape at a point between shut (0) and open (1). one arc whose ends and radii travel together,
-// so the front edge is a curve the whole way: the bump's own arc at 0, the shape's round end at 1
+// the shape at a point between shut (0) and open (1). shut it is exactly the bump; within the first
+// fifth of the way out its front has become the same half circle it ends as, and from there it simply
+// slides — part way out it was a shallower arc than the open shape's, and read as a different shape.
+// the front's leading point moves evenly the whole way, whatever the curve is doing. where the curve
+// meets the straight top and bottom there is a small round join, so no corner shows while the curve
+// is still wider than the shape is tall (an arc like that meets a straight line at an angle)
+const smooth = (t) => t * t * (3 - 2 * t);
+// its size, read once a slide rather than every frame (read straight after a frame's drawing, it made
+// the browser work the styles out again first)
+function measureTip(tip) {
+    tip.w = tip.el.offsetWidth;
+    tip.h = tip.el.offsetHeight;
+}
 function drawTip(tip) {
-    const { el, line, sx, sy } = tip;
-    const w = el.offsetWidth, h = el.offsetHeight, end = h / 2, p = tip.at;
-    const mix = (a, b) => a + (b - a) * p;
+    const { el, line, sx, sy, w, h } = tip;
+    const end = h / 2, p = tip.at;
     // in the dark the white edge has to land on the bump's own outline when shut (drawn at 6.61, 1px
     // wide), or the two show side by side as one thick line as it leaves and arrives
     const dark = document.documentElement.classList.contains('inverted');
-    const x = mix(dark ? 6.61 * sx + 0.5 : 6 * sx, w - end), rx = mix(37.5 * sx, end), ry = mix(37.5 * sy, end);
-    const d = `M0 0 H${x.toFixed(2)} A${rx.toFixed(2)} ${ry.toFixed(2)} 0 0 1 ${x.toFixed(2)} ${h} H0`;
+    const x0 = dark ? 6.61 * sx + 0.5 : 6 * sx;
+    const q = smooth(Math.min(1, p / 0.2));
+    const rx = 37.5 * sx + (end - 37.5 * sx) * q;
+    const ry = 37.5 * sy + (end - 37.5 * sy) * q;
+    const bulge = (rxNow, ryNow) => rxNow * (1 - Math.sqrt(Math.max(0, 1 - (end / ryNow) ** 2)));
+    const lead = x0 + bulge(37.5 * sx, 37.5 * sy) + (w - x0 - bulge(37.5 * sx, 37.5 * sy)) * p;
+    const x = Math.max(x0, lead - bulge(rx, ry));
+    // the join, worked out with the arc squared up to a circle (x over k), then stretched back
+    const k = rx / ry;
+    const R = ry;
+    const cx = x / k - Math.sqrt(Math.max(0, R * R - end * end));
+    const grow = Math.min(1, p / 0.05);
+    const f = Math.min(16, R - 0.01) * smooth(grow);
+    const fx = cx + Math.sqrt(Math.max(0, (R - f) ** 2 - (end - f) ** 2));
+    const t = R / (R - f);
+    const jx = (cx + (fx - cx) * t) * k;              // where the join meets the arc, top and bottom
+    const jy = end + (f - end) * t;
+    const n = (v) => v.toFixed(2);
+    const d = `M0 0 H${n(fx * k)} A${n(f * k)} ${n(f)} 0 0 1 ${n(jx)} ${n(jy)}`
+        + ` A${n(rx)} ${n(ry)} 0 0 1 ${n(jx)} ${n(h - jy)}`
+        + ` A${n(f * k)} ${n(f)} 0 0 1 ${n(fx * k)} ${h} H0`;
     el.style.clipPath = `path('${d} Z')`;
     // the white edge in the dark rides the same curve, so it is never left behind at the far end
     line.setAttribute('d', d);
@@ -365,6 +384,7 @@ function drawTip(tip) {
 function moveTip(tip, to, then) {
     // always from wherever it is now, so turning back half way is a turn, never a jump
     window.cancelAnimationFrame(tip.frame);
+    measureTip(tip);
     const from = tip.at;
     const long = (to ? 380 : 300) * Math.max(0.35, Math.abs(to - from));
     const start = performance.now();
@@ -377,55 +397,50 @@ function moveTip(tip, to, then) {
     };
     tip.frame = window.requestAnimationFrame(step);
 }
-function closeTip(tip) {
-    tipsGoing.push(tip);
+// a page's name goes back in on its own, and the shape is taken away once it is in
+function shutTip(id) {
+    const tip = tips.get(id);
     moveTip(tip, 0, () => {
         tip.el.remove();
-        tipsGoing.splice(tipsGoing.indexOf(tip), 1);
-        if (!tipNow && !tipsGoing.length) tipColdAt = performance.now();
+        tips.delete(id);
+        if (!tips.size) tipColdAt = performance.now();
     });
 }
+// a mark's name comes out — turning round from wherever it is if it was on its way in — and any
+// other one out goes back in on its own while it does, rather than being snatched away
 function openTabTip(tab, name) {
     const id = tab.dataset.section;
-    if (tipNow && tipNow.for === id) { moveTip(tipNow, 1); return; }
-    // the last one goes back in on its own while this one comes out, rather than being snatched away
-    if (tipNow) closeTip(tipNow);
-    // the same mark caught on its way back in turns round from where it is
-    const back = tipsGoing.find((one) => one.for === id);
-    if (back) {
-        tipsGoing.splice(tipsGoing.indexOf(back), 1);
-        tipNow = back;
-        moveTip(back, 1);
-        return;
+    tips.forEach((tip, other) => { if (other !== id) shutTip(other); });
+    let tip = tips.get(id);
+    if (!tip) {
+        const el = document.createElement('div');
+        el.className = 'tab-tip';
+        el.setAttribute('aria-hidden', 'true');
+        el.innerHTML = `<svg><path/></svg><span>${name}</span>`;
+        document.body.append(el);
+        const spot = tab.getBoundingClientRect();
+        el.style.top = `${Math.round(spot.top + spot.height / 2 - el.offsetHeight / 2)}px`;
+        // the shape starts where a bump tile does, so the bump's arc goes in at the same numbers
+        const shell = getComputedStyle(document.documentElement);
+        tip = {
+            el, line: el.querySelector('path'), word: el.querySelector('span'), at: 0, frame: 0,
+            sx: parseFloat(shell.getPropertyValue('--wave-w')) / 39,
+            sy: parseFloat(shell.getPropertyValue('--wave-h')) / 66
+        };
+        tips.set(id, tip);
+        measureTip(tip);
+        drawTip(tip);
     }
-    const el = document.createElement('div');
-    el.className = 'tab-tip';
-    el.setAttribute('aria-hidden', 'true');
-    el.innerHTML = `<svg><path/></svg><span>${name}</span>`;
-    document.body.append(el);
-    const spot = tab.getBoundingClientRect();
-    el.style.top = `${Math.round(spot.top + spot.height / 2 - el.offsetHeight / 2)}px`;
-    // the shape starts where a bump tile does, so the bump's arc goes in at the same numbers
-    const shell = getComputedStyle(document.documentElement);
-    tipNow = {
-        el, for: id, line: el.querySelector('path'), word: el.querySelector('span'), at: 0, frame: 0,
-        sx: parseFloat(shell.getPropertyValue('--wave-w')) / 39,
-        sy: parseFloat(shell.getPropertyValue('--wave-h')) / 66
-    };
-    drawTip(tipNow);
-    moveTip(tipNow, 1);
+    moveTip(tip, 1);
 }
 function hideTabTip() {
     window.clearTimeout(tipTimer);
-    if (!tipNow) return;
-    closeTip(tipNow);
-    tipNow = null;
+    tips.forEach((tip, id) => shutTip(id));
 }
 function waitForTip(tab, name) {
     window.clearTimeout(tipTimer);
     // one already out, or only just gone in: going from mark to mark carries on with no wait
-    const warm = tipNow || tipsGoing.length || performance.now() - tipColdAt < TIP_WARM;
-    if (warm) openTabTip(tab, name);
+    if (tips.size || performance.now() - tipColdAt < TIP_WARM) openTabTip(tab, name);
     else tipTimer = window.setTimeout(() => openTabTip(tab, name), TIP_WAIT);
 }
 
@@ -441,13 +456,13 @@ function renderSections() {
     chatPanel.hidden = activeSectionId !== 'chat';
     if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
-    if (activeSectionId !== 'audio' && typeof openSensing === 'function') openSensing(false);
+    if (activeSectionId !== 'audio') openSensing(false);
     if (activeSectionId !== 'chat' && chatReady) closeAccount();
 
     const shown = {
         cards: [deckSplit, notesSplit],
-        audio: [typeof clipSplitter !== 'undefined' && clipSplitter],
-        chat: [typeof chatSplitter !== 'undefined' && chatSplitter]
+        audio: [clipSplitter],
+        chat: [chatSplitter]
     }[activeSectionId] || [];
     shown.forEach((one) => { if (one) one.reclamp(); });
 
@@ -573,10 +588,10 @@ let editingStageField = 'question';   // which line of it took the caret
 // least / leastOther: the smallest each side may be, in pixels (a number or a function), so its
 // heading is still whole. With snap, pulling a side past its least shuts it instead — halfway
 // past and it goes, short of that it holds at the least — so a pane is either readable or gone.
-function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOther,
+function wireSplit({ split, body, other, key, pane, fromRight, keepOther,
                      down, skinAt = 68, max = 75, fallback = 50, least = 0, leastOther = 0,
                      snap = false, onDrag }) {
-    if (!split || !body || !other) return null;
+    if (!split || !body || !other || !pane) return null;
 
     const across = (box) => (down ? box.height : box.width);
     const near = (box) => (down ? box.top : box.left);
@@ -608,15 +623,21 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
         return Math.max(0, Math.min(max, (across(box) - between() - floor) / across(box) * 100));
     };
 
+    // the least is measured once a drag starts and held for its length: measuring it on every move
+    // made the page lay itself out again for each pixel, which is what dragging felt like
+    let leastHeld = null;
     const floorAt = () => {
         const room = across(body.getBoundingClientRect());
-        return room && least ? Math.min(ceiling(), px(least) / room * 100) : 0;
+        const want = leastHeld === null ? px(least) : leastHeld;
+        return room && least ? Math.min(ceiling(), want / room * 100) : 0;
     };
 
     // draws the split at a width, without deciding anything about it
     const paint = (width) => {
-        body.style.setProperty(variable, `${width}%`);
+        // the room is read before anything is written: read after, it made the browser lay the page out
+        // again in the middle of every frame of a drag
         const room = across(body.getBoundingClientRect());
+        pane.style.flexBasis = `${width}%`;   // on the pane itself: nothing inherits it, so nothing inside it is restyled
         if (room) {
             const full = gripWidth();
             const open = room * width / 100;
@@ -638,7 +659,7 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
     const travel = (to) => {
         if (glide && glide.to === to) return;
         if (glide) cancelAnimationFrame(glide.frame);
-        const from = parseFloat(body.style.getPropertyValue(variable));
+        const from = parseFloat(pane.style.flexBasis);
         const start = Number.isFinite(from) ? from : to;
         // open both sides for the trip, and let the far one shrink past its own floor
         if (pane) pane.classList.remove('is-shut');
@@ -673,7 +694,7 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
         }
         width = Math.max(0, Math.min(100, width));
         aim = width;
-        const shown = parseFloat(body.style.getPropertyValue(variable));
+        const shown = parseFloat(pane.style.flexBasis);
         const jump = snap && Number.isFinite(shown) && Math.abs(width - shown) > 3
             && (width === 0 || width === 100 || width === low || width === high || shown === 0 || shown === 100);
         if (jump || (glide && glide.to === width)) {
@@ -687,7 +708,7 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
     };
 
     const now = () => {
-        const set = parseFloat(body.style.getPropertyValue(variable));
+        const set = parseFloat(pane.style.flexBasis);
         return Number.isFinite(set) ? set : fallback;
     };
     const remember = (width) => {
@@ -714,15 +735,26 @@ function wireSplit({ split, body, other, variable, key, pane, fromRight, keepOth
         document.documentElement.classList.add(down ? 'splitting-down' : 'splitting');
 
         const slack = (atPointer(event) || 0) - now();
+        leastHeld = px(least);
 
+        // one set a frame, whatever the mouse sends
+        let latest = null;
+        let frame = 0;
         const drag = (move) => {
             if (move.pointerId !== event.pointerId) return;
-            const wanted = atPointer(move);
-            if (wanted === null) return;
-            set(wanted - slack);
-            if (onDrag) onDrag();
+            latest = move;
+            if (frame) return;
+            frame = requestAnimationFrame(() => {
+                frame = 0;
+                const wanted = atPointer(latest);
+                if (wanted === null) return;
+                set(wanted - slack);
+                if (onDrag) onDrag();
+            });
         };
         const drop = () => {
+            if (frame) { cancelAnimationFrame(frame); frame = 0; }
+            leastHeld = null;
             window.removeEventListener('pointermove', drag);
             window.removeEventListener('pointerup', drop);
             window.removeEventListener('pointercancel', drop);
@@ -771,13 +803,40 @@ function headingRoom(pane, title) {
     }
     return Math.ceil(wide + (headingChrome.get(pane) || 48) + 4);
 }
-// how tall a pane must be to show its head row whole
-function headRoomDown(pane, head) {
-    if (!pane || !head) return 0;
-    if (!pane.classList.contains('is-shut') && pane.offsetHeight > head.offsetHeight) {
-        headingChrome.set(pane, head.getBoundingClientRect().bottom - pane.getBoundingClientRect().top + 12);
+// how tall the ai card maker must be to show its head and the whole of the box's placeholder —
+// "paste your notes here, …" — however many lines it wraps to at this width. kept for when it is shut
+let notesRoomKept = 0;
+let notesMirror = null;
+function notesRoomDown() {
+    const home = document.getElementById('notesHome');
+    const head = home && home.querySelector('.notes-head');
+    const box = document.getElementById('notesInput');
+    if (!home || !head || !box || home.classList.contains('is-shut') || !box.clientWidth) return notesRoomKept || 160;
+    const look = window.getComputedStyle(box);
+    const pad = (name) => parseFloat(look[name]) || 0;
+    if (!notesMirror) {
+        notesMirror = document.createElement('div');
+        notesMirror.setAttribute('aria-hidden', 'true');
+        notesMirror.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre-wrap;overflow-wrap:break-word;';
+        document.body.append(notesMirror);
     }
-    return Math.ceil(headingChrome.get(pane) || 64);
+    notesMirror.style.font = look.font;
+    notesMirror.style.lineHeight = look.lineHeight;
+    notesMirror.style.letterSpacing = look.letterSpacing;
+    notesMirror.style.width = `${box.clientWidth - pad('paddingLeft') - pad('paddingRight')}px`;
+    notesMirror.textContent = box.placeholder;
+    const words = notesMirror.offsetHeight;
+    // and the box itself is never squeezed below that: the buttons under it scroll away first
+    const boxTall = Math.ceil(pad('borderTopWidth') + pad('paddingTop') + words + pad('paddingBottom') + pad('borderBottomWidth'));
+    box.parentElement.style.minHeight = `${boxTall}px`;
+    const homeLook = window.getComputedStyle(home);
+    const panelGap = parseFloat(window.getComputedStyle(home.querySelector('.notes-panel')).rowGap) || 8;
+    const tight = parseFloat(window.getComputedStyle(document.documentElement).fontSize) * 0.5;   // the pane's --tight padding
+    notesRoomKept = Math.ceil(
+        (parseFloat(homeLook.borderTopWidth) || 0) + tight + head.offsetHeight + panelGap
+        + boxTall + tight + (parseFloat(homeLook.borderBottomWidth) || 0) + 2
+    );
+    return notesRoomKept;
 }
 
 const deckSplit = wireSplit({
@@ -785,7 +844,6 @@ const deckSplit = wireSplit({
     body: homeBody,
     other: cardSide,
     pane: document.querySelector('.deck-side'),
-    variable: '--deck-col',
     key: 'deck-column',
     least: 215,
     leastOther: 304,   /* the card side's own 19rem floor */
@@ -799,11 +857,10 @@ const notesSplit = wireSplit({
     body: cardSide,
     other: document.querySelector('.card-side > .deck-stage'),
     pane: document.getElementById('notesHome'),
-    variable: '--notes-row',
     key: 'notes-row',
     down: true,
     fromRight: true,
-    least: () => headRoomDown(document.getElementById('notesHome'), document.querySelector('#notesHome .notes-head')),
+    least: () => notesRoomDown(),
     leastOther: 140,
     snap: true,
     // it wears a --tight all round rather than the clip box's --group
@@ -819,7 +876,7 @@ function loadDeckColumn() {
 
 window.addEventListener('resize', () => {
     if (deckSplit) deckSplit.reclamp();
-    if (typeof clipSplitter !== 'undefined' && clipSplitter) clipSplitter.reclamp();
+    if (clipSplitter) clipSplitter.reclamp();
     if (notesSplit) notesSplit.reclamp();
     if (chatSplitter) chatSplitter.reclamp();
     if (!sharePanel.hidden) placeSharePanel();
@@ -980,8 +1037,8 @@ function stageWords(item, card) {
     const text = document.createElement('span');
     text.className = 'stage-card-text';
     text.append(
-        stageLine('Q', 'strong', card.question),
-        stageLine('A', 'small', card.answer)
+        stageLine('Q', Object.assign(document.createElement('strong'), { textContent: card.question })),
+        stageLine('A', Object.assign(document.createElement('small'), { textContent: card.answer }))
     );
     text.title = 'click a line to edit it';
     text.addEventListener('pointerdown', (event) => {
@@ -992,7 +1049,8 @@ function stageWords(item, card) {
     return text;
 }
 
-function stageLine(tag, kind, words) {
+// one line of a card on the stage: its Q or A tag, then the words (or, while editing, the field)
+function stageLine(tag, filling) {
     const line = document.createElement('span');
     line.className = 'stage-line';
     line.dataset.field = tag === 'Q' ? 'question' : 'answer';
@@ -1000,9 +1058,7 @@ function stageLine(tag, kind, words) {
     mark.className = 'line-tag';
     mark.textContent = tag;
     mark.setAttribute('aria-hidden', 'true');
-    const said = document.createElement(kind);
-    said.textContent = words;
-    line.append(mark, said);
+    line.append(mark, filling);
     return line;
 }
 
@@ -1025,19 +1081,8 @@ function buildStageEditor(deck, card, index, field) {
     answer.setAttribute('aria-label', 'answer');
 
     // the tags stay while you type, so the row doesn't change shape
-    const questionLine = document.createElement('span');
-    questionLine.className = 'stage-line';
-    const answerLine = document.createElement('span');
-    answerLine.className = 'stage-line';
-    ['Q', 'A'].forEach((tag, index2) => {
-        const mark = document.createElement('b');
-        mark.className = 'line-tag';
-        mark.textContent = tag;
-        mark.setAttribute('aria-hidden', 'true');
-        (index2 ? answerLine : questionLine).append(mark);
-    });
-    questionLine.append(question);
-    answerLine.append(answer);
+    const questionLine = stageLine('Q', question);
+    const answerLine = stageLine('A', answer);
 
     const commit = () => {
         if (!wrap.isConnected) return;     // a redraw replaced this box; the new one holds the words
@@ -1169,17 +1214,8 @@ function disarmStageDelete() {
 }
 
 function deleteStageCard(index) {
-    const deck = activeDeck();
-    const card = deck.cards[index];
-    if (!card) return;
     disarmStageDelete();
-
-    rememberDeleted({ type: 'card', item: card, index, deckId: deck.id });
-    deck.cards.splice(index, 1);
-    editingStageIndex = null;
-    renderDecks();
-    renderCards();
-    saveDecks();
+    binCard(activeDeck(), index);
 }
 
 function renderDecks() {
@@ -1239,25 +1275,21 @@ function isModalOpen() {
 const MODAL_EXIT_MS = 320;   // matches panel-drop, the arrival reversed
 let modalExitTimer = 0;
 
+// every window lives in the one veil, so one list read off the page covers them all — a new window
+// needs nothing adding here
+const WINDOWS = [...document.querySelectorAll('#modalVeil > .modal-panel')];
+
 function closeModal() {
     if (modalVeil.hidden || modalVeil.classList.contains('is-leaving')) return;
     // before anything is hidden, or there is nothing left to fly from
-    if (typeof flyPanel === 'function') flyPanel(NOTES_HOME);
+    flyPanel(NOTES_HOME);
     modalVeil.classList.add('is-leaving');
     window.clearTimeout(modalExitTimer);
     modalExitTimer = window.setTimeout(() => {
         modalVeil.hidden = true;
         modalVeil.classList.remove('is-leaving');
-        makerScreen.hidden = true;
-        studyScreen.hidden = true;
-        notesScreen.hidden = true;
-        listScreen.hidden = true;
-        folderScreen.hidden = true;
-        bundleScreen.hidden = true;
-        keyScreen.hidden = true;
-        chatScreen.hidden = true;
-        accountScreen.hidden = true;
-        if (typeof addingAbandoned === 'function') addingAbandoned();
+        WINDOWS.forEach((one) => { one.hidden = true; });
+        addingAbandoned();
         returnNotesPanel();
     }, MODAL_EXIT_MS);
 }
@@ -1272,15 +1304,7 @@ function showScreen(screen) {
     window.clearTimeout(modalExitTimer);
     modalVeil.classList.remove('is-leaving');
     modalVeil.hidden = false;
-    makerScreen.hidden = screen !== makerScreen;
-    studyScreen.hidden = screen !== studyScreen;
-    notesScreen.hidden = screen !== notesScreen;
-    listScreen.hidden = screen !== listScreen;
-    folderScreen.hidden = screen !== folderScreen;
-    bundleScreen.hidden = screen !== bundleScreen;
-    keyScreen.hidden = screen !== keyScreen;
-    chatScreen.hidden = screen !== chatScreen;
-    accountScreen.hidden = screen !== accountScreen;
+    WINDOWS.forEach((one) => { one.hidden = one !== screen; });
     if (screen !== notesScreen) returnNotesPanel();
 
     const held = document.activeElement;
@@ -1498,7 +1522,8 @@ function markAnswer(button, right) {
 }
 
 function checkAnswer(selectedButton, selectedAnswer) {
-    document.querySelectorAll('.answer-button').forEach((button) => {
+    const buttons = answerOptions.querySelectorAll('.answer-button');
+    buttons.forEach((button) => {
         if (button.dataset.answer === currentCard.answer) button.classList.add('correct');
     });
     answerOptions.classList.add('is-answered');
@@ -1508,9 +1533,7 @@ function checkAnswer(selectedButton, selectedAnswer) {
     if (selectedAnswer === currentCard.answer) {
         selectedButton.classList.add('is-right');
         markAnswer(selectedButton, true);
-        document.querySelectorAll('.answer-button').forEach((button) => {
-            button.disabled = true;
-        });
+        buttons.forEach((button) => { button.disabled = true; });
         // long enough for the stamp to land and the ring to go out
         setTimeout(showNextQuestion, 620);
     } else {
@@ -1556,14 +1579,7 @@ function showContextMenu(event, target) {
 
     if (target.type === 'deck') {
         const deleteDeckButton = item('delete', () => {
-            if (decks.length === 1) return;
-            const deletedIndex = decks.findIndex((deck) => deck.id === target.deck.id);
-            rememberDeleted({ type: 'deck', item: target.deck, index: deletedIndex });
-            decks.splice(deletedIndex, 1);
-            if (target.deck.id === activeDeckId) activeDeckId = decks[Math.max(0, deletedIndex - 1)].id;
-            renderDecks();
-            renderCards();
-            saveDecks();
+            binDeck(decks.indexOf(target.deck));
             hideContextMenu();
         });
         deleteDeckButton.disabled = decks.length === 1;
@@ -1589,27 +1605,12 @@ function showContextMenu(event, target) {
                 hideContextMenu();
             }),
             item('delete', () => {
-                rememberDeleted({
-                    type: 'card',
-                    item: target.deck.cards[target.index],
-                    index: target.index,
-                    deckId: target.deck.id
-                });
-                target.deck.cards.splice(target.index, 1);
-                renderCards();
-                renderDecks();
-                saveDecks();
+                binCard(target.deck, target.index);
                 hideContextMenu();
             })
         );
     }
 
-    if (target.type === 'widget') {
-        contextMenu.append(item('remove', () => {
-            removeWidget(target.id);
-            hideContextMenu();
-        }));
-    }
 }
 
 /* ---------- 9. keyboard ---------- */
@@ -1672,7 +1673,45 @@ function rememberDeleted(entry, fromRedo) {
     deletedStack.push(entry);
     keepBinned(entry);
     renderBinned();
-    paintStorage();
+    paintWidgets();
+}
+
+// the three ways something goes in the bin, each written once: by its own button, from the right-click
+// menu, or sent back down again with redo
+function binCard(deck, index, fromRedo) {
+    const card = deck.cards[index];
+    if (!card) return;
+    rememberDeleted({ type: 'card', item: card, index, deckId: deck.id }, fromRedo);
+    deck.cards.splice(index, 1);
+    editingStageIndex = null;
+    renderDecks();
+    renderCards();
+    saveDecks();
+}
+function binDeck(at, fromRedo) {
+    const deck = decks[at];
+    if (!deck || decks.length === 1) return;     // the last deck stays
+    rememberDeleted({ type: 'deck', item: deck, index: at }, fromRedo);
+    decks.splice(at, 1);
+    if (activeDeckId === deck.id) activeDeckId = decks[Math.max(0, at - 1)].id;
+    renderDecks();
+    renderCards();
+    saveDecks();
+}
+function binClip(row, record, fromRedo) {
+    const index = [...recordingList.querySelectorAll('.recording-item')].indexOf(row);
+    const player = row.querySelector('audio');
+    if (player) {
+        player.pause();
+        if (player.src.startsWith('blob:')) URL.revokeObjectURL(player.src);
+        player.src = '';
+    }
+    row.remove();
+    clipRows.delete(record.id);
+    deleteClip(record.id);
+    refreshEmptyMessage();
+    rememberClipOrder();
+    rememberDeleted({ type: 'clip', item: record, index }, fromRedo);   // after the row has gone, so the tiles count right
 }
 
 /* on the way in, anything already a week old is thrown out for real */
@@ -1693,6 +1732,7 @@ async function loadBinned() {
 }
 
 async function emptyBin() {
+    if (!deletedStack.length) return;
     const sure = await askConfirm(`empty the bin? ${deletedStack.length} thing${deletedStack.length === 1 ? '' : 's'}, no undo`, binnedEmpty);
     if (!sure) return;
     try {
@@ -1703,7 +1743,7 @@ async function emptyBin() {
     }
     deletedStack = [];
     renderBinned();
-    paintStorage();
+    paintWidgets();
 }
 
 function undoLastDelete() {
@@ -1713,7 +1753,7 @@ function undoLastDelete() {
     // it can be sent back down again with ctrl+shift+z or ctrl+y
     redoStack.push(undone);
     renderBinned();
-    paintStorage();
+    paintWidgets();
 }
 
 function redoLastUndo() {
@@ -1721,46 +1761,14 @@ function redoLastUndo() {
     if (!again) return;
 
     if (again.type === 'deck') {
-        if (decks.length === 1) return;
-        const at = decks.findIndex((deck) => deck.id === again.item.id);
-        if (at === -1) return;
-        rememberDeleted({ type: 'deck', item: decks[at], index: at }, true);
-        decks.splice(at, 1);
-        if (activeDeckId === again.item.id) activeDeckId = decks[Math.max(0, at - 1)].id;
-        renderDecks();
-        renderCards();
-        saveDecks();
+        binDeck(decks.findIndex((deck) => deck.id === again.item.id), true);
     } else if (again.type === 'card') {
         const deck = decks.find((item) => item.id === again.deckId);
-        if (!deck) return;
-        const at = deck.cards.indexOf(again.item);
-        if (at === -1) return;
-        rememberDeleted({ type: 'card', item: again.item, index: at, deckId: deck.id }, true);
-        deck.cards.splice(at, 1);
-        editingStageIndex = null;
-        renderDecks();
-        renderCards();
-        saveDecks();
+        if (deck && deck.cards.includes(again.item)) binCard(deck, deck.cards.indexOf(again.item), true);
     } else if (again.type === 'clip') {
         const row = recordingList.querySelector(`[data-clip-id="${again.item.id}"]`);
-        if (!row) return;
-        const rows = [...recordingList.querySelectorAll('.recording-item')];
-        rememberDeleted({ type: 'clip', item: again.item, index: rows.indexOf(row) }, true);
-        const player = row.querySelector('audio');
-        if (player) {
-            player.pause();
-            if (player.src.startsWith('blob:')) URL.revokeObjectURL(player.src);
-            player.src = '';
-        }
-        row.remove();
-        clipRows.delete(again.item.id);
-        deleteClip(again.item.id);
-        refreshEmptyMessage();
-        rememberClipOrder();
+        if (row) binClip(row, again.item, true);
     }
-
-    renderBinned();
-    paintStorage();
 }
 
 /* a short name for a thing, for the list in the bar */
@@ -1783,27 +1791,58 @@ function sinceWhen(when) {
     return days === 1 ? 'yesterday' : `${days} days ago`;
 }
 
+const BIN_BACK_MARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 6.5 5 10l3.5 3.5"/><path d="M5 10h9a5 5 0 0 1 0 10h-3"/></svg>';
+const BIN_GONE_MARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>';
+
 function renderBinned() {
-    railBinned.hidden = deletedStack.length === 0;
-    binnedCount.textContent = deletedStack.length > 5 ? `${deletedStack.length}` : '';
+    // the bin mark is always there; how many are in it sits on its corner
+    binnedCount.textContent = deletedStack.length ? `${deletedStack.length}` : '';
     binnedList.innerHTML = '';
-    [...deletedStack].reverse().slice(0, 5).forEach((entry) => {
-        const row = document.createElement('li');
-        const button = document.createElement('button');
-        button.className = 'binned-item';
-        button.type = 'button';
-        button.textContent = binnedLabel(entry);
-        button.addEventListener('click', () => {
-            const at = deletedStack.indexOf(entry);
-            if (at === -1) return;
-            deletedStack.splice(at, 1);
-            restoreDeleted(entry);
-            renderBinned();
-            paintStorage();
-        });
-        button.title = `binned ${sinceWhen(entry.when)} — press to put it back`;
-        row.append(button);
-        binnedList.append(row);
+    // empty at the top; under it the binned things in a little box of their own, which scrolls. with
+    // nothing binned the window stays the same size and the box says so
+    const top = document.createElement('li');
+    top.className = 'binned-top';
+    top.append(binnedEmpty);
+    const box = document.createElement('li');
+    box.className = 'binned-box';
+    binnedList.append(top, box);
+    if (!deletedStack.length) {
+        const none = document.createElement('span');
+        none.className = 'binned-none';
+        none.textContent = 'nothing';
+        box.append(none);
+    }
+    [...deletedStack].reverse().forEach((entry) => {
+        // the name on the left; putting back and binning for good are two marks at the right — a press
+        // on the name itself does nothing
+        const row = document.createElement('div');
+        row.className = 'binned-row';
+        const name = document.createElement('span');
+        name.className = 'binned-name';
+        name.textContent = binnedLabel(entry);
+        name.title = `binned ${sinceWhen(entry.when)}`;
+        // either mark takes the thing out of the bin: one puts it back, the other lets it go for good
+        const act = (title, mark, then) => {
+            const button = document.createElement('button');
+            button.className = 'binned-act';
+            button.type = 'button';
+            button.title = title;
+            button.innerHTML = mark;
+            button.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const at = deletedStack.indexOf(entry);
+                if (at === -1) return;
+                deletedStack.splice(at, 1);
+                then();
+                renderBinned();
+                paintWidgets();
+            });
+            return button;
+        };
+        row.append(name,
+            act('put it back', BIN_BACK_MARK, () => restoreDeleted(entry)),
+            act('delete for good', BIN_GONE_MARK, () => { if (entry.id) forgetBinned(entry.id); }));
+        box.append(row);
     });
 }
 
@@ -2006,7 +2045,6 @@ document.getElementById('createCardButton').addEventListener('click', () => {
 });
 document.getElementById('randomStudyButton').addEventListener('click', () => {
     if (isModalOpen() && !studyScreen.hidden) {
-        waitingForContinue = false;
         showScreen(homeScreen);
         return;
     }
@@ -2153,7 +2191,6 @@ document.addEventListener('keydown', (event) => {
         }
         if (!widgetPicks.hidden) {
             closeWidgetPicks();
-            widgetAdd.focus();
             return;
         }
         if (!sharePanel.hidden) {
@@ -2162,7 +2199,6 @@ document.addEventListener('keydown', (event) => {
             return;
         }
         if (isModalOpen()) {
-            waitingForContinue = false;
             showScreen(homeScreen);
             return;
         }
@@ -2677,27 +2713,10 @@ const confirmChipYes = document.getElementById('confirmChipYes');
 const confirmChipNo = document.getElementById('confirmChipNo');
 let openConfirm = null;   // { button, settle } while one is up
 
-function placeBeside(panel, button) {
-    if (!panel || !button) return;
-    const spot = button.getBoundingClientRect();
-    const box = { width: panel.offsetWidth, height: panel.offsetHeight };
-    const edge = 8;
-    const gap = 14;
-    let left = spot.left - box.width - gap;
-    // no room on that side: fall back to the other
-    if (left < edge) left = Math.min(spot.right + gap, window.innerWidth - edge - box.width);
-    const top = Math.max(edge, Math.min(
-        spot.bottom - box.height,
-        window.innerHeight - edge - box.height
-    ));
-    panel.style.left = `${Math.round(left)}px`;
-    panel.style.top = `${Math.round(top)}px`;
-}
-
 function placeUnder(panel, button, bounds) {
     if (!panel || !button) return;
     const spot = button.getBoundingClientRect();
-    const box = { width: panel.offsetWidth, height: panel.offsetHeight };   // see placeBeside
+    const box = { width: panel.offsetWidth, height: panel.offsetHeight };   // offset sizes: a panel arriving on a small scale reads short to getBoundingClientRect
     const edge = 8;
     const field = bounds || { left: edge, right: window.innerWidth - edge };
     let left = spot.right - box.width;        // right edges line up
@@ -2710,12 +2729,7 @@ function placeUnder(panel, button, bounds) {
 }
 
 function placeConfirm(button) {
-    const page = document.querySelector('.app-content');
-    if (!page) {
-        placeUnder(confirmChip, button);
-        return;
-    }
-    const field = page.getBoundingClientRect();
+    const field = appContent.getBoundingClientRect();
     const edge = 8;
     const bounds = { left: field.left + edge, right: field.right - edge };
     const spot = button.getBoundingClientRect();
@@ -2846,12 +2860,7 @@ async function packAllClips() {
     const bundle = buildBundle(stored);
     const much = `${stored.length} clips saved — ${Math.round(bundle.size / 1048576)}mb`;
 
-    const href = URL.createObjectURL(bundle);
-    const link = document.createElement('a');
-    link.href = href;
-    link.download = named;
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(href), 20000);
+    saveBlob(bundle, named);
     setRecordStatus(much);
 }
 
@@ -2901,7 +2910,7 @@ async function unpackClipsFrom(file) {
     }
 
     rememberClipOrder();
-    paintStorage();
+    paintWidgets();
     setRecordStatus(brought
         ? `${brought} clip${brought === 1 ? '' : 's'} brought in`
         : 'they are all here already');
@@ -3233,7 +3242,7 @@ folderFields.forEach((field) => {
     field.addEventListener('input', () => {
         window.localStorage.setItem(FOLDER_KEY, field.value);
         folderFields.forEach((other) => { if (other !== field) other.value = field.value; });
-        if (typeof paintPlaces === 'function') paintPlaces();
+        paintPlaces();
     });
 });
 
@@ -3301,6 +3310,7 @@ async function downloadAllClips(folder) {
 
     let done = 0;
     const taken = new Set();
+    const zipName = `${tidyFolder(folderName.value) || 'clips'}.zip`;
     const zipParts = [];
     const zipMiddles = [];
     let zipAt = 0;
@@ -3346,22 +3356,15 @@ async function downloadAllClips(folder) {
 
     // and the zip is sealed and handed over as one file
     if (inZip && done) {
-        const called = tidyFolder(folderName.value) || 'clips';
         const middles = zipPiece(zipMiddles);
         const bundle = new Blob([...zipParts, middles, zipEnd(zipMiddles.length, zipAt, middles.length)],
                                 { type: 'application/zip' });
-        const href = URL.createObjectURL(bundle);
-        const link = document.createElement('a');
-        link.href = href;
-        link.download = `${called}.zip`;
-        link.click();
-        window.setTimeout(() => URL.revokeObjectURL(href), 20000);
+        saveBlob(bundle, zipName);
     }
     setRecordStatus(done !== clips.length ? `only ${done} of ${clips.length} worked`
         : folder ? `${done} saved into ${folder.name}`
-        : `${done} in ${tidyFolder(folderName.value) || 'clips'}.zip — open it for the folder`,
+        : `${done} in ${zipName} — open it for the folder`,
         done !== clips.length);
-    recordingList.querySelectorAll('.is-packing').forEach((row) => row.classList.remove('is-packing'));
     batchRunning = false;
     batchPaused = false;
     showBatchState();
@@ -3837,12 +3840,7 @@ function addRecording(record, alreadySaved, atEnd) {
         try {
             const mp3 = await blobToMp3(record.blob, clipSpan(record, totalSeconds),
                                        { ...splitName(record.name), track: clipPlace(record) });
-            const href = URL.createObjectURL(mp3);
-            const a = document.createElement('a');
-            a.href = href;
-            a.download = clipFileName(record, clipPlace(record), clipCount);
-            a.click();
-            window.setTimeout(() => URL.revokeObjectURL(href), 10000);
+            saveBlob(mp3, clipFileName(record, clipPlace(record), clipCount));
         } catch (error) {
             console.error('mp3 export failed', error);
             setRecordStatus(`mp3 failed — ${error.message}`, true);
@@ -3858,17 +3856,7 @@ function addRecording(record, alreadySaved, atEnd) {
     discard.textContent = '×';
     discard.addEventListener('click', (event) => {
         event.stopPropagation();
-        player.pause();
-        player.src = '';
-        if (url) URL.revokeObjectURL(url);
-        // nothing asked before this one, so it has to be undoable
-        const rows = [...recordingList.querySelectorAll('.recording-item')];
-        rememberDeleted({ type: 'clip', item: record, index: rows.indexOf(item) });
-        item.remove();
-        clipRows.delete(record.id);
-        deleteClip(record.id);
-        refreshEmptyMessage();
-        rememberClipOrder();
+        binClip(item, record);       // nothing asked before this one, so it has to be undoable
     });
 
     const handle = rowGrip(item, 'clip-handle', `reorder clip ${record.number}, use arrow keys`, clipLiftConfig);
@@ -3899,7 +3887,7 @@ function addRecording(record, alreadySaved, atEnd) {
     if (!alreadySaved) rememberClipOrder();
 
     numberClips();
-    paintStorage();
+    paintWidgets();
 }
 
 /* --- reordering a list by hand --- */
@@ -3982,13 +3970,11 @@ function startLift(config, item, event) {
         shift: 0,                      // how far it's moved from its slot
         pointerY: event.clientY,
         seenY: -1,                     // the last y this worked out a position for
-        scroll: config.list.scrollTop,
         lastY: event.clientY,
         heading: 1,
-        frame: 0,
-        rows: [], tops: [], heights: [], listTop: 0, listBottom: 0
+        frame: 0
     };
-    measureSlots();
+    measureSlots();                    // the rows, their slots and the list's edges
 
     item.classList.add('is-lifted');
     config.list.classList.remove('is-arriving');
@@ -4207,12 +4193,7 @@ function drawLevel() {
     const width = levelCanvas.width;
     const height = levelCanvas.height;
     levelContext.clearRect(0, 0, width, height);
-
-    levelContext.globalAlpha = 1;
-    levelContext.strokeStyle = '#fff';
-    levelContext.lineWidth = 1;
     levelContext.strokeRect(0.5, 0.5, width - 1, height - 1);
-    levelContext.fillStyle = '#fff';
     levelContext.fillRect(0, 0, width * Math.min(1, peak * 1.4), height);
 }
 
@@ -4223,6 +4204,10 @@ function startLevelMeter() {
     analyser.fftSize = 256;   /* enough for a peak — a quarter the work per frame */
     levelData = new Uint8Array(analyser.fftSize);
     audioContext.createMediaStreamSource(activeStream).connect(analyser);
+    // the canvas is never resized, so its pen is set once rather than every frame
+    levelContext.strokeStyle = '#fff';
+    levelContext.fillStyle = '#fff';
+    levelContext.lineWidth = 1;
     drawLevel();
 }
 
@@ -4325,7 +4310,6 @@ const clipSplitter = wireSplit({
     body: document.querySelector('.audio-body'),
     other: document.querySelector('.clip-column'),
     pane: document.getElementById('clipSide'),
-    variable: '--clip-col',
     key: 'clip-column',
     fromRight: true,
     // each side holds where its words are still whole, and snaps shut past that
@@ -4379,7 +4363,8 @@ function paintClock() {
     clockDate.textContent = now
         .toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
         .toLowerCase();
-    if (now.getMinutes() !== clockMinute) { clockMinute = now.getMinutes(); paintWidgets(); }
+    // the time tile and the board change on the turn of the minute, off this same tick
+    if (now.getMinutes() !== clockMinute) { clockMinute = now.getMinutes(); paintKey(); paintWidgets(); }
 }
 
 function startClock() {
@@ -4389,33 +4374,6 @@ function startClock() {
         window.setTimeout(tick, 1000 - new Date().getMilliseconds() + 5);
     };
     tick();
-}
-
-function roundSize(bytes) {
-    if (!bytes) return '0 mb';
-    const mb = bytes / 1048576;
-    if (mb < 1) return 'under 1 mb';
-    if (mb < 1024) return `${Math.round(mb)} mb`;
-    return `${(mb / 1024).toFixed(1)} gb`;
-}
-
-async function paintStorage() {
-    if (!navigator.storage || !navigator.storage.estimate) {
-        storeAmount.textContent = 'not measurable';
-        return;
-    }
-    try {
-        const { usage = 0, quota = 0 } = await navigator.storage.estimate();
-        storeAmount.textContent = quota
-            ? `${roundSize(usage)} of ${roundSize(quota)}`
-            : roundSize(usage);
-        const share = quota ? Math.min(100, (usage / quota) * 100) : 0;
-        // a sliver so the bar reads as "something" rather than empty
-        storeFill.style.width = usage && share < 0.5 ? '2px' : `${share}%`;
-        paintWidgets();
-    } catch (error) {
-        storeAmount.textContent = 'not measurable';
-    }
 }
 
 const THEME_KEY = 'page-inverted';
@@ -4455,10 +4413,20 @@ function setInverted(on) {
         const swap = document.startViewTransition(() => paintTheme(on));
         swap.ready.catch(() => {});
         swap.updateCallbackDone.catch(() => {});
-        swap.finished.then(done, done);
-        themingTimer = window.setTimeout(() => {
-            paintTheme(on);
+        // finished doesn't always report back (a tab put in the background mid-swap), so a timer
+        // writes the theme and tidies up in its place — only if it never did
+        let over = false;
+        const finish = () => {
+            if (over) return;
+            over = true;
+            window.clearTimeout(themingTimer);
             done();
+        };
+        swap.finished.then(finish, finish);
+        themingTimer = window.setTimeout(() => {
+            if (over) return;
+            paintTheme(on);
+            finish();
         }, 900);
         return;
     }
@@ -4467,7 +4435,7 @@ function setInverted(on) {
     themingTimer = window.setTimeout(done, 450);
     paintTheme(on);
     const moon = themeSwap.querySelector('svg');
-    if (moon && typeof moon.animate === 'function') {
+    if (moon) {
         moon.animate([
             { transform: `rotate(${on ? 0 : 180}deg) scale(1)` },
             { transform: 'rotate(90deg) scale(0.76)', offset: 0.45 },
@@ -4485,11 +4453,8 @@ themeReady = true;
 /* ---------- 15. home widgets ---------- */
 
 const widgetList = document.getElementById('widgetList');
-const widgetBin = document.getElementById('widgetBin');
-const widgetAdd = document.getElementById('widgetAdd');
 const widgetPicks = document.getElementById('widgetPicks');
 const widgetPickList = document.getElementById('widgetPickList');
-const widgetEdit = document.getElementById('widgetEdit');
 
 const WIDGET_KEY = 'home-widgets';
 
@@ -4703,54 +4668,11 @@ function widgetById(id) {
 /* --- the board's own arithmetic --- */
 
 const BOARD_COLS = 4;   // the movable four; the fixed time tile is the fifth, to their left
-const BOARD_ROWS = 1;
-const BOARD_SPAN = { small: [1, 1], wide: [2, 1] };
-
-function spanOf(entry) {
-    return BOARD_SPAN[entry.size] || BOARD_SPAN.wide;
-}
+// the board is one row, so a tile is only as wide as its shape and starts at its column
+const tileWidth = (entry) => (entry.size === 'small' ? 1 : 2);
 
 function hits(one, two) {
-    const [aw, ah] = spanOf(one);
-    const [bw, bh] = spanOf(two);
-    return one.col < two.col + bw && two.col < one.col + aw
-        && one.row < two.row + bh && two.row < one.row + ah;
-}
-
-function untangle(anchor) {
-    const order = [...homeWidgets].sort((one, two) => {
-        if (one === anchor) return -1;
-        if (two === anchor) return 1;
-        return (one.row - two.row) || (one.col - two.col);
-    });
-    const along = [];
-    order.forEach((entry) => {
-        const [w] = spanOf(entry);
-        entry.row = 0;
-        let guard = 0;
-        while (along.some((other) => hits(entry, other)) && guard < 40) {
-            entry.col = entry.col + w > BOARD_COLS - 1 ? 0 : entry.col + 1;
-            guard += 1;
-        }
-        along.push(entry);
-    });
-}
-
-function freeSlot(width, height) {
-    for (let row = 0; row < BOARD_ROWS; row += 1) {
-        for (let col = 0; col + width <= BOARD_COLS; col += 1) {
-            const want = { col, row, size: sizeFor(width, height) };
-            if (!homeWidgets.some((other) => hits(want, other))) return { col, row, width };
-        }
-    }
-    return null;
-}
-
-function sizeFor(width, height) {
-    return WIDGET_SIZES.find((name) => {
-        const [w, h] = BOARD_SPAN[name];
-        return w === width && h === height;
-    }) || 'wide';
+    return one.col < two.col + tileWidth(two) && two.col < one.col + tileWidth(one);
 }
 
 let homeWidgets = [];
@@ -4763,44 +4685,16 @@ function loadWidgets() {
     } catch (error) {
         saved = null;
     }
-    const taken = Array.isArray(saved)
-        ? saved.map((entry) => (typeof entry === 'string' ? { id: entry, size: 'wide' } : entry))
-            .filter((entry) => entry && widgetById(entry.id))
-            .map((entry) => ({
-                id: entry.id,
-                key: entry.key || nextWidgetKey(entry.id),
-                size: WIDGET_SIZES.includes(entry.size) ? entry.size : 'wide',
-                look: typeof entry.look === 'string' ? entry.look : null,
-                col: Number.isInteger(entry.col) ? entry.col : null,
-                row: Number.isInteger(entry.row) ? entry.row : null
-            }))
-        : [{ id: 'decks', key: nextWidgetKey('decks'), size: 'wide', col: null, row: null }];
-
-    // once: the time tile that used to start the board is now the fixed one beside it
-    try {
-        if (window.localStorage.getItem('board-key') !== 'yes') {
-            const first = taken.filter((entry) => entry.id === 'clock')
-                .sort((a, b) => (a.col ?? 9) - (b.col ?? 9))[0];
-            if (first) taken.splice(taken.indexOf(first), 1);
-            window.localStorage.setItem('board-key', 'yes');
-        }
-    } catch (error) { /* keeps the board as it was */ }
-
-    homeWidgets = [];
-    taken.forEach((entry) => {
-        const [w, h] = spanOf(entry);
-        const sits = entry.col !== null && entry.row !== null && entry.col + w <= BOARD_COLS
-            && !homeWidgets.some((other) => hits(entry, other));
-        if (!sits) {
-            const spot = freeSlot(w, h) || freeSlot(...BOARD_SPAN.small);
-            if (!spot) return;                  // the row is full
-            if (spot.width === 1) entry.size = 'small';
-            entry.col = spot.col;
-            entry.row = spot.row;
-        }
-        homeWidgets.push(entry);
-    });
-    untangle(null);
+    // what was saved, as far as it still makes sense; fillBoard makes it the board's three tiles
+    homeWidgets = (Array.isArray(saved) ? saved : [])
+        .filter((entry) => entry && typeof entry === 'object' && widgetById(entry.id))
+        .map((entry) => ({
+            id: entry.id,
+            key: entry.key || nextWidgetKey(entry.id),
+            size: WIDGET_SIZES.includes(entry.size) ? entry.size : 'wide',
+            look: typeof entry.look === 'string' ? entry.look : null,
+            col: Number.isInteger(entry.col) ? entry.col : 99
+        }));
 }
 
 function saveWidgets() {
@@ -4813,13 +4707,8 @@ function saveWidgets() {
 
 // where a widget sits, written straight onto the tile
 function placeCard(card, entry) {
-    const [w, h] = spanOf(entry);
-    card.style.gridColumn = `${entry.col + 1} / span ${w}`;
-    card.style.gridRow = `${entry.row + 1} / span ${h}`;
-}
-
-function paintBoardDepth() {
-    widgetList.style.setProperty('--board-rows', String(BOARD_ROWS));
+    card.style.gridColumn = `${entry.col + 1} / span ${tileWidth(entry)}`;
+    card.style.gridRow = '1';   // pinned to the one row, so the ghost may sit over a tile mid-carry
 }
 
 // the board is always three tiles across the four columns — one wide, two small — so the row is full.
@@ -4829,19 +4718,18 @@ const BOARD_START = ['decks', 'jump', 'kept'];
 function fillBoard() {
     const seen = new Set();
     let tiles = homeWidgets.filter((entry) => widgetById(entry.id) && !seen.has(entry.key) && seen.add(entry.key));
-    tiles.sort((a, b) => (a.col ?? 99) - (b.col ?? 99));
+    tiles.sort((a, b) => a.col - b.col);
     tiles = tiles.slice(0, BOARD_TILES);
     for (const id of BOARD_START) {
         if (tiles.length >= BOARD_TILES) break;
-        if (!tiles.some((entry) => entry.id === id)) tiles.push({ id, key: nextWidgetKey(id), size: 'small', look: null, col: 99, row: 0 });
+        if (!tiles.some((entry) => entry.id === id)) tiles.push({ id, key: nextWidgetKey(id), size: 'small', look: null, col: 99 });
     }
-    while (tiles.length < BOARD_TILES) tiles.push({ id: 'decks', key: nextWidgetKey('decks'), size: 'small', look: null, col: 99, row: 0 });
+    while (tiles.length < BOARD_TILES) tiles.push({ id: 'decks', key: nextWidgetKey('decks'), size: 'small', look: null, col: 99 });
     let wide = tiles.findIndex((entry) => entry.size === 'wide');
     if (wide < 0) wide = 0;
     let col = 0;
     tiles.forEach((entry, at) => {
         entry.size = at === wide ? 'wide' : 'small';
-        entry.row = 0;
         entry.col = col;
         col += entry.size === 'wide' ? 2 : 1;
     });
@@ -4850,46 +4738,9 @@ function fillBoard() {
     if (changed) saveWidgets();
 }
 
-function settleBoard() {
-    if (boardDrag) return false;
-    fillBoard();
-    const kept = [];
-    let lost = 0;
-
-    homeWidgets.forEach((entry) => {
-        entry.row = 0;
-        const clear = (col, size) => {
-            const want = { ...entry, size, col, row: 0 };
-            return col >= 0 && col + spanOf(want)[0] <= BOARD_COLS
-                && !kept.some((other) => hits(want, other));
-        };
-
-        if (clear(entry.col, entry.size)) {
-            kept.push(entry);
-            return;
-        }
-        for (const size of [entry.size, 'small']) {
-            for (let col = 0; col < BOARD_COLS; col += 1) {
-                if (!clear(col, size)) continue;
-                entry.size = size;
-                entry.col = col;
-                kept.push(entry);
-                return;
-            }
-        }
-        lost += 1;              // the row has no room for it at any size
-    });
-
-    if (!lost) return false;
-    homeWidgets = kept;
-    saveWidgets();
-    return true;
-}
-
 function renderWidgets() {
-    settleBoard();
+    if (!boardDrag) fillBoard();
     widgetList.querySelectorAll('.widget-card').forEach((card) => card.remove());
-    homePanel.classList.toggle('is-empty', homeWidgets.length === 0);
 
     homeWidgets.forEach((entry) => {
         const widget = widgetById(entry.id);
@@ -4904,54 +4755,28 @@ function renderWidgets() {
         const head = document.createElement('div');
         head.className = 'widget-head';
 
-        const drop = document.createElement('button');
-        drop.className = 'widget-off';
-        drop.type = 'button';
-        drop.setAttribute('aria-label', `remove ${widget.name}`);
-        drop.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">'
-            + '<path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" fill="none" stroke="currentColor"'
-            + ' stroke-width="2.1" stroke-linecap="round"/></svg>';
-        drop.addEventListener('click', (event) => {
-            event.stopPropagation();
-            removeWidget(entry.key);
-        });
-
         const name = document.createElement('h3');
         name.textContent = widget.name;
-        const spare = document.createElement('span');
-        spare.className = 'widget-face';
-        head.append(drop, name, spare);
+        head.append(name);
 
         const body = document.createElement('div');
         body.className = 'widget-body';
         widget.fill(body, entry.size, entry.look);
 
-        const grip = document.createElement('button');
-        grip.className = 'widget-grip';
-        grip.type = 'button';
-        grip.setAttribute('aria-label', `resize ${widget.name} by dragging`);
-        grip.title = 'drag to resize';
-        grip.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">'
-            + '<path d="M20 9 9 20M20 15l-5 5" fill="none" stroke="currentColor"'
-            + ' stroke-width="2.2" stroke-linecap="round"/></svg>';
-        grip.addEventListener('pointerdown', (event) => startWidgetSizing(card, entry, event));
-
-        card.append(head, body, grip);
+        card.append(head, body);
         card.addEventListener('pointerdown', (event) => startWidgetDrag(card, entry, event));
 
         card.addEventListener('click', (event) => {
-            if (editingHome || event.target.closest('.widget-off, .widget-grip')) return;
+            if (editingHome) return;
             event.stopPropagation();
             openLookPicks(entry, card);
         });
         widgetList.append(card);
     });
 
-    paintBoardDepth();
 }
 
 function paintWidgets() {
-    if (!widgetList) return;
     widgetList.querySelectorAll('.widget-card').forEach((card) => {
         const entry = homeWidgets.find((one) => one.key === card.dataset.widgetId);
         const widget = entry && widgetById(entry.id);
@@ -4990,8 +4815,7 @@ function openLookPicks(entry, card) {
     });
 
     lookPicks.dataset.widgetId = entry.key;
-    lookPicks.classList.remove('is-leaving');
-    lookPicks.hidden = false;
+    openPop(lookPicks);
     placeUnder(lookPicks, card);
 }
 
@@ -5007,175 +4831,36 @@ document.addEventListener('pointerdown', (event) => {
     closeLookPicks();
 });
 
-function addWidget(id) {
-    let size = 'wide';
-    let spot = freeSlot(...BOARD_SPAN.wide);
-    if (!spot) {
-        size = 'small';
-        spot = freeSlot(...BOARD_SPAN.small);
-    }
-    if (!spot) {
-        sayBoardFull();
-        return;
-    }
-    homeWidgets.push({ id, key: nextWidgetKey(id), size, col: spot.col, row: spot.row });
-    saveWidgets();
-    renderWidgets();
-}
-
-function sayBoardFull() {
-    confirmChipText.textContent = 'the row is full — take one off first';
-    confirmChip.hidden = false;
-    placeConfirm(widgetAdd);
-    confirmChipYes.hidden = true;
-    confirmChipNo.textContent = 'right';
-    let gone = false;
-    const away = () => {
-        if (gone) return;
-        gone = true;
-        window.clearTimeout(timer);
-        confirmChipNo.removeEventListener('click', away);
-        if (openConfirm) return;            // another question has the chip now; leave it alone
-        confirmChip.hidden = true;
-        confirmChipYes.hidden = false;
-        confirmChipNo.textContent = 'no';
-    };
-    confirmChipNo.addEventListener('click', away);
-    const timer = window.setTimeout(away, 2600);
-}
-
-function removeWidget(key) {
-    const card = widgetList.querySelector(`.widget-card[data-widget-id="${key}"]`);
-    const done = () => {
-        homeWidgets = homeWidgets.filter((entry) => entry.key !== key);
-        saveWidgets();
-        renderWidgets();
-    };
-    if (!card) {
-        done();
-        return;
-    }
-    card.classList.add('is-going');
-    window.setTimeout(done, 240);
-}
-
-function rowOrder() {
-    return [...homeWidgets].sort((one, two) => one.col - two.col);
-}
-
-/* how many columns the row has spare */
-function rowFree() {
-    return BOARD_COLS - homeWidgets.reduce((used, one) => used + spanOf(one)[0], 0);
-}
-
-function roomToGrow(entry, want) {
-    let need = BOARD_SPAN[want][0] - spanOf(entry)[0];
-    if (need <= 0) return true;
-
-    const order = rowOrder();
-    const at = order.indexOf(entry);
-    const beside = [order[at + 1], order[at - 1]].filter(Boolean);
-
-    for (const other of beside) {
-        if (rowFree() >= need) break;
-        if (spanOf(other)[0] > 1) other.size = 'small';
-    }
-
-    // still short: the last one along is taken off, and the one after it
-    while (rowFree() < need) {
-        const left = rowOrder().filter((one) => one !== entry);
-        if (!left.length) return false;
-        const last = left[left.length - 1];
-        homeWidgets = homeWidgets.filter((one) => one !== last);
-    }
-    return true;
-}
-
-function packRow(order) {
-    let col = 0;
-    order.forEach((one) => {
-        one.row = 0;
-        one.col = col;
-        col += spanOf(one)[0];
-    });
-}
-
-function setWidgetSize(key, size) {
-    const entry = homeWidgets.find((item) => item.key === key);
-    if (!entry || !WIDGET_SIZES.includes(size) || entry.size === size) return;
-
-    const card = widgetList.querySelector(`.widget-card[data-widget-id="${key}"]`);
-    const was = card ? card.getBoundingClientRect() : null;
-
-    const order = rowOrder();
-    if (!roomToGrow(entry, size)) return;
-    entry.size = size;
-    packRow(order.filter((one) => homeWidgets.includes(one)));
-    saveWidgets();
-    slideBoard(() => renderWidgets());
-
-    const grown = widgetList.querySelector(`.widget-card[data-widget-id="${key}"]`);
-    growInto(grown, was, 260);
-}
-
-function stopGrowth(card) {
-    if (!card || !card.getAnimations) return;
-    card.getAnimations().forEach((one) => {
-        const isTransition = typeof CSSTransition !== 'undefined' && one instanceof CSSTransition;
-        if (!isTransition) one.cancel();
-    });
-}
-
-function growInto(card, was, ms) {
-    if (!card || !was) return;
-    stopGrowth(card);
-    const now = card.getBoundingClientRect();
-    if (was.width === now.width && was.height === now.height) return;
-    card.animate([
-        {
-            width: `${was.width}px`,
-            height: `${was.height}px`,
-            transform: `translate(${was.left - now.left}px, ${was.top - now.top}px)`
-        },
-        { width: `${now.width}px`, height: `${now.height}px`, transform: 'none' }
-    ], { duration: ms, easing: 'cubic-bezier(0.33, 0, 0, 1)' });
-}
-
+// a press anywhere off the board stops arranging it
 document.addEventListener('pointerdown', (event) => {
     if (!editingHome) return;
-    const inside = event.target.closest
-        && event.target.closest('.widget-card, .widget-edit, .widget-add, #widgetPicks, .context-menu, .home-key, #keyMenu');
-    if (inside) return;
+    if (event.target.closest && event.target.closest('.widget-card, #widgetPicks, .context-menu, .home-key')) return;
     setHomeEditing(false);
 });
 
 function setHomeEditing(on) {
     editingHome = on;
     homePanel.classList.toggle('is-editing', on);
-    const arrange = document.querySelector('#keyArrange span');
-    if (arrange) arrange.textContent = on ? 'done arranging' : 'arrange the board';
-    paintBoardDepth();
-    widgetEdit.setAttribute('aria-pressed', String(on));
-    widgetEdit.title = on ? 'stop arranging' : 'arrange the board';
-    widgetEdit.setAttribute('aria-label', widgetEdit.title);
+    keyEdit.setAttribute('aria-pressed', String(on));
     if (!on) closeWidgetPicks();
 }
 
-function slideBoard(rearrange) {
-    const cards = [...widgetList.querySelectorAll('.widget-card')];
-    const before = new Map(cards.map((card) => [card.dataset.widgetId, card.getBoundingClientRect()]));
+// the tiles slide from where they were to where they now are. a slide still running is taken over
+// from wherever it has got to, so a quick drag back and forth never jumps
+function slideTiles(rearrange, easing = 'cubic-bezier(0.33, 0, 0, 1)') {
+    const before = new Map([...widgetList.querySelectorAll('.widget-card')]
+        .map((card) => [card.dataset.widgetId, card.getBoundingClientRect()]));
     rearrange();
     widgetList.querySelectorAll('.widget-card').forEach((card) => {
         const was = before.get(card.dataset.widgetId);
         if (!was || card.classList.contains('is-dragging')) return;
+        card.getAnimations().filter((one) => one.id === 'tile-slide').forEach((one) => one.cancel());
         const now = card.getBoundingClientRect();
         const shiftX = was.left - now.left;
         const shiftY = was.top - now.top;
         if (!shiftX && !shiftY) return;
-        card.animate(
-            [{ transform: `translate(${shiftX}px, ${shiftY}px)` }, { transform: 'none' }],
-            { duration: 240, easing: 'cubic-bezier(0.33, 0, 0, 1)' }
-        );
+        card.animate([{ transform: `translate(${shiftX}px, ${shiftY}px)` }, { transform: 'none' }],
+            { duration: 240, easing, id: 'tile-slide' });
     });
 }
 
@@ -5188,22 +4873,16 @@ function cellSize() {
     const box = widgetList.getBoundingClientRect();
     const style = window.getComputedStyle(widgetList);
     const gap = parseFloat(style.rowGap) || 0;
-    const rowHeight = parseFloat(style.getPropertyValue('grid-auto-rows')) || 136;
-    return {
-        box,
-        gap,
-        width: (box.width - gap * (BOARD_COLS - 1)) / BOARD_COLS,
-        height: rowHeight
-    };
+    return { box, gap, width: (box.width - gap * (BOARD_COLS - 1)) / BOARD_COLS };
 }
 
-function showGhost(entry, col, row) {
+function showGhost(entry, col) {
     if (!boardGhost) {
         boardGhost = document.createElement('div');
         boardGhost.className = 'widget-ghost';
         widgetList.append(boardGhost);
     }
-    placeCard(boardGhost, { col, row, size: entry.size });
+    placeCard(boardGhost, { col, size: entry.size });
 }
 
 // one row, read like a list: into a gap nothing moves; onto a tile it slots in by its middle,
@@ -5211,9 +4890,8 @@ function showGhost(entry, col, row) {
 function boardIfDropped(entry, col) {
     const shadow = homeWidgets.map((one) => ({ ...one }));
     const me = shadow.find((one) => one.key === entry.key);
-    const [w] = spanOf(me);
+    const w = tileWidth(me);
     me.col = col;
-    me.row = 0;
     const others = shadow.filter((one) => one !== me);
     if (!others.some((one) => hits(me, one))) return shadow;
 
@@ -5223,43 +4901,26 @@ function boardIfDropped(entry, col) {
     else if (col + w >= BOARD_COLS) at = order.length;
     else {
         const middle = col + w / 2;
-        at = order.findIndex((one) => one.col + spanOf(one)[0] / 2 > middle);
+        at = order.findIndex((one) => one.col + tileWidth(one) / 2 > middle);
         if (at === -1) at = order.length;
     }
     order.splice(at, 0, me);
 
     // forward: nobody starts before the one ahead of it ends
     let edge = 0;
-    order.forEach((one) => { one.col = Math.max(one.col, edge); edge = one.col + spanOf(one)[0]; });
+    order.forEach((one) => { one.col = Math.max(one.col, edge); edge = one.col + tileWidth(one); });
     // backward: nobody runs past the wall
     edge = BOARD_COLS;
-    [...order].reverse().forEach((one) => { one.col = Math.min(one.col, edge - spanOf(one)[0]); edge = one.col; });
+    [...order].reverse().forEach((one) => { one.col = Math.min(one.col, edge - tileWidth(one)); edge = one.col; });
     return shadow;
 }
 
+// while a tile is carried, the others show the room it would have, sliding into it
 function showRoom(shadow) {
-    const cards = [...widgetList.querySelectorAll('.widget-card')];
-    const before = new Map(cards.map((card) => [card.dataset.widgetId, card.getBoundingClientRect()]));
-
-    shadow.forEach((one) => {
+    slideTiles(() => shadow.forEach((one) => {
         const card = widgetList.querySelector(`.widget-card[data-widget-id="${one.key}"]`);
         if (card) placeCard(card, one);
-    });
-    paintBoardDepth();
-
-    cards.forEach((card) => {
-        const was = before.get(card.dataset.widgetId);
-        if (!was) return;
-        const now = card.getBoundingClientRect();
-        const shiftX = was.left - now.left;
-        const shiftY = was.top - now.top;
-        if (!shiftX && !shiftY) return;
-        stopGrowth(card);
-        card.animate(
-            [{ transform: `translate(${shiftX}px, ${shiftY}px)` }, { transform: 'none' }],
-            { duration: 240, easing: 'cubic-bezier(0.4, 0.05, 0.2, 1)' }
-        );
-    });
+    }), 'cubic-bezier(0.4, 0.05, 0.2, 1)');
 }
 
 function hideGhost() {
@@ -5268,73 +4929,8 @@ function hideGhost() {
     boardGhost = null;
 }
 
-function shapeNearest(cols, rows) {
-    let best = WIDGET_SIZES[0];
-    let near = Infinity;
-    WIDGET_SIZES.forEach((size) => {
-        const [w, h] = BOARD_SPAN[size];
-        const off = Math.abs(w - cols) + Math.abs(h - rows);
-        if (off < near) {
-            near = off;
-            best = size;
-        }
-    });
-    return best;
-}
-
-let sizeDrag = null;
-
-function startWidgetSizing(card, entry, event) {
-    if (!editingHome || event.button) return;
-    event.preventDefault();
-    event.stopPropagation();
-
-    sizeDrag = { card, entry, pointerId: event.pointerId, size: entry.size };
-    document.documentElement.classList.add('sizing');
-    window.addEventListener('pointermove', trackWidgetSizing);
-    window.addEventListener('pointerup', endWidgetSizing);
-    window.addEventListener('pointercancel', endWidgetSizing);
-}
-
-function trackWidgetSizing(event) {
-    if (!sizeDrag || event.pointerId !== sizeDrag.pointerId) return;
-    const { card, entry } = sizeDrag;
-    const cell = cellSize();
-    const corner = card.getBoundingClientRect();
-
-    // how many slots the corner has been pulled out to
-    const cols = Math.max(1, Math.min(BOARD_COLS - entry.col,
-        Math.round((event.clientX - corner.left) / (cell.width + cell.gap))));
-    const rows = Math.max(1, Math.round((event.clientY - corner.top) / (cell.height + cell.gap)));
-    const size = shapeNearest(cols, rows);
-    if (size === sizeDrag.size) return;
-
-    sizeDrag.size = size;
-    const was = card.getBoundingClientRect();
-    card.dataset.size = size;
-    growInto(card, was, 170);
-}
-
-function endWidgetSizing() {
-    if (!sizeDrag) return;
-    const { entry, card, size } = sizeDrag;
-    sizeDrag = null;
-    window.removeEventListener('pointermove', trackWidgetSizing);
-    window.removeEventListener('pointerup', endWidgetSizing);
-    window.removeEventListener('pointercancel', endWidgetSizing);
-    document.documentElement.classList.remove('sizing');
-
-    if (size === entry.size) {
-        if (card) card.dataset.size = entry.size;      // pulled and put back
-        return;
-    }
-    // the same road the board takes for any other change of shape
-    setWidgetSize(entry.key, size);
-}
-
 function startWidgetDrag(card, entry, event) {
     if (!editingHome || event.button) return;
-    if (event.target.closest('.widget-off, .widget-grip')) return;
     event.preventDefault();
     if (boardDrag) endWidgetDrag();
 
@@ -5345,14 +4941,16 @@ function startWidgetDrag(card, entry, event) {
         pointerId: event.pointerId,
         grabX: event.clientX - spot.left,
         grabY: event.clientY - spot.top,
-        // where it is, and where it is wanted
+        // where it started, where it is, and where it is wanted
+        fromX: spot.left,
+        fromY: spot.top,
         atX: spot.left,
         atY: spot.top,
         wantX: spot.left,
         wantY: spot.top,
         frame: 0,
         col: entry.col,
-        row: entry.row
+        cell: cellSize()               // the board's slots, read once: it doesn't move while you carry
     };
 
     card.style.width = `${spot.width}px`;
@@ -5360,10 +4958,7 @@ function startWidgetDrag(card, entry, event) {
     card.style.left = `${spot.left}px`;
     card.style.top = `${spot.top}px`;
     card.classList.add('is-dragging');
-    showGhost(entry, entry.col, entry.row);
-
-    boardDrag.fromX = spot.left;
-    boardDrag.fromY = spot.top;
+    showGhost(entry, entry.col);
 
     document.documentElement.classList.add('sorting-rows', 'sorting-grab');
     boardDrag.frame = window.requestAnimationFrame(carryOn);
@@ -5389,28 +4984,13 @@ function carryOn() {
     card.style.left = `${boardDrag.atX}px`;
     card.style.top = `${boardDrag.atY}px`;
 
-    const cell = cellSize();
-    const [w] = spanOf(entry);
-    const col = Math.max(0, Math.min(BOARD_COLS - w,
+    const { cell } = boardDrag;
+    // one row: only how far along it is in question
+    const col = Math.max(0, Math.min(BOARD_COLS - tileWidth(entry),
         Math.round((boardDrag.atX - cell.box.left) / (cell.width + cell.gap))));
-    const row = 0;      // one row: only which way along it is in question
-
-    const overBin = false;      // there is no bin: tiles are never thrown away
-    if (overBin !== boardDrag.overBin) {
-        boardDrag.overBin = overBin;
-        widgetBin.classList.toggle('is-live', overBin);
-        card.classList.toggle('is-going-out', overBin);
-        if (overBin) hideGhost();
-    }
-    if (overBin) {
-        boardDrag.frame = window.requestAnimationFrame(carryOn);
-        return;
-    }
-
-    if (col !== boardDrag.col || row !== boardDrag.row) {
+    if (col !== boardDrag.col) {
         boardDrag.col = col;
-        boardDrag.row = row;
-        showGhost(entry, col, row);
+        showGhost(entry, col);
         boardDrag.shadow = boardIfDropped(entry, col);
         showRoom(boardDrag.shadow);
     }
@@ -5419,8 +4999,7 @@ function carryOn() {
 
 function endWidgetDrag() {
     if (!boardDrag) return;
-    const { card, entry, col, row, frame, overBin, shadow } = boardDrag;
-    const boardDrag_from = { x: boardDrag.fromX, y: boardDrag.fromY };
+    const { card, entry, col, frame, shadow, fromX, fromY } = boardDrag;
     window.cancelAnimationFrame(frame);
     boardDrag = null;
 
@@ -5430,11 +5009,9 @@ function endWidgetDrag() {
     document.documentElement.classList.remove('sorting-rows', 'sorting-grab');
 
     const from = card.getBoundingClientRect();
-    const still = Math.hypot(from.left - boardDrag_from.x, from.top - boardDrag_from.y) < 6;
+    const still = Math.hypot(from.left - fromX, from.top - fromY) < 6;   // pressed, not carried
     hideGhost();
-    widgetBin.classList.remove('is-up', 'is-live');
-    window.setTimeout(() => { widgetBin.hidden = true; }, 240);
-    card.classList.remove('is-dragging', 'is-going-out');
+    card.classList.remove('is-dragging');
     ['width', 'height', 'left', 'top'].forEach((name) => card.style.removeProperty(name));
     if (still) {                     // pressed, not carried: choose what this tile shows
         renderWidgets();
@@ -5446,15 +5023,15 @@ function endWidgetDrag() {
     const settled = shadow || boardIfDropped(entry, col);
     settled.forEach((one) => {
         const real = homeWidgets.find((item) => item.key === one.key);
-        if (real) Object.assign(real, { col: one.col, row: one.row });
-
+        if (real) real.col = one.col;
     });
     saveWidgets();
-    slideBoard(() => renderWidgets());
+    slideTiles(() => renderWidgets());
 
     // and the one in your hand slides from the air into its slot
     const landed = widgetList.querySelector(`.widget-card[data-widget-id="${entry.key}"]`);
     if (landed) {
+        landed.getAnimations().forEach((one) => one.cancel());
         const to = landed.getBoundingClientRect();
         landed.animate(
             [{ transform: `translate(${from.left - to.left}px, ${from.top - to.top}px)` },
@@ -5464,19 +5041,25 @@ function endWidgetDrag() {
     }
 }
 
+// a small panel fades out over 160ms before it is hidden; opening it again inside that time cancels
+// the hiding, or the old close would shut the new one
 function shutPop(panel) {
     if (!panel || panel.hidden || panel.classList.contains('is-leaving')) return;
     panel.classList.add('is-leaving');
-    window.setTimeout(() => {
+    panel.popTimer = window.setTimeout(() => {
         panel.classList.remove('is-leaving');
         panel.hidden = true;
     }, 160);
+}
+function openPop(panel) {
+    window.clearTimeout(panel.popTimer);
+    panel.classList.remove('is-leaving');
+    panel.hidden = false;
 }
 
 function closeWidgetPicks() {
     pickingFor = null;
     shutPop(widgetPicks);
-    widgetAdd.setAttribute('aria-expanded', 'false');
 }
 
 function renderWidgetPicks() {
@@ -5489,18 +5072,15 @@ function renderWidgetPicks() {
         text.textContent = widget.name;
         pick.append(text);
         if (pickingFor && pickingFor.id === widget.id) pick.classList.add('is-on');
+        // what the tile shows is changed to this one
         pick.addEventListener('click', () => {
-            if (pickingFor) {
-                const entry = homeWidgets.find((one) => one.key === pickingFor.key);
-                if (entry && entry.id !== widget.id) {
-                    entry.id = widget.id;
-                    entry.key = nextWidgetKey(widget.id);
-                    entry.look = null;
-                    saveWidgets();
-                    renderWidgets();
-                }
-            } else {
-                addWidget(widget.id);
+            const entry = pickingFor && homeWidgets.find((one) => one.key === pickingFor.key);
+            if (entry && entry.id !== widget.id) {
+                entry.id = widget.id;
+                entry.key = nextWidgetKey(widget.id);
+                entry.look = null;
+                saveWidgets();
+                renderWidgets();
             }
             closeWidgetPicks();
         });
@@ -5511,8 +5091,7 @@ let pickingFor = null;
 function openSwapPicks(entry, card) {
     pickingFor = entry;
     renderWidgetPicks();
-    widgetPicks.classList.remove('is-leaving');
-    widgetPicks.hidden = false;
+    openPop(widgetPicks);
     placeBelowLeft(widgetPicks, card);
 }
 
@@ -5524,6 +5103,9 @@ function setHelpOpen(open) {
 }
 
 // the bin up in the strip folds: its name opens the list below it
+document.getElementById('binnedHead').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
+});
 document.getElementById('binnedHead').addEventListener('click', (event) => {
     if (event.target.closest('#binnedEmpty')) return;
     event.stopPropagation();
@@ -5531,34 +5113,19 @@ document.getElementById('binnedHead').addEventListener('click', (event) => {
 });
 document.addEventListener('click', (event) => {
     if (!event.target.closest || !event.target.closest('#railBinned')) railBinned.classList.remove('is-open');
-    if (!event.target.closest || !event.target.closest('.help-box')) setHelpOpen(false);
 });
 
 helpToggle.addEventListener('click', (event) => {
     event.stopPropagation();
     setHelpOpen(!helpBox.classList.contains('is-open'));
 });
+// a press anywhere else folds the help note — caught on the way down, so a button that keeps its own
+// click to itself still folds it, and leaving the window (or pressing into the dino run's frame) does too
+document.addEventListener('pointerdown', (event) => {
+    if (!event.target.closest || !event.target.closest('.help-box')) setHelpOpen(false);
+}, true);
+window.addEventListener('blur', () => setHelpOpen(false));
 
-widgetEdit.addEventListener('click', (event) => {
-    event.stopPropagation();
-    setHomeEditing(!editingHome);
-});
-
-function openWidgetPicks(anchor) {
-    renderWidgetPicks();
-    widgetPicks.classList.remove('is-leaving');
-    widgetPicks.hidden = false;
-    widgetAdd.setAttribute('aria-expanded', 'true');
-    if (anchor === widgetAdd) placeBeside(widgetPicks, anchor);
-    else placeBelowLeft(widgetPicks, anchor);
-}
-widgetAdd.addEventListener('click', (event) => {
-    event.stopPropagation();
-    const wasOpen = !widgetPicks.hidden;
-    closeWidgetPicks();
-    if (wasOpen) return;
-    openWidgetPicks(widgetAdd);
-});
 widgetPicks.addEventListener('click', (event) => event.stopPropagation());
 
 // one search over every page. A page answers to its own name, and to any words on it — what is
@@ -5612,8 +5179,7 @@ const pageSearchField = document.getElementById('pageSearchField');
 const pageFound = document.getElementById('pageFound');
 let pageHits = [];
 function goToHit(hit) {
-    pageFound.hidden = true;
-    document.getElementById('pageSearch').classList.remove('is-open');
+    showFound(false);
     pageSearchField.value = '';
     pageSearchField.blur();
     switchSection(hit.id);
@@ -5625,11 +5191,42 @@ function goToHit(hit) {
         window.setTimeout(() => hit.at.classList.remove('found-here'), 1400);
     }, 380);
 }
+// the results slide down out of the bar and back up into it. played by script, so it runs every
+// time — a css animation on an element coming out of display:none can be skipped — and always from
+// wherever the box is, so typing, clearing and typing again mid-slide turns it round rather than jumping
+const FOUND_SHUT = 'inset(0 0 100% 0)';
+const FOUND_OPEN = 'inset(0 0 0 0)';
+let foundMove = null;
+let foundGoing = false;
+function showFound(open) {
+    const wrap = document.getElementById('pageSearch');
+    if (open && !pageFound.hidden && !foundGoing) return;
+    if (!open && (pageFound.hidden || foundGoing)) return;
+    const from = foundMove ? window.getComputedStyle(pageFound).clipPath : (open ? FOUND_SHUT : FOUND_OPEN);
+    if (foundMove) { foundMove.onfinish = null; foundMove.cancel(); }
+    foundGoing = !open;
+    if (open) {
+        pageFound.hidden = false;
+        wrap.classList.add('is-open');
+    }
+    pageFound.style.clipPath = open ? FOUND_OPEN : FOUND_SHUT;
+    foundMove = pageFound.animate([{ clipPath: from === 'none' ? FOUND_OPEN : from }, { clipPath: open ? FOUND_OPEN : FOUND_SHUT }],
+        { duration: open ? 260 : 190, easing: open ? 'cubic-bezier(0.2, 0.8, 0.3, 1)' : 'cubic-bezier(0.4, 0, 0.6, 1)' });
+    foundMove.onfinish = () => {
+        foundMove = null;
+        if (!open) {
+            foundGoing = false;
+            pageFound.hidden = true;
+            wrap.classList.remove('is-open');   // the bar's own corners round off only once the box has gone up
+        }
+    };
+}
+
 function searchPages() {
     const query = pageSearchField.value.trim().toLowerCase();
     pageFound.innerHTML = '';
     pageHits = [];
-    if (!query) { pageFound.hidden = true; pageFound.closest('.page-search').classList.remove('is-open'); return; }
+    if (!query) { showFound(false); return; }
     sections.forEach((section) => {
         const words = pageWords(section.id).filter((one) => one.text.toLowerCase().includes(query));
         const named = section.name.includes(query);
@@ -5637,19 +5234,17 @@ function searchPages() {
         pageHits.push({ id: section.id, name: section.name, words, named, at: words[0] ? words[0].at : null });
     });
     pageHits.sort((a, b) => (b.named - a.named) || (b.words.length - a.words.length));
-    pageHits.forEach((hit, index) => {
+    pageHits.forEach((hit) => {
         const row = document.createElement('li');
         const press = document.createElement('button');
         press.type = 'button';
         press.className = 'page-hit';
-        if (index === 0) press.classList.add('is-first');
         const name = document.createElement('b');
         name.textContent = hit.name;
         const where = hit.words.length ? snippet(hit.words[0].text, query) : document.createElement('span');
         if (!hit.words.length) where.textContent = 'the page itself';
         const count = document.createElement('small');
         count.textContent = hit.words.length ? String(hit.words.length) : '';
-        press.insertAdjacentHTML('afterbegin', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4"/></svg>');
         press.append(name, where, count);
         press.addEventListener('click', () => goToHit(hit));
         row.append(press);
@@ -5661,8 +5256,7 @@ function searchPages() {
         none.textContent = 'nothing on any page says that';
         pageFound.append(none);
     }
-    pageFound.hidden = false;
-    pageFound.closest('.page-search').classList.add('is-open');
+    showFound(true);
 }
 pageSearchField.addEventListener('input', searchPages);
 // the run on home is a frame, and a frame only hears keys once it has been clicked — so space and up
@@ -5728,10 +5322,10 @@ document.getElementById('pageSearchGo').addEventListener('click', () => {
 pageSearchField.addEventListener('focus', () => { if (pageSearchField.value.trim()) searchPages(); });
 pageSearchField.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && pageHits[0]) { event.preventDefault(); goToHit(pageHits[0]); }
-    if (event.key === 'Escape') { pageSearchField.value = ''; pageFound.hidden = true; document.getElementById('pageSearch').classList.remove('is-open'); pageSearchField.blur(); }
+    if (event.key === 'Escape') { pageSearchField.value = ''; showFound(false); pageSearchField.blur(); }
 });
 document.addEventListener('pointerdown', (event) => {
-    if (!event.target.closest || !event.target.closest('.page-search')) { pageFound.hidden = true; document.getElementById('pageSearch').classList.remove('is-open'); }
+    if (!event.target.closest || !event.target.closest('.page-search')) showFound(false);
 });
 
 // under a tile, lined up on its left edge — the board starts against the bar, so nothing may hang left
@@ -5741,49 +5335,20 @@ function placeBelowLeft(panel, anchor) {
     panel.style.top = `${Math.round(spot.bottom + 8)}px`;
 }
 
-// the fixed time tile: it tells the time, and a press opens the board's settings
-const homeKey = document.getElementById('homeKey');
+// the fixed time tile: it tells the time, and the pen in its corner turns arranging on and off — then
+// a press on a tile changes what it is, and a drag moves it
 const keyEdit = document.getElementById('keyEdit');
-const keyMenu = document.getElementById('keyMenu');
 const keyBody = document.getElementById('keyBody');
 function paintKey() {
     const clock = widgetById('clock');
-    if (clock && keyBody) clock.fill(keyBody, 'small', 'digits');
-    const lights = document.querySelector('#keyLights span');
-    if (lights) lights.textContent = document.documentElement.classList.contains('inverted') ? 'lights on' : 'lights off';
+    clock.fill(keyBody, 'small', 'digits');
 }
-function closeKeyMenu() {
-    if (keyMenu.hidden) return;
-    shutPop(keyMenu);
-    keyEdit.setAttribute('aria-expanded', 'false');
-}
-// the pen turns arranging on and off: then a press on a tile changes what it is, a drag moves it
 keyEdit.addEventListener('click', (event) => {
     event.stopPropagation();
     closeWidgetPicks();
     setHomeEditing(!editingHome);
-    keyEdit.setAttribute('aria-pressed', String(editingHome));
 });
-keyMenu.addEventListener('click', (event) => event.stopPropagation());
-document.getElementById('keyArrange').addEventListener('click', () => {
-    closeKeyMenu();
-    setHomeEditing(!editingHome);
-});
-document.getElementById('keyAdd').addEventListener('click', () => {
-    closeKeyMenu();
-    openWidgetPicks(homeKey);
-});
-document.getElementById('keyLights').addEventListener('click', () => {
-    closeKeyMenu();
-    setInverted(!document.documentElement.classList.contains('inverted'));
-});
-document.addEventListener('click', () => closeKeyMenu());
-document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeKeyMenu(); });
-paintKey();
-window.setInterval(paintKey, 15000);
-
 startClock();
-paintStorage();
 binnedEmpty.addEventListener('click', (event) => {
     event.stopPropagation();
     emptyBin();
@@ -6134,18 +5699,13 @@ function loadOcr() {
     return ocrLoading;
 }
 
-async function readPicture(bit, say) {
+async function readPicture(bit) {
     await loadOcr();
     const worker = await window.Tesseract.createWorker('eng', 1, {
         workerPath: new URL('ocr/worker.min.js', document.baseURI).href,
         corePath: new URL('ocr/', document.baseURI).href,
         langPath: new URL('ocr/', document.baseURI).href,
-        gzip: true,
-        logger: (step) => {
-            if (step.status === 'recognizing text' && say) {
-                say(`reading the picture... ${Math.round(step.progress * 100)}%`);
-            }
-        }
+        gzip: true
     });
     try {
         const { data } = await worker.recognize(`data:${bit.mediaType};base64,${bit.data}`);
@@ -6158,7 +5718,6 @@ async function readPicture(bit, say) {
 /* --- the model that runs here, with no account and no bill --- */
 
 const LOCAL_MODEL = 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC';
-const LOCAL_SIZE = 'about 1.1gb';
 let localEngine = null;
 let localLoading = null;
 
@@ -6172,14 +5731,14 @@ async function gpuThere() {
 }
 
 let localSay = null;      // whoever is waiting on it, if anyone
-let localTold = '';       // the last thing the download said
+let localHeard = null;    // how far the download has got: { mb, part } while it is coming, else null
 
 async function readyLocal(say) {
     localSay = say || localSay;
     if (localEngine) return localEngine;
     if (localLoading) {
         // it is already on its way; whoever just asked hears the rest
-        if (say && localTold) say(localTold);
+        if (say) say(localHeard);
         return localLoading;
     }
 
@@ -6188,16 +5747,14 @@ async function readyLocal(say) {
         const worker = new Worker('llm-worker.js', { type: 'module' });
         const engine = await webllm.CreateWebWorkerMLCEngine(worker, LOCAL_MODEL, {
             initProgressCallback: (report) => {
-                const percent = Math.round((report.progress || 0) * 100);
+                const part = report.progress || 0;
                 const fetched = /(\d+)MB fetched/.exec(report.text || '');
-                localTold = percent >= 100 || !fetched
-                    ? 'getting the reader ready...'
-                    : `getting the reader — ${fetched[1]}mb of ${LOCAL_SIZE}, once only`;
-                if (localSay) localSay(localTold, fetched && percent < 100 ? { mb: Number(fetched[1]), part: report.progress || 0 } : null);
+                localHeard = fetched && Math.round(part * 100) < 100 ? { mb: Number(fetched[1]), part } : null;
+                if (localSay) localSay(localHeard);
             }
         });
         localEngine = engine;
-        localTold = '';
+        localHeard = null;
         return engine;
     })();
 
@@ -6234,8 +5791,7 @@ async function askLocal(text, onCards, say) {
     const gathered = [];
 
     for (let index = 0; index < pieces.length; index += 1) {
-        const where = pieces.length > 1 ? ` · part ${index + 1} of ${pieces.length}` : '';
-        if (say) say('making flashcards...', null);
+        if (say) say(null);
         const answer = await engine.chat.completions.create({
             messages: [
                 { role: 'system', content: LOCAL_BRIEF },
@@ -6253,11 +5809,9 @@ async function askLocal(text, onCards, say) {
         } catch (error) {
             continue;   // that piece came out unreadable; the rest may not
         }
-        mergeCards(gathered, (parsed.cards || [])
-            .map((card) => ({ question: tidy(card.question), answer: tidy(card.answer) }))
-            .filter((card) => card.question && card.answer));
+        mergeCards(gathered, cardsFrom(parsed));
         if (!notesDeckName && parsed.deck_name) notesDeckName = tidy(parsed.deck_name);
-        if (onCards) onCards(gathered, where);
+        if (onCards) onCards(gathered);
     }
     return gathered;
 }
@@ -6293,6 +5847,22 @@ function tidyKey(typed) {
         .trim();
 }
 
+// what the api said was wrong, or the status on its own when it said nothing readable
+async function apiTrouble(response, fallback) {
+    try {
+        const body = await response.json();
+        if (body.error && body.error.message) return body.error.message;
+    } catch (error) { /* the status will have to do */ }
+    return fallback;
+}
+
+// the cards in a model's answer, tidied, with any that came back half empty left out
+function cardsFrom(parsed) {
+    return (parsed.cards || [])
+        .map((card) => ({ question: tidy(card.question), answer: tidy(card.answer) }))
+        .filter((card) => card.question && card.answer);
+}
+
 function apiHeaders(key) {
     return {
         'content-type': 'application/json',
@@ -6316,14 +5886,7 @@ async function keyWorks(key) {
     });
     if (response.ok) return { fine: true };
 
-    let said = `the api said ${response.status}`;
-    try {
-        const body = await response.json();
-        if (body.error && body.error.message) said = body.error.message;
-    } catch (error) {
-        // the status will have to do
-    }
-    return { fine: false, said };
+    return { fine: false, said: await apiTrouble(response, `the api said ${response.status}`) };
 }
 
 notesKeySave.addEventListener('click', async () => {
@@ -6464,16 +6027,7 @@ async function askClaude(text, bits, onProgress) {
         })
     });
 
-    if (!response.ok) {
-        let said = `${response.status}`;
-        try {
-            const body = await response.json();
-            if (body.error && body.error.message) said = body.error.message;
-        } catch (error) {
-            // the status on its own will have to do
-        }
-        throw new Error(said);
-    }
+    if (!response.ok) throw new Error(await apiTrouble(response, `${response.status}`));
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -6525,9 +6079,7 @@ async function askClaude(text, bits, onProgress) {
 
     return {
         deckName: tidy(parsed.deck_name || ''),
-        cards: (parsed.cards || [])
-            .map((card) => ({ question: tidy(card.question), answer: tidy(card.answer) }))
-            .filter((card) => card.question && card.answer)
+        cards: cardsFrom(parsed)
     };
 }
 
@@ -6552,8 +6104,9 @@ function setNotesBusy(busy) {
     }
 }
 // the reader's own words on the way, turned into what the button shows
+// the button while the reader is coming down: how much of it is here, and a bar along its foot
 const LOCAL_TOTAL_MB = 1100;
-function goSayLocal(words, info) {
+function goSayLocal(info) {
     if (info && info.mb) {
         const total = LOCAL_TOTAL_MB >= 1000 ? `${(LOCAL_TOTAL_MB / 1000).toFixed(1)} gb` : `${LOCAL_TOTAL_MB} mb`;
         goSay(`${info.mb} mb / ${total}`, info.part);
@@ -6578,7 +6131,7 @@ async function makeCards() {
             for (let index = 0; index < notesBitsHeld.length; index += 1) {
                 const bit = notesBitsHeld[index];
                 if (bit.kind === 'pdf') continue;
-                const said = await readPicture(bit, () => goSay('making flashcards...'));
+                const said = await readPicture(bit);
                 if (said) gathered += (gathered ? '\n\n' : '') + said;
             }
             if (gathered !== text) {
@@ -6596,7 +6149,7 @@ async function makeCards() {
                 const cards = await askLocal(
                     gathered,
                     (sofar) => { renderFound([...sofar], ''); goSay(`making flashcards... ${sofar.length}`); },
-                    (how, info) => goSayLocal(how, info)
+                    goSayLocal
                 );
                 renderFound(cards, cards.length
                     ? `${cards.length} cards — drop any you don't want, then keep them`
@@ -6618,22 +6171,12 @@ async function makeCards() {
     const gathered = [];
     notesDeckName = '';
 
-    const runs = notesBitsHeld.map((bit, index) => ({
-        bits: [bit],
-        text: index === 0 ? text : '',
-        said: bit.kind === 'pdf' ? 'the pdf' : `photo ${index + 1}`
-    }));
-    if (!notesBitsHeld.length && text) {
-        const pieces = cutIntoPieces(text);
-        pieces.forEach((piece, index) => {
-            runs.push({ bits: [], text: piece, said: pieces.length > 1 ? `part ${index + 1}` : '' });
-        });
-    }
+    // every photo and pdf a call of its own (the words go with the first); words alone, cut into pieces
+    const runs = notesBitsHeld.map((bit, index) => ({ bits: [bit], text: index === 0 ? text : '' }));
+    if (!notesBitsHeld.length && text) cutIntoPieces(text).forEach((piece) => runs.push({ bits: [], text: piece }));
 
     try {
-        for (let index = 0; index < runs.length; index += 1) {
-            const run = runs[index];
-            const where = runs.length > 1 ? ` · ${run.said || index + 1} of ${runs.length}` : '';
+        for (const run of runs) {
             goSay('making flashcards...');
             const answer = await askClaude(run.text, run.bits, (count) => {
                 goSay(`making flashcards... ${gathered.length + count}`);
@@ -7059,22 +6602,19 @@ async function takeListFile(file) {
     }
 }
 
-const listFrame
- = document.getElementById('listFrame');
+const listFrame = document.getElementById('listFrame');
 const siteBlocked = document.getElementById('siteBlocked');
-if (siteBlocked) {
-    siteBlocked.addEventListener('click', (event) => {
-        if (event.target.closest('a')) return;
-        siteBlocked.hidden = true;
-    });
-}
+siteBlocked.addEventListener('click', (event) => {
+    if (event.target.closest('a')) return;
+    siteBlocked.hidden = true;
+});
 
 function fitSite() {
     const site = document.getElementById('listSite');
-    if (!site) return;
-    const wide = parseFloat(getComputedStyle(site).getPropertyValue('--site-wide')) || 1100;
-    const clip = parseFloat(getComputedStyle(site).getPropertyValue('--site-clip')) || 0;
-    const bar = parseFloat(getComputedStyle(site).getPropertyValue('--site-bar')) || 0;
+    const look = getComputedStyle(site);
+    const wide = parseFloat(look.getPropertyValue('--site-wide')) || 1100;
+    const clip = parseFloat(look.getPropertyValue('--site-clip')) || 0;
+    const bar = parseFloat(look.getPropertyValue('--site-bar')) || 0;
     const room = site.clientWidth + clip + bar;
     if (room > 0) site.style.setProperty('--site-fit', String(room / wide));
 }
@@ -7409,7 +6949,6 @@ const roomList = document.getElementById('roomList');
 const roomMake = document.getElementById('roomMake');
 const roomNameField = document.getElementById('roomName');
 const talkName = document.getElementById('talkName');
-const talkSealed = { hidden: true };   // the 'sealed' chip was taken out; kept so its old writes land nowhere
 const talkLog = document.getElementById('talkLog');
 const talkWelcome = document.getElementById('talkWelcome');
 const talkStart = document.getElementById('talkStart');
@@ -7423,12 +6962,10 @@ const chatDoorTitle = document.getElementById('chatDoorTitle');
 const chatNote = document.getElementById('chatNote');
 const chatBody = document.getElementById('chatBody');
 
-[roomNameField, talkSay, chatHandle].forEach((field) => field && stopGuessing(field));
+[roomNameField, talkSay, chatHandle].forEach(stopGuessing);
 
-if (chatWord) {
-    if (!(window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc'))) chatWord.type = 'password';
-    ['copy', 'cut', 'dragstart'].forEach((kind) => chatWord.addEventListener(kind, (event) => event.preventDefault()));
-}
+if (!CSS.supports('-webkit-text-security', 'disc')) chatWord.type = 'password';
+['copy', 'cut', 'dragstart'].forEach((kind) => chatWord.addEventListener(kind, (event) => event.preventDefault()));
 
 const CHAT_BOARD = 'https://ntfy.sh';
 // a test can point the chat at a board of its own (localStorage chat-era-test); nobody else sets it
@@ -7484,7 +7021,7 @@ function whoWasOpen() {
 }
 
 function saySomethingChat(words) {
-    if (chatNote) chatNote.textContent = words || '';
+    chatNote.textContent = words || '';
 }
 
 async function wordHash(word) {
@@ -7652,10 +7189,6 @@ async function wakeChat() {
     })();
     if (mine && mine.name && mine.word) chatMe = mine;
     if (chatMe && !heldAccounts().some((one) => one.name.toLowerCase() === chatMe.name.toLowerCase())) stashAccount();
-    try {   // a picture saved before pictures were kept per account belongs to this one
-        const old = window.localStorage.getItem(FACE_KEY);
-        if (old && chatMe) { window.localStorage.setItem(faceKey(chatMe.name), old); window.localStorage.removeItem(FACE_KEY); }
-    } catch (error) { /* fine */ }
     paintPeople();
     paintTalk();
     paintChatShape();
@@ -7884,15 +7417,10 @@ function placeDoor(onPage) {
 // the empty talk side: how many friends and lines you have, and the last person you talked to
 function paintWelcome() {
     const tally = document.getElementById('welcomeTally');
-    tally.innerHTML = '';
-    [[chatFriends.length, chatFriends.length === 1 ? 'friend' : 'friends']]   // the message count was taken out
-        .forEach(([count, word], at) => {
-            if (at) tally.append(' · ');
-            const figure = document.createElement('span');
-            figure.className = 'welcome-num';
-            figure.textContent = String(count);
-            tally.append(figure, ` ${word}`);
-        });
+    const figure = document.createElement('span');
+    figure.className = 'welcome-num';
+    figure.textContent = String(chatFriends.length);
+    tally.replaceChildren(figure, ` ${chatFriends.length === 1 ? 'friend' : 'friends'}`);
     let latest = null;
     chatFriends.forEach((key) => {
         const last = (chatDms[key] || []).slice(-1)[0];
@@ -7953,13 +7481,6 @@ async function addSomeone(typed, complain) {
     return true;
 }
 
-function dropSomeone(key) {
-    chatFriends = chatFriends.filter((one) => one !== key);
-    keepKnown();
-    if (chatWith === key) openWith(chatFriends[0] || null);
-    else paintPeople();
-}
-
 roomMake.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (await addSomeone(roomNameField.value, saySomethingChat)) roomNameField.value = '';
@@ -7989,14 +7510,12 @@ function openWith(who) {
     if (!chatWith) {
         talkName.textContent = '';
         handle.textContent = '';
-        talkSealed.hidden = true;
         talkSay.disabled = true;
         return;
     }
     const them = chatPeople[chatWith];
     talkName.textContent = displayName(chatWith);
     handle.textContent = `@${them ? them.name : chatWith}`;
-    talkSealed.hidden = false;
     talkSay.disabled = !chatOn || !them || !them.pub || !chatPriv;
     talkSay.placeholder = talkSay.disabled && them && !them.pub
         ? 'they have not opened the chat yet'
@@ -8251,48 +7770,59 @@ function clearTray() {
     paintTray();
 }
 // a picture, in black and white only — dithered the way the faces are
-function ditherPicture(blob, widest) {
-    return new Promise((resolve) => {
+// a picture file, opened as an image (and its address let go of once it has loaded or failed)
+function openPicture(blob) {
+    return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(blob);
         const img = new Image();
-        img.onload = () => {
-            const scale = Math.min(1, widest / img.width);
-            const w = Math.max(1, Math.round(img.width * scale));
-            const h = Math.max(1, Math.round(img.height * scale));
-            const canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            const pen = canvas.getContext('2d');
-            pen.fillStyle = '#fff';
-            pen.fillRect(0, 0, w, h);
-            pen.drawImage(img, 0, 0, w, h);
-            const data = pen.getImageData(0, 0, w, h);
-            const px = data.data;
-            const lum = new Float32Array(w * h);
-            for (let i = 0; i < lum.length; i += 1) lum[i] = px[i * 4] * 0.299 + px[i * 4 + 1] * 0.587 + px[i * 4 + 2] * 0.114;
-            for (let y = 0; y < h; y += 1) {
-                for (let x = 0; x < w; x += 1) {
-                    const at = y * w + x;
-                    const v = lum[at] < 128 ? 0 : 255;
-                    const err = lum[at] - v;
-                    lum[at] = v;
-                    if (x + 1 < w) lum[at + 1] += err * 7 / 16;
-                    if (y + 1 < h) {
-                        if (x > 0) lum[at + w - 1] += err * 3 / 16;
-                        lum[at + w] += err * 5 / 16;
-                        if (x + 1 < w) lum[at + w + 1] += err / 16;
-                    }
-                }
-            }
-            for (let i = 0; i < lum.length; i += 1) { px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = lum[i]; px[i * 4 + 3] = 255; }
-            pen.putImageData(data, 0, 0);
-            URL.revokeObjectURL(url);
-            resolve(canvas.toDataURL('image/png'));
-        };
-        img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('not a picture')); };
         img.src = url;
     });
 }
+// floyd–steinberg over whatever is drawn on the canvas, so a photo survives the no-grey rule
+function ditherCanvas(canvas) {
+    const w = canvas.width;
+    const h = canvas.height;
+    const pen = canvas.getContext('2d');
+    const data = pen.getImageData(0, 0, w, h);
+    const px = data.data;
+    const lum = new Float32Array(w * h);
+    for (let i = 0; i < lum.length; i += 1) lum[i] = px[i * 4] * 0.299 + px[i * 4 + 1] * 0.587 + px[i * 4 + 2] * 0.114;
+    for (let y = 0; y < h; y += 1) {
+        for (let x = 0; x < w; x += 1) {
+            const at = y * w + x;
+            const v = lum[at] < 128 ? 0 : 255;
+            const err = lum[at] - v;
+            lum[at] = v;
+            if (x + 1 < w) lum[at + 1] += err * 7 / 16;
+            if (y + 1 < h) {
+                if (x > 0) lum[at + w - 1] += err * 3 / 16;
+                lum[at + w] += err * 5 / 16;
+                if (x + 1 < w) lum[at + w + 1] += err / 16;
+            }
+        }
+    }
+    for (let i = 0; i < lum.length; i += 1) { px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = lum[i]; px[i * 4 + 3] = 255; }
+    pen.putImageData(data, 0, 0);
+    return canvas.toDataURL('image/png');
+}
+// a picture in a chat line: no wider than it needs, on white, dithered; null if it isn't a picture
+async function ditherPicture(blob, widest) {
+    let img;
+    try { img = await openPicture(blob); } catch (error) { return null; }
+    const scale = Math.min(1, widest / img.width);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const pen = canvas.getContext('2d');
+    pen.fillStyle = '#fff';
+    pen.fillRect(0, 0, canvas.width, canvas.height);
+    pen.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return ditherCanvas(canvas);
+}
+// the one way anything leaves the page as a download. the address is let go of well after, since a
+// big file (a zip of every clip) can still be being read out when a short wait is up
 function saveBlob(blob, name) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -8301,7 +7831,7 @@ function saveBlob(blob, name) {
     document.body.append(link);
     link.click();
     link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+    window.setTimeout(() => URL.revokeObjectURL(url), 20000);
 }
 function fileBox(other, line) {
     const box = document.createElement('button');
@@ -8488,7 +8018,7 @@ function editLine(row, other, line, words) {
     field.addEventListener('blur', () => done(true), { once: true });
 }
 document.addEventListener('click', () => {
-    if (typeof talkLog !== 'undefined') talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => one.classList.remove('is-open'));
+    talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => one.classList.remove('is-open'));
 });
 
 function whatIsSaid() {
@@ -8587,13 +8117,8 @@ function paintChatBar() {
     chatMeButton.classList.toggle('is-solid', Boolean(chatMe));
     chatMeButton.setAttribute('aria-label', said);
     chatMeButton.title = said;
-    if (!chatMe) {
-        chatWhoLine.textContent = chatOn ? 'not signed in' : 'the chat board would not answer';
-        paintFaces();
-        if (!accountPop.hidden) paintAccount();
-        return;
-    }
-    chatWhoLine.textContent = chatOn ? chatMe.name : `${chatMe.name} — offline`;
+    if (!chatMe) chatWhoLine.textContent = chatOn ? 'not signed in' : 'the chat board would not answer';
+    else chatWhoLine.textContent = chatOn ? chatMe.name : `${chatMe.name} — offline`;
     paintFaces();
     if (!accountPop.hidden) paintAccount();
 }
@@ -8700,48 +8225,16 @@ function paintFaces() {
     wearFace(document.getElementById('chatMePic'), signed);
     if (signed) wearFace(document.getElementById('accFacePic'), true);
 }
-function ditherFace(file) {
-    return new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(file);
-        const img = new Image();
-        img.onload = () => {
-            const size = 96;
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const pen = canvas.getContext('2d');
-            const side = Math.min(img.width, img.height);
-            pen.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
-            const data = pen.getImageData(0, 0, size, size);
-            const px = data.data;
-            const lum = new Float32Array(size * size);
-            for (let i = 0; i < lum.length; i += 1) lum[i] = px[i * 4] * 0.299 + px[i * 4 + 1] * 0.587 + px[i * 4 + 2] * 0.114;
-            // floyd–steinberg, so a photo survives the no-grey rule
-            for (let y = 0; y < size; y += 1) {
-                for (let x = 0; x < size; x += 1) {
-                    const at = y * size + x;
-                    const v = lum[at] < 128 ? 0 : 255;
-                    const err = lum[at] - v;
-                    lum[at] = v;
-                    if (x + 1 < size) lum[at + 1] += err * 7 / 16;
-                    if (y + 1 < size) {
-                        if (x > 0) lum[at + size - 1] += err * 3 / 16;
-                        lum[at + size] += err * 5 / 16;
-                        if (x + 1 < size) lum[at + size + 1] += err / 16;
-                    }
-                }
-            }
-            for (let i = 0; i < lum.length; i += 1) {
-                px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = lum[i];
-                px[i * 4 + 3] = 255;
-            }
-            pen.putImageData(data, 0, 0);
-            URL.revokeObjectURL(url);
-            resolve(canvas.toDataURL('image/png'));
-        };
-        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('not a picture')); };
-        img.src = url;
-    });
+// a face: the middle square of the picture at 96px, dithered
+async function ditherFace(file) {
+    const img = await openPicture(file);
+    const size = 96;
+    const side = Math.min(img.width, img.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
+    return ditherCanvas(canvas);
 }
 
 const accFaceFile = document.getElementById('accFaceFile');
@@ -9035,8 +8528,8 @@ chatSwap.addEventListener('click', () => {
 });
 
 let doorBusy = false;
-function doorWorking(words) {
-    doorBusy = Boolean(words);
+function doorWorking(busy) {
+    doorBusy = busy;
     chatGo.disabled = doorBusy;
     chatSwap.disabled = doorBusy;
     // the button keeps its own word the whole time — no 'unlocking your key…' flashing past;
@@ -9052,14 +8545,13 @@ chatGo.addEventListener('click', async () => {
     if (!word) { shake(chatWord); return; }
 
     saySomethingChat('');
-    doorWorking(chatDoorNew ? 'signing up…' : 'logging in…');
+    doorWorking(true);
     try {
         if (!chatOn) await wakeChat();
         // a press while the chat is still starting waits for it rather than calling it dead
         for (let tries = 0; chatStarting && tries < 150; tries += 1) await new Promise((done) => window.setTimeout(done, 100));
         if (!chatOn) { shake(chatGo); return; }
 
-        doorWorking(chatDoorNew ? 'checking the name…' : 'logging in…');
         await catchUp();
 
         const hash = await wordHash(word);
@@ -9076,7 +8568,6 @@ chatGo.addEventListener('click', async () => {
                 shake(chatHandle);
                 return;
             }
-            doorWorking('making your keys…');
             const pair = await makeKeyPair();
             chatPriv = pair.priv;
             const post = {
@@ -9118,14 +8609,13 @@ chatGo.addEventListener('click', async () => {
         paintPeople();
         // the board was read before anyone was logged in, and lines nobody owned were passed over —
         // read it again as this account, so a new browser has your threads straight away
-        await catchUp();
-        await openWhatIsWaiting();
+        await catchUp();   // which also opens whatever was waiting for this account
         paintPeople();
         openWith(whoWasOpen());
         closeModal();
     } finally {
         // whatever happened, the button goes back to being a button
-        doorWorking('');
+        doorWorking(false);
     }
 });
 
@@ -9141,8 +8631,6 @@ function logOut() {
     keepKnown();
     const next = heldAccounts()[0];
     if (next) { useAccount(next.name); return; }
-    talkSay.disabled = true;
-    talkSealed.hidden = true;
     paintChatBar();
     paintPeople();
     paintTalk();
@@ -9154,7 +8642,6 @@ chatSplitter = wireSplit({
     body: document.getElementById('chatBody'),
     other: document.getElementById('talkSide'),
     pane: document.getElementById('roomSide'),
-    variable: '--room-col',
     key: 'room-column',
     keepOther: 50,
     // the list never closes: its field and the plus need this much, and the gap stays a full step

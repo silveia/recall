@@ -16,7 +16,7 @@
    4.  app shell — the bars around the page
    5.  page column — one layout for every screen
    6.  shared pieces — buttons and popups
-   7.  home — section tabs
+   7.  home — the page
    8.  home — deck bar
    9.  home — renaming a deck in place
    10. the function box and the two tiles
@@ -31,7 +31,7 @@
    19. small screens
    20. (the player was here)
    21. create — which answers a card may be mixed up with
-   22. the bar's own three — clock, storage, recently binned
+   22. the top strip — hi, the search, the bin, help and the clock
    23. home — the board you arrange yourself
    24. cards — notes in, cards out
    25. one weight
@@ -48,7 +48,6 @@
 	--muted: #8a8a8a;   /* placeholder text only */
 	--hover: #f1f1f1;   /* tinted hover surface */
 	--line: #000;
-	--veil: rgba(255, 255, 255, 0.72);
 	--bar: #000;
 	--bar-ink: #ffffff;
 	--col: 34rem;      /* max width of the content column */
@@ -57,9 +56,6 @@
 	   centre. the circles overlap down the bar, which is what makes the bumps */
 	--rail: 71px;      /* = --wave-w × 75/39 − --wave-out (70.8), rounded: a fraction of a pixel here draws a grey seam down the bar */
 	--widget-pad: 1rem;    /* the one inset inside every home tile */
-	--rail-round: 1.6rem;  /* how far in the rounded ends of the bar's boxes reach */
-	--dash-step: 14px;     /* a dash and its gap, under the top strip over the bar */
-	--dot-step: 20px;      /* dot and gap in the bar's dividers */
 	/* keep --wave-w even: half of it is an offset, and a half pixel draws a grey line */
 	--wave-w: 40px;
 	--wave-h: 64px;   /* one bump per page mark down the bar: each mark sits in a bump */
@@ -73,7 +69,6 @@
 	--gap: 2rem;       /* corners, and between separate blocks */
 	--group: 1rem;
 	--tight: 0.5rem;   /* controls sitting side by side in one bar */
-	--rail-pad: 0.85rem;  /* the side bars are narrow — they run tighter */
 	--ease: cubic-bezier(0.22, 1, 0.36, 1);   /* soft, decelerating */
 	--quick: 0.18s;    /* hovers and presses */
 	--slow: 0.4s;      /* things arriving on screen */
@@ -92,7 +87,6 @@ html.inverted {
 	--ink: #ffffff;
 	--line: #ffffff;
 	--hover: #151515;
-	--veil: rgba(0, 0, 0, 0.72);
 }
 
 /* =========================================================
@@ -111,7 +105,6 @@ html.inverted {
 	--cur-move: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Cg%20fill='none'%20stroke='%23fff'%20stroke-width='1.20'%20stroke-linejoin='round'%3E%3Cpath%20d='M13%204.6%2015.8%209.2h-5.6z'/%3E%3Cpath%20d='M13%2021.4%2010.2%2016.8h5.6z'/%3E%3Cpath%20d='M4.6%2013%209.2%2010.2v5.6z'/%3E%3Cpath%20d='M21.4%2013%2016.8%2015.8v-5.6z'/%3E%3C/g%3E%3Cg%20fill='%23000'%3E%3Cpath%20d='M13%204.6%2015.8%209.2h-5.6z'/%3E%3Cpath%20d='M13%2021.4%2010.2%2016.8h5.6z'/%3E%3Cpath%20d='M4.6%2013%209.2%2010.2v5.6z'/%3E%3Cpath%20d='M21.4%2013%2016.8%2015.8v-5.6z'/%3E%3C/g%3E%3C/svg%3E") 11 11, move;
 	--cur-menu: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='9'%20cy='9'%20r='3.4'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3Cpath%20d='M13.5%2013.5h7M13.5%2017h7M13.5%2020.5h7'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linecap='round'/%3E%3Cpath%20d='M13.5%2013.5h7M13.5%2017h7M13.5%2020.5h7'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linecap='round'/%3E%3C/svg%3E") 11 11, context-menu;
 	--cur-no: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='6.4'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'/%3E%3Cpath%20d='M8.5%2017.5%2017.5%208.5'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linecap='round'/%3E%3Ccircle%20cx='13'%20cy='13'%20r='6.4'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'/%3E%3Cpath%20d='M8.5%2017.5%2017.5%208.5'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linecap='round'/%3E%3C/svg%3E") 11 11, not-allowed;
-	--cur-corner: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Cpath%20d='M8.8%208.8%2017.2%2017.2'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linecap='round'/%3E%3Cpath%20d='M8.8%2013.5V8.8h4.7'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linejoin='round'%20stroke-linecap='round'/%3E%3Cpath%20d='M17.2%2012.5v4.7h-4.7'%20fill='none'%20stroke='%23fff'%20stroke-width='3.00'%20stroke-linejoin='round'%20stroke-linecap='round'/%3E%3Cpath%20d='M8.8%208.8%2017.2%2017.2'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linecap='round'/%3E%3Cpath%20d='M8.8%2013.5V8.8h4.7'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linejoin='round'%20stroke-linecap='round'/%3E%3Cpath%20d='M17.2%2012.5v4.7h-4.7'%20fill='none'%20stroke='%23000'%20stroke-width='1.80'%20stroke-linejoin='round'%20stroke-linecap='round'/%3E%3C/svg%3E") 11 11, nwse-resize;
 }
 html { cursor: var(--cur-dot); }
 
@@ -195,14 +188,22 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 700; }
 
 ::selection { color: var(--paper); background: var(--ink); }
 
-.app-content, .rail, .help-box, #recordingList, .sense-controls,
+.app-content, .rail, #recordingList, .sense-controls,
 .deck-list-slot, #cardList, #deckCardList {
 	overscroll-behavior: contain;
 	scrollbar-width: none;
 }
+/* one scrollbar for the whole site, wherever one shows: a line exactly as thick as the boxes' own
+   outline (1px), in the ink, held 4px in off the box's edge and kept clear of its rounded corners. the
+   scrollbar is 6px of room and the thumb's transparent sides leave only that line. never set
+   scrollbar-width on a box that should show it — chrome then ignores all of this */
+::-webkit-scrollbar { width: 6px; height: 6px; background: none; }
+::-webkit-scrollbar-track { background: none; margin: 8px; }
+::-webkit-scrollbar-thumb { background: var(--ink); background-clip: padding-box; border: solid transparent; border-width: 0 4px 0 1px; }
+::-webkit-scrollbar-thumb:horizontal { border-width: 1px 0 4px 0; }
+::-webkit-scrollbar-corner, ::-webkit-resizer { background: none; }
 .app-content::-webkit-scrollbar,
 .rail::-webkit-scrollbar,
-.help-box::-webkit-scrollbar,
 #recordingList::-webkit-scrollbar,
 .sense-controls::-webkit-scrollbar { width: 0; height: 0; }
 
@@ -346,96 +347,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 .rail {
 	position: relative;
-	z-index: 2;        /* over the top bar, which passes behind both */
+	z-index: 2;
 	flex: 0 0 var(--rail);
-	background: var(--paper);
-	overflow-y: auto;
-}
-
-.rail-left {
-	contain: layout paint;
-	display: flex;
-	flex-direction: column;
-	color: var(--bar-ink);
-	background: var(--bar);
-	gap: var(--rail-pad);
-	padding: calc(var(--topbar) + var(--group)) calc(var(--rail-pad) + var(--wave-w) / 2) var(--rail-pad) var(--rail-pad);
-	overflow: hidden;   /* the help box scrolls, the bar doesn't */
-}
-
-html:not(.inverted) .rail-left {
-	--paper: #000;
-	--ink: #ffffff;
-	--line: #ffffff;
-	--hover: #151515;
-	--veil: rgba(0, 0, 0, 0.72);
-}
-
-.rail-left .rail-clock {
-	position: relative;
-	color: var(--paper);
-	background: var(--ink);
-	border-color: var(--ink);
-}
-
-.topbar {
-	position: absolute;
-	top: 0;
-	left: calc(var(--rail) - var(--wave-w) / 2);   /* the page, reaching in behind the first bump so no white shows round it */
-	right: 0;
-	z-index: 4;
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;   /* everything but the name sits at the right, by request */
-	height: var(--topbar);
-	padding-left: var(--gap);
-	padding-right: var(--gap);
-	color: var(--bar-ink);
-	background: var(--bar);
-}
-
-.topbar::after {
-	content: '';
-	position: absolute;
-	top: 100%;
-	left: var(--wave-out);   /* from the dip under the first bump, where the wave meets it */
-	right: 0;
-	height: 1px;
-	background: var(--bar-ink);
-	pointer-events: none;
-}
-.topbar::before {
-	/* the semi-dotted line hugs the first bump: the same arc the outline traces down the bumps
-	   below, drawn in dashes across the menu's own row, so the pattern carries on up to the top */
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;                      /* the strip starts where the bumps' column does */
-	width: var(--wave-w);
-	height: var(--wave-h);
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.61 0 A 37.5 37.5 0 0 1 6.61 66' fill='none' stroke='%23ffffff' stroke-width='1.21875' stroke-linecap='round' pathLength='85' stroke-dasharray='5 5'/%3E%3C/svg%3E");
-	background-repeat: no-repeat;
-	background-size: var(--wave-w) var(--wave-h);
-	pointer-events: none;
-}
-
-.topbar .section-tabs {
-	position: relative;
-	top: 4px;
-	height: auto;
-	margin: 0;
-	padding: 0;
-	flex: 1;
-	justify-content: space-between;
-	gap: 1rem;
-}
-
-.topbar .section-tab {
-	flex: 1 1 0;
-	min-width: 0;
-	text-align: center;
-	transform-origin: center center;
-	text-indent: 0.09em;   /* the face carries more air on the right of a word */
+	overflow: hidden;
+	background: var(--bar);   /* the black column the bumps hang off; the page marks ride over it */
 }
 
 .app-body {
@@ -545,11 +460,20 @@ html:not(.inverted) .rail-left {
 	animation: panel-pop 0.32s cubic-bezier(0.22, 1, 0.3, 1);
 }
 .study-screen { width: min(40rem, 100%); }
+/* create and practice take most of the screen, by request — still a window, with air all round it */
+.modal-panel.maker-screen, .modal-panel.study-screen {
+	width: min(76rem, calc(var(--vw, 1vw) * 82));
+	height: min(100%, calc(var(--vh, 1vh) * 82));
+}
+.maker-screen #cardList { flex: 1; height: auto; min-height: 0; overflow-y: auto; }
+.study-screen .question-box { display: flex; flex: 1; min-height: 0; }
+.study-screen #studyQuestion { flex: 1; }
+.study-screen .answer-options { flex: 1.3; }
 
 .modal-close {
 	position: absolute;
 	top: 0.4rem;
-	right: 0.5rem;
+	right: calc(0.5rem - 3px);   /* the × lands as far off the right edge as off the top: 15px each */
 	display: grid;
 	place-items: center;
 	width: 1.75rem;
@@ -563,7 +487,14 @@ html:not(.inverted) .rail-left {
 	line-height: 1;
 	cursor: var(--cur-tap);
 }
-.modal-close:hover { color: var(--paper); background: var(--ink); }
+/* the cross does nothing on hover or press, by request: no fill, no movement, no boing */
+.modal-close, .modal-close:hover, .modal-close:active, .modal-close:focus-visible {
+	color: inherit;
+	background: none;
+	transform: none;
+	transition: none;
+	animation: none;
+}
 
 /* =========================================================
    6. shared pieces — buttons and popups
@@ -628,7 +559,7 @@ html:not(.inverted) .rail-left {
 .empty-face { font-size: 1.3rem; }
 
 /* =========================================================
-   7. home — section tabs
+   7. home — the page
    ========================================================= */
 .quick-panel, .recorder-panel, .home-panel, .chat-panel { width: 100%; }
 
@@ -642,46 +573,6 @@ html:not(.inverted) .rail-left {
 	gap: var(--group);
 	min-height: 0;
 }
-
-.section-tabs {
-	contain: layout;   /* the size swap stays inside this row */
-	display: flex;
-	align-items: center;
-	gap: 1.25rem;
-	height: 2.25rem;   /* whole pixels — see the note on .square-button */
-	margin: 4px 0 -4px;
-	padding: 1.1rem 0 0 1px;
-}
-
-.section-tab {
-	padding: 0;
-	color: inherit;
-	background: none;
-	border: 0;
-	font-family: var(--title-font);
-	font-size: 1.1rem;
-	font-weight: 400;
-	line-height: 1.1;
-	cursor: var(--cur-tap);
-	transform-origin: left center;
-}
-
-.section-tab::before {
-	content: '';
-	position: absolute;
-	left: 0;
-	right: 0;
-	top: -16px;
-	bottom: -16px;
-}
-.section-tab.active {
-	position: relative;
-	top: calc(-3.75px + var(--drop-title));   /* levelled off a 4x screenshot */
-	font-size: 2.25rem;
-	cursor: var(--cur-dot);
-}
-
-.section-tab:not(.active) { position: relative; top: calc(-4px + var(--drop-title)); }
 
 /* =========================================================
    8. home — deck bar
@@ -767,15 +658,12 @@ html:not(.inverted) .rail-left {
 	resize: none;
 	overflow-y: auto;
 	overflow-wrap: anywhere;
-	scrollbar-width: thin;
-	scrollbar-color: var(--ink) transparent;
+	/* no scrollbar-width here: chrome drops the ::-webkit-scrollbar drawing whenever it is set, and
+	   'thin' is far wider than this */
 }
-.share-row textarea::-webkit-scrollbar { width: 3px; }
-.share-row textarea::-webkit-scrollbar-track { background: transparent; }
-.share-row textarea::-webkit-scrollbar-thumb { background: var(--ink); border-radius: 3px; }
 .share-row textarea::-webkit-resizer { display: none; }
 .share-row textarea::placeholder { color: var(--muted); }
-.share-row .basic-button { flex: none; width: 5.2rem; height: var(--field); padding: calc(var(--drop) * 2) 0 0; }   /* one width, so both boxes line up */
+.share-row .basic-button { flex: none; width: 3.8rem; height: var(--field); padding: calc(var(--drop) * 2) 0 0; }   /* one width, so both boxes line up; 3.8rem so the word fits the pill rather than floating in it */
 
 .share-note { min-height: 1.2rem; margin: 0; font-size: 0.8rem; }
 
@@ -804,7 +692,7 @@ html:not(.inverted) .rail-left {
 	text-overflow: ellipsis;
 }
 .deck-side {
-	flex: 0 1 var(--deck-col, 50%);
+	flex: 0 1 50%;   /* its grip writes the width straight onto it */
 	min-width: 0;
 	overflow: hidden;
 }
@@ -1190,65 +1078,6 @@ html:not(.inverted) .rail-left {
 /* =========================================================
    10. the function box and the two tiles
    ========================================================= */
-.help-box {
-	contain: layout paint;
-	display: flex;
-	flex-direction: column;
-	flex: 0 1 auto;
-	min-height: 0;
-	overflow-y: auto;
-	padding: var(--tight) var(--tight) 0;
-	transition: padding-bottom 0.26s var(--drawer);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	font-size: 0.9rem;
-	line-height: 1.65;
-	text-align: left;
-}
-
-.help-head {
-	background: none;
-	border-width: 0 0 1px;
-	color: inherit;
-	cursor: var(--cur-tap);
-	transition: border-color 0.26s var(--drawer);
-}
-
-.help-body {
-	display: grid;
-	grid-template-rows: 0fr;
-	transition: grid-template-rows 0.26s var(--drawer);
-}
-.help-box.is-open {
-	padding-bottom: calc(var(--tight) + 1px);
-	transition: padding-bottom 0.34s var(--drawer);
-}
-.help-box.is-open .help-body {
-	grid-template-rows: 1fr;
-	transition: grid-template-rows 0.34s var(--drawer);
-}
-
-.help-body-inner {
-	overflow: hidden;
-	min-height: 0;
-	margin-bottom: -5px;
-	opacity: 0;
-	transition: opacity 0.26s var(--drawer);
-}
-.help-box.is-open .help-body-inner {
-	opacity: 1;
-	transition: opacity 0.28s var(--drawer) 0.06s;
-}
-
-.help-box .help-head { border-bottom-color: transparent; }
-.help-box.is-open .help-head { border-bottom-color: var(--line); transition: border-color 0.28s var(--drawer) 0.06s; }
-
-.help-box .help-note {
-	margin: var(--group) 0 0;
-	padding: 0;
-	text-align: center;
-}
-
 .quick-panel {
 	display: flex;
 	flex: none;
@@ -1864,7 +1693,7 @@ html:not(.inverted) .rail-left {
 .clip-side {
 	position: relative;   /* what the chip in its corner hangs off */
 	display: flex;
-	flex: 0 1 var(--clip-col, 50%);
+	flex: 0 1 50%;   /* its grip writes the width straight onto it */
 	flex-direction: column;
 	gap: var(--tight);
 	min-width: 0;
@@ -2910,48 +2739,279 @@ html:not(.inverted) .rail-left {
 .option-pick.is-picked { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 
 /* =========================================================
-   22. the bar's own three — clock, storage, recently binned
+   22. the top strip — hi, the search, the bin, help and the clock
    ========================================================= */
-.rail-clock {
+/* the strip is black in the light as well as the dark, so what sits on it takes the dark's tokens */
+html:not(.inverted) .topbar {
+	--paper: #000;
+	--ink: #ffffff;
+	--line: #ffffff;
+	--hover: #151515;
+}
+.topbar {
+	position: absolute;
+	top: 0;
+	left: calc(var(--rail) - var(--wave-w) / 2);   /* in behind the first bump, so the row is one black */
+	right: 0;
+	z-index: 4;
 	display: flex;
-	flex: none;
-	flex-direction: column;
 	align-items: center;
-	gap: 0.1rem;
-	padding: 0.7rem var(--group) 0.61rem;
+	justify-content: flex-end;
+	gap: var(--group);
+	height: var(--topbar);
+	padding: 0 var(--group) 0 calc(var(--wave-w) / 2 + var(--wave-out) + var(--group));
 	color: var(--bar-ink);
 	background: var(--bar);
+	font-family: var(--font);
+	font-size: 1rem;
+	/* raised over the page while something hangs from it, and kept there until that has gone back up */
+	transition: z-index 0s linear 0.3s;
+}
+.topbar:has(.is-open) { z-index: 75; transition: z-index 0s; }
+/* in the dark the strip and the page are one black, so its foot gets a white line — from the dip
+   where the first bump starts, never reaching back over the bumps */
+html.inverted .topbar::after {
+	content: '';
+	position: absolute;
+	top: 100%;
+	left: var(--wave-out);
+	right: 0;
+	height: 1px;
+	background: #fff;
+	pointer-events: none;
+}
+
+/* the search over every page, at the strip's left, 64px off hi's letters */
+.page-search { --field: 34px; position: relative; z-index: 20; flex: none; width: 34rem; margin: 0 auto 0 24px; }
+.page-search input {
+	width: 100%;
+	height: var(--field);
+	padding: 0 3rem 0 2.6rem;
+	color: var(--ink);
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 999px;
+	font: inherit;
+	font-size: 0.88rem;
+	outline: none;
+	-webkit-appearance: none;
+	appearance: none;
 }
-.clock-top {
+.page-search input::-webkit-search-cancel-button { display: none; }
+.page-search input::placeholder { color: var(--muted); }
+.page-search.is-open input { border-radius: calc(var(--field) / 2) calc(var(--field) / 2) 0 0; border-bottom-color: transparent; }
+.page-search-mark { position: absolute; left: 0.95rem; top: 50%; width: 1.05rem; height: 1.05rem; transform: translateY(-50%); pointer-events: none; }
+/* its go is a bare >, placed without a transform so nothing that animates one (a press's boing)
+   can knock it off its line; on hover it nudges 2px right, and a press does nothing */
+.page-search-go {
+	position: absolute;
+	top: 5px;
+	right: 5px;
+	display: grid;
+	place-items: center;
+	width: calc(var(--field) - 10px);
+	height: calc(var(--field) - 10px);
+	padding: 0;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	cursor: var(--cur-tap);
+	transition: translate 0.18s var(--ease);
+}
+.page-search-go, .page-search-go:active { transform: none; animation: none; }
+.page-search-go:hover { translate: 2px 0; }
+.page-search-go svg { width: 70%; height: 70%; }
+/* results the way chrome lists them: the bar opens downward into one box, the rows are plain, and a
+   row only shows its edge under the pointer. the box slides down by script (showFound) */
+.page-found {
+	position: absolute;
+	top: calc(var(--field) - 1px);
+	left: 0;
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	max-height: 22rem;
+	margin: 0;
+	padding: 0 5px 6px;
+	overflow-y: auto;
+	list-style: none;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-top: 0;
+	border-radius: 0 0 calc(var(--field) / 2) calc(var(--field) / 2);
+}
+.page-found::before { content: ''; flex: none; height: 1px; margin: 0 10px 4px; background: var(--line); }
+.page-hit {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 0.55rem;
+	width: 100%;
+	padding: 0.3rem 0.7rem;
+	color: var(--ink);
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 12px;
+	font: inherit;
+	text-align: left;
+	cursor: var(--cur-tap);
+}
+.page-hit:hover { border-color: var(--line); }
+.page-hit b { font-size: 0.88rem; }
+.page-hit span { overflow: hidden; font-size: 0.8rem; white-space: nowrap; text-overflow: ellipsis; }
+.page-hit mark { color: var(--paper); background: var(--ink); }   /* a plain highlight, flush with the letters */
+.page-hit small { font-family: var(--num-font); font-size: 1rem; }
+.page-none { padding: 0.35rem 0.8rem; font-size: 0.82rem; }
+
+/* the bin: a mark, with how many are in it on a small disc at its corner (laid over it, so the mark
+   never moves); its list drops centred under it, the way help's note does */
+.rail-binned { position: relative; display: flex; flex: none; align-items: center; }
+.binned-head {
+	position: relative;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 0.45rem;
-	margin-top: -0.15rem;
+	width: 36px;
+	height: 36px;
+	border-radius: 999px;
+	cursor: var(--cur-tap);
 }
-.clock-suffix {
-	position: relative;
-	top: 1px;
-	font-size: 0.9rem;
-	font-weight: 700;
+.binned-head svg { display: block; flex: none; width: 21px; height: 21px; }
+.binned-count {
+	position: absolute;
+	right: 5px;
+	bottom: 7px;
+	display: grid;
+	place-items: center;
+	min-width: 10px;
+	height: 10px;
+	padding: 0 2px;
+	color: var(--paper);
+	background: var(--ink);
+	border-radius: 999px;
+	font-family: var(--num-font);
+	font-size: 0.6rem;
 	line-height: 1;
+	pointer-events: none;
+}
+.binned-count:empty { display: none; }
+.binned-list {
+	position: absolute;
+	top: calc(100% + var(--group));
+	left: 50%;
+	translate: -50% 0;
+	z-index: 70;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: 18rem;
+	/* empty, then a box with room for three and a half binned things — the half says there is more —
+	   and the same size whether or not anything is in it */
+	height: calc(2 * 8px + 22px + 6px + 9px + 4px + 3.5 * 28px + 3 * 2px + 2px + 2px);
+	margin: 0;
+	padding: 8px;
+	overflow: hidden;
+	list-style: none;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+}
+.binned-top { display: flex; flex: none; justify-content: center; }
+.rail-binned > .binned-empty { display: none; }   /* only ever shown in the list, which it is moved into */
+.binned-empty {
+	display: grid;
+	place-items: center;
+	height: 22px;
+	padding: 0 0.7rem;
+	color: inherit;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font: inherit;
+	font-size: 0.72rem;
+	cursor: var(--cur-tap);
+}
+.binned-empty:hover { color: var(--paper); background: var(--ink); }
+/* the binned things sit in a little box of their own, which is what scrolls */
+.binned-box {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 2px;
+	min-height: 0;
+	padding: 9px 4px 4px;   /* more air over the first row: at 4px it sat against the top */
+	overflow-y: auto;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+}
+.binned-none { margin: auto; font-size: 0.72rem; }
+.binned-row { display: flex; flex: none; align-items: center; gap: 2px; height: 28px; padding: 0 0.1rem 0 0.6rem; }
+.binned-name { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* put back and delete for good: bare marks, nothing on hover */
+.binned-act { display: grid; flex: none; place-items: center; width: 24px; height: 24px; padding: 0; color: var(--ink); background: none; border: 0; cursor: var(--cur-tap); }
+.binned-act svg { display: block; width: 16px; height: 16px; }
+
+/* help: a question mark, always turning clockwise, drawn dead centre in its box so it turns on the
+   spot. its note hangs centred under it, one line however long */
+.help-box { position: relative; flex: none; }
+.help-head {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	color: inherit;
+	background: none;
+	border: 0;
+	border-radius: 999px;
+	cursor: var(--cur-tap);
+}
+/* the turning is on a plain box round the mark, as a transform the graphics card runs on its own: on the
+   svg itself it was redone by the page every frame, forever, and slowed every other animation down */
+.help-spin { display: block; width: 21px; height: 21px; will-change: transform; animation: help-spin 4s linear infinite; }
+.help-spin svg { display: block; width: 100%; height: 100%; }
+@keyframes help-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.help-body {
+	position: absolute;
+	top: calc(100% + var(--group));
+	left: 50%;
+	translate: -50% 0;
+	z-index: 70;
+	width: max-content;
+	padding: 0.5rem 1.2rem;
+	white-space: nowrap;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+}
+.help-note { position: relative; top: calc(var(--drop) + 0.9px); margin: 0; font-size: 0.82rem; line-height: 1.4; text-align: center; }   /* amiko sits high: brought down so the words sit level */
+/* the note and the bin's list drop in from their mark — a short fall, a fade and a little growth from
+   the top middle — and go back the same way, eased at both ends. hidden after the fade, so neither can
+   be pressed while shut */
+.help-body, .binned-list {
+	transform-origin: 50% 0;
+	opacity: 0;
+	transform: translateY(-6px) scale(0.96);
+	visibility: hidden;
+	transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.3s;
+}
+.help-box.is-open .help-body, .rail-binned.is-open .binned-list {
+	opacity: 1;
+	transform: none;
+	visibility: visible;
+	transition: opacity 0.26s ease, transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15), visibility 0s;
 }
 
-.clock-time {
-	margin: 0;
-	font-family: var(--title-font);
-	font-size: 4.05rem;
-	font-weight: 400;   /* bitcount is never bold — the dots close up */
-	line-height: 1;
-	letter-spacing: 0.02em;
-	padding-top: calc(var(--drop-title) * 2);
-}
-.clock-date {
-	margin: 0.15rem 0 0;
-	font-size: 0.8rem;
-}
+/* the clock: the moon, the half of the day, the date, and the time last, at the very right */
+.rail-clock { display: flex; flex: none; order: 99; align-items: center; gap: 0.6rem; height: 36px; }
+.clock-top { display: contents; }   /* its moon and half of the day take their own places in the row */
+.clock-suffix { order: 1; line-height: 1; }
+.clock-date { order: 2; margin: 0; }
+.theme-swap { order: 3; margin-left: 1.4rem; }   /* the moon sits just left of the time, well off the date */
+/* vt323 like every number, well off the date, and raised 1.25px to level with the date's figures */
+.clock-time { position: relative; top: -1.25px; order: 4; margin: 0; font-family: var(--num-font); font-size: 1.6rem; line-height: 1; letter-spacing: 0.02em; }
 
 .theme-swap {
 	display: grid;
@@ -2968,9 +3028,6 @@ html:not(.inverted) .rail-left {
 }
 .theme-swap:hover { transform: scale(1.12); }
 
-html.fading .theme-swap svg {
-	transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.45, 1);
-}
 html.inverted .theme-swap svg { transform: rotate(180deg); }
 
 ::view-transition-old(root), ::view-transition-new(root) {
@@ -3000,142 +3057,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	.theme-swap { transition: none; }
 }
 
-.rail-store {
-	display: flex;
-	flex: none;
-	flex-direction: column;
-	gap: var(--rail-pad);
-	padding: var(--rail-pad) 0;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-}
-.store-head {
-	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: var(--tight);
-	font-size: 0.78rem;
-	line-height: 1;
-}
-.store-head span:first-child { font-family: var(--head-font); font-weight: 700; }
-.store-bar {
-	width: 100%;
-	height: 10px;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	overflow: hidden;
-}
-.store-fill {
-	width: 0;
-	height: 100%;
-	background: var(--ink);
-	transition: width 0.3s var(--ease);
-}
-
-.rail-binned {
-	display: flex;
-	flex: none;
-	flex-direction: column;
-	gap: var(--rail-pad);   /* see .rail-store */
-	padding: var(--rail-pad) 0;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-}
-.binned-head {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--tight);
-	margin: 0;
-	font-family: var(--head-font);
-	font-size: 0.78rem;
-	font-weight: 700;
-}
-.binned-count::before { content: ' · '; }
-.binned-count:empty { display: none; }
-.binned-empty {
-	flex: none;
-	display: grid;
-	place-items: center;
-	height: 1.35rem;
-	padding: 0 0.5rem;
-	color: inherit;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	font: inherit;
-	font-size: 0.7rem;
-	font-weight: 700;
-	cursor: var(--cur-tap);
-}
-.binned-empty:hover { color: var(--paper); background: var(--ink); }
-.binned-list {
-	display: flex;
-	flex-direction: column;
-	gap: 0.3rem;
-	margin: 0;
-	padding: 0;
-	list-style: none;
-}
-.binned-item {
-	display: block;
-	width: 100%;
-	padding: 0.3rem 0.5rem;
-	overflow: hidden;
-	color: inherit;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	font: inherit;
-	font-size: 0.75rem;
-	white-space: nowrap;
-	text-align: left;
-	text-overflow: ellipsis;
-	cursor: var(--cur-tap);
-}
-.binned-item:hover { color: var(--paper); background: var(--ink); }
-
-.rail-left .help-box, .rail-left .rail-store, .rail-left .rail-binned {
-	border-color: transparent;
-	border-radius: 0;
-}
-
-.rail-left > .help-box ~ section {
-	position: relative;
-	border-top-color: transparent;
-}
-
-.rail-left > .help-box ~ section::before,
-.rail-left .rail-clock::after {
-	content: '';
-	position: absolute;
-	top: -1px;
-	left: -6px;     /* as far off the wall on the left as off the dip of the wave on the right */
-	right: calc(-6px - var(--wave-out));
-	height: 2px;
-	padding: 0 1px;
-	box-sizing: border-box;
-	/* 2px square dots; half a dot at each tile end, so the end dots sit flush on the box's edges */
-	background-image: linear-gradient(to right,
-		var(--line) 0 1px, transparent 1px calc(100% - 1px), var(--line) calc(100% - 1px));
-	background-size: var(--dot-step) 2px;
-	background-repeat: round no-repeat;
-	background-origin: content-box;
-	background-clip: border-box;
-	pointer-events: none;
-}
-
-.rail-left .rail-clock::after { top: calc(100% + 28px); }
-.rail-left .rail-clock + .help-box { margin-top: 30px; }
-
-.rail-left .rail-store, .rail-left .rail-binned {
-	padding-top: calc(var(--rail-pad) + var(--tight) + 7px);
-	padding-bottom: calc(var(--rail-pad) + var(--tight));
-}
-
 /* =========================================================
    23. home — the board you arrange yourself
    ========================================================= */
@@ -3144,7 +3065,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	flex: 1;
 	grid-template-columns: repeat(4, minmax(0, 1fr));   /* the movable four: BOARD_COLS in script.js */
 	/* apple's grid: a small tile is square, so a row is exactly as tall as a column is wide */
-	grid-template-rows: repeat(var(--board-rows, 1), var(--tile));
+	grid-template-rows: var(--tile);
 	grid-auto-rows: var(--tile);
 	gap: var(--group);
 	min-height: 0;
@@ -3155,38 +3076,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	margin: -8px -8px -8px;     /* the tiles start the same gap under the strip as they sit apart */
 }
 .widget-list::-webkit-scrollbar { display: none; }
-
-.widget-bin {
-	position: absolute;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 5;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: var(--tight);
-	height: 3.4rem;
-	padding: 0 6.5rem 0 var(--group);   /* clear of the two corner buttons */
-	color: var(--ink);
-	background: var(--paper);
-	border: 1px dashed var(--line);
-	border-radius: var(--radius);
-	font-size: 0.8rem;
-	pointer-events: none;
-	opacity: 0;
-	transform: translateY(10px);
-	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease),
-	            color 0.18s var(--ease), background-color 0.18s var(--ease);
-}
-.widget-bin.is-up { opacity: 1; transform: none; }
-.widget-bin.is-live {
-	color: var(--paper);
-	background: var(--ink);
-	border-style: solid;
-	border-color: var(--ink);
-}
-.widget-bin svg { display: block; flex: none; }
 
 .widget-ghost {
 	border: 1px dashed var(--line);
@@ -3211,88 +3100,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	text-align: left;
 }
 
-/* the search over every page, across the top of home */
-.page-search { position: relative; flex: none; z-index: 20; }
-.page-search input {
-	width: 100%;
-	height: var(--field);
-	padding: 0 3rem 0 2.6rem;
-	color: var(--ink);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	font: inherit;
-	outline: none;
-	-webkit-appearance: none;
-	appearance: none;
-}
-.page-search input::-webkit-search-cancel-button { display: none; }
-.page-search input::placeholder { color: var(--muted); }
-/* the round black go at the far right, inside the bar, the way the chat's send sits in its field */
-.page-search-go {
-	position: absolute;
-	right: 5px;
-	top: 50%;
-	display: grid;
-	place-items: center;
-	width: calc(var(--field) - 10px);
-	height: calc(var(--field) - 10px);
-	padding: 0;
-	color: var(--paper);
-	background: var(--ink);
-	border: 1px solid var(--ink);
-	border-radius: 50%;
-	cursor: var(--cur-tap);
-	transform: translateY(-50%);
-	transition: transform var(--quick) var(--ease);
-}
-.page-search-go:hover { transform: translateY(-50%) scale(1.08); }
-.page-search-go svg { width: 55%; height: 55%; }
-.page-search-mark { position: absolute; left: 0.95rem; top: 50%; width: 1.05rem; height: 1.05rem; transform: translateY(-50%); pointer-events: none; }
-.page-search.is-open input { border-radius: calc(var(--field) / 2) calc(var(--field) / 2) 0 0; border-bottom-color: transparent; }
-/* results the way chrome lists them: the bar opens downward into one box, the rows are plain,
-   and a row only shows its edge under the pointer */
-.page-found {
-	position: absolute;
-	top: calc(var(--field) - 1px);
-	left: 0;
-	right: 0;
-	display: flex;
-	flex-direction: column;
-	max-height: 22rem;
-	margin: 0;
-	padding: 0 6px 8px;
-	overflow-y: auto;
-	list-style: none;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-top: 0;
-	border-radius: 0 0 calc(var(--field) / 2) calc(var(--field) / 2);
-}
-.page-found::before { content: ''; flex: none; height: 1px; margin: 0 10px 6px; background: var(--line); }
-.page-found[hidden] { display: none; }
-.page-hit {
-	display: grid;
-	grid-template-columns: 1.1rem auto minmax(0, 1fr) auto;
-	align-items: center;
-	gap: 0.7rem;
-	width: 100%;
-	padding: 0.45rem 0.8rem;
-	color: var(--ink);
-	background: none;
-	border: 1px solid transparent;
-	border-radius: 14px;
-	font: inherit;
-	text-align: left;
-	cursor: var(--cur-tap);
-}
-.page-hit:hover { border-color: var(--line); }   /* an edge only under the pointer */
-.page-hit > svg { width: 0.95rem; height: 0.95rem; }
-.page-hit b { font-size: 0.9rem; font-weight: 400; }
-.page-hit span { overflow: hidden; font-size: 0.8rem; white-space: nowrap; text-overflow: ellipsis; }
-.page-hit small { font-family: var(--num-font); font-size: 1rem; }
-.page-hit mark { color: var(--paper); background: var(--ink); border-radius: 3px; padding: 0 2px; }
-.page-none { padding: 0.5rem 0.9rem; font-size: 0.85rem; }
 /* where a found word sits, outlined for a moment after the jump */
 .found-here { outline: 2px dashed currentColor; outline-offset: 3px; border-radius: 4px; }
 
@@ -3333,8 +3140,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease), transform var(--quick) var(--ease);
 }
 .key-edit svg { width: 0.95rem; height: 0.95rem; }
-.key-edit:hover, .key-edit[aria-expanded="true"] { color: var(--paper); background: var(--ink); transform: scale(1.06); }
-.board-foot[hidden] { display: none; }
+.key-edit:hover { color: var(--paper); background: var(--ink); transform: scale(1.06); }
 .widget-head {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
@@ -3343,7 +3149,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	min-height: 0.95rem;
 }
 .widget-head > * { grid-area: 1 / 1; }
-.home-panel.is-editing .widget-card .widget-head h3 { padding-left: 1.3rem; }
 .widget-head h3 {
 	min-width: 0;
 	margin: 0;
@@ -3355,7 +3160,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	font-weight: 400;
 	text-align: center;
 }
-.widget-face { display: none; }
 
 .widget-body {
 	display: flex;
@@ -3487,122 +3291,12 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	border: 0;
 	background: var(--paper);
 }
-.board-foot {
-	position: relative;    /* the add button hides behind the pen in here */
-	display: flex;
-	flex: none;
-	align-items: center;
-	justify-content: flex-end;
-	gap: var(--tight);
-	margin-top: calc(var(--group) * -0.5);
-}
-.widget-edit {
-	position: static;
-	z-index: 3;
-	display: grid;
-	place-items: center;
-	width: 2.2rem;
-	height: 2.2rem;
-	padding: 0;
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	cursor: var(--cur-tap);
-}
-
-.widget-add {
-	position: absolute;
-	right: calc(2.2rem + var(--tight));
-	top: 50%;
-	z-index: 2;
-	display: grid;
-	place-items: center;
-	width: 2.2rem;
-	height: 2.2rem;
-	padding: 0;
-	border-radius: 999px;
-	translate: 0 -50%;
-}
-.widget-edit svg, .widget-add svg { display: block; }
-.widget-edit, .widget-add {
-	transition:
-		color 0.28s var(--ease),
-		background-color 0.28s var(--ease),
-		border-color 0.28s var(--ease),
-		opacity 0.2s var(--ease),
-		transform 0.28s var(--drawer);
-}
-
-.widget-edit svg { position: relative; }
-.widget-edit .mark-pen, .widget-edit .mark-shut {
-	transform-box: fill-box;
-	transform-origin: center;
-	transition: opacity 0.24s var(--ease), transform 0.32s var(--ease);
-}
-.widget-edit .mark-shut { opacity: 0; transform: rotate(-90deg) scale(0.6); }
-.home-panel.is-editing .widget-edit .mark-pen { opacity: 0; transform: rotate(90deg) scale(0.6); }
-.home-panel.is-editing .widget-edit .mark-shut { opacity: 1; transform: none; }
-.widget-edit:hover, .home-panel.is-editing .widget-edit {
-	color: var(--paper);
-	background: var(--ink);
-	border-color: var(--ink);
-}
-
-.widget-off {
-	display: grid;
-	place-items: center;
-	width: 0.95rem;
-	height: 0.95rem;
-	padding: 0;
-	background: none;
-	border: 0;
-	color: inherit;
-	cursor: var(--cur-tap);
-	opacity: 0;
-	transform: scale(0.6);
-	pointer-events: none;
-	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
-}
-.widget-off svg { display: block; width: 100%; height: 100%; }
-.widget-off:hover { transform: scale(1.12); }
-
-.widget-grip {
-	position: absolute;
-	z-index: 2;
-	right: 0.1rem;
-	bottom: 0.1rem;
-	width: 1.25rem;
-	height: 1.25rem;
-	padding: 0;
-	background: none;
-	border: 0;
-	color: inherit;
-	cursor: var(--cur-corner);
-	touch-action: none;
-	opacity: 0;
-	transform: translate(4px, 4px);
-	pointer-events: none;
-	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
-}
-.widget-grip svg { display: block; width: 100%; height: 100%; }
-.widget-grip:hover { transform: translate(1px, 1px); }
-
-.home-panel.is-editing .widget-off,
-.home-panel.is-editing .widget-grip {
-	opacity: 1;
-	transform: none;
-	pointer-events: auto;
-}
-.home-panel.is-editing .widget-grip:hover { transform: translate(1px, 1px); }
-.sizing, .sizing * { cursor: var(--cur-corner) !important; user-select: none; }
-.home-panel.is-editing .widget-off:hover { transform: scale(1.12); }
-.home-panel.is-editing .widget-face { opacity: 0; }
 .home-panel.is-editing .widget-card {
 	cursor: var(--cur-grab);
 	touch-action: none;
 	user-select: none;
 }
-.home-panel.is-editing .widget-card .widget-body { padding-bottom: 1.2rem; pointer-events: none; }
+.home-panel.is-editing .widget-card .widget-body { pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) {
 	.widget-card { transition: none; }
@@ -3617,41 +3311,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	box-shadow: 5px 5px 0 var(--ink);
 	pointer-events: none;
 	transition: translate 0.16s var(--ease), box-shadow 0.16s var(--ease);
-}
-
-.home-panel.is-editing .widget-card.is-dragging .widget-off,
-.home-panel.is-editing .widget-card.is-dragging .widget-grip {
-	opacity: 0;
-	transform: scale(0.7);
-	pointer-events: none;
-}
-/* held over the bin it shrinks in your hand */
-.widget-card.is-going-out {
-	translate: 0 -4px;
-	scale: 0.88;
-	opacity: 0.75;
-	transition: translate 0.18s var(--ease), scale 0.18s var(--ease),
-	            opacity 0.18s var(--ease), box-shadow 0.18s var(--ease);
-}
-
-.widget-card.is-going {
-	transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
-	opacity: 0;
-	transform: scale(0.88);
-	pointer-events: none;
-}
-
-.home-panel:not(.is-editing):not(.is-empty) .widget-add {
-	transform: translateX(calc(2.2rem + var(--tight))) scale(0.55);
-	opacity: 0;
-	pointer-events: none;
-}
-
-.home-panel.is-editing .widget-add,
-.home-panel.is-empty .widget-add {
-	transform: none;
-	opacity: 1;
-	pointer-events: auto;
 }
 
 .pop-looks {
@@ -3689,12 +3348,14 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 
 .notes-home {
 	display: flex;
-	flex: 0 1 var(--notes-row, 30%);
+	flex: 0 1 30%;   /* its grip writes the width straight onto it */
 	flex-direction: column;
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;
-	padding: var(--tight) calc(var(--tight) * var(--skin, 1));
+	/* it opens downwards, so it is the top and bottom that ramp with the opening (--skin): a fixed
+	   padding came in whole the moment it left shut, which was the jolt on pulling it back out */
+	padding: calc(var(--tight) * var(--skin, 1)) var(--tight);
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
@@ -3761,12 +3422,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	transition: transform 0.3s var(--ease);
 }
 
-.notes-note {
-	margin: 0;
-	font-size: 0.72rem;
-	line-height: 1.5;
-}
-
 .notes-found {
 	display: flex;
 	flex-direction: column;
@@ -3822,7 +3477,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 /* nothing is written under the buttons — not the count, not the deck it went to, not the list
    reader's quiet link; the buttons carry what is happening (by request) */
 .notes-note, #notesRead { display: none !important; }
-.notes-key { display: flex; flex-direction: column; gap: var(--tight); }
 
 .notes-head {
 	display: grid;
@@ -4001,7 +3655,6 @@ body, body *, .modal-panel, .modal-panel *, .pop-panel, .pop-panel * {
 	font-weight: 400 !important;
 }
 
-.section-tab { font-weight: 700 !important; }
 .site-name, .tab-tip, .tab-tip * { font-weight: 700 !important; }   /* the site's name and the pages' names, by request */
 
 a:hover, a:focus-visible { font-weight: 700 !important; }
@@ -4061,8 +3714,6 @@ html.booting .booting-mark { display: flex; }
 	min-height: 0;
 }
 
-#accSignUp { color: var(--ink); background: var(--paper); border-color: var(--line); }
-#accSignUp:hover { color: var(--paper); background: var(--ink); }
 
 .account-pop {   /* after google's account popup: centred, round, the face at the top */
 	display: flex;
@@ -4278,7 +3929,7 @@ html.booting .booting-mark { display: flex; }
 }
 .room-column {
 	display: flex;
-	flex: 0 1 var(--room-col, 28%);
+	flex: 0 1 28%;   /* its grip writes the width straight onto it */
 	flex-direction: column;
 	gap: var(--group);
 	min-width: 0;
@@ -4500,7 +4151,6 @@ html.booting .booting-mark { display: flex; }
 
 /* the three dots on a message: shown on hover, and they open into a row of small marks — no ring
    round them and nothing moving, sitting halfway down the line they belong to */
-.said-row { position: relative; }
 .said-tools {
 	position: absolute;
 	top: 50%;
@@ -4603,14 +4253,6 @@ html.booting .booting-mark { display: flex; }
 	text-overflow: ellipsis;
 }
 .talk-names small { font-size: 0.75rem; }
-.talk-sealed {
-	flex: none;
-	margin: 0;
-	padding: 0.1rem 0.5rem 0;
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	font-size: 0.7rem;
-}
 
 /* home, before a thread is open: a greeting and three things to do, from the top-left */
 .talk-welcome {
@@ -4659,6 +4301,7 @@ html.booting .booting-mark { display: flex; }
 .talk-log::-webkit-scrollbar { display: none; }
 
 .said-row {
+	position: relative;   /* the three dots hang off it */
 	display: grid;
 	grid-template-columns: 2.5rem minmax(0, 1fr);
 	align-items: start;
@@ -4736,9 +4379,25 @@ html.booting .booting-mark { display: flex; }
 	align-items: center;
 	width: min(30rem, calc(100% - 2 * var(--group)));
 	padding: 3rem 2.5rem 2.25rem;
+	color: var(--ink);
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 1.4rem;
 	animation: panel-in 0.34s var(--drawer) backwards;
+}
+/* the log-in card, and the log-in window, are drawn the other way round from the page, by request:
+   black on a light page, white on a dark one — by swapping the colour tokens, as the bar does */
+html:not(.inverted) .login-card, html:not(.inverted) #chatScreen {
+	--paper: #000;
+	--ink: #ffffff;
+	--line: #ffffff;
+	--hover: #151515;
+}
+html.inverted .login-card, html.inverted #chatScreen {
+	--paper: #ffffff;
+	--ink: #000;
+	--line: #000;
+	--hover: #f1f1f1;
 }
 .login-face {
 	display: grid;
@@ -4791,167 +4450,12 @@ html.booting .booting-mark { display: flex; }
 }
 .is-shaking { animation: field-shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
 
-/* the board is three tiles that are only changed or moved: no cross, no resize corner, ever */
-.home-panel .widget-card .widget-off,
-.home-panel .widget-card .widget-grip { display: none !important; }
-.home-panel.is-editing .widget-card { cursor: var(--cur-grab); }
-.widget-pick.is-on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
 .key-edit[aria-pressed="true"] { color: var(--paper); background: var(--ink); }
 
 /* the box you pressed shows only its mark once it is marked: white behind it, the word taken out
    (kept in place, so the box keeps its size) */
 .answer-button.is-marked { color: var(--ink); background: var(--paper); }
 .answer-button.is-marked .answer-word { visibility: hidden; }
-
-/* =========================================================
-   layout test 2 — the menu stays black and runs the whole top row, edge to edge: no gaps, no
-   rounding, no dashed arc and no line under it. The spacing below is unchanged
-   ========================================================= */
-.topbar {
-	left: calc(var(--rail) - var(--wave-w) / 2);   /* in behind the first bump, so the row is one black */
-	right: 0;
-	border-radius: 0;
-}
-.topbar::before, .topbar::after { display: none; }
-/* in the dark the strip and the page are one black, so its foot gets a white line — from the dip
-   where the first bump starts, never reaching back over the bumps */
-html.inverted .topbar::after { display: block; background: #fff; }
-
-/* =========================================================
-   the bars swapped round — the pages down the black bar on the left, and the clock, the function
-   note (folded), storage and the bin (folded) in one row along the top strip
-   ========================================================= */
-html:not(.inverted) .topbar {
-	--paper: #000;
-	--ink: #ffffff;
-	--line: #ffffff;
-	--hover: #151515;
-}
-.topbar {
-	gap: var(--group);
-	padding-left: calc(var(--wave-w) / 2 + var(--wave-out) + var(--group));
-	padding-right: var(--group);
-	overflow: visible;
-}
-/* the clock: the same white tile, lying down — the time, the moon and the half of the day in a row */
-.topbar .rail-clock {
-	flex-direction: row;
-	align-items: center;
-	gap: 0.6rem;
-	height: 36px;
-	padding: 0 1rem;
-	color: var(--paper);
-	background: var(--ink);
-	border-color: var(--ink);
-}
-.topbar .clock-top { order: 2; margin: 0; }
-.topbar .clock-time { order: 1; font-size: 1.45rem; padding-top: 0; }
-.topbar .clock-date { order: 3; margin: 0; font-size: 0.72rem; }
-/* the function note: a pill to press, opening below the strip */
-.topbar .help-box {
-	position: relative;
-	flex: none;
-	padding: 0;
-	overflow: visible;
-	border: 0;
-	contain: none;
-}
-.topbar .help-head {
-	display: flex;
-	align-items: center;
-	height: 36px;
-	margin: 0;
-	padding: 0 1rem;
-	border: 1px solid var(--line) !important;
-	border-radius: 999px;
-}
-.topbar .help-head h2 { font-size: 0.85rem; }
-.topbar .help-box.is-open .help-head { color: var(--ink); background: none; }   /* opening it doesn't turn it white, by request */
-/* help is a question mark in a ring, not a word */
-.topbar .help-head { justify-content: center; width: 36px; padding: 0; }
-.topbar .help-head svg { display: block; width: 21px; height: 21px; animation: help-spin 4s linear infinite; }   /* always turning, clockwise; the mark is drawn centred in its box so it turns on the spot */
-@keyframes help-spin { to { rotate: 360deg; } }
-.topbar .help-body {
-	position: absolute;
-	top: calc(100% + var(--tight));
-	left: 0;
-	z-index: 70;
-	width: 20rem;
-	padding: 0 var(--group) var(--group);
-	color: var(--ink);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-}
-.topbar .help-box:not(.is-open) .help-body { display: none; }
-.topbar .help-box .help-body-inner { opacity: 1; margin: 0; }
-/* the note hangs centred under the mark, one long line or two rather than a tall block, and smaller */
-.topbar .help-body {
-	top: calc(100% + var(--group));
-	left: 50%;
-	translate: -50% 0;
-	width: max-content;
-	max-width: 40rem;
-	padding: 0.5rem 1.2rem;
-	border-radius: 999px;   /* a true pill: the ends are half circles, not rounded corners */
-}
-.topbar .help-box .help-note { position: relative; top: calc(var(--drop) + 0.9px); margin: 0; line-height: 1.4; }   /* amiko sits high: brought down so the words sit level in the pill */
-.topbar .help-box .help-body * { font-size: 0.82rem !important; }
-/* storage: the words and a slim bar, in a row */
-.topbar .rail-store {
-	flex-direction: row;
-	align-items: center;
-	gap: 0.7rem;
-	padding: 0;
-	background: none;
-	border: 0;
-}
-.topbar .store-head { gap: 0.5rem; }
-.topbar .store-bar { width: 7rem; height: 8px; }
-/* the bin: its name and count as a pill; the list drops below when pressed */
-.topbar .rail-binned {
-	position: relative;
-	flex-direction: row;
-	align-items: center;
-	padding: 0;
-	background: none;
-	border: 0;
-}
-.topbar .binned-head {
-	height: 36px;
-	padding: 0 0.5rem 0 1rem;
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	cursor: var(--cur-tap);
-}
-.topbar .rail-binned.is-open .binned-head { color: var(--paper); background: var(--ink); }
-.topbar .binned-list {
-	position: absolute;
-	top: calc(100% + var(--tight));
-	right: 0;
-	z-index: 70;
-	width: 16rem;
-	max-height: 18rem;
-	padding: var(--tight);
-	background: var(--paper);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-}
-.topbar .rail-binned:not(.is-open) .binned-list { display: none; }
-/* by request: no outlines on the strip — the clock and the pills are the strip's own black — the
-   time at the very right end, and every word in amiko at the body's size, the time alone excepted */
-.topbar .rail-clock { order: 99; padding: 0; color: var(--ink); background: none; border: 0; }
-.topbar .clock-top { order: 1; margin-top: 0; }   /* the old tile's nudges, which threw the row off level */
-/* no --drop here: these words are lowercase, and the eye centres lowercase on its x-height, which
-   amiko already puts dead on the strip's middle (measured 26.0 of 26). dropped to level the capitals,
-   they read as low */
-.topbar .clock-date { order: 2; }
-.topbar .clock-time { order: 3; margin-left: 1.4rem; }   /* well off the date, so the two read as two things */
-.topbar .help-head, .topbar .binned-head { border: 0 !important; }
-.topbar *:not(.clock-time) { font-family: var(--font) !important; font-size: 1rem !important; }
-.topbar .clock-time { font-family: var(--num-font); font-size: 1.6rem; padding-top: 0; }   /* vt323, like every other number */
-/* while the note or the bin is open, the strip sits over the page so nothing shows through */
-.topbar:has(.help-box.is-open), .topbar:has(.rail-binned.is-open) { z-index: 75; }
 
 /* the pages, down the bar, as marks — each centred inside its bump, the same room either side
    between the bar's left wall and the crest. they sit over the bar and the bumps (the bumps are
@@ -4987,32 +4491,24 @@ html:not(.inverted) .topbar {
 	flex-direction: column;
 	align-items: center;
 	gap: calc(var(--wave-h) - 44px);      /* a mark every bump */
-	height: auto;
-	margin: 0;
-	padding: 0;
-	contain: none;
 }
 html:not(.inverted) .page-marks { --paper: #000; --ink: #ffffff; --line: #ffffff; }
-.page-marks .section-tab,
-.page-marks .section-tab.active,
-.page-marks .section-tab:not(.active) {
+.section-tab {
 	position: relative;
-	top: 0;
 	display: grid;
 	place-items: center;
 	width: 44px;
 	height: 44px;
+	padding: 0;
 	color: var(--ink);
 	background: none;
 	border: 0;
 	border-radius: 50%;
 	font-size: 0;
-	text-indent: 0;
 	cursor: var(--cur-tap);
 }
-.page-marks .section-tab.active { color: var(--paper); background: var(--ink); cursor: var(--cur-dot); }
-.page-marks .section-tab::before { display: none; }
-.page-marks .section-tab svg { width: 28px; height: 28px; }
+.section-tab.active { color: var(--paper); background: var(--ink); cursor: var(--cur-dot); }
+.section-tab svg { width: 28px; height: 28px; }
 
 /* a pressed mark's bump pushed out to the right: the bar's own black, starting inside the bump so
    no seam shows, round at its far end, the page's name in it. it grows out (clip-path, by script) */
@@ -5038,10 +4534,8 @@ html:not(.inverted) .page-marks { --paper: #000; --ink: #ffffff; --line: #ffffff
 	white-space: nowrap;
 	pointer-events: none;
 }
-.tab-tip, .tab-tip:hover, .tab-tip:active { transform: none; translate: none; }   /* nothing moves on a press */
 .tab-tip svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: none; }
 .tab-tip path { fill: none; stroke: #fff; stroke-width: 2; }   /* half of it is clipped: 1px shows, on the inside */
 html.inverted .tab-tip svg { display: block; }   /* the bumps' own white edge, in the dark, drawn along the moving curve */
-.tab-tip[hidden] { display: none; }
 .tab-tip span { position: relative; top: var(--drop-title); opacity: 0; transition: opacity 0.2s ease; }
 .tab-tip span.is-shown { opacity: 1; transition: opacity 0.45s ease; }   /* fades in once the shape is half out */

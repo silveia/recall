@@ -75,7 +75,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;display=swap">
     <!-- the site's own pointer from the very first paint, before style.css has arrived -->
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
-    <link rel="stylesheet" href="style.css?v=a5bf595cbb">
+    <link rel="stylesheet" href="style.css?v=d01b34def9">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -117,14 +117,6 @@
         <p class="pop-say">select other answer options for this question</p>
 
         <div class="pick-list" id="optionsPicks"></div>
-    </div>
-
-    <div class="pop-panel pop-picks" id="keyMenu" hidden>
-        <div class="pick-list">
-            <button class="option-pick widget-pick" id="keyArrange" type="button"><span>arrange the board</span></button>
-            <button class="option-pick widget-pick" id="keyAdd" type="button"><span>add a widget</span></button>
-            <button class="option-pick widget-pick" id="keyLights" type="button"><span>lights off</span></button>
-        </div>
     </div>
 
     <div class="pop-panel pop-picks" id="widgetPicks" hidden>
@@ -176,6 +168,16 @@
             <!-- the bars swapped round: the pages down the left, the clock, the function note, storage
                  and the bin along the top -->
             <header class="topbar">
+                <!-- one search over every page: a page's name, or any word on it. in the strip, beside hi -->
+                <div class="page-search" id="pageSearch">
+                    <svg class="page-search-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
+                    <input id="pageSearchField" type="search" placeholder="search page..." aria-label="search the pages" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    <button class="page-search-go" id="pageSearchGo" type="button" aria-label="go" title="go">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 6l6 6-6 6"/></svg>
+                    </button>
+                    <ol class="page-found" id="pageFound" hidden></ol>
+                </div>
+
                 <section class="rail-clock" aria-label="time">
                     <div class="clock-top">
                         <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="dark" title="dark">
@@ -190,10 +192,20 @@
                     <p class="clock-date" id="clockDate"></p>
                 </section>
 
+                <section class="rail-binned" id="railBinned" aria-label="recently binned">
+                    <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
+                    <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
+                        <span class="binned-count" id="binnedCount"></span>
+                    </div>
+                    <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+                    <ol class="binned-list" id="binnedList"></ol>
+                </section>
+
                 <!-- one paragraph per section; keep it current -->
                 <section class="help-box" aria-label="?">
-                    <button class="help-head panel-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody" aria-label="help" title="help">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.6 7.94a3.5 3.5 0 0 1 6.8 1.2c0 2.3-3.4 3-3.4 5.2"/><circle cx="12" cy="17.94" r="0.45" fill="currentColor"/></svg>
+                    <button class="help-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody" aria-label="help" title="help">
+                        <span class="help-spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.6 7.94a3.5 3.5 0 0 1 6.8 1.2c0 2.3-3.4 3-3.4 5.2"/><circle cx="12" cy="17.94" r="0.45" fill="currentColor"/></svg></span>
                     </button>
 
                     <div class="help-body" id="helpBody"><div class="help-body-inner">
@@ -208,21 +220,8 @@
                     </div></div>
                 </section>
 
-                <section class="rail-store" aria-label="storage">
-                    <div class="store-head">
-                        <span id="storeAmount">—</span>
-                    </div>
-                    <div class="store-bar"><div class="store-fill" id="storeFill"></div></div>
-                </section>
 
 
-                <section class="rail-binned" id="railBinned" aria-label="recently binned" hidden>
-                    <div class="binned-head" id="binnedHead">
-                        <span>recently binned<span class="binned-count" id="binnedCount"></span></span>
-                        <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
-                    </div>
-                    <ol class="binned-list" id="binnedList"></ol>
-                </section>
             </header>
 
             <div class="app-body">
@@ -230,53 +229,19 @@
                     <section class="screen" id="homeScreen" data-title="home" aria-label="home">
                         <section class="home-panel" id="homePanel" hidden>
                             <!-- the front door's dino run, first thing on home -->
-                            <iframe class="home-run" src="index.html?embed&v=359bd2a0da" title="dino run"></iframe>
-
-                            <!-- one search over every page: a page's name, or any word on it -->
-                            <div class="page-search" id="pageSearch">
-                                <svg class="page-search-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
-                                <input id="pageSearchField" type="search" placeholder="search page..." aria-label="search the pages" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-                                <button class="page-search-go" id="pageSearchGo" type="button" aria-label="go" title="go">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                                </button>
-                                <ol class="page-found" id="pageFound" hidden></ol>
-                            </div>
+                            <iframe class="home-run" src="index.html?embed&v=21fc5ff7bd" title="dino run"></iframe>
 
                             <!-- the leftmost tile is fixed: the time, and the board's settings behind a press -->
                             <div class="board-row">
                                 <div class="home-key" id="homeKey">
                                     <div class="widget-head"><h3>time</h3></div>
                                     <div class="widget-body" id="keyBody"></div>
-                                    <button class="key-edit" id="keyEdit" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="keyMenu" aria-label="edit the board" title="edit the board">
+                                    <button class="key-edit" id="keyEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
                                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
                                     </button>
                                 </div>
                                 <div class="widget-list" id="widgetList"></div>
                             </div>
-                            <div class="widget-bin" id="widgetBin" hidden aria-hidden="true">
-                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M4.5 6.5h15"/>
-                                    <path d="M10 6.5V4.5h4v2"/>
-                                    <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
-                                    <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
-                                </svg>
-                                <span>let go to remove</span>
-                            </div>
-
-                            <div class="board-foot" hidden>
-                                <button class="basic-button widget-add" id="widgetAdd" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="widgetPicks" aria-label="add a widget" title="add a widget">
-                                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-                                        <path d="M12 5 V19 M5 12 H19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    </svg>
-                                </button>
-                                <button class="widget-edit" id="widgetEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
-                                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-                                        <path class="mark-pen" d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-                                        <path class="mark-shut" d="M6.6 6.6 L17.4 17.4 M17.4 6.6 L6.6 17.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-                                    </svg>
-                                </button>
-                            </div>
-
                         </section>
 
                         <div class="home-body" id="homeBody">
@@ -300,16 +265,16 @@
                                         </button>
 
                                         <div class="share-panel" id="sharePanel" hidden>
-                                            <label for="shareIn">paste code</label>
-                                            <div class="share-row">
-                                                <textarea id="shareIn" rows="2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="rc2...."></textarea>
-                                                <button class="basic-button" id="loadCode" type="button">load</button>
-                                            </div>
-
                                             <label for="shareOut">this code</label>
                                             <div class="share-row">
                                                 <textarea id="shareOut" rows="2" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
                                                 <button class="basic-button" id="copyCode" type="button">copy</button>
+                                            </div>
+
+                                            <label for="shareIn">paste code</label>
+                                            <div class="share-row">
+                                                <textarea id="shareIn" rows="2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="rc2...."></textarea>
+                                                <button class="basic-button" id="loadCode" type="button">load</button>
                                             </div>
 
                                             <p class="share-note" id="shareNote" aria-live="polite"></p>
@@ -766,6 +731,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=1ef2c76b92"></script>
+    <script src="script.js?v=dc0584e328"></script>
 </body>
 </html>

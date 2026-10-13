@@ -139,9 +139,9 @@ never chunked — a document is read whole.
 
 Switched by the tabs in the top strip.
 
-**cards** — the original flashcard app. The share window's two code boxes are exactly the height of `load` / `copy` beside them, can't be resized, and scroll on a 3px black line. In create, the `+` on the answer opens a small white window (`#optionsPanel`, `select other answer options for this question`) under the answer field, its right edge on the field's and one `--tight` below it. A small spaced-out capitals label sits right over the `new deck` field, as a bit of motivation: `WE LOVE STUDYING !!!`. Decks with drag-reorder, right-click
+**cards** — the original flashcard app. The share window has `this code` / `copy` on top and `paste code` / `load` under it (swapped, by request), the two pills 3.8rem wide. Its two code boxes are exactly the height of `copy` / `load` beside them, can't be resized, and scroll on a 1px line (by request). **Never set `scrollbar-width` where a `::-webkit-scrollbar` is drawn**: chrome then ignores the drawing and shows its own 'thin', which is far wider. And give the track a vertical `margin` in a rounded box, or the bar runs out over the corners. **There is one scrollbar for the whole site**, set once at the top of the stylesheet (`::-webkit-scrollbar`): a 1px ink line — exactly the boxes' outline — held 4px in off the edge (a 6px scrollbar whose thumb has transparent side borders and `background-clip: padding-box`), its track kept 8px clear of the rounded corners. Boxes that hide their bar still do so with their own rules. In create, the `+` on the answer opens a small white window (`#optionsPanel`, `select other answer options for this question`) under the answer field, its right edge on the field's and one `--tight` below it. A small spaced-out capitals label sits right over the `new deck` field, as a bit of motivation: `WE LOVE STUDYING !!!`. Decks with drag-reorder, right-click
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
-with four multiple-choice answers mapped to keyboard quadrants.
+with four multiple-choice answers mapped to keyboard quadrants. **Create and practice are big windows** (82% of the window each way, up to 76rem wide — by request, still windows rather than full screen): create's card list fills what is left and scrolls; practice's question takes about two fifths of the height and the four answers the rest.
 
 **audio** — a Chrome tab recorder that splits clips by speaker. There is no separate record button: the long box across the top is it — black with `record` in the middle; while recording it is the live meter, and a press on it stops. This is the
 part under active work.
@@ -390,8 +390,9 @@ three rounds and cannot be tested from here.
 
 **`closeModal()` hid every window but this one.** It was written before
 `listScreen` existed and never grew the line — so the playlist window
-was only ever hidden by the next window opening over it. Any new window
-has to be added in both places: `showScreen` and `closeModal`.
+was only ever hidden by the next window opening over it. Both now work
+off one list read from the page (`WINDOWS`, every `.modal-panel` in the
+veil), so a new window needs nothing adding anywhere.
 
 ## A folder without asking for one
 
@@ -766,8 +767,8 @@ page scrolls sideways.
 
 ## The home board
 
-**A search bar runs across the top of home** (`#pageSearch`, a pill with
-a magnifier). It searches every page: a page answers to its name and to
+**The search bar lives in the top strip now**, at its left beside `hi`, on every page (`#pageSearch`, a pill with
+a magnifier, 34px tall and 34rem wide there, at the left, 64px off `hi`'s letters (centring it between hi and the bin was tried and put back), its words 0.88rem, and its go a bare `>` with no circle, by request — placed without a transform (a press's boing wrote over the centring translate and the arrow dropped), nudging 2px right on hover and doing nothing on a press; its results **slide down out of the bar** and back up into it (`showFound()`, a script animation of the box's clip — 260ms down, 190ms up — so it plays every time and turns round from wherever it is; the bar keeps its open corners until the box is back up); they have no page mark in front of the name and a plain flush highlight on the word (no padding, no rounding), and speak at the bar's own size (names 0.88rem, the line they were found in 0.8rem, the count in VT323) with menu-tight rows; it was across the top of home). The strip rises over the page while its results are open. It searches every page: a page answers to its name and to
 any words on it — its text, placeholders, titles, button labels and its
 `function` note (`pageWords()`, walked live from `PAGE_ROOTS`, so a new
 page only needs adding there). One result per page, most matches first:
@@ -784,17 +785,20 @@ is gone). While arranging, a press on a tile opens the widget list to change
 what it shows (`openSwapPicks`), and a drag moves it along the row; a press
 that travels less than 6px is a press, not a drag.
 
+**Everything the board used to be able to do and can't any more is gone from the code** (13 Oct, by
+request): adding a tile, the cross that removed one, the resize corner, the bin a tile was dragged onto,
+the key menu, and the hidden pen and plus under the board. `loadWidgets` reads what is saved and
+`fillBoard` makes it the three tiles on every render; `slideTiles` is the one slide for the board, used
+by the drop and by the room made while carrying. The notes further down about growing, shoving,
+resizing, the bin and a board many rows deep describe those older layouts.
+
 **Five tiles across, and the first is fixed** (by request). The leftmost
 tile (`#homeKey`) is always the time and can't be moved or removed. The tile
 itself does nothing on hover or press; **the round pen in its bottom-right
-corner** (`#keyEdit`) opens its menu (`#keyMenu`, under it on its left edge): `arrange
-the board` / `done arranging`, `add a widget`, `lights off/on`. The pen
-and plus that sat under the board are hidden (`.board-foot[hidden]`) and
-the code behind them is kept. The movable board beside it is the other
+corner** (`#keyEdit`) turns arranging on and off. The movable board beside it is the other
 four columns (`BOARD_COLS = 4`); `--tile` on `.home-panel` is a fifth of
 the width less the gaps, and both the fixed tile and the board's rows use
-it. A board saved before this lost its first time tile once
-(`board-key`), since the fixed one replaces it.
+it.
 
 **Over the search bar, first thing on home, is the front door's dino run** (12.5rem tall), the same page framed
 (`.home-run` → `index.html?embed`). Framed it hides the enter pill
@@ -1121,6 +1125,8 @@ takes its place in this list.
 
 ## Nothing behind a window changes
 
+**A window's cross (`.modal-close`) does nothing on hover or press**, by request — no fill, no movement, no boing. It sits as far off the right edge as off the top (measured: 15.0 / 15.1px).
+
 The veil behind every window is see-through (`background: none`). It was a
 72% wash of the page colour, which turned the black bar and every outline
 grey behind the log-in window and read as the whole page changing.
@@ -1361,6 +1367,19 @@ climbs over the capitals and `p` and `y` hang under the line. That is
 the letters doing what letters do; correcting it would push the capitals
 off the middle to flatter the tails. Measure a word with neither.
 
+## Keeping animations smooth
+
+Measured with Chrome's performance counters (style recalculations, layouts, script time) while each
+animation runs, since headless frame timing can't show a stutter. Three rules came out of it:
+
+- **Nothing may animate forever on the main thread.** An endless animation has to be a `transform` or
+  `opacity` on an ordinary element, so the graphics card runs it; otherwise the page is restyled every
+  frame for as long as it is open. An idle page should cost almost nothing (about 2 style recalcs in 2s).
+- **Read sizes before writing styles** in anything that runs per frame — a read after a write forces the
+  browser to redo the page's layout mid-frame. The page names' slide reads its size once a slide.
+- **Never animate an inherited custom property on a big box.** Write the property the animation is
+  actually about, on the element it is about.
+
 ## One thing the renderer will not do
 
 **A cursor cannot fade.** `cursor` is not animatable; the OS swaps the
@@ -1441,7 +1460,9 @@ bin is a pill whose list drops below it (`#binnedHead`). A click anywhere
 else folds both, and the strip is raised over the page while one is open.
 The top-left corner is left empty, for a title later.
 
-**The site's name is `hi`**, in that corner (`#siteName`, a link to `home/` that switches to home in place): Bitcount, bold, 1.6rem, centred over the marks' column in the black strip. It is italic, by request (bitcount has no italic of its own, so the browser slants it). By request it and the pages' names that slide out of the bumps (`.tab-tip`) are bold too, alongside the section tabs. Everything else on the strip (clock, function, storage, bin) sits at its **right** end, by request. Nothing on the strip has an outline — the clock is no longer a white pill, it is the strip's own black — and the time is the very last thing at the right (moon, half of the day, date, then the time). Every word on the strip is Amiko at 1rem, the time alone excepted (it keeps VT323). The `function` pill is now **a question mark** — no ring, 21px, always turning clockwise (4s a turn), drawn dead centre in its viewBox (measured: ink 12.00 / 12.00); the words on the strip (amount, half of the day, date) are **not** dropped by `--drop` — they are lowercase, the eye centres lowercase on its x-height, and amiko's x-height already sits on the strip's middle; dropped to level the capitals they read as low. The half of the day had a leftover 1px nudge from the old tile, taken out so it turns on the spot, by request (`#helpToggle`, labelled `help`) and doesn't turn white when open; its note hangs **centred under the mark**, as one long line (up to 40rem, 0.82rem type) rather than a tall block; its words are brought down by `--drop` + 0.9px so they sit level in the pill (measured: 18.1 against a middle of 18.0); the `storage` label was taken out, leaving the amount and its bar. The time is VT323 and counts **seconds** (`09:55:52`) and sits 1.4rem off the date; the clock ticks on the turn of each second, while the board's tiles still only repaint on the minute (`clockMinute`). **The strip is 52px now**, a little shorter than a bump by request, and the bumps start at its foot (`background-position: 0 var(--topbar)` on both wave layers) rather than at the window's top, so a dip still lands right where the strip ends. In the dark the strip's foot carries a white line from that dip rightwards (`html.inverted .topbar::after`), never over the bumps.
+**All of the top strip's styles are in one place, section 22 of the stylesheet** (13 Oct): it used to be a base layer for the old left bar with three layers of overrides on top, including a `.topbar *` rule forcing every word to 1rem. The page marks are plain `.section-tab` rules; the old word-tab styles are gone. Things that open from the strip (help's note, the bin's list, the search results) raise it with one rule, `.topbar:has(.is-open)`.
+
+**The site's name is `hi`**, in that corner (`#siteName`, a link to `home/` that switches to home in place): Bitcount, bold, 1.6rem, centred over the marks' column in the black strip. It is italic, by request (bitcount has no italic of its own, so the browser slants it). By request it and the pages' names that slide out of the bumps (`.tab-tip`) are bold too, alongside the section tabs. Everything else on the strip (clock, function, storage, bin) sits at its **right** end, by request. Nothing on the strip has an outline — the clock is no longer a white pill, it is the strip's own black — and the time is the very last thing at the right (half of the day, date, then the moon just left of the time, by request). Every word on the strip is Amiko at 1rem, the time alone excepted (it keeps VT323). The `function` pill is now **a question mark** — no ring, 21px, always turning clockwise (4s a turn, as a `transform` on a plain `.help-spin` box round the svg, which the graphics card runs on its own: turned on the svg itself it was restyled by the page every frame, forever — about 60 style recalculations a second on every page, and the main cause of other animations dropping frames), drawn dead centre in its viewBox (measured: ink 12.00 / 12.00); the words on the strip (amount, half of the day, date) are **not** dropped by `--drop` — they are lowercase, the eye centres lowercase on its x-height, and amiko's x-height already sits on the strip's middle; dropped to level the capitals they read as low. The half of the day had a leftover 1px nudge from the old tile, taken out so it turns on the spot, by request (`#helpToggle`, labelled `help`) and doesn't turn white when open; its note hangs **centred under the mark** and drops in (a 6px fall, a fade and a slight growth from its top, 0.32s; back in 0.3s, eased both ends; the strip keeps its raised z-index for those 0.3s, since dropping it at once hid the note behind the page mid-fade); the old drawer's `grid-template-rows` fold is pinned open up here, since it snapped shut on close and clipped the words away before the note had faded, folding on any press anywhere else (a capturing `pointerdown`, so buttons that keep their clicks still fold it) or when the window loses focus, as **one line, always** (`nowrap`, no width cap — the pill grows sideways however long the note; 0.82rem type); its words are brought down by `--drop` + 0.9px so they sit level in the pill (measured: 18.1 against a middle of 18.0); **storage is gone from the strip** (by request), and its code with it; the places that repainted it repaint the board's tiles instead (`paintWidgets`). **The bin is a mark** — a plain bin icon (a lid, a handle, a tapering body), always there, first of the right-hand things, with how many are binned as a small white disc on its bottom-right corner, the figure tiny and black in VT323 (laid over the mark, so the mark never moves) — whose list hangs **the way help's note does** (the two share one drop-in rule) — centred under the mark, a `--group` below the strip, 0.82rem centred words, a pill-round box, the same drop-in and fade-out — 18rem wide: a small `empty` at its top centre, and under it **a little outlined box of its own** holding the binned things, with room for three and a half — every binned thing is listed and the box scrolls, on a thin white bar. It is the same size with nothing in it; the box then says `nothing`, small, in its middle. A row is the thing's name on the left and two bare marks on the right, **put back** (a curled arrow) and **delete for good** (a cross, one thing at a time, no ask); pressing the name does nothing. The `empty` button was taken out, by request. The time is VT323, raised 1.25px to level with the date's figures, and counts **seconds** (`09:55:52`) and sits 1.4rem off the date; the clock ticks on the turn of each second, while the board's tiles still only repaint on the minute (`clockMinute`). **The strip is 52px now**, a little shorter than a bump by request, and the bumps start at its foot (`background-position: 0 var(--topbar)` on both wave layers) rather than at the window's top, so a dip still lands right where the strip ends. In the dark the strip's foot carries a white line from that dip rightwards (`html.inverted .topbar::after`), never over the bumps.
 
 ## The pages are marks (a layout test, not pushed)
 
@@ -1456,7 +1477,7 @@ true half-circle bumps (looked wrong), a bar narrowed to 64px (too thin on
 the right), and the 5rem bar (too wide).
 
 The bar is **5rem** and holds **one mark per page** (`PAGE_MARKS`: a house,
-two cards, a waveform, a speech bubble — hairline strokes at 1.7), **one
+two cards, a waveform, a round speech bubble (an oval with a tail, by request — the rounded rectangle wasn't round enough) — hairline strokes at 1.7), **one
 in each bump**: the bumps are bigger now (`--wave-w: 40px`, `--wave-h:
 64px`, so the strip is 64 tall too), and the marks are spaced a bump
 apart, starting in the bump under the menu's. The marks have no ring (only the page you are on is a filled white circle)
@@ -1471,7 +1492,7 @@ leaving slides it back in — both ways animated from wherever the shape is
 jumps. The slide starts at the bumps' crest, not the shape's own left edge
 (that stretch lies behind the bar, and travelling through it spent the
 visible slide in a blink — it looked as if it just appeared), and runs
-380ms out / 300ms back on an ease-in-out. The first one waits **half a second** (`TIP_WAIT`, by request — two seconds and 0.6 were refused earlier, and no wait at all was annoying); going from mark to mark while one is out, or within 300ms of it going in (`TIP_WARM`), there is no second wait. **Each name is its own shape**, so switching quickly lets the last one slide back in on its own while the new one comes out, rather than snatching it away; leaving or coming back half way turns it round from wherever it is. **The front edge is always an arc**: shut is the bump's own arc (the tile's 37.5-of-39, scaled to the bump), open is the shape's round end, and the clip is a `path()` with one arc in it, **redrawn every frame by script** (`drawTip`, `tipEase`) rather than handed to Chrome to interpolate — a rounded `inset()` squashed its corners while the shape was short, and the edge sliding out didn't match the bump. In the dark the white edge is an svg path inside the tip riding the same curve (the old border was clipped off the moving edge), and shut it sits exactly on the bump's own outline (6.61 + half a pixel), or the two show as one thick line. The name only shows once the shape is half out, and then **fades in over 0.45s on its own** (`.is-shown`, a CSS transition) — a fade tied to the slide's progress ran through its fastest stretch and looked like it just appeared. It fades out in 0.2s once the shape is back under half. The name starts 6px inside the crest and ends 22px before the round end; 16px past the crest and 34px at the end read as spaced on purpose. The name's face is fetched up front: measured in pixels before the bold face had arrived, the first few hovers after a refresh came out half open in an instant. A press goes straight to the page. Nothing else happens on hover or press, by request; the old grow-and-shrink on
+380ms out / 300ms back on an ease-in-out. The first one waits **half a second** (`TIP_WAIT`, by request — two seconds and 0.6 were refused earlier, and no wait at all was annoying); going from mark to mark while one is out, or within 300ms of it going in (`TIP_WARM`), there is no second wait. **Each name is its own shape** (`tips`, one per page, each opening or closing on its own), so switching quickly lets the last one slide back in on its own while the new one comes out, rather than snatching it away; leaving or coming back half way turns it round from wherever it is. **Part way out the shape is already its final shape**: within the first fifth of the slide its front becomes the open shape's half circle and from there it just slides, its leading point moving evenly the whole way (a front that stayed a shallower arc until fully open read as a different shape mid-slide). **The front edge is always an arc**: shut is the bump's own arc (the tile's 37.5-of-39, scaled to the bump), open is the shape's round end, and the clip is a `path()` with one arc in it, **redrawn every frame by script** (`drawTip`, `tipEase`) rather than handed to Chrome to interpolate — and where that arc meets the straight top and bottom there is a small round join (up to 16px, nothing when shut, full size by 5% of the way out — grown over the first quarter it was too small exactly when the corner showed), since an arc wider than the shape is tall meets a straight line at an angle and showed a corner part way out; it is worked out with the arc squared up to a circle and stretched back, so the join stays tangent to both — a rounded `inset()` squashed its corners while the shape was short, and the edge sliding out didn't match the bump. In the dark the white edge is an svg path inside the tip riding the same curve (the old border was clipped off the moving edge), and shut it sits exactly on the bump's own outline (6.61 + half a pixel), or the two show as one thick line. The name only shows once the shape is half out, and then **fades in over 0.45s on its own** (`.is-shown`, a CSS transition) — a fade tied to the slide's progress ran through its fastest stretch and looked like it just appeared. It fades out in 0.2s once the shape is back under half. The name starts 6px inside the crest and ends 22px before the round end; 16px past the crest and 34px at the end read as spaced on purpose. The name's face is fetched up front: measured in pixels before the bold face had arrived, the first few hovers after a refresh came out half open in an instant. A press goes straight to the page. Nothing else happens on hover or press, by request; the old grow-and-shrink on
 switching was taken out. The outline stroke is 39/40 now (`0.975`), to
 stay on 1px at the new width.
 
@@ -1531,10 +1552,10 @@ split's two sides have a least size (`least`, `leastOther` on
 `wireSplit`, in pixels or a function): the playlist box is as narrow as
 its `playlist` heading still whole (`headingRoom()` measures the words
 plus what the pane puts round them), the ai card maker as short as its
-head row, the decks 215px (so `new deck` shows whole), the card side its 19rem, the clips 300px, the
+head row and a box with the whole of its placeholder showing (`notesRoomDown()`, measured off a hidden copy of the words at the box's width), the decks 215px (so `new deck` shows whole), the card side its 19rem, the clips 300px, the
 deck stage 140px. With `snap`, pulling a side past its least **shuts it**
 once you are more than halfway past, and holds it at the least short of
-that; pulling it back opens it straight to the least. A snap **travels** (`travel()`, 200ms, eased out) rather than arriving — both sides are opened for the trip and the far one may shrink past its own floor, then the shut classes go on at the end. The other side
+that; pulling it back opens it straight to the least. A grip writes its pane's width **straight onto the pane** (`flex-basis`), not as a variable on the row: an inherited variable made the browser restyle everything inside the row on every frame of a drag (measured: 184ms of style work over a 60-frame drag, 40ms after). It reads the row's size before writing anything. A drag sets the split **once a frame** and measures the least once, at the press — measured on every move it made dragging lag. The card maker's top and bottom padding ramp with its opening (`--skin`), since it opens downwards; a fixed padding jolted in as it left shut. A snap **travels** (`travel()`, 200ms, eased out) rather than arriving — both sides are opened for the trip and the far one may shrink past its own floor, then the shut classes go on at the end. The other side
 shut gets `.split-shut` (display none) and the pane takes the row; the
 grip shrinks to nothing at either end. The chat's list has `least: 250`
 and no snap — it never shuts at all.
@@ -1758,7 +1779,7 @@ stops two accounts. By request the button **keeps its own word** (`log in`
 key…` labels flashed past and were taken out. `paintChatDoor` returns early while it is busy, or it
 would paint the label back.
 
-**Signed out, the chat is a log-in screen** — a centred card (30rem wide, a 6rem picture, a 2rem title; the page round it has no outline of its own, since a box in a box read as a window in a window) with a
+**Signed out, the chat is a log-in screen** — a centred card (30rem wide, a 6rem picture, a 2rem title; the page round it has no outline of its own, since a box in a box read as a window in a window; the card and the log-in window are drawn the other way round from the page — black on light, white on dark — by swapping the colour tokens, by request) with a
 picture mark, `welcome back` / `make an account`, the username and
 password fields and the button right there on the page. It is the same
 form as the log-in window, carried onto the page (`placeDoor`) and back
