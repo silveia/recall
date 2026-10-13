@@ -728,10 +728,35 @@ function settleDeckOrder() {
     window.setTimeout(() => { deckWasDragged = false; }, 0);
 }
 
+// whatever is typed in an open card is kept the moment anything else happens — a redraw, a click
+// somewhere else, a tab out, the page being left. it used to live only in the field until Enter,
+// so a redraw put the old words back and the next save wrote them over the new ones
+function keepStageEdit() {
+    if (editingStageIndex === null) return false;
+    const deck = activeDeck();
+    const card = deck && deck.cards[editingStageIndex];
+    const open = deckCardList.querySelector(`.stage-card[data-card-index="${editingStageIndex}"]`);
+    const question = open && open.querySelector('.edit-question');
+    const answer = open && open.querySelector('.edit-answer');
+    if (!card || !question || !answer) return false;
+    const nextQuestion = question.value.trim();
+    const nextAnswer = answer.value.trim();
+    if (!nextQuestion || !nextAnswer) return false;
+    if (nextQuestion === card.question && nextAnswer === card.answer) return false;
+    card.question = nextQuestion;
+    card.answer = nextAnswer;
+    saveDecks();
+    return true;
+}
+window.addEventListener('pagehide', () => keepStageEdit());
+window.addEventListener('beforeunload', () => keepStageEdit());
+document.addEventListener('visibilitychange', () => { if (document.hidden) keepStageEdit(); });
+
 function renderStage() {
     const deck = activeDeck();
     const total = deck.cards.length;
 
+    keepStageEdit();
     armedDeleteRow = null;   // the rows it pointed at are about to go
     deckCardList.innerHTML = '';
     if (total === 0) {
@@ -867,6 +892,7 @@ function buildStageEditor(deck, card, index, field) {
     answerLine.append(answer);
 
     const commit = () => {
+        if (!wrap.isConnected) return;     // a redraw replaced this box; the new one holds the words
         const target = deck.cards[index];
         if (!target) return;
         const nextQuestion = question.value.trim();
@@ -907,8 +933,10 @@ function buildStageEditor(deck, card, index, field) {
             }
         });
         field.addEventListener('blur', () => {
+            // the words are kept now, whatever comes next; the box closes once focus has settled
+            if (editingStageIndex === index && wrap.isConnected) keepStageEdit();
             window.setTimeout(() => {
-                if (editingStageIndex !== index) return;
+                if (editingStageIndex !== index || !wrap.isConnected) return;
                 if (wrap.contains(document.activeElement)) return;
                 commit();
             }, 0);

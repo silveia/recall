@@ -1016,6 +1016,16 @@ kept per tile in its own entry. The face carries no second hand — the
 board repaints on the minute, and a second hand that moved once a
 minute is a clock visibly telling the wrong time.
 
+## A card's edit is kept the moment you leave it
+
+Typed changes used to live only in the field until Enter: a click
+elsewhere, a tab out or a refresh lost them, and a redraw of the list
+rebuilt the box with the old words — which the next save then wrote back
+over the new ones. `keepStageEdit()` writes the open box's words into the
+deck and saves on blur (straight away, not on a timer), before every
+`renderStage()`, and on `pagehide` / `beforeunload` / the tab hiding. An
+editor that has been replaced by a redraw never commits (`wrap.isConnected`).
+
 ## Switching which card is being edited
 
 Opening a second card while one is open closes the first **where it stands**
