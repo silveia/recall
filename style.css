@@ -1550,6 +1550,14 @@ html:not(.inverted) .rail-left {
 	border-color: var(--ink);
 }
 .answer-button.correct:not(.is-right) { animation: pop 0.35s var(--ease); }
+/* after a wrong pick the right answer turns solid black, so there is no missing which one it was;
+   a right pick stays white under its tick */
+.answer-button.correct:not(.is-right),
+.answer-button.correct:not(.is-right):hover {
+	color: var(--paper);
+	background: var(--ink);
+	border-color: var(--ink);
+}
 
 .answer-word { display: block; }
 

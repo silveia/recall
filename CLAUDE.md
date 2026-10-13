@@ -1028,7 +1028,7 @@ Measured: both crosses now fade over ~200ms, the old one in, the new one out.
 
 ## The mark lands in the middle, and the word holds still
 
-**Both answers turn white** when marked — the right one used to go solid black — so the tick or the cross drawn over it is plain to see.
+**The answer you pressed turns white** when marked, so the tick or the cross drawn over it is plain to see. **After a wrong pick, the right answer turns solid black** (`.correct:not(.is-right)`), so it is obvious which one it was.
 
 A tick or a cross on the tile you pressed. The word used to **slide down
 14px** to make room overhead and the mark came in above it — so the
