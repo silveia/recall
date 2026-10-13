@@ -37,6 +37,12 @@ const listScreen = document.getElementById('listScreen');
 
 // sections
 const sectionTabs = document.getElementById('sectionTabs');
+// the name in the top-left corner is the way home, like every site's name is
+document.getElementById('siteName').addEventListener('click', (event) => {
+    event.preventDefault();
+    if (typeof hideTabTip === 'function') hideTabTip();
+    switchSection('home');
+});
 const audioPanel = document.getElementById('audioPanel');
 const chatPanel = document.getElementById('chatPanel');
 let chatSplitter = null;
@@ -302,19 +308,125 @@ function switchSection(id) {
     writeLink('pushState', id);
     renderSections();
 
-    if (!tabs[0] || typeof tabs[0].animate !== 'function') return;
-    const after = tabs.map((tab) => tab.getBoundingClientRect());
-    tabs.forEach((tab, index) => {
-        const from = before[index];
-        const to = after[index];
-        if (!from.height || !to.height) return;
-        const scale = from.height / to.height;
-        if (Math.abs(scale - 1) < 0.01) return;
-        tab.animate(
-            [{ transform: `scale(${scale})` }, { transform: 'none' }],
-            { duration: 320, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
-        );
+    // the pages are icons of one size now, so a switch has nothing to grow or shrink
+    void before;
+}
+
+// one simple mark per page, drawn in the site's own hairline
+const PAGE_MARKS = {
+    home: '<path d="M4 11.5 12 5l8 6.5M6.5 10v9.5h11V10"/>',
+    cards: '<rect x="4.5" y="7.5" width="11" height="12.5" rx="2"/><path d="M8.5 4.5H17a2 2 0 0 1 2 2V16"/>',
+    audio: '<path d="M5 10v4M8.5 7v10M12 4.5v15M15.5 8v8M19 10.5v3"/>',
+    chat: '<path d="M5.5 5.5h13a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2H11l-4.5 3.5v-3.5h-1a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2z"/>'
+};
+const pageMark = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PAGE_MARKS[id] || ''}</svg>`;
+
+// resting on a page's mark for half a second pushes its bump out to the right with the page's name
+// in it, and leaving lets it slide back in. the shape grows out of the bump itself, so it reads as
+// the bar reaching out, not as a label laid on top. both ways are animated from wherever it is
+const TIP_WAIT = 500;    // the first one waits half a second, by request
+const TIP_WARM = 300;    // after one has gone in, the next within this long comes straight away
+// shut is the bump itself: the same arc the bar's edge is drawn with (the tile's 37.5 of 39, scaled
+// to the bump), so the shape starts as exactly the bump and pushes out of it. open is the shape's own
+// round end. the curve travels from one to the other as an arc the whole way — a rounded inset clip
+// squashed its corners while it was short, and the front edge never matched the bump
+let tipNow = null;       // the one open or opening: { el, for, at (0 shut, 1 open), frame }
+const tipsGoing = [];    // ones sliding back in, each still finishing its own close
+let tipTimer = 0;
+let tipColdAt = 0;       // when the last one finished going in
+// the name's face is only fetched the first time something uses it, so ask for it up front
+if (document.fonts) document.fonts.load(`700 1.15rem ${getComputedStyle(document.documentElement).getPropertyValue('--title-font')}`).catch(() => {});
+// the slide's ease, cubic-bezier(0.45, 0, 0.2, 1), worked out by hand since the shape is drawn by hand
+function tipEase(t) {
+    const x1 = 0.45, x2 = 0.2;
+    const at = (u, a, b) => 3 * a * u * (1 - u) * (1 - u) + 3 * b * u * u * (1 - u) + u * u * u;
+    let lo = 0, hi = 1, u = t;
+    for (let i = 0; i < 24; i += 1) { u = (lo + hi) / 2; if (at(u, x1, x2) < t) lo = u; else hi = u; }
+    return at(u, 0, 1);
+}
+// the shape at a point between shut (0) and open (1). one arc whose ends and radii travel together,
+// so the front edge is a curve the whole way: the bump's own arc at 0, the shape's round end at 1
+function drawTip(tip) {
+    const { el, line, sx, sy } = tip;
+    const w = el.offsetWidth, h = el.offsetHeight, end = h / 2, p = tip.at;
+    const mix = (a, b) => a + (b - a) * p;
+    // in the dark the white edge has to land on the bump's own outline when shut (drawn at 6.61, 1px
+    // wide), or the two show side by side as one thick line as it leaves and arrives
+    const dark = document.documentElement.classList.contains('inverted');
+    const x = mix(dark ? 6.61 * sx + 0.5 : 6 * sx, w - end), rx = mix(37.5 * sx, end), ry = mix(37.5 * sy, end);
+    const d = `M0 0 H${x.toFixed(2)} A${rx.toFixed(2)} ${ry.toFixed(2)} 0 0 1 ${x.toFixed(2)} ${h} H0`;
+    el.style.clipPath = `path('${d} Z')`;
+    // the white edge in the dark rides the same curve, so it is never left behind at the far end
+    line.setAttribute('d', d);
+    // the name waits until the shape is half out, then fades in on its own clock (a fade tied to the
+    // slide ran through the slide's fastest stretch and read as appearing); going back it fades out
+    tip.word.classList.toggle('is-shown', p >= 0.5);
+}
+function moveTip(tip, to, then) {
+    // always from wherever it is now, so turning back half way is a turn, never a jump
+    window.cancelAnimationFrame(tip.frame);
+    const from = tip.at;
+    const long = (to ? 380 : 300) * Math.max(0.35, Math.abs(to - from));
+    const start = performance.now();
+    const step = (now) => {
+        const t = Math.min(1, (now - start) / long);
+        tip.at = from + (to - from) * tipEase(t);
+        drawTip(tip);
+        if (t < 1) tip.frame = window.requestAnimationFrame(step);
+        else { tip.frame = 0; if (then) then(); }
+    };
+    tip.frame = window.requestAnimationFrame(step);
+}
+function closeTip(tip) {
+    tipsGoing.push(tip);
+    moveTip(tip, 0, () => {
+        tip.el.remove();
+        tipsGoing.splice(tipsGoing.indexOf(tip), 1);
+        if (!tipNow && !tipsGoing.length) tipColdAt = performance.now();
     });
+}
+function openTabTip(tab, name) {
+    const id = tab.dataset.section;
+    if (tipNow && tipNow.for === id) { moveTip(tipNow, 1); return; }
+    // the last one goes back in on its own while this one comes out, rather than being snatched away
+    if (tipNow) closeTip(tipNow);
+    // the same mark caught on its way back in turns round from where it is
+    const back = tipsGoing.find((one) => one.for === id);
+    if (back) {
+        tipsGoing.splice(tipsGoing.indexOf(back), 1);
+        tipNow = back;
+        moveTip(back, 1);
+        return;
+    }
+    const el = document.createElement('div');
+    el.className = 'tab-tip';
+    el.setAttribute('aria-hidden', 'true');
+    el.innerHTML = `<svg><path/></svg><span>${name}</span>`;
+    document.body.append(el);
+    const spot = tab.getBoundingClientRect();
+    el.style.top = `${Math.round(spot.top + spot.height / 2 - el.offsetHeight / 2)}px`;
+    // the shape starts where a bump tile does, so the bump's arc goes in at the same numbers
+    const shell = getComputedStyle(document.documentElement);
+    tipNow = {
+        el, for: id, line: el.querySelector('path'), word: el.querySelector('span'), at: 0, frame: 0,
+        sx: parseFloat(shell.getPropertyValue('--wave-w')) / 39,
+        sy: parseFloat(shell.getPropertyValue('--wave-h')) / 66
+    };
+    drawTip(tipNow);
+    moveTip(tipNow, 1);
+}
+function hideTabTip() {
+    window.clearTimeout(tipTimer);
+    if (!tipNow) return;
+    closeTip(tipNow);
+    tipNow = null;
+}
+function waitForTip(tab, name) {
+    window.clearTimeout(tipTimer);
+    // one already out, or only just gone in: going from mark to mark carries on with no wait
+    const warm = tipNow || tipsGoing.length || performance.now() - tipColdAt < TIP_WARM;
+    if (warm) openTabTip(tab, name);
+    else tipTimer = window.setTimeout(() => openTabTip(tab, name), TIP_WAIT);
 }
 
 function renderSections() {
@@ -345,8 +457,12 @@ function renderSections() {
             tab.className = 'section-tab';
             tab.type = 'button';
             tab.dataset.section = section.id;
-            tab.textContent = section.name;
-            tab.addEventListener('click', () => switchSection(section.id));
+            tab.setAttribute('aria-label', section.name);
+            tab.innerHTML = pageMark(section.id);
+            tab.addEventListener('click', () => { hideTabTip(); switchSection(section.id); });
+            // rest on it half a second and the name slides out of its bump; leave and it slides back
+            tab.addEventListener('pointerenter', () => waitForTip(tab, section.name));
+            tab.addEventListener('pointerleave', hideTabTip);
             sectionTabs.appendChild(tab);
         });
     }
@@ -4252,26 +4368,27 @@ function clockFace(seconds) {
 
 /* ---------- 14. the bar's own three  (clock · storage · binned) ---------- */
 
+let clockMinute = -1;
 function paintClock() {
     const now = new Date();
-    const told = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+    // the strip's clock counts seconds too, by request; the board's tiles still only change on the minute
+    const told = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).toLowerCase();
     const half = told.match(/\s*([ap]m)$/);
     clockTime.textContent = half ? told.slice(0, half.index) : told;
     clockSuffix.textContent = half ? half[1] : '';
     clockDate.textContent = now
         .toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
         .toLowerCase();
-    paintWidgets();
+    if (now.getMinutes() !== clockMinute) { clockMinute = now.getMinutes(); paintWidgets(); }
 }
 
 function startClock() {
-    paintClock();
-    // line the first tick up with the turn of the minute, then keep to it
-    const toTheMinute = (60 - new Date().getSeconds()) * 1000;
-    window.setTimeout(() => {
+    // each tick waits for the turn of the next second, so it never drifts off it
+    const tick = () => {
         paintClock();
-        window.setInterval(paintClock, 60000);
-    }, toTheMinute);
+        window.setTimeout(tick, 1000 - new Date().getMilliseconds() + 5);
+    };
+    tick();
 }
 
 function roundSize(bytes) {
@@ -4308,6 +4425,10 @@ let themeReady = false;   // true once the page has settled on load
 
 function paintTheme(on) {
     document.documentElement.classList.toggle('inverted', on);
+    // the framed dino run is told straight out, not left to notice
+    document.querySelectorAll('.home-run').forEach((frame) => {
+        try { frame.contentWindow.postMessage({ lights: on }, window.location.origin); } catch (error) { /* not loaded yet */ }
+    });
     themeSwap.setAttribute('aria-pressed', String(on));
     themeSwap.title = on ? 'light' : 'dark';
     themeSwap.setAttribute('aria-label', on ? 'light' : 'dark');
@@ -5401,6 +5522,17 @@ function setHelpOpen(open) {
     helpBox.classList.toggle('is-open', open);
     helpToggle.setAttribute('aria-expanded', String(open));
 }
+
+// the bin up in the strip folds: its name opens the list below it
+document.getElementById('binnedHead').addEventListener('click', (event) => {
+    if (event.target.closest('#binnedEmpty')) return;
+    event.stopPropagation();
+    railBinned.classList.toggle('is-open');
+});
+document.addEventListener('click', (event) => {
+    if (!event.target.closest || !event.target.closest('#railBinned')) railBinned.classList.remove('is-open');
+    if (!event.target.closest || !event.target.closest('.help-box')) setHelpOpen(false);
+});
 
 helpToggle.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -7241,8 +7373,12 @@ window.addEventListener('pointermove', (event) => {
     if (optionDown) placeSayWhat();
 });
 
+// option on a mac, alt anywhere else (altgraph is the right-hand alt on many keyboards)
+const isOptionKey = (event) => event.key === 'Alt' || event.key === 'AltGraph';
 window.addEventListener('keydown', (event) => {
-    if (event.key !== 'Alt' || optionDown) return;
+    if (!isOptionKey(event)) return;
+    event.preventDefault();   // on windows a lone alt would otherwise hand focus to the browser's menu
+    if (optionDown) return;
     optionDown = true;
     placeSayWhat();
 });
@@ -7254,7 +7390,9 @@ function letGoOption() {
 }
 
 window.addEventListener('keyup', (event) => {
-    if (event.key === 'Alt') letGoOption();
+    if (!isOptionKey(event)) return;
+    event.preventDefault();
+    letGoOption();
 });
 // letting go of the window counts as letting go of the key
 window.addEventListener('blur', letGoOption);

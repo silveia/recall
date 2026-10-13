@@ -161,60 +161,66 @@
     <div class="app-shell">
         <div class="say-what" id="sayWhat" aria-hidden="true"></div>
 
+        <!-- the site's name, in the top-left corner over the first bump: it goes home -->
+        <a class="site-name" id="siteName" href="home/" title="home">hi</a>
+
+        <!-- the page marks ride over the bar and its bumps, so each circle shows whole in its bump -->
+        <nav class="section-tabs page-marks" id="sectionTabs" aria-label="sections"></nav>
+
         <aside class="rail rail-left" aria-label="menu">
-            <section class="rail-clock" aria-label="time">
-                <div class="clock-top">
-                    <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="dark" title="dark">
-                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                            <path fill="currentColor"
-                                  d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
-                        </svg>
-                    </button>
-                    <span class="clock-suffix" id="clockSuffix"></span>
-                </div>
-                <p class="clock-time" id="clockTime">--:--</p>
-                <p class="clock-date" id="clockDate"></p>
-            </section>
-
-            <!-- one paragraph per section; keep it current -->
-            <section class="help-box is-open" aria-label="?">
-                <button class="help-head panel-head" id="helpToggle" type="button" aria-expanded="true" aria-controls="helpBody">
-                    <h2>function</h2>
-                </button>
-
-                <div class="help-body" id="helpBody"><div class="help-body-inner">
-
-                <p class="help-note" data-section="home" hidden>welcome to my housr DD:&lt;</p>
-
-                <p class="help-note" data-section="cards" hidden>create flashcards and test yourself like quizlet, the ai thing lwk sucks but works. will fix eventually; also decks can be shared through import/export next to the deck creation</p>
-
-                <p class="help-note" data-section="audio" hidden>record audio from a diff google tab assuming you use chrome, and detects area that is changeable through brightness icon during recording next to recorder pls cope while yuo can</p>
-
-                <p class="help-note" data-section="chat" hidden>js yap yap and yap its pretty self explanatory but the security prolly sucks icl dont share passwords or personal info</p>
-                </div></div>
-            </section>
-
-            <section class="rail-store" aria-label="storage">
-                <div class="store-head">
-                    <span>storage</span>
-                    <span id="storeAmount">—</span>
-                </div>
-                <div class="store-bar"><div class="store-fill" id="storeFill"></div></div>
-            </section>
-
-
-            <section class="rail-binned" id="railBinned" aria-label="recently binned" hidden>
-                <div class="binned-head">
-                    <span>recently binned<span class="binned-count" id="binnedCount"></span></span>
-                    <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
-                </div>
-                <ol class="binned-list" id="binnedList"></ol>
-            </section>
         </aside>
 
         <div class="app-right">
+            <!-- the bars swapped round: the pages down the left, the clock, the function note, storage
+                 and the bin along the top -->
             <header class="topbar">
-                <nav class="section-tabs" id="sectionTabs" aria-label="sections"></nav>
+                <section class="rail-clock" aria-label="time">
+                    <div class="clock-top">
+                        <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="dark" title="dark">
+                            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                <path fill="currentColor"
+                                      d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
+                            </svg>
+                        </button>
+                        <span class="clock-suffix" id="clockSuffix"></span>
+                    </div>
+                    <p class="clock-time" id="clockTime">--:--</p>
+                    <p class="clock-date" id="clockDate"></p>
+                </section>
+
+                <!-- one paragraph per section; keep it current -->
+                <section class="help-box" aria-label="?">
+                    <button class="help-head panel-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody" aria-label="help" title="help">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.6 7.94a3.5 3.5 0 0 1 6.8 1.2c0 2.3-3.4 3-3.4 5.2"/><circle cx="12" cy="17.94" r="0.45" fill="currentColor"/></svg>
+                    </button>
+
+                    <div class="help-body" id="helpBody"><div class="help-body-inner">
+
+                    <p class="help-note" data-section="home" hidden>explore around mu website, option/alt to see button function</p>
+
+                    <p class="help-note" data-section="cards" hidden>create flashcards and practice, explore around w features and enjoy studying</p>
+
+                    <p class="help-note" data-section="audio" hidden>the only one who uses this is ME so no information is required</p>
+
+                    <p class="help-note" data-section="chat" hidden>this is a chat. dont share passwords or personal info for security is genuine ass, please lock in</p>
+                    </div></div>
+                </section>
+
+                <section class="rail-store" aria-label="storage">
+                    <div class="store-head">
+                        <span id="storeAmount">—</span>
+                    </div>
+                    <div class="store-bar"><div class="store-fill" id="storeFill"></div></div>
+                </section>
+
+
+                <section class="rail-binned" id="railBinned" aria-label="recently binned" hidden>
+                    <div class="binned-head" id="binnedHead">
+                        <span>recently binned<span class="binned-count" id="binnedCount"></span></span>
+                        <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+                    </div>
+                    <ol class="binned-list" id="binnedList"></ol>
+                </section>
             </header>
 
             <div class="app-body">

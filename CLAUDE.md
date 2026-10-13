@@ -948,7 +948,7 @@ lift and hard shadow): a small tile is square — a row is exactly as
 tall as a column is wide, worked out from the panel's own width
 (`container-type`, `100cqw`) — a wide one is two squares, corners are
 1.4rem, and every tile has one even inset (`--widget-pad`). By later
-request the words are **centred and larger** rather than Apple's
+request the words are **centred and larger** (the names in Amiko, by a later request still) rather than Apple's
 top-left/bottom-left: the name centred at the top, the reading centred
 in the tile (numbers 3.4rem, the clock 4rem, tallies 2.8rem). The tiles
 start **the same 16px under the strip as they sit apart** — the board's
@@ -1107,6 +1107,17 @@ words inside only fade — they used to slide up as the box grew, which
 is two movements at once, and the fade waited 160ms before starting,
 which is the wait you could feel. Measured: 37% open at 100ms, 87% at
 200ms, settled by 300ms.
+
+## What sits over what
+
+One order for everything that floats, so nothing slips behind what it is
+meant to cover: the page's own boxes (the home search 20), the share and
+confirm chips 40, **the pushed-out page name 45 and the page marks 46** (the
+name was 5 and went behind the home search), every window's veil 50, the
+pop panels, menus and the sensing window 60, the strip's open dropdowns 70
+(the strip itself rises to 75 while one is open), a tile being carried and
+the loading face 90, and the option-key label 200. Anything new that floats
+takes its place in this list.
 
 ## Nothing behind a window changes
 
@@ -1305,7 +1316,7 @@ the same shape it gets overwritten, and `--grab` and `--no` were
 invisible on the black bar until that was fixed. Check any new cursor
 on both backgrounds.
 
-**Holding option** names whatever is under the pointer, beside it, in
+**Holding option** (alt on windows and linux — `isOptionKey` takes `Alt` and `AltGraph`, and the keydown/keyup are `preventDefault`ed so a lone alt on windows doesn't hand focus to the browser's menu) names whatever is under the pointer, beside it, in
 the site's own colours (`whatItDoes()` → `title`, then `data-said`, then
 `aria-label`, then the text). Nothing new has to be registered: anything
 named properly is covered.
@@ -1403,6 +1414,72 @@ The tabs use the whole strip, from the window's edge. The line under
 the strip is solid over the page, from the dip where the bar's edge is
 on that row, and a row of the bar's own divider dots over the bar. The bumps' first tile sits behind the strip, and
 the wave comes out from under it at a dip.
+
+## The bar runs to the top again (this replaces the two sections around it)
+
+By request the bar runs to the top of the window and the black strip
+covers the page, reaching in behind the first bump (`--rail -
+--wave-w / 2`) so no white shows round it — the top row is solid black.
+**A semi-dotted line hugs the first bump** across the menu's own row: the
+same arc the outline traces down the bumps below, drawn in white dashes
+(`.topbar::before`, `pathLength` 85 with `5 5` dashes so it starts and ends
+on a dash). A straight dotted line down the crests was tried first and was
+not what was meant.
+The line under the strip starts at the dip below the first bump. A
+version with the strip starting at the crest left a white notch round the
+first bump that cut into the strip, and was taken out.
+
+## The bars swapped round (a layout test, not pushed)
+
+By request the **pages are down the black bar on the left** (`#sectionTabs`
+moved into `.rail-left`, stacked, the one you are on large) and **the clock,
+the function note, storage and the bin sit in one row along the top strip**
+(moved into `.topbar`, which takes the bar's inverted colour tokens). The
+clock lies down as a white pill (time, moon, half of the day, date); the
+function note is a pill that opens below the strip and starts folded; the
+bin is a pill whose list drops below it (`#binnedHead`). A click anywhere
+else folds both, and the strip is raised over the page while one is open.
+The top-left corner is left empty, for a title later.
+
+**The site's name is `hi`**, in that corner (`#siteName`, a link to `home/` that switches to home in place): Bitcount, bold, 1.6rem, centred over the marks' column in the black strip. It is italic, by request (bitcount has no italic of its own, so the browser slants it). By request it and the pages' names that slide out of the bumps (`.tab-tip`) are bold too, alongside the section tabs. Everything else on the strip (clock, function, storage, bin) sits at its **right** end, by request. Nothing on the strip has an outline — the clock is no longer a white pill, it is the strip's own black — and the time is the very last thing at the right (moon, half of the day, date, then the time). Every word on the strip is Amiko at 1rem, the time alone excepted (it keeps VT323). The `function` pill is now **a question mark** — no ring, 21px, always turning clockwise (4s a turn), drawn dead centre in its viewBox (measured: ink 12.00 / 12.00); the words on the strip (amount, half of the day, date) are **not** dropped by `--drop` — they are lowercase, the eye centres lowercase on its x-height, and amiko's x-height already sits on the strip's middle; dropped to level the capitals they read as low. The half of the day had a leftover 1px nudge from the old tile, taken out so it turns on the spot, by request (`#helpToggle`, labelled `help`) and doesn't turn white when open; its note hangs **centred under the mark**, as one long line (up to 40rem, 0.82rem type) rather than a tall block; its words are brought down by `--drop` + 0.9px so they sit level in the pill (measured: 18.1 against a middle of 18.0); the `storage` label was taken out, leaving the amount and its bar. The time is VT323 and counts **seconds** (`09:55:52`) and sits 1.4rem off the date; the clock ticks on the turn of each second, while the board's tiles still only repaint on the minute (`clockMinute`). **The strip is 52px now**, a little shorter than a bump by request, and the bumps start at its foot (`background-position: 0 var(--topbar)` on both wave layers) rather than at the window's top, so a dip still lands right where the strip ends. In the dark the strip's foot carries a white line from that dip rightwards (`html.inverted .topbar::after`), never over the bumps.
+
+## The pages are marks (a layout test, not pushed)
+
+**Each mark sits at the centre of its bump's own circle.** A bump is an
+arc of a circle (radius 37.5 of the tile's 39 units, ~38.5px); those
+circles overlap down the bar, which is what makes the bumps. The bar is as
+wide as one circle reaches from the window's edge to the crest
+(`--rail` = `--wave-w × 75/39 − --wave-out` ≈ 70.8, **written as a whole
+71px** — a fractional bar width drew a grey seam down it), so each circle
+touches the window's edge and the mark is at its centre. Tried and refused on the way:
+true half-circle bumps (looked wrong), a bar narrowed to 64px (too thin on
+the right), and the 5rem bar (too wide).
+
+The bar is **5rem** and holds **one mark per page** (`PAGE_MARKS`: a house,
+two cards, a waveform, a speech bubble — hairline strokes at 1.7), **one
+in each bump**: the bumps are bigger now (`--wave-w: 40px`, `--wave-h:
+64px`, so the strip is 64 tall too), and the marks are spaced a bump
+apart, starting in the bump under the menu's. The marks have no ring (only the page you are on is a filled white circle)
+and are 28px. The column (`.page-marks`) lives over the bar and its bumps
+rather than inside the bar — the bumps are drawn over the bar and cut
+anything inside it off — and each mark is centred between the bar's left
+wall and the bumps' crests. **Hovering a mark pushes its bump out to the right with
+the page's name in it** (`.tab-tip`, the bar's black starting inside the
+bar behind the mark, exactly one bump tall, round at its far end), and
+leaving slides it back in — both ways animated from wherever the shape is
+(a clip-path read off the running animation), so a quick in-and-out never
+jumps. The slide starts at the bumps' crest, not the shape's own left edge
+(that stretch lies behind the bar, and travelling through it spent the
+visible slide in a blink — it looked as if it just appeared), and runs
+380ms out / 300ms back on an ease-in-out. The first one waits **half a second** (`TIP_WAIT`, by request — two seconds and 0.6 were refused earlier, and no wait at all was annoying); going from mark to mark while one is out, or within 300ms of it going in (`TIP_WARM`), there is no second wait. **Each name is its own shape**, so switching quickly lets the last one slide back in on its own while the new one comes out, rather than snatching it away; leaving or coming back half way turns it round from wherever it is. **The front edge is always an arc**: shut is the bump's own arc (the tile's 37.5-of-39, scaled to the bump), open is the shape's round end, and the clip is a `path()` with one arc in it, **redrawn every frame by script** (`drawTip`, `tipEase`) rather than handed to Chrome to interpolate — a rounded `inset()` squashed its corners while the shape was short, and the edge sliding out didn't match the bump. In the dark the white edge is an svg path inside the tip riding the same curve (the old border was clipped off the moving edge), and shut it sits exactly on the bump's own outline (6.61 + half a pixel), or the two show as one thick line. The name only shows once the shape is half out, and then **fades in over 0.45s on its own** (`.is-shown`, a CSS transition) — a fade tied to the slide's progress ran through its fastest stretch and looked like it just appeared. It fades out in 0.2s once the shape is back under half. The name starts 6px inside the crest and ends 22px before the round end; 16px past the crest and 34px at the end read as spaced on purpose. The name's face is fetched up front: measured in pixels before the bold face had arrived, the first few hovers after a refresh came out half open in an instant. A press goes straight to the page. Nothing else happens on hover or press, by request; the old grow-and-shrink on
+switching was taken out. The outline stroke is 39/40 now (`0.975`), to
+stay on 1px at the new width.
+
+**The framed dino run is told the lights outright** (`postMessage` from
+`paintTheme`), and also hears `storage` and `pageshow`, on top of watching
+its parent's class — and its address is fingerprinted by `pages.sh`
+(`index.html?embed&v=…`) like the script and styles, so a browser never
+keeps an old copy of it.
 
 ## The wave starts at the top, in both lights
 
@@ -1681,7 +1758,7 @@ stops two accounts. By request the button **keeps its own word** (`log in`
 key…` labels flashed past and were taken out. `paintChatDoor` returns early while it is busy, or it
 would paint the label back.
 
-**Signed out, the chat is a log-in screen** — a centred card with a
+**Signed out, the chat is a log-in screen** — a centred card (30rem wide, a 6rem picture, a 2rem title; the page round it has no outline of its own, since a box in a box read as a window in a window) with a
 picture mark, `welcome back` / `make an account`, the username and
 password fields and the button right there on the page. It is the same
 form as the log-in window, carried onto the page (`placeDoor`) and back

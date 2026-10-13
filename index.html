@@ -566,6 +566,21 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
     colours();
     reset();
 
+    // the lights, however the news arrives: the page framing this one says so outright, and
+    // another tab changing them comes through storage — on top of watching the frame's parent
+    const takeLights = (on) => {
+        document.documentElement.classList.toggle('inverted', on);
+        colours();
+        draw();
+    };
+    window.addEventListener('message', (event) => {
+        if (event.origin === window.location.origin && event.data && typeof event.data.lights === 'boolean') takeLights(event.data.lights);
+    });
+    window.addEventListener('storage', (event) => { if (event.key === 'page-inverted') takeLights(event.newValue === 'yes'); });
+    window.addEventListener('pageshow', () => {
+        try { takeLights(localStorage.getItem('page-inverted') === 'yes'); } catch (error) { /* keeps what it has */ }
+    });
+
     // framed, it follows the page's lights as they change
     if (document.documentElement.classList.contains('embedded')) {
         try {

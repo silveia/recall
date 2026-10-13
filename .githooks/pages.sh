@@ -14,10 +14,11 @@ cd "$(git rev-parse --show-toplevel)" || exit 1
 mark() { shasum "$1" | cut -c1-10; }
 js=$(mark script.js)
 css=$(mark style.css)
+idx=$(mark index.html)
 for section in home cards audio chat; do
     mkdir -p "$section"
     # the note goes after the doctype — anything before it drops the
     # page into quirks mode
     awk 'done != 1 && /<head>/ { print; print "    <base href=\"../\">"; print "    <!-- made from app.html by .githooks/pages.sh. edit app.html, not this -->"; done = 1; next } { print }' app.html \
-        | sed -e "s|src=\"script.js\"|src=\"script.js?v=$js\"|" -e "s|href=\"style.css\"|href=\"style.css?v=$css\"|" > "$section/index.html"
+        | sed -e "s|src=\"script.js\"|src=\"script.js?v=$js\"|" -e "s|href=\"style.css\"|href=\"style.css?v=$css\"|" -e "s|src=\"index.html?embed\"|src=\"index.html?embed\&v=$idx\"|" > "$section/index.html"
 done

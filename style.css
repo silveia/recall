@@ -52,16 +52,19 @@
 	--bar: #000;
 	--bar-ink: #ffffff;
 	--col: 34rem;      /* max width of the content column */
-	--rail: 19rem;     /* width of the side bar */
+	/* each bump is an arc of a circle (radius 37.5 of the tile's 39, so about 38.5px); the bar is as
+	   wide as that circle reaches from the window's edge to the crest, and each mark sits at its circle's
+	   centre. the circles overlap down the bar, which is what makes the bumps */
+	--rail: 71px;      /* = --wave-w × 75/39 − --wave-out (70.8), rounded: a fraction of a pixel here draws a grey seam down the bar */
 	--widget-pad: 1rem;    /* the one inset inside every home tile */
 	--rail-round: 1.6rem;  /* how far in the rounded ends of the bar's boxes reach */
 	--dash-step: 14px;     /* a dash and its gap, under the top strip over the bar */
 	--dot-step: 20px;      /* dot and gap in the bar's dividers */
 	/* keep --wave-w even: half of it is an offset, and a half pixel draws a grey line */
-	--wave-w: 32px;
-	--wave-h: 54px;
+	--wave-w: 40px;
+	--wave-h: 64px;   /* one bump per page mark down the bar: each mark sits in a bump */
 	--wave-out: calc(var(--wave-w) * 6 / 39);   /* how far a crest reaches past --rail */
-	--topbar: var(--wave-h);
+	--topbar: 52px;   /* a little shorter than a bump, by request (it was --wave-h, 64); the bumps start at its foot */
 	--radius: 10px;
 	--field: 42px;     /* height of every control in the deck bar */
 	--card-row: 2.6rem;/* height of one row in the create window's list */
@@ -314,7 +317,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 		linear-gradient(var(--bar), var(--bar));
 	background-repeat: repeat-y, no-repeat;
 	background-size: var(--wave-w) var(--wave-h), calc(var(--wave-w) * 6 / 39) 100%;   /* the strip that hides the seams stops exactly at the dips: any wider and it poked out of each inner corner */
-	background-position: 0 0;
+	background-position: 0 var(--topbar), 0 0;   /* the first bump starts at the strip's foot, not the window's top */
 	clip-path: inset(0 calc(var(--wave-w) / 2 - var(--wave-out) - 1px) 0 0);
 }
 
@@ -327,10 +330,11 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	z-index: 4;
 	width: var(--wave-w);
 	pointer-events: none;
-	/* stroke 39/32 so it lands on 1px; nudged half of it out — redo if --wave-w changes */
-	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.61 0 A 37.5 37.5 0 0 1 6.61 66' fill='none' stroke='%23ffffff' stroke-width='1.21875' stroke-linecap='round'/%3E%3C/svg%3E");
+	/* stroke 39/40 so it lands on 1px (the tile is drawn 39 wide, shown at --wave-w); nudged half of it out — redo if --wave-w changes */
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.61 0 A 37.5 37.5 0 0 1 6.61 66' fill='none' stroke='%23ffffff' stroke-width='0.975' stroke-linecap='round'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: var(--wave-w) var(--wave-h);
+	background-position: 0 var(--topbar);
 }
 
 .app-right {
@@ -377,12 +381,12 @@ html:not(.inverted) .rail-left {
 .topbar {
 	position: absolute;
 	top: 0;
-	left: 0;
+	left: calc(var(--rail) - var(--wave-w) / 2);   /* the page, reaching in behind the first bump so no white shows round it */
 	right: 0;
 	z-index: 4;
 	display: flex;
 	align-items: center;
-	justify-content: flex-start;
+	justify-content: flex-end;   /* everything but the name sits at the right, by request */
 	height: var(--topbar);
 	padding-left: var(--gap);
 	padding-right: var(--gap);
@@ -394,23 +398,24 @@ html:not(.inverted) .rail-left {
 	content: '';
 	position: absolute;
 	top: 100%;
-	left: calc(var(--rail) - var(--wave-w) / 2 + var(--wave-out));   /* ends on the bump */
+	left: var(--wave-out);   /* from the dip under the first bump, where the wave meets it */
 	right: 0;
 	height: 1px;
 	background: var(--bar-ink);
 	pointer-events: none;
 }
 .topbar::before {
+	/* the semi-dotted line hugs the first bump: the same arc the outline traces down the bumps
+	   below, drawn in dashes across the menu's own row, so the pattern carries on up to the top */
 	content: '';
 	position: absolute;
-	top: 100%;
-	left: 0;
-	width: calc(var(--rail) - var(--wave-w) / 2 + var(--wave-out));
-	height: 1px;
-	background-image: linear-gradient(to right,
-		transparent 0 calc(50% - 4px), var(--bar-ink) calc(50% - 4px) calc(50% + 4px), transparent calc(50% + 4px));
-	background-size: var(--dash-step) 1px;
-	background-repeat: round no-repeat;
+	top: 0;
+	left: 0;                      /* the strip starts where the bumps' column does */
+	width: var(--wave-w);
+	height: var(--wave-h);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.61 0 A 37.5 37.5 0 0 1 6.61 66' fill='none' stroke='%23ffffff' stroke-width='1.21875' stroke-linecap='round' pathLength='85' stroke-dasharray='5 5'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-size: var(--wave-w) var(--wave-h);
 	pointer-events: none;
 }
 
@@ -3345,7 +3350,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-	font-family: var(--head-font);
+	font-family: var(--font);   /* amiko, by request: the tiles' names were matrix sans */
 	font-size: 0.95rem;
 	font-weight: 400;
 	text-align: center;
@@ -3997,6 +4002,7 @@ body, body *, .modal-panel, .modal-panel *, .pop-panel, .pop-panel * {
 }
 
 .section-tab { font-weight: 700 !important; }
+.site-name, .tab-tip, .tab-tip * { font-weight: 700 !important; }   /* the site's name and the pages' names, by request */
 
 a:hover, a:focus-visible { font-weight: 700 !important; }
 
@@ -4720,9 +4726,7 @@ html.booting .booting-mark { display: flex; }
 	display: grid;
 	flex: 1;
 	place-items: center;
-	min-height: 0;
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
+	min-height: 0;   /* no outline of its own: the card is the one box, not a window in a window */
 }
 .chat-login[hidden] { display: none; }
 .chat-body[hidden] { display: none; }
@@ -4730,8 +4734,8 @@ html.booting .booting-mark { display: flex; }
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	width: min(22rem, calc(100% - 2 * var(--group)));
-	padding: 2rem var(--group) var(--group);
+	width: min(30rem, calc(100% - 2 * var(--group)));
+	padding: 3rem 2.5rem 2.25rem;
 	border: 1px solid var(--line);
 	border-radius: 1.4rem;
 	animation: panel-in 0.34s var(--drawer) backwards;
@@ -4739,15 +4743,15 @@ html.booting .booting-mark { display: flex; }
 .login-face {
 	display: grid;
 	place-items: center;
-	width: 4.5rem;
-	height: 4.5rem;
+	width: 6rem;
+	height: 6rem;
 	color: var(--paper);
 	background: var(--ink);
 	border-radius: 50%;
 }
 .login-face svg { width: 58%; height: 58%; }
-.login-title { margin: 1rem 0 0; font-family: var(--head-font); font-size: 1.5rem; font-weight: 400; }
-.login-say { margin: 0.35rem 0 1.4rem; font-size: 0.85rem; }
+.login-title { margin: 1.4rem 0 0; font-family: var(--head-font); font-size: 2rem; font-weight: 400; }
+.login-say { margin: 0.5rem 0 2rem; font-size: 0.95rem; }
 .login-slot, .login-slot .ask-body { width: 100%; }
 .login-slot .ask-go { width: 100%; }
 
@@ -4798,3 +4802,246 @@ html.booting .booting-mark { display: flex; }
    (kept in place, so the box keeps its size) */
 .answer-button.is-marked { color: var(--ink); background: var(--paper); }
 .answer-button.is-marked .answer-word { visibility: hidden; }
+
+/* =========================================================
+   layout test 2 — the menu stays black and runs the whole top row, edge to edge: no gaps, no
+   rounding, no dashed arc and no line under it. The spacing below is unchanged
+   ========================================================= */
+.topbar {
+	left: calc(var(--rail) - var(--wave-w) / 2);   /* in behind the first bump, so the row is one black */
+	right: 0;
+	border-radius: 0;
+}
+.topbar::before, .topbar::after { display: none; }
+/* in the dark the strip and the page are one black, so its foot gets a white line — from the dip
+   where the first bump starts, never reaching back over the bumps */
+html.inverted .topbar::after { display: block; background: #fff; }
+
+/* =========================================================
+   the bars swapped round — the pages down the black bar on the left, and the clock, the function
+   note (folded), storage and the bin (folded) in one row along the top strip
+   ========================================================= */
+html:not(.inverted) .topbar {
+	--paper: #000;
+	--ink: #ffffff;
+	--line: #ffffff;
+	--hover: #151515;
+}
+.topbar {
+	gap: var(--group);
+	padding-left: calc(var(--wave-w) / 2 + var(--wave-out) + var(--group));
+	padding-right: var(--group);
+	overflow: visible;
+}
+/* the clock: the same white tile, lying down — the time, the moon and the half of the day in a row */
+.topbar .rail-clock {
+	flex-direction: row;
+	align-items: center;
+	gap: 0.6rem;
+	height: 36px;
+	padding: 0 1rem;
+	color: var(--paper);
+	background: var(--ink);
+	border-color: var(--ink);
+}
+.topbar .clock-top { order: 2; margin: 0; }
+.topbar .clock-time { order: 1; font-size: 1.45rem; padding-top: 0; }
+.topbar .clock-date { order: 3; margin: 0; font-size: 0.72rem; }
+/* the function note: a pill to press, opening below the strip */
+.topbar .help-box {
+	position: relative;
+	flex: none;
+	padding: 0;
+	overflow: visible;
+	border: 0;
+	contain: none;
+}
+.topbar .help-head {
+	display: flex;
+	align-items: center;
+	height: 36px;
+	margin: 0;
+	padding: 0 1rem;
+	border: 1px solid var(--line) !important;
+	border-radius: 999px;
+}
+.topbar .help-head h2 { font-size: 0.85rem; }
+.topbar .help-box.is-open .help-head { color: var(--ink); background: none; }   /* opening it doesn't turn it white, by request */
+/* help is a question mark in a ring, not a word */
+.topbar .help-head { justify-content: center; width: 36px; padding: 0; }
+.topbar .help-head svg { display: block; width: 21px; height: 21px; animation: help-spin 4s linear infinite; }   /* always turning, clockwise; the mark is drawn centred in its box so it turns on the spot */
+@keyframes help-spin { to { rotate: 360deg; } }
+.topbar .help-body {
+	position: absolute;
+	top: calc(100% + var(--tight));
+	left: 0;
+	z-index: 70;
+	width: 20rem;
+	padding: 0 var(--group) var(--group);
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+.topbar .help-box:not(.is-open) .help-body { display: none; }
+.topbar .help-box .help-body-inner { opacity: 1; margin: 0; }
+/* the note hangs centred under the mark, one long line or two rather than a tall block, and smaller */
+.topbar .help-body {
+	top: calc(100% + var(--group));
+	left: 50%;
+	translate: -50% 0;
+	width: max-content;
+	max-width: 40rem;
+	padding: 0.5rem 1.2rem;
+	border-radius: 999px;   /* a true pill: the ends are half circles, not rounded corners */
+}
+.topbar .help-box .help-note { position: relative; top: calc(var(--drop) + 0.9px); margin: 0; line-height: 1.4; }   /* amiko sits high: brought down so the words sit level in the pill */
+.topbar .help-box .help-body * { font-size: 0.82rem !important; }
+/* storage: the words and a slim bar, in a row */
+.topbar .rail-store {
+	flex-direction: row;
+	align-items: center;
+	gap: 0.7rem;
+	padding: 0;
+	background: none;
+	border: 0;
+}
+.topbar .store-head { gap: 0.5rem; }
+.topbar .store-bar { width: 7rem; height: 8px; }
+/* the bin: its name and count as a pill; the list drops below when pressed */
+.topbar .rail-binned {
+	position: relative;
+	flex-direction: row;
+	align-items: center;
+	padding: 0;
+	background: none;
+	border: 0;
+}
+.topbar .binned-head {
+	height: 36px;
+	padding: 0 0.5rem 0 1rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	cursor: var(--cur-tap);
+}
+.topbar .rail-binned.is-open .binned-head { color: var(--paper); background: var(--ink); }
+.topbar .binned-list {
+	position: absolute;
+	top: calc(100% + var(--tight));
+	right: 0;
+	z-index: 70;
+	width: 16rem;
+	max-height: 18rem;
+	padding: var(--tight);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+.topbar .rail-binned:not(.is-open) .binned-list { display: none; }
+/* by request: no outlines on the strip — the clock and the pills are the strip's own black — the
+   time at the very right end, and every word in amiko at the body's size, the time alone excepted */
+.topbar .rail-clock { order: 99; padding: 0; color: var(--ink); background: none; border: 0; }
+.topbar .clock-top { order: 1; margin-top: 0; }   /* the old tile's nudges, which threw the row off level */
+/* no --drop here: these words are lowercase, and the eye centres lowercase on its x-height, which
+   amiko already puts dead on the strip's middle (measured 26.0 of 26). dropped to level the capitals,
+   they read as low */
+.topbar .clock-date { order: 2; }
+.topbar .clock-time { order: 3; margin-left: 1.4rem; }   /* well off the date, so the two read as two things */
+.topbar .help-head, .topbar .binned-head { border: 0 !important; }
+.topbar *:not(.clock-time) { font-family: var(--font) !important; font-size: 1rem !important; }
+.topbar .clock-time { font-family: var(--num-font); font-size: 1.6rem; padding-top: 0; }   /* vt323, like every other number */
+/* while the note or the bin is open, the strip sits over the page so nothing shows through */
+.topbar:has(.help-box.is-open), .topbar:has(.rail-binned.is-open) { z-index: 75; }
+
+/* the pages, down the bar, as marks — each centred inside its bump, the same room either side
+   between the bar's left wall and the crest. they sit over the bar and the bumps (the bumps are
+   drawn over the bar, so marks inside the bar would be cut by them). only the page you are on is
+   a filled white circle; the rest have no ring */
+/* the site's name, top left, over the first bump in the black strip: centred on the marks' column */
+.site-name {
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 46;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: calc(var(--rail) + var(--wave-out));
+	height: var(--topbar);
+	padding-top: calc(var(--drop-title) * 2);
+	color: var(--bar-ink);
+	font-family: var(--title-font);
+	font-size: 1.6rem;
+	font-style: italic;   /* by request (bitcount has no italic, so the browser slants it) */
+	line-height: 1;
+	text-decoration: none;
+	cursor: var(--cur-tap);
+}
+
+.page-marks {
+	position: absolute;
+	top: calc(var(--topbar) + (var(--wave-h) - 44px) / 2);
+	left: calc((var(--rail) + var(--wave-out)) / 2 - 22px);
+	z-index: 46;                         /* just over their own pushed-out bump */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: calc(var(--wave-h) - 44px);      /* a mark every bump */
+	height: auto;
+	margin: 0;
+	padding: 0;
+	contain: none;
+}
+html:not(.inverted) .page-marks { --paper: #000; --ink: #ffffff; --line: #ffffff; }
+.page-marks .section-tab,
+.page-marks .section-tab.active,
+.page-marks .section-tab:not(.active) {
+	position: relative;
+	top: 0;
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 44px;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	border-radius: 50%;
+	font-size: 0;
+	text-indent: 0;
+	cursor: var(--cur-tap);
+}
+.page-marks .section-tab.active { color: var(--paper); background: var(--ink); cursor: var(--cur-dot); }
+.page-marks .section-tab::before { display: none; }
+.page-marks .section-tab svg { width: 28px; height: 28px; }
+
+/* a pressed mark's bump pushed out to the right: the bar's own black, starting inside the bump so
+   no seam shows, round at its far end, the page's name in it. it grows out (clip-path, by script) */
+.tab-tip {
+	position: fixed;
+	/* starts back inside the bar, behind the mark, so the white between the bumps can't nick its
+	   corners; the words begin just past the crest */
+	left: calc(var(--rail) - var(--wave-w) / 2);
+	z-index: 45;                         /* over everything on the page (the search is 20, the share and confirm chips 40), under the marks, under any window (50+) */
+	display: flex;
+	align-items: center;
+	height: var(--wave-h);              /* exactly one bump tall */
+	margin: 0;
+	padding: 0 22px 0 calc(var(--wave-w) / 2 + var(--wave-out) - 6px);   /* the name just inside the crest, 22px before the round end: more read as spaced on purpose */
+	color: #fff;
+	background: #000;
+	border: 0;
+	border-radius: 0 calc(var(--wave-h) / 2) calc(var(--wave-h) / 2) 0;
+	font-family: var(--title-font);
+	font-size: 1.15rem;
+	font-weight: 700;
+	line-height: 1;
+	white-space: nowrap;
+	pointer-events: none;
+}
+.tab-tip, .tab-tip:hover, .tab-tip:active { transform: none; translate: none; }   /* nothing moves on a press */
+.tab-tip svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; display: none; }
+.tab-tip path { fill: none; stroke: #fff; stroke-width: 2; }   /* half of it is clipped: 1px shows, on the inside */
+html.inverted .tab-tip svg { display: block; }   /* the bumps' own white edge, in the dark, drawn along the moving curve */
+.tab-tip[hidden] { display: none; }
+.tab-tip span { position: relative; top: var(--drop-title); opacity: 0; transition: opacity 0.2s ease; }
+.tab-tip span.is-shown { opacity: 1; transition: opacity 0.45s ease; }   /* fades in once the shape is half out */
