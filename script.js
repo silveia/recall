@@ -45,6 +45,8 @@ document.getElementById('siteName').addEventListener('click', (event) => {
 });
 const audioPanel = document.getElementById('audioPanel');
 const chatPanel = document.getElementById('chatPanel');
+const drawPanel = document.getElementById('drawPanel');
+const drawFrame = document.getElementById('drawFrame');
 let chatSplitter = null;
 let chatReady = false;
 
@@ -70,6 +72,91 @@ const railBinned = document.getElementById('railBinned');
 const binnedList = document.getElementById('binnedList');
 const binnedCount = document.getElementById('binnedCount');
 const binnedEmpty = document.getElementById('binnedEmpty');
+// pressing empty asks in place: the pill splits down its middle into two halves — its outer ends never
+// move, only the centre opens — a cross (keep it) on the left and a tick (empty it) on the right. the
+// confirm chip it replaces opened behind the bin's own list
+const emptyAsk = document.createElement('span');
+emptyAsk.className = 'empty-ask';
+emptyAsk.innerHTML = '<button class="empty-no" type="button" title="keep it" aria-label="keep it" tabindex="-1">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>'
+    + '<button class="empty-yes" type="button" title="empty it" aria-label="empty it" tabindex="-1">'
+    + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12.5l4 4 8-9"/></svg></button>';
+emptyAsk.prepend(binnedEmpty);
+const emptyYes = emptyAsk.querySelector('.empty-yes');
+const emptyNo = emptyAsk.querySelector('.empty-no');
+const EMPTY_GAP = 6;          // how far apart the two halves end up, at the centre only
+let emptyMoves = [];          // the split's running animations, kept so going back plays them in reverse
+let emptyAsking = false;
+function askToEmpty(on, quick) {
+    if (on === emptyAsking && !quick) return;
+    emptyAsking = on;
+    emptyYes.tabIndex = emptyNo.tabIndex = on ? 0 : -1;
+    binnedEmpty.tabIndex = on ? -1 : 0;
+    const parts = [emptyNo, emptyYes, emptyNo.querySelector('svg'), emptyYes.querySelector('svg')];
+    const settle = () => {
+        emptyMoves.forEach((move) => move.cancel());
+        emptyMoves = [];
+        parts.forEach((part) => part.removeAttribute('style'));
+        emptyAsk.classList.remove('is-asking', 'is-leaving');
+    };
+    if (quick) { emptyAsking = false; settle(); return; }
+    if (!on) {
+        // a motion of its own rather than the opening played backwards (which turned its spring into a
+        // jerk): the marks shrink away, then the halves glide back into the one pill on a plain ease,
+        // from wherever they are, and the word fades back in as they meet
+        emptyAsk.classList.add('is-leaving');
+        emptyMoves.forEach((move) => { try { move.commitStyles(); } catch (error) { /* not drawn */ } move.cancel(); });
+        const join = binnedEmpty.offsetWidth / 2;
+        const close = (inner) => [
+            { offset: 0.85, [`border${inner}Width`]: '1px' },
+            { width: `${join}px`, [`border${inner}Width`]: '0px', [`borderTop${inner}Radius`]: '0px', [`borderBottom${inner}Radius`]: '0px', transform: 'scaleY(1)' }
+        ];
+        const glide = { duration: 360, delay: 90, easing: 'cubic-bezier(0.45, 0, 0.25, 1)', fill: 'forwards' };
+        const markOut = [{ opacity: 0, transform: 'scale(0.4)' }];
+        emptyMoves = [
+            emptyNo.animate(close('Right'), glide),
+            emptyYes.animate(close('Left'), glide),
+            parts[2].animate(markOut, { duration: 140, easing: 'ease-in', fill: 'forwards' }),
+            parts[3].animate(markOut, { duration: 140, easing: 'ease-in', fill: 'forwards' })
+        ];
+        emptyMoves[0].finished.then(() => { if (!emptyAsking) settle(); }).catch(() => {});
+        return;
+    }
+    emptyMoves.forEach((move) => move.cancel());
+    parts.forEach((part) => part.removeAttribute('style'));
+    emptyMoves.forEach((move) => move.cancel());
+    emptyAsk.classList.remove('is-leaving');
+    emptyAsk.classList.add('is-asking');
+    // each half starts as exactly half of the pill, its inner edge square and not there at all (no
+    // width, so nothing fades through gray and nothing notches the seam), and ends as a
+    // pill of its own: narrower by half the gap, its inner end rounded off, pinching softly on the way
+    // like a bubble parting in two
+    const whole = binnedEmpty.offsetWidth;
+    const from = whole / 2;
+    const to = (whole - EMPTY_GAP) / 2;
+    const end = `${emptyNo.offsetHeight / 2}px`;
+    const split = (inner) => [
+        { width: `${from}px`, [`border${inner}Width`]: '0px', [`borderTop${inner}Radius`]: '0px', [`borderBottom${inner}Radius`]: '0px', transform: 'scaleY(1)' },
+        { offset: 0.2, [`border${inner}Width`]: '1px' },
+        { offset: 0.35, transform: 'scaleY(0.92)' },
+        { width: `${to}px`, [`border${inner}Width`]: '1px', [`borderTop${inner}Radius`]: end, [`borderBottom${inner}Radius`]: end, transform: 'scaleY(1)' }
+    ];
+    // one soft pinch as they part and a slight overshoot as they settle — a single motion, no wobble
+    // (three alternating squashes in half a second read as a shake)
+    const timing = { duration: 480, easing: 'cubic-bezier(0.34, 1.3, 0.5, 1)', fill: 'both' };
+    // the marks come in on their own once the halves have parted: a small pop and a quarter turn
+    const markIn = [
+        { opacity: 0, transform: 'scale(0.3) rotate(-90deg)' },
+        { offset: 0.7, opacity: 1, transform: 'scale(1.15) rotate(8deg)' },
+        { opacity: 1, transform: 'scale(1) rotate(0deg)' }
+    ];
+    emptyMoves = [
+        emptyNo.animate(split('Right'), timing),
+        emptyYes.animate(split('Left'), timing),
+        emptyNo.querySelector('svg').animate(markIn, { duration: 300, delay: 200, easing: 'cubic-bezier(0.3, 0.9, 0.4, 1)', fill: 'both' }),
+        emptyYes.querySelector('svg').animate(markIn, { duration: 300, delay: 260, easing: 'cubic-bezier(0.3, 0.9, 0.4, 1)', fill: 'both' })
+    ];
+}
 const deckForm = document.getElementById('deckForm');
 const deckNameInput = document.getElementById('deckNameInput');
 
@@ -108,9 +195,10 @@ const ARRIVED_WITH = (() => {
 
 const sections = [
     { id: 'home', name: 'home' },
-    { id: 'cards', name: 'cards' },
-    { id: 'audio', name: 'audio' },
-    { id: 'chat', name: 'chat' }
+    { id: 'cards', name: 'card' },
+    { id: 'audio', name: 'clip' },
+    { id: 'chat', name: 'chat' },
+    { id: 'draw', name: 'draw' }
 ];
 
 let decks = [
@@ -306,9 +394,10 @@ function switchSection(id) {
 // one simple mark per page, drawn in the site's own hairline
 const PAGE_MARKS = {
     home: '<path d="M4 11.5 12 5l8 6.5M6.5 10v9.5h11V10"/>',
-    cards: '<rect x="4.5" y="7.5" width="11" height="12.5" rx="2"/><path d="M8.5 4.5H17a2 2 0 0 1 2 2V16"/>',
-    audio: '<path d="M5 10v4M8.5 7v10M12 4.5v15M15.5 8v8M19 10.5v3"/>',
-    chat: '<path d="M20 11.5c0 3.9-3.6 7-8 7-1.1 0-2.2-.2-3.1-.6L4.5 19.5l1.3-3.6C4.7 14.7 4 13.2 4 11.5c0-3.9 3.6-7 8-7s8 3.1 8 7z"/>'   // a round bubble, by request
+    cards: '<rect x="4.5" y="8" width="15" height="11" rx="1.5"/><path d="M7 5h10"/>',   // a card, one line behind it: as plain as the pencil
+    audio: '<path d="M8 9v6M12 5v14M16 9v6"/>',   // three bars, as plain as the pencil
+    chat: '<path d="M20 11.5c0 3.9-3.6 7-8 7-1.1 0-2.2-.2-3.1-.6L4.5 19.5l1.3-3.6C4.7 14.7 4 13.2 4 11.5c0-3.9 3.6-7 8-7s8 3.1 8 7z"/>',   // a round bubble, by request
+    draw: '<path d="M5 19l1-4L16 5l3 3L9 18z"/>'   // a pencil, one plain outline and nothing else, by request
 };
 const pageMark = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PAGE_MARKS[id] || ''}</svg>`;
 
@@ -454,6 +543,10 @@ function renderSections() {
     if (activeSectionId !== 'cards') closeSharePanel();
     audioPanel.hidden = activeSectionId !== 'audio';
     chatPanel.hidden = activeSectionId !== 'chat';
+    drawPanel.hidden = activeSectionId !== 'draw';
+    // the drawing app is only loaded the first time its page is shown: loaded while hidden it measures
+    // its canvas as nothing, and keeps that size
+    if (activeSectionId === 'draw' && !drawFrame.src) drawFrame.src = drawFrame.dataset.src;
     if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
     if (activeSectionId !== 'audio') openSensing(false);
@@ -1164,8 +1257,12 @@ function settleCardOrder() {
     const rows = [...deckCardList.querySelectorAll('.stage-card')];
     const order = rows.map((row) => deck.cards[rowIndex(row)]).filter(Boolean);
     if (order.length !== deck.cards.length) return;
+    // an open card keeps its words and closes: its box still points at the number it had before the move
+    const wasEditing = editingStageIndex !== null;
+    keepStageEdit();
     deck.cards = order;
     rows.forEach((row, index) => { row.dataset.cardIndex = index; });
+    if (wasEditing) { editingStageIndex = null; stageCloser = null; renderStage(); }
     renderDeckCards();
     renderCards();
     saveDecks();
@@ -1421,7 +1518,9 @@ function shuffle(items) {
     return shuffledItems;
 }
 
+let nextQuestionTimer = null;   // the beat after a right answer; a fresh round must not inherit it
 function startStudy() {
+    clearTimeout(nextQuestionTimer);
     recentQuestions = [];
     askedThisRound = new Set();
     roundTurns = 0;
@@ -1535,7 +1634,7 @@ function checkAnswer(selectedButton, selectedAnswer) {
         markAnswer(selectedButton, true);
         buttons.forEach((button) => { button.disabled = true; });
         // long enough for the stamp to land and the ring to go out
-        setTimeout(showNextQuestion, 620);
+        nextQuestionTimer = setTimeout(showNextQuestion, 620);
     } else {
         selectedButton.classList.add('incorrect');
         markAnswer(selectedButton, false);
@@ -1732,9 +1831,8 @@ async function loadBinned() {
 }
 
 async function emptyBin() {
+    askToEmpty(false, true);
     if (!deletedStack.length) return;
-    const sure = await askConfirm(`empty the bin? ${deletedStack.length} thing${deletedStack.length === 1 ? '' : 's'}, no undo`, binnedEmpty);
-    if (!sure) return;
     try {
         const db = await openBinDb();
         db.transaction(BIN_STORE, 'readwrite').objectStore(BIN_STORE).clear();
@@ -1802,7 +1900,7 @@ function renderBinned() {
     // nothing binned the window stays the same size and the box says so
     const top = document.createElement('li');
     top.className = 'binned-top';
-    top.append(binnedEmpty);
+    top.append(emptyAsk);
     const box = document.createElement('li');
     box.className = 'binned-box';
     binnedList.append(top, box);
@@ -1847,6 +1945,9 @@ function renderBinned() {
 }
 
 function restoreDeleted(undone) {
+    // a card whose deck has since gone goes into the deck that is open, rather than nowhere
+    const home = undone.type === 'card' ? decks.find((item) => item.id === undone.deckId) || activeDeck() : null;
+    if (undone.type === 'card' && !home) return;
     if (undone.id) forgetBinned(undone.id);
 
     if (undone.type === 'clip') {
@@ -1868,11 +1969,9 @@ function restoreDeleted(undone) {
         decks.splice(Math.min(undone.index, decks.length), 0, undone.item);
         activeDeckId = undone.item.id;
     } else {
-        const deck = decks.find((item) => item.id === undone.deckId);
-        if (deck) {
-            deck.cards.splice(undone.index, 0, undone.item);
-            activeDeckId = deck.id;
-        }
+        const deck = home;
+        deck.cards.splice(Math.min(undone.index, deck.cards.length), 0, undone.item);
+        activeDeckId = deck.id;
     }
     renderDecks();
     renderCards();
@@ -1971,7 +2070,9 @@ async function codeToDeck(code) {
 
 async function refreshShareCode() {
     const deck = activeDeck();
-    shareOut.value = await deckToCode(deck);
+    const code = await deckToCode(deck);
+    if (deck !== activeDeck()) return;       // a later refresh is for the deck now open
+    shareOut.value = code;
     shareOut.setAttribute('aria-label', `code for ${deck.name}`);
 }
 
@@ -2085,6 +2186,8 @@ cardForm.addEventListener('submit', (event) => {
         activeDeck().cards.push(card);
     } else {
         const deck = decks.find((item) => item.id === editingDeckId) || activeDeck();
+        const old = deck.cards[editingCardIndex];
+        if (old && old.stats) card.stats = old.stats;     // an edit keeps what practice knows about it
         deck.cards[editingCardIndex] = card;
     }
 
@@ -2819,6 +2922,8 @@ async function clearAllClips() {
     }
     clipCount = 0;
     refreshEmptyMessage();
+    rememberClipOrder();
+    paintWidgets();
 }
 
 clearClipsButton.addEventListener('click', clearAllClips);
@@ -2969,7 +3074,7 @@ function paintBundles(files, where) {
 
         pick.addEventListener('click', async () => {
             showScreen(homeScreen);
-            await bundleKind.take(file);
+            try { await bundleKind.take(file); } catch (error) { setRecordStatus(`could not read it — ${error.message}`, true); }
         });
         row.append(pick);
         bundleList.append(row);
@@ -3511,8 +3616,8 @@ function id3Tag(tags) {
 
 async function blobToMp3(blob, span, tags) {
     const context = new AudioContext();
-    const audio = await context.decodeAudioData(await blob.arrayBuffer());
-    context.close();
+    let audio;
+    try { audio = await context.decodeAudioData(await blob.arrayBuffer()); } finally { context.close(); }
 
     const from = span ? Math.max(0, Math.floor(span.start * audio.sampleRate)) : 0;
     const to = span && span.end ? Math.min(audio.length, Math.ceil(span.end * audio.sampleRate)) : audio.length;
@@ -4333,7 +4438,7 @@ loadZoom();
 recorderReady = true;
 const typeReady = document.fonts && document.fonts.load
     ? Promise.all(['1em Amiko', '1em "Bitcount Prop Double"', '700 1em "Bitcount Prop Double"',
-                   '1em VT323', '1em "Matrix Sans Print"'].map((face) => document.fonts.load(face)))
+                   '1em VT323', '1em "Pixelify Sans"'].map((face) => document.fonts.load(face)))
     : Promise.resolve();
 Promise.all([loadStoredClips(), typeReady]).catch(() => {}).finally(() => {
     window.requestAnimationFrame(() => {
@@ -4567,7 +4672,7 @@ const WIDGETS = [
         name: 'audio',
         fill(body, size) {
             const clips = recordingList.querySelectorAll('.recording-item').length;
-            const binned = binnedList.querySelectorAll('button').length;
+            const binned = deletedStack.length;
             body.innerHTML = '';
 
             if (size === 'small') {
@@ -4999,7 +5104,7 @@ function carryOn() {
 
 function endWidgetDrag() {
     if (!boardDrag) return;
-    const { card, entry, col, frame, shadow, fromX, fromY } = boardDrag;
+    const { card, entry, col, frame, shadow, fromX, fromY, wantX, wantY } = boardDrag;
     window.cancelAnimationFrame(frame);
     boardDrag = null;
 
@@ -5009,7 +5114,8 @@ function endWidgetDrag() {
     document.documentElement.classList.remove('sorting-rows', 'sorting-grab');
 
     const from = card.getBoundingClientRect();
-    const still = Math.hypot(from.left - fromX, from.top - fromY) < 6;   // pressed, not carried
+    // pressed, not carried — judged by where the pointer took it, not where the easing has got to
+    const still = Math.hypot(wantX - fromX, wantY - fromY) < 6;
     hideGhost();
     card.classList.remove('is-dragging');
     ['width', 'height', 'left', 'top'].forEach((name) => card.style.removeProperty(name));
@@ -5107,12 +5213,13 @@ document.getElementById('binnedHead').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.currentTarget.click(); }
 });
 document.getElementById('binnedHead').addEventListener('click', (event) => {
-    if (event.target.closest('#binnedEmpty')) return;
+    if (event.target.closest('.empty-ask')) return;
     event.stopPropagation();
     railBinned.classList.toggle('is-open');
+    if (!railBinned.classList.contains('is-open')) askToEmpty(false);
 });
 document.addEventListener('click', (event) => {
-    if (!event.target.closest || !event.target.closest('#railBinned')) railBinned.classList.remove('is-open');
+    if (!event.target.closest || !event.target.closest('#railBinned')) { railBinned.classList.remove('is-open'); askToEmpty(false); }
 });
 
 helpToggle.addEventListener('click', (event) => {
@@ -5134,7 +5241,8 @@ const PAGE_ROOTS = {
     home: () => [document.getElementById('homePanel')],
     cards: () => [document.getElementById('homeBody'), document.getElementById('makerScreen'), document.getElementById('studyScreen')],
     audio: () => [document.getElementById('audioPanel')],
-    chat: () => [document.getElementById('chatPanel')]
+    chat: () => [document.getElementById('chatPanel')],
+    draw: () => [document.getElementById('drawPanel')]
 };
 function pageWords(id) {
     const found = [];
@@ -5261,8 +5369,10 @@ function searchPages() {
 pageSearchField.addEventListener('input', searchPages);
 // the run on home is a frame, and a frame only hears keys once it has been clicked — so space and up
 // are handed to it from here, unless something else on the page wants them
-document.addEventListener('keydown', (event) => {
-    if (event.code !== 'Space' && event.code !== 'ArrowUp') return;
+const isJumpKey = (event) => event.code === 'Space' || event.code === 'ArrowUp' || event.key === ' '
+    || event.key === 'Spacebar' || event.key === 'ArrowUp' || event.keyCode === 32 || event.keyCode === 38;
+window.addEventListener('keydown', (event) => {
+    if (!isJumpKey(event) || event.isComposing) return;
     if (activeSectionId !== 'home' || isModalOpen()) return;
     const at = document.activeElement;
     // only a box you type in keeps space for itself — a tab or button still holding focus from the
@@ -5271,10 +5381,11 @@ document.addEventListener('keydown', (event) => {
     const run = document.querySelector('.home-run');
     if (!run || !run.contentWindow) return;
     event.preventDefault();
-    try {
-        run.contentWindow.dispatchEvent(new KeyboardEvent('keydown', { code: event.code, key: event.key, repeat: event.repeat, bubbles: true }));
-    } catch (error) { /* not loaded yet */ }
-});
+    if (event.repeat) return;                    // a held key is one jump
+    // the frame's own jump is called outright: a made-up key event depended on it reading the key
+    // the same way, and it didn't always
+    try { run.contentWindow.dinoJump(); } catch (error) { /* not loaded yet */ }
+}, true);
 // a result picked on the front door arrives as ?spot=…: this page is already the one it named, so
 // the word on it is outlined for a moment, the same as a result picked here
 (() => {
@@ -5351,8 +5462,10 @@ keyEdit.addEventListener('click', (event) => {
 startClock();
 binnedEmpty.addEventListener('click', (event) => {
     event.stopPropagation();
-    emptyBin();
+    if (deletedStack.length) askToEmpty(true);
 });
+emptyYes.addEventListener('click', (event) => { event.stopPropagation(); emptyBin(); });
+emptyNo.addEventListener('click', (event) => { event.stopPropagation(); askToEmpty(false); });
 
 loadBinned();
 
@@ -5752,7 +5865,7 @@ async function readyLocal(say) {
                 localHeard = fetched && Math.round(part * 100) < 100 ? { mb: Number(fetched[1]), part } : null;
                 if (localSay) localSay(localHeard);
             }
-        });
+        }).catch((error) => { worker.terminate(); throw error; });   // a failed load lets its worker go
         localEngine = engine;
         localHeard = null;
         return engine;
@@ -7015,6 +7128,7 @@ let chatStream = null;
 
 /* whose thread was open last time */
 function whoWasOpen() {
+    if (chatWith && chatFriends.includes(chatWith)) return chatWith;   // this account's own last thread
     const held = window.localStorage.getItem(CHAT_WITH);
     if (held && chatFriends.includes(held)) return held;
     return chatFriends[0] || null;
@@ -7281,7 +7395,7 @@ async function openWhatIsWaiting() {
         } catch (error) {
         }
     }
-    chatSealed = stillWaiting;
+    chatSealed = [...stillWaiting, ...chatSealed];   // keep anything that came in while these were opening
     if (opened) keepKnown();
     if (arrived) paintPeople();
     return opened;
@@ -7466,12 +7580,13 @@ async function addSomeone(typed, complain) {
     const called = typed.trim();
     if (!called) return false;
     if (!chatMe) { openChatDoor(); return false; }
-    const key = called.toLowerCase();
-    if (whoIs(key) === chatMe.name.toLowerCase()) { shake(roomNameField); return false; }
+    let key = whoIs(called.toLowerCase());      // an old name lands on the one it moved to
+    if (key === chatMe.name.toLowerCase()) { shake(roomNameField); return false; }
     if (chatFriends.includes(key)) { openWith(key); return false; }
 
-    if (!chatPeople[key]) await catchUp();
+    if (!chatPeople[key]) { await catchUp(); key = whoIs(called.toLowerCase()); }
     if (!chatPeople[key]) { shake(roomNameField); return false; }
+    if (chatFriends.includes(key)) { openWith(key); return false; }
 
     chatFriends = [...chatFriends, key];
     keepKnown();
@@ -7581,13 +7696,15 @@ talkForm.addEventListener('submit', async (event) => {
     const words = talkSay.value.trim();
     if ((!words && !traying.length) || !chatMe || !chatWith) return;
     if (words && !fitsBoard(words)) { shake(talkForm); return; }
+    const to = chatWith;     // switching thread mid-send must not carry the rest to someone else
     // the files first, each one marked on its own chip; any that fail stay in the tray to try again
     const going = traying.filter((one) => !one.chip.classList.contains('is-sending'));
     for (const held of going) {
+        if (chatWith !== to || !traying.includes(held)) break;
         if (held.file.size > CHAT_FILE_MOST) { shake(held.chip); continue; }
         held.chip.classList.remove('is-failed');
         held.chip.classList.add('is-sending');
-        const sent = await sendFile(chatWith, held.file);
+        const sent = await sendFile(to, held.file);
         held.chip.classList.remove('is-sending');
         if (sent) {
             traying = traying.filter((one) => one !== held);
@@ -7600,7 +7717,7 @@ talkForm.addEventListener('submit', async (event) => {
     paintTray();
     if (words) {
         talkSay.value = '';
-        await sendSealed(chatWith, words.slice(0, TALK_MOST));
+        await sendSealed(to, words.slice(0, TALK_MOST));
         paintLeft();
     }
 });
@@ -7623,9 +7740,10 @@ async function sealedPost(other, words) {
     return post;
 }
 
-async function sendSealed(other, words, file) {
+async function sendSealed(other, words, file, blob) {
     const post = await sealedPost(other, file ? CHAT_NOTE + JSON.stringify({ file }) : words);
     if (!post) return null;
+    if (blob) filesOpen.set(post.id, blob);    // so drawing it doesn't fetch back what was just sent
     chatDms[other] = [...(chatDms[other] || []), { id: post.id, by: chatMe.name, said: file ? '' : words, at: post.at, ...(file ? { file } : {}) }]
         .slice(-TALK_KEEP);
     keepKnown();
@@ -7704,7 +7822,7 @@ async function sendFile(other, file) {
         const answer = await put.json();
         if (!answer.attachment || !answer.attachment.url) throw new Error('no file');
         const meta = { url: answer.attachment.url, iv: toB64(iv), name: file.name.slice(0, 120), type: file.type || '', size: file.size };
-        const post = await sendSealed(other, '', meta);
+        const post = await sendSealed(other, '', meta, file);
         if (!post) return false;
         filesOpen.set(post.id, file);
         keepFile(post.id, file);
@@ -7729,7 +7847,7 @@ function trayFile(file) {
     look.className = 'tray-look';
     look.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4"/></svg>';
     if ((file.type || '').startsWith('image/')) {
-        ditherPicture(file, 120).then((pic) => {
+        smallPicture(file, 240).then((pic) => {
             if (!pic) return;
             look.innerHTML = '';
             const img = document.createElement('img');
@@ -7807,8 +7925,8 @@ function ditherCanvas(canvas) {
     pen.putImageData(data, 0, 0);
     return canvas.toDataURL('image/png');
 }
-// a picture in a chat line: no wider than it needs, on white, dithered; null if it isn't a picture
-async function ditherPicture(blob, widest) {
+// a picture in a chat line: a small copy in its own colours, no wider than it needs, on white; null if it isn't a picture
+async function smallPicture(blob, widest) {
     let img;
     try { img = await openPicture(blob); } catch (error) { return null; }
     const scale = Math.min(1, widest / img.width);
@@ -7819,7 +7937,7 @@ async function ditherPicture(blob, widest) {
     pen.fillStyle = '#fff';
     pen.fillRect(0, 0, canvas.width, canvas.height);
     pen.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return ditherCanvas(canvas);
+    return canvas.toDataURL('image/jpeg', 0.86);
 }
 // the one way anything leaves the page as a download. the address is let go of well after, since a
 // big file (a zip of every clip) can still be being read out when a short wait is up
@@ -7850,7 +7968,7 @@ function fileBox(other, line) {
     if ((line.file.type || '').startsWith('image/')) {
         fileOf(other, line).then(async (blob) => {
             if (!blob) { gone(); return; }
-            const pic = await ditherPicture(blob, 480);
+            const pic = await smallPicture(blob, 960);
             if (!pic) return;
             const img = document.createElement('img');
             img.src = pic;
@@ -8026,6 +8144,12 @@ function whatIsSaid() {
 }
 
 function paintTalk() {
+    // a line being edited is left alone; closing the edit draws the thread again anyway
+    const editing = document.activeElement;
+    if (editing && editing.classList.contains('said-edit') && talkLog.contains(editing)) return;
+    // where the reader was, read before the rows go — afterwards the log is short and always 'at the bottom'
+    const stuck = talkLog.scrollHeight - talkLog.scrollTop - talkLog.clientHeight < 60;
+    const was = talkLog.scrollTop;
     talkLog.querySelectorAll('.said-row, .said-day').forEach((row) => row.remove());
     const said = whatIsSaid();
     // like discord: an open thread begins with who it is with
@@ -8036,8 +8160,6 @@ function paintTalk() {
         document.getElementById('talkStartSay').textContent = `this is the start of your messages with @${them ? them.name : chatWith}. only the two of you can read them.`;
     }
     if (!said.length) return;
-
-    const stuck = talkLog.scrollHeight - talkLog.scrollTop - talkLog.clientHeight < 60;
 
     let lastBy = '';
     let lastAt = 0;
@@ -8096,7 +8218,7 @@ function paintTalk() {
         lastAt = one.at || 0;
     });
 
-    if (stuck) talkLog.scrollTop = talkLog.scrollHeight;
+    talkLog.scrollTop = stuck ? talkLog.scrollHeight : was;
 }
 
 function saidAt(ms) {

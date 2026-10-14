@@ -71,11 +71,10 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" href="matrix-sans-print.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;family=Pixelify+Sans:wght@400&amp;display=swap">
     <!-- the site's own pointer from the very first paint, before style.css has arrived -->
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
-    <link rel="stylesheet" href="style.css?v=d01b34def9">
+    <link rel="stylesheet" href="style.css?v=a49bec14f6">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -217,6 +216,8 @@
                     <p class="help-note" data-section="audio" hidden>the only one who uses this is ME so no information is required</p>
 
                     <p class="help-note" data-section="chat" hidden>this is a chat. dont share passwords or personal info for security is genuine ass, please lock in</p>
+
+                    <p class="help-note" data-section="draw" hidden>draw on the canvas, space and drag to move around, ctrl/cmd + and - to zoom, shift to stamp, hold t for fish</p>
                     </div></div>
                 </section>
 
@@ -229,7 +230,7 @@
                     <section class="screen" id="homeScreen" data-title="home" aria-label="home">
                         <section class="home-panel" id="homePanel" hidden>
                             <!-- the front door's dino run, first thing on home -->
-                            <iframe class="home-run" src="index.html?embed&v=21fc5ff7bd" title="dino run"></iframe>
+                            <iframe class="home-run" src="index.html?embed&v=8e11a8a637" title="dino run"></iframe>
 
                             <!-- the leftmost tile is fixed: the time, and the board's settings behind a press -->
                             <div class="board-row">
@@ -510,6 +511,11 @@
                                 </section>
                             </div>
                         </section>
+
+                        <!-- the drawing app, framed so its keys (space to pan, ctrl+z, wasd) stay its own -->
+                        <section class="draw-panel" id="drawPanel" aria-label="draw" hidden>
+                            <iframe class="draw-frame" id="drawFrame" data-src="drawing/index.html?v=400fbe9b03" title="draw"></iframe>
+                        </section>
                     </section>
 
                     <div class="modal-veil" id="modalVeil" hidden>
@@ -731,6 +737,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=dc0584e328"></script>
+    <script src="script.js?v=c9c6a53cd3"></script>
 </body>
 </html>

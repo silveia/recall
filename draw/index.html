@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="../">
+    <!-- made from app.html by .githooks/pages.sh. edit app.html, not this -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- one layout everywhere: a screen narrower than 1280px gets the same page, shrunk to fit.
+         A phone is told to draw it 800 wide, which the browser fits for us; a narrow or zoomed-in
+         window on a computer is shrunk with css zoom, and everything the script measures with is
+         divided back out so the script still works in the page's own pixels -->
+    <script>
+        (function () {
+            var FLOOR = 1280;   // narrower than this, the whole page is drawn at 1280 and shrunk — never squeezed
+            var root = document.documentElement;
+            if (screen.width < FLOOR) {
+                document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=' + FLOOR);
+            }
+            function nativeGetter(object, name) {
+                for (var o = object; o; o = Object.getPrototypeOf(o)) {
+                    var d = Object.getOwnPropertyDescriptor(o, name);
+                    if (d && d.get) return d.get;
+                }
+                return null;
+            }
+            var wGet = nativeGetter(window, 'innerWidth');
+            var hGet = nativeGetter(window, 'innerHeight');
+            var realW = function () { return wGet ? wGet.call(window) : root.clientWidth; };
+            var realH = function () { return hGet ? hGet.call(window) : root.clientHeight; };
+            var z = 1;
+            function fit() {
+                z = Math.min(1, realW() / FLOOR);
+                root.style.zoom = z === 1 ? '' : String(z);
+                root.style.setProperty('--vw', (realW() / z / 100) + 'px');
+                root.style.setProperty('--vh', (realH() / z / 100) + 'px');
+            }
+            fit();
+            window.addEventListener('resize', fit);
+            window.pageZoom = function () { return z; };
+
+            // the browser hands back what is on screen; the page writes in its own pixels
+            var rect = Element.prototype.getBoundingClientRect;
+            Element.prototype.getBoundingClientRect = function () {
+                var r = rect.call(this);
+                return z === 1 ? r : new DOMRect(r.x / z, r.y / z, r.width / z, r.height / z);
+            };
+            ['clientX', 'clientY'].forEach(function (name) {
+                var get = nativeGetter(MouseEvent.prototype, name);
+                if (!get) return;
+                Object.defineProperty(MouseEvent.prototype, name, {
+                    configurable: true,
+                    get: function () { return get.call(this) / z; }
+                });
+            });
+            try {
+                Object.defineProperty(window, 'innerWidth', { configurable: true, get: function () { return realW() / z; } });
+                Object.defineProperty(window, 'innerHeight', { configurable: true, get: function () { return realH() / z; } });
+            } catch (error) { /* left as it is */ }
+            var at = Document.prototype.elementFromPoint;
+            Document.prototype.elementFromPoint = function (x, y) { return at.call(this, x * z, y * z); };
+        }());
+    </script>
+    <!-- the exportify frame may load exportify and nothing else -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'self' https://exportify.net;">
+    <title>:p</title>
+    <!-- the lights are set before anything is drawn -->
+    <script>
+        try {
+            if (localStorage.getItem('page-inverted') === 'yes') document.documentElement.classList.add('inverted');
+        } catch (error) { /* no storage; the light is the default anyway */ }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;family=Pixelify+Sans:wght@400&amp;display=swap">
+    <!-- the site's own pointer from the very first paint, before style.css has arrived -->
+    <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
+    <link rel="stylesheet" href="style.css?v=a49bec14f6">
+</head>
+<body>
+    <!-- set here, not in css, so a page whose script never runs is never left hidden -->
+    <script>
+        document.documentElement.classList.add('booting');
+        setTimeout(function () { document.documentElement.classList.remove('booting'); }, 2500);
+    </script>
+    <div class="booting-mark" aria-hidden="true"><svg class="spin-face" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10.6" stroke-width="1" vector-effect="non-scaling-stroke"/><path d="M6.53 13.73A5.75 5.75 0 0 0 17.47 13.73" stroke-width="1.7" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="8.85" cy="8.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.15" cy="8.6" r="1.15" fill="currentColor" stroke="none"/></svg></div>
+
+    <div class="context-menu" id="contextMenu" hidden></div>
+
+    <div class="audio-stage" id="sensePop">
+        <div class="preview-wrap" id="previewWrap" hidden>
+            <div class="preview-stage" id="previewStage">
+                <video id="previewVideo" muted playsinline></video>
+                <div class="sense-box" id="senseBox"></div>
+            </div>
+        </div>
+
+        <div class="sense-controls" id="senseControls" hidden>
+            <div class="panel-handle" aria-hidden="true"></div>
+            <label>zoom <input type="range" id="senseZoom" min="100" max="500" step="1" value="100"><output id="senseZoomOut"></output></label>
+            <label>from left <input type="range" id="senseLeft" min="0" max="95" value="4"><output id="senseLeftOut"></output></label>
+            <label>from bottom <input type="range" id="senseBottom" min="0" max="95" value="4"><output id="senseBottomOut"></output></label>
+            <label>width <input type="range" id="senseWidth" min="2" max="98" value="25"><output id="senseWidthOut"></output></label>
+            <label>height <input type="range" id="senseHeight" min="2" max="98" value="4"><output id="senseHeightOut"></output></label>
+            <label>sensitivity <input type="range" id="senseThreshold" min="1" max="40" value="1"><output id="senseThresholdOut"></output></label>
+            <button class="text-button" id="senseReset" type="button">reset to default</button>
+        </div>
+
+        <p class="sense-readout" id="senseReadout" hidden>change 0.0</p>
+    </div>
+
+    <div class="pop-panel pop-looks" id="lookPicks" hidden>
+        <div class="look-list" id="lookList"></div>
+    </div>
+
+    <div class="pop-panel pop-picks" id="optionsPanel" hidden>
+        <p class="pop-say">select other answer options for this question</p>
+
+        <div class="pick-list" id="optionsPicks"></div>
+    </div>
+
+    <div class="pop-panel pop-picks" id="widgetPicks" hidden>
+        <div class="pick-list" id="widgetPickList"></div>
+    </div>
+
+    <div class="pop-panel account-pop" id="accountPop" role="dialog" aria-label="account" hidden>
+        <button class="account-face" id="accFace" type="button" aria-label="account settings" title="account settings">
+            <span class="face-pic" id="accFacePic"></span>
+            <span class="account-face-edit" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>
+            </span>
+        </button>
+        <input id="accFaceFile" type="file" accept="image/*" hidden>
+        <p class="account-name" id="accName"></p>
+        <p class="account-handle" id="accHandle"></p>
+        <ul class="acc-list" id="accList" aria-label="accounts on this browser"></ul>
+        <button class="basic-button acc-add" id="accAdd" type="button">add account</button>
+        <div class="account-leave-wrap">
+            <button class="basic-button account-leave" id="chatSignOut" type="button">log out</button>
+            <div class="leave-split" id="leaveSplit" hidden>
+                <button class="basic-button" id="leaveYes" type="button">confirm</button>
+                <button class="basic-button leave-no" id="leaveNo" type="button">cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="confirm-pop" id="confirmChip" role="group" aria-label="are you sure" hidden>
+        <span id="confirmChipText"></span>
+        <div class="confirm-answers">
+            <button class="chip-button" id="confirmChipYes" type="button">yes</button>
+            <button class="chip-button" id="confirmChipNo" type="button">no</button>
+        </div>
+    </div>
+
+    <div class="app-shell">
+        <div class="say-what" id="sayWhat" aria-hidden="true"></div>
+
+        <!-- the site's name, in the top-left corner over the first bump: it goes home -->
+        <a class="site-name" id="siteName" href="home/" title="home">hi</a>
+
+        <!-- the page marks ride over the bar and its bumps, so each circle shows whole in its bump -->
+        <nav class="section-tabs page-marks" id="sectionTabs" aria-label="sections"></nav>
+
+        <aside class="rail rail-left" aria-label="menu">
+        </aside>
+
+        <div class="app-right">
+            <!-- the bars swapped round: the pages down the left, the clock, the function note, storage
+                 and the bin along the top -->
+            <header class="topbar">
+                <!-- one search over every page: a page's name, or any word on it. in the strip, beside hi -->
+                <div class="page-search" id="pageSearch">
+                    <svg class="page-search-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
+                    <input id="pageSearchField" type="search" placeholder="search page..." aria-label="search the pages" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    <button class="page-search-go" id="pageSearchGo" type="button" aria-label="go" title="go">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 6l6 6-6 6"/></svg>
+                    </button>
+                    <ol class="page-found" id="pageFound" hidden></ol>
+                </div>
+
+                <section class="rail-clock" aria-label="time">
+                    <div class="clock-top">
+                        <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="dark" title="dark">
+                            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                <path fill="currentColor"
+                                      d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
+                            </svg>
+                        </button>
+                        <span class="clock-suffix" id="clockSuffix"></span>
+                    </div>
+                    <p class="clock-time" id="clockTime">--:--</p>
+                    <p class="clock-date" id="clockDate"></p>
+                </section>
+
+                <section class="rail-binned" id="railBinned" aria-label="recently binned">
+                    <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
+                    <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
+                        <span class="binned-count" id="binnedCount"></span>
+                    </div>
+                    <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+                    <ol class="binned-list" id="binnedList"></ol>
+                </section>
+
+                <!-- one paragraph per section; keep it current -->
+                <section class="help-box" aria-label="?">
+                    <button class="help-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody" aria-label="help" title="help">
+                        <span class="help-spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.6 7.94a3.5 3.5 0 0 1 6.8 1.2c0 2.3-3.4 3-3.4 5.2"/><circle cx="12" cy="17.94" r="0.45" fill="currentColor"/></svg></span>
+                    </button>
+
+                    <div class="help-body" id="helpBody"><div class="help-body-inner">
+
+                    <p class="help-note" data-section="home" hidden>explore around mu website, option/alt to see button function</p>
+
+                    <p class="help-note" data-section="cards" hidden>create flashcards and practice, explore around w features and enjoy studying</p>
+
+                    <p class="help-note" data-section="audio" hidden>the only one who uses this is ME so no information is required</p>
+
+                    <p class="help-note" data-section="chat" hidden>this is a chat. dont share passwords or personal info for security is genuine ass, please lock in</p>
+
+                    <p class="help-note" data-section="draw" hidden>draw on the canvas, space and drag to move around, ctrl/cmd + and - to zoom, shift to stamp, hold t for fish</p>
+                    </div></div>
+                </section>
+
+
+
+            </header>
+
+            <div class="app-body">
+                <main class="app-content">
+                    <section class="screen" id="homeScreen" data-title="home" aria-label="home">
+                        <section class="home-panel" id="homePanel" hidden>
+                            <!-- the front door's dino run, first thing on home -->
+                            <iframe class="home-run" src="index.html?embed&v=8e11a8a637" title="dino run"></iframe>
+
+                            <!-- the leftmost tile is fixed: the time, and the board's settings behind a press -->
+                            <div class="board-row">
+                                <div class="home-key" id="homeKey">
+                                    <div class="widget-head"><h3>time</h3></div>
+                                    <div class="widget-body" id="keyBody"></div>
+                                    <button class="key-edit" id="keyEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+                                    </button>
+                                </div>
+                                <div class="widget-list" id="widgetList"></div>
+                            </div>
+                        </section>
+
+                        <div class="home-body" id="homeBody">
+                            <div class="deck-side">
+                                <p class="deck-label">we love studying !!!</p>
+                                <div class="deck-bar">
+                                    <form id="deckForm" class="deck-form" novalidate>
+                                        <input id="deckNameInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="new deck">
+                                        <button class="square-button is-solid" type="submit" aria-label="create this deck" title="create this deck">
+                                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M5 12.5l4.5 4.5L19 7.5"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                    <div class="share-picker">
+                                        <button class="square-button" id="shareToggle" type="button" aria-expanded="false" aria-controls="sharePanel" aria-label="share this deck" title="share this deck">
+                                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <rect x="9" y="9" width="11" height="11" rx="2"/>
+                                                <path d="M5 15V5a2 2 0 0 1 2-2h8"/>
+                                            </svg>
+                                        </button>
+
+                                        <div class="share-panel" id="sharePanel" hidden>
+                                            <label for="shareOut">this code</label>
+                                            <div class="share-row">
+                                                <textarea id="shareOut" rows="2" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                                                <button class="basic-button" id="copyCode" type="button">copy</button>
+                                            </div>
+
+                                            <label for="shareIn">paste code</label>
+                                            <div class="share-row">
+                                                <textarea id="shareIn" rows="2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="rc2...."></textarea>
+                                                <button class="basic-button" id="loadCode" type="button">load</button>
+                                            </div>
+
+                                            <p class="share-note" id="shareNote" aria-live="polite"></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="deck-list-slot" id="deckListSlot"></div>
+                            </div>
+
+                            <div class="pane-split" id="paneSplit" role="separator"
+                                 aria-orientation="vertical" aria-label="resize deck list"
+                                 tabindex="0"></div>
+
+                            <div class="card-side">
+                                <section class="quick-panel" aria-label="card actions">
+                                    <button class="quick-action primary" id="createCardButton" type="button">
+                                        <span class="action-text"><strong>create</strong><small>ʕ•ᴥ•ʔ</small></span>
+                                        <b>&rarr;</b>
+                                    </button>
+                                    <button class="quick-action" id="randomStudyButton" type="button">
+                                        <span class="action-text"><strong>practice</strong><small>ʕ-ᴥ-ʔ</small></span>
+                                        <b>&rarr;</b>
+                                    </button>
+                                </section>
+
+                                <div class="deck-stage">
+                                    <div class="stage-head panel-head">
+                                        <h2>flashcards</h2>
+                                    </div>
+                                    <ol id="deckCardList"></ol>
+                                </div>
+
+                                <div class="pane-split is-across" id="notesSplit" role="separator"
+                                     aria-orientation="horizontal" tabindex="0"
+                                     aria-label="resize notes tool"></div>
+                                <div class="notes-home" id="notesHome">
+                                    <section class="notes-panel" id="notesPanel" aria-label="notes to cards">
+                                        <div class="notes-head panel-head">
+                                            <h2 class="notes-title">ai card maker</h2>
+                                            <button class="notes-wide" id="notesWide" type="button" aria-label="open it wide" title="open it wide">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 H4 V9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                            </button>
+                                        </div>
+
+                                        <div class="notes-box">
+                                            <textarea id="notesInput" class="notes-input" rows="8" spellcheck="false"
+                                                placeholder="paste your notes here, or drop in a photo of them"></textarea>
+                                            <input id="notesFile" class="notes-file" type="file" accept="image/*,application/pdf" multiple hidden>
+                                            <button class="notes-clip" id="notesAttach" type="button" aria-label="add a photo or a pdf" title="add a photo or a pdf">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/>
+                                                    <circle cx="8.5" cy="10" r="1.6" fill="currentColor"/>
+                                                    <path d="M4 17 L9.5 12 L13 15 L16 12.5 L20 16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <div class="notes-bits" id="notesBits"></div>
+
+                                        <button class="notes-button is-solid is-go" id="notesGo" type="button">make flashcards</button>
+                                        <!-- the same pill as make flashcards, white, straight under it -->
+                                        <button class="notes-key-toggle" id="notesKeyToggle" type="button">sharper reading</button>
+                                        <button class="notes-plain" id="notesRead" type="button">read the list myself</button>
+
+                                        <p class="notes-note" id="notesNote" aria-live="polite"></p>
+
+                                        <ol class="notes-found" id="notesFound"></ol>
+
+                                        <div class="notes-actions" id="notesKeepRow" hidden>
+                                            <button class="notes-button is-solid" id="notesKeep" type="button">keep them</button>
+                                            <button class="notes-button" id="notesKeepNew" type="button">as a new deck</button>
+                                        </div>
+
+                                    </section>
+                                </div>
+                            </div>
+                        </div>
+
+                        <section class="recorder-panel" id="audioPanel" hidden>
+                            <div class="audio-bar">
+                                <!-- the whole long box is the record button; while recording it is the meter, and a press stops -->
+                                <button class="bar-meter" id="recordToggle" type="button" aria-label="record">
+                                    <span class="record-status" id="recordStatus" aria-live="polite"></span>
+                                    <span class="meter-idle">record</span>
+                                    <span class="live-meter">
+                                        <span class="clip-pulse"></span>
+                                        <canvas id="levelCanvas" width="600" height="10"></canvas>
+                                        <span class="clip-label" id="liveLabel"></span>
+                                        <span class="switch-count" id="switchCount">0 switches</span>
+                                        <span class="live-stop">stop</span>
+                                    </span>
+                                </button>
+
+                                <button class="square-button" id="senseToggle" type="button" aria-expanded="false" aria-label="sensing settings" title="sensing settings">
+                                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="3.2"/>
+                                        <path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2L5.6 5.6"/>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div class="audio-body">
+                                <div class="clip-column">
+                                    <div class="clip-folder">
+                                        <div class="clip-folder-side">
+                                            <button class="square-button" id="packClips" type="button" aria-label="clips out to one file" title="clips out to one file">
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M12 3.6v10.2"/>
+                                                    <path d="M8.4 7.2 12 3.6l3.6 3.6"/>
+                                                    <path d="M7.4 10.6H5.2v9.8h13.6v-9.8h-2.2"/>
+                                                </svg>
+                                            </button>
+                                            <button class="square-button" id="unpackClips" type="button" aria-label="clips in from a file" title="clips in from a file">
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M3.6 19.4V5.8h5.3l1.9 2.3h9.6v11.3z"/>
+                                                </svg>
+                                            </button>
+                                            <input id="unpackInput" type="file" hidden>
+                                        </div>
+
+                                        <input id="folderNameBar" type="text" placeholder="folder name" aria-label="folder name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+                                        <div class="clip-folder-side is-right">
+                                            <button class="square-button" id="downloadAll" type="button" aria-label="every clip to a folder" title="every clip to a folder">
+                                                <svg class="icon-download" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M12 3.5v10"/>
+                                                    <path d="M8.5 10.5l3.5 3.5 3.5-3.5"/>
+                                                    <path d="M4.5 16v3.5h15V16"/>
+                                                </svg>
+                                                <svg class="icon-pause" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+                                                    <path d="M9.5 5.5v13"/>
+                                                    <path d="M14.5 5.5v13"/>
+                                                </svg>
+                                            </button>
+                                            <button class="square-button" id="clearClips" type="button" aria-label="bin every clip" title="bin every clip">
+                                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                    <path d="M4.5 6.5h15"/>
+                                                    <path d="M10 6.5V4.5h4v2"/>
+                                                    <path d="M6.8 6.5l.9 13h8.6l.9-13"/>
+                                                    <path d="M10.4 9.8v6.6M13.6 9.8v6.6"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <ol id="recordingList"></ol>
+                                </div>
+
+                                <div class="pane-split clip-split" id="clipSplit" role="separator" aria-orientation="vertical" tabindex="0" aria-label="resize the box beside the clips"></div>
+                                <aside class="clip-side" id="clipSide">
+                                    <div class="panel-head"><h2>playlist</h2></div>
+                                    <input id="scratchFile" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
+                                    <button class="basic-button is-plain scratch-bring" id="scratchOpen" type="button">exportify</button>
+
+                                    <div class="clip-side-body"><ol class="scratch-list" id="scratchList"></ol></div>
+                                    <p class="scratch-note" id="scratchNote" aria-live="polite"></p>
+                                    <div class="scratch-acts">
+                                        <button class="basic-button scratch-all" id="scratchCopyAll" type="button" hidden>copy all</button>
+                                        <button class="basic-button scratch-all scratch-match" id="scratchMatch" type="button" hidden title="line the clips up by length">match clips</button>
+                                    </div>
+                                </aside>
+                            </div>
+                        </section>
+
+
+                        <section class="chat-panel" id="chatPanel" hidden>
+                            <p class="chat-who" id="chatWho" hidden>not signed in</p>
+                            <!-- signed out, the chat is a log-in screen; the form itself is moved in here from the window -->
+                            <div class="chat-login" id="chatLogin" hidden>
+                                <div class="login-card">
+                                    <span class="login-face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>
+                                    <h2 class="login-title" id="loginTitle">welcome back</h2>
+                                    <p class="login-say" id="loginSay">log in to see your chats</p>
+                                    <div class="login-slot" id="loginSlot"></div>
+                                </div>
+                            </div>
+                            <div class="chat-body" id="chatBody">
+                                <!-- the find-or-add field is a box of its own over the list, as the new-deck field is on cards -->
+                                <div class="room-column" id="roomSide">
+                                    <form class="room-make" id="roomMake" novalidate>
+                                        <input id="roomName" type="text" aria-label="add someone by name" placeholder="type a friends username">
+                                        <button class="square-button is-solid" type="submit" aria-label="add them" title="add them"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg></button>
+                                    </form>
+                                    <aside class="room-side">
+                                        <div class="room-scroll"><ol class="room-list" id="roomList"></ol></div>
+                                    </aside>
+                                </div>
+
+                                <div class="pane-split chat-split" id="chatSplit" role="separator"
+                                     aria-orientation="vertical" tabindex="0"
+                                     aria-label="resize the people list"></div>
+
+                                <section class="talk-side" id="talkSide">
+                                    <div class="talk-head">
+                                        <span class="talk-face face-pic" id="talkFace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>
+                                        <span class="talk-names">
+                                            <h2 id="talkName"></h2>
+                                            <small id="talkHandle"></small>
+                                        </span>
+                                        <button class="chat-me" id="chatMeButton" type="button" aria-label="your account" title="your account" aria-expanded="false">
+                                            <span class="face-pic" id="chatMePic"></span>
+                                        </button>
+                                    </div>
+
+                                    <div class="talk-log" id="talkLog">
+                                        <!-- no thread open: a face, one line, your tally, and the way back to the last chat -->
+                                        <div class="talk-welcome" id="talkWelcome">
+                                            <p class="welcome-face" aria-hidden="true">^_^</p>
+                                            <p class="welcome-say">start talking to someone on the left</p>
+                                            <p class="welcome-tally" id="welcomeTally"></p>
+                                            <button class="basic-button welcome-quiet" id="welcomeBack" type="button" hidden></button>
+                                        </div>
+                                        <div class="talk-start" id="talkStart" hidden>
+                                            <span class="talk-start-face face-pic" id="talkStartFace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>
+                                            <h3 id="talkStartName"></h3>
+                                            <p id="talkStartSay"></p>
+                                        </div>
+                                    </div>
+
+                                    <!-- files waiting to go: they sit just over the message box and go with the next send -->
+                                    <ul class="talk-tray" id="talkTray" hidden></ul>
+                                    <form class="talk-bar" id="talkForm" novalidate>
+                                        <button class="talk-attach" id="talkAttach" type="button" aria-label="send a file" title="send a file">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>
+                                        </button>
+                                        <input id="talkFile" type="file" multiple hidden>
+                                        <input id="talkSay" type="text" aria-label="say something" placeholder="say something" maxlength="1000" disabled>
+                                        <small class="talk-left" id="talkLeft" hidden></small>
+                                        <button class="field-go" type="submit" aria-label="send it" title="send it">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h12.5M12 6.2 18.2 12 12 17.8"/></svg>
+                                        </button>
+                                    </form>
+                                </section>
+                            </div>
+                        </section>
+
+                        <!-- the drawing app, framed so its keys (space to pan, ctrl+z, wasd) stay its own -->
+                        <section class="draw-panel" id="drawPanel" aria-label="draw" hidden>
+                            <iframe class="draw-frame" id="drawFrame" data-src="drawing/index.html?v=400fbe9b03" title="draw"></iframe>
+                        </section>
+                    </section>
+
+                    <div class="modal-veil" id="modalVeil" hidden>
+                        <section class="modal-panel maker-screen" id="makerScreen" data-title="create" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">×</button>
+
+                            <h2 class="modal-title">create</h2>
+
+                            <form id="cardForm" class="maker-bar" novalidate>
+                                <div class="maker-entry">
+                                    <div class="maker-fields">
+                                        <label class="maker-field">
+                                            <span class="field-tag" aria-hidden="true">Q</span>
+                                            <input id="questionInput" type="text" aria-label="question" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="why did the chicken cross the road">
+                                        </label>
+                                        <label class="maker-field">
+                                            <span class="field-tag" aria-hidden="true">A</span>
+                                            <input id="answerInput" type="text" aria-label="answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="to get to the other side">
+                                            <button class="field-add" id="optionsToggle" type="button" aria-expanded="false" aria-controls="optionsPanel" aria-label="choose which answers this can be mixed up with" title="which answers can sit beside this one">+</button>
+                                        </label>
+                                    </div>
+                                    <button class="basic-button add-upright" id="cardSubmitButton" type="submit"><span>add</span></button>
+                                </div>
+
+                                <p class="form-note" id="cardFormNote" aria-live="polite"></p>
+                            </form>
+
+                            <ol id="cardList"><li class="empty-message">no cards yet</li></ol>
+                        </section>
+
+                        <section class="modal-panel notes-screen" id="notesScreen" data-title="notes" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">×</button>
+                            <h2 class="modal-title">ai card maker</h2>
+                            <div class="notes-slot" id="notesSlot"></div>
+                        </section>
+
+                        <section class="modal-panel ask-screen" id="keyScreen" data-title="reading" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                            <h2 class="modal-title">sharper reading</h2>
+
+                            <div class="ask-body">
+                                <p class="ask-why">the reader that comes with this page runs on your own machine. it is free and private, and nothing you write leaves the browser &mdash; but it is slow to arrive (about 1.1gb, once) and plain about what it writes.</p>
+
+                                <ol class="ask-steps">
+                                    <li>
+                                        <span class="ask-step">1</span>
+                                        <span class="ask-said">get a key from <b>console.anthropic.com</b> &mdash; it borrows a big model instead of downloading a small one.</span>
+                                    </li>
+                                    <li>
+                                        <span class="ask-step">2</span>
+                                        <span class="ask-said">paste it below. it stays in this browser, and it pays for what you ask it to read &mdash; usually well under a penny a page.</span>
+                                    </li>
+                                </ol>
+
+                                <input id="notesKey" type="password" autocomplete="off" spellcheck="false" placeholder="paste the key here" aria-label="anthropic key">
+                                <button class="basic-button is-solid ask-go" id="notesKeySave" type="button">save the key</button>
+                                <button class="scratch-plain ask-forget" id="notesKeyForget" type="button">forget it</button>
+                            </div>
+                        </section>
+
+                        <section class="modal-panel ask-screen chat-screen" id="chatScreen" data-title="chat" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                            <h2 class="modal-title" id="chatDoorTitle">sign up</h2>
+
+                            <div class="ask-body">
+                                <div class="chat-door">
+                                    <input id="chatHandle" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="username" aria-label="username">
+                                    <!-- not type="password" on purpose: masked in css, see CLAUDE.md -->
+                                    <input id="chatWord" type="text" class="word-field" name="morie-word" autocomplete="off" spellcheck="false" placeholder="password" aria-label="password">
+                                    <button class="basic-button is-solid ask-go" id="chatGo" type="button">sign up</button>
+                                    <button class="scratch-plain ask-swap" id="chatSwap" type="button">already have an account?</button>
+                                </div>
+
+                                <p class="ask-note" id="chatNote" aria-live="polite"></p>
+                            </div>
+                        </section>
+
+                        <section class="modal-panel ask-screen account-screen" id="accountScreen" data-title="account settings" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                            <h2 class="modal-title">account settings</h2>
+                            <div class="set-list">
+                                <div class="set-row" data-set="nick">
+                                    <button class="set-open" type="button"><span>edit nickname</span><span class="set-now" id="setNickNow"></span></button>
+                                    <form class="set-edit" novalidate hidden>
+                                        <input type="text" maxlength="32" placeholder="new nickname" aria-label="new nickname">
+                                        <button class="basic-button" type="submit">save</button>
+                                    </form>
+                                </div>
+                                <div class="set-row" data-set="name">
+                                    <button class="set-open" type="button"><span>edit username</span><span class="set-now" id="setNameNow"></span></button>
+                                    <form class="set-edit" novalidate hidden>
+                                        <input type="text" maxlength="20" placeholder="new username" aria-label="new username">
+                                        <button class="basic-button" type="submit">save</button>
+                                    </form>
+                                </div>
+                                <div class="set-row" data-set="word">
+                                    <button class="set-open" type="button"><span>edit password</span></button>
+                                    <form class="set-edit set-edit-two" novalidate hidden>
+                                        <input class="word-field" type="text" placeholder="current password" aria-label="current password">
+                                        <input class="word-field" type="text" placeholder="new password" aria-label="new password">
+                                        <button class="basic-button" type="submit">save</button>
+                                    </form>
+                                </div>
+                                <div class="set-row" data-set="face">
+                                    <button class="set-open" type="button"><span>edit profile picture</span></button>
+                                    <div class="set-edit set-face" hidden>
+                                        <button class="basic-button" id="setFacePick" type="button">choose a picture</button>
+                                        <button class="basic-button set-quiet" id="accFaceClear" type="button">remove it</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="set-note" id="setNote" aria-live="polite"></p>
+                        </section>
+
+                        <section class="modal-panel ask-screen" id="listScreen" data-title="playlist" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                            <h2 class="modal-title">exportify</h2>
+
+                            <div class="ask-body list-body">
+                                <div class="list-site" id="listSite">
+                                    <div class="site-wait" aria-hidden="true"><svg class="spin-face" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10.6" stroke-width="1" vector-effect="non-scaling-stroke"/><path d="M6.53 13.73A5.75 5.75 0 0 0 17.47 13.73" stroke-width="1.7" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="8.85" cy="8.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.15" cy="8.6" r="1.15" fill="currentColor" stroke="none"/></svg></div>
+                                    <p class="site-blocked" id="siteBlocked" hidden>that step needs spotify's own page, which won't run inside here. <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">open exportify in a tab</a>, sign in there, then come back &mdash; this will know you. <b>(press to put this away)</b></p>
+                                    <iframe id="listFrame" title="exportify" src="about:blank"
+                                        referrerpolicy="no-referrer"
+                                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
+                                </div>
+
+                                <div class="list-aside">
+                                    <div class="say-head">
+                                        <button class="say-swap" id="saySwap" type="button">short summary</button>
+                                    </div>
+
+                                    <p class="ask-why list-say" id="sayLong">wb to another lecture! i have created a feature helps unite souls and bring world peace, as it comes w convenience, specialty, and uniqueness that none other could rival.<br><br>one must complete a login/registration on the external website in order to prove oneself to the exquisiteness and holy presence of this platform.<br><br>the unspoken external website instructions r here</p>
+
+                                    <ol class="ask-steps" id="stepsLong">
+                                        <li>
+                                            <span class="ask-step">1</span>
+                                            <span class="ask-said">login to the ultimate
+                                                <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">exportify.net</a>
+                                                in order to complete this request laid upon you by the holy gods</span>
+                                        </li>
+                                        <li>
+                                            <span class="ask-step">2</span>
+                                            <span class="ask-said">if you wish to proceed, humbly select the export button and wait with patience and composure.</span>
+                                        </li>
+                                        <li>
+                                            <span class="ask-step">3</span>
+                                            <span class="ask-said">and if ur a lazy fuc u can allow permissions once and then u can always save the file to the list now</span>
+                                        </li>
+                                    </ol>
+
+                                    <p class="ask-why list-say" id="sayShort" hidden>a playlist only
+                                        has to come in once. after that it is in the list below and
+                                        pressing it puts the songs back in the box.</p>
+
+                                    <ol class="ask-steps" id="stepsShort" hidden>
+                                        <li>
+                                            <span class="ask-step">1</span>
+                                            <span class="ask-said">sign in at exportify.net, in its own tab.</span>
+                                        </li>
+                                        <li>
+                                            <span class="ask-step">2</span>
+                                            <span class="ask-said">press export beside the playlist you want.</span>
+                                        </li>
+                                        <li>
+                                            <span class="ask-step">3</span>
+                                            <span class="ask-said">press find an export and pick it out of the list.</span>
+                                        </li>
+                                    </ol>
+
+                                    <ul class="list-kept" id="listKept" hidden></ul>
+
+                                    <button class="basic-button is-plain list-watch" id="listFind" type="button">find an export</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="modal-panel ask-screen" id="bundleScreen" data-title="clips" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                            <h2 class="modal-title">bring clips in</h2>
+
+                            <div class="ask-body">
+                                <ul class="bundle-list" id="bundleList"></ul>
+                                <p class="bundle-say" id="bundleSay"></p>
+                                <button class="basic-button is-plain bundle-where" id="bundleWhere" type="button">look somewhere else</button>
+                            </div>
+                        </section>
+
+                        <section class="modal-panel ask-screen folder-screen" id="folderScreen" data-title="folder" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">&times;</button>
+                            <h2 class="modal-title">where to</h2>
+
+                            <div class="ask-body">
+                                <input id="folderName" type="text" placeholder="folder name" aria-label="folder name" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+
+                                <p class="folder-say" id="folderSay"></p>
+
+                                <button class="basic-button is-solid ask-go" id="folderGo" type="button">save them</button>
+
+                                <button class="folder-other" id="folderPick" type="button">or pick a folder to export to</button>
+                            </div>
+                        </section>
+
+                        <section class="modal-panel study-screen" id="studyScreen" data-title="practice" hidden>
+                            <button class="modal-close" type="button" aria-label="close" title="close">×</button>
+
+                            <h2 class="modal-title">practice</h2>
+
+                            <div class="question-box">
+                                <h2 id="studyQuestion"></h2>
+                                <p id="studyFeedback" aria-live="polite"></p>
+                            </div>
+
+                            <div class="answer-options" id="answerOptions"></div>
+                        </section>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=c9c6a53cd3"></script>
+</body>
+</html>

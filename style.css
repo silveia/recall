@@ -1,12 +1,3 @@
-/* matrix sans print by brad neil — licence in matrix-sans-OFL.txt */
-@font-face {
-	font-family: 'Matrix Sans Print';
-	src: url('matrix-sans-print.woff2') format('woff2');
-	font-weight: 400;
-	font-style: normal;
-	font-display: swap;
-}
-
 /* =========================================================
    recall — style.css
    ---------------------------------------------------------
@@ -79,7 +70,7 @@
 	--font: 'Amiko', 'Segoe UI', system-ui, sans-serif;
 	--title-font: 'Bitcount Prop Double', 'Courier New', monospace;
 	--num-font: 'VT323', 'Courier New', monospace;
-	--head-font: 'Matrix Sans Print', 'Courier New', monospace;
+	--head-font: 'Pixelify Sans', 'Courier New', monospace;
 }
 
 html.inverted {
@@ -248,7 +239,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .home-panel:not([hidden]),
 .home-body:not([hidden]),
 .recorder-panel:not([hidden]),
-.chat-panel:not([hidden]) {
+.chat-panel:not([hidden]),
+.draw-panel:not([hidden]) {
 	animation: panel-in 0.34s var(--drawer) backwards;
 }
 .help-box:not([hidden]) { animation: panel-in 0.34s var(--drawer) 0.06s backwards; }
@@ -2917,7 +2909,39 @@ html.inverted .topbar::after {
 	border-radius: 18px;
 }
 .binned-top { display: flex; flex: none; justify-content: center; }
-.rail-binned > .binned-empty { display: none; }   /* only ever shown in the list, which it is moved into */
+.rail-binned > .empty-ask { display: none; }   /* only ever shown in the list, which it is moved into */
+.empty-ask { position: relative; display: grid; place-items: center; height: 22px; }
+/* pressing empty splits it down the middle (the animation is in askToEmpty): the word fades, and two
+   halves that start exactly on the pill's outline open at the centre only, cross left, tick right */
+.empty-ask .binned-empty { position: relative; z-index: 1; transition: color 0.12s ease; }
+.empty-ask.is-asking .binned-empty { color: transparent; background: none; border-color: transparent; pointer-events: none; }
+.empty-ask.is-asking.is-leaving .binned-empty { color: inherit; transition: color 0.2s ease 0.28s; }   /* the word comes back as the halves close */
+.empty-yes, .empty-no {
+	position: absolute;
+	top: 0;
+	display: grid;
+	place-items: center;
+	width: 50%;
+	height: 100%;
+	padding: 0;
+	color: inherit;
+	background: var(--paper);
+	border: 1px solid var(--line);
+	visibility: hidden;
+	pointer-events: none;
+	cursor: var(--cur-tap);
+	transition: color var(--quick) var(--ease), background-color var(--quick) var(--ease);
+}
+.empty-no { left: 0; transform-origin: 0 50%; border-radius: 11px 0 0 11px; }   /* half the height, not 999: a huge outer radius scales the inner one down to nothing */
+.empty-yes { right: 0; transform-origin: 100% 50%; border-radius: 0 11px 11px 0; }
+.empty-yes svg, .empty-no svg { width: 13px; height: 13px; opacity: 0; }
+.empty-ask.is-asking .empty-yes,
+.empty-ask.is-asking .empty-no { visibility: visible; pointer-events: auto; }
+.empty-ask.is-leaving .empty-yes,
+.empty-ask.is-leaving .empty-no { pointer-events: none; }
+.empty-yes:hover, .empty-no:hover { color: var(--paper); background: var(--ink); }
+/* no boing on these: its scale replaced their slide, and a press threw both back to the middle */
+.empty-yes.boing, .empty-no.boing { animation: none; }
 .binned-empty {
 	display: grid;
 	place-items: center;
@@ -2954,6 +2978,9 @@ html.inverted .topbar::after {
 /* help: a question mark, always turning clockwise, drawn dead centre in its box so it turns on the
    spot. its note hangs centred under it, one line however long */
 .help-box { position: relative; flex: none; }
+/* the right-hand group (the bin, help and the clock) is lifted a pixel together: measured it sits on
+   the strip's middle, but its lowercase words carry their weight low and it read as sitting low, by request */
+.topbar .rail-binned, .topbar .help-box, .topbar .rail-clock { position: relative; top: -1px; }
 .help-head {
 	display: flex;
 	align-items: center;
@@ -3007,11 +3034,11 @@ html.inverted .topbar::after {
 /* the clock: the moon, the half of the day, the date, and the time last, at the very right */
 .rail-clock { display: flex; flex: none; order: 99; align-items: center; gap: 0.6rem; height: 36px; }
 .clock-top { display: contents; }   /* its moon and half of the day take their own places in the row */
-.clock-suffix { order: 1; line-height: 1; }
-.clock-date { order: 2; margin: 0; }
-.theme-swap { order: 3; margin-left: 1.4rem; }   /* the moon sits just left of the time, well off the date */
-/* vt323 like every number, well off the date, and raised 1.25px to level with the date's figures */
-.clock-time { position: relative; top: -1.25px; order: 4; margin: 0; font-family: var(--num-font); font-size: 1.6rem; line-height: 1; letter-spacing: 0.02em; }
+.clock-suffix { position: relative; top: 0.75px; order: 1; line-height: 1; }
+.clock-date { position: relative; top: 0.75px; order: 2; margin: 0; }   /* the date and the half of the day sat high on the strip; lowered together so they share a line (measured: lowercase 26.6, figures 25.25 of 26) */
+.theme-swap { order: 3; margin: 0 0.7rem; }   /* the moon sits dead between the date and the time, by request */
+/* vt323 like every number, its figures centred on the strip (measured 25.9 of 26) */
+.clock-time { position: relative; top: -0.75px; order: 4; margin: 0; font-family: var(--num-font); font-size: 1.6rem; line-height: 1; letter-spacing: 0.02em; }
 
 .theme-swap {
 	display: grid;
@@ -3155,7 +3182,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-	font-family: var(--font);   /* amiko, by request: the tiles' names were matrix sans */
+	font-family: var(--font);   /* amiko, by request: the tiles' names were the heading face */
 	font-size: 0.95rem;
 	font-weight: 400;
 	text-align: center;
@@ -3706,6 +3733,19 @@ html.booting .booting-mark { display: flex; }
 /* =========================================================
    27. chat — people, and the talking with them
    ========================================================= */
+.draw-panel {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+.draw-frame {
+	flex: 1;
+	width: 100%;
+	min-height: 0;
+	border: 0;
+	background: var(--paper);
+}
+
 .chat-panel {
 	display: flex;
 	flex: 1;
@@ -4088,7 +4128,7 @@ html.booting .booting-mark { display: flex; }
 	border: 1px solid var(--line);
 	border-radius: 8px;
 }
-.tray-look img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+.tray-look img { width: 100%; height: 100%; object-fit: cover; }
 .tray-look svg { width: 1.1rem; height: 1.1rem; }
 .tray-words { display: flex; flex-direction: column; min-width: 0; }
 .tray-words span { overflow: hidden; font-size: 0.82rem; white-space: nowrap; text-overflow: ellipsis; }
@@ -4145,7 +4185,7 @@ html.booting .booting-mark { display: flex; }
 .said-file-name span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .said-file-name small { flex: none; font-family: var(--num-font); font-size: 0.95rem; }
 .said-file-name svg { flex: none; width: 1rem; height: 1rem; }
-.said-file img { display: block; max-width: 100%; max-height: 14rem; border-radius: calc(var(--radius) - 4px); image-rendering: pixelated; }
+.said-file img { display: block; max-width: 100%; max-height: 14rem; border-radius: calc(var(--radius) - 4px); }
 .said-file-note { font-size: 0.75rem; }
 .said-edited { margin-left: 0.4rem; font-size: 0.7rem; }
 

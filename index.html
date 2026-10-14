@@ -394,8 +394,11 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         cacti.forEach((one) => sprite(one.art, one.x, GROUND - one.art.length * P));
     }
 
+    window.dinoJump = jump;                                      // home calls this when space or up is pressed there
     window.addEventListener('keydown', (event) => {
-        if (event.code !== 'Space' && event.code !== 'ArrowUp') return;
+        const jumpKey = event.code === 'Space' || event.code === 'ArrowUp' || event.key === ' '
+            || event.key === 'Spacebar' || event.key === 'ArrowUp' || event.keyCode === 32 || event.keyCode === 38;
+        if (!jumpKey || event.isComposing) return;
         if (event.repeat) { event.preventDefault(); return; }    // a held key is one jump, not a restart
         if (document.activeElement && (document.activeElement.classList.contains('enter') || document.activeElement.matches('input'))) return;
         event.preventDefault();

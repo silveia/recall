@@ -12,7 +12,8 @@ approach unless I ask.
 Don't rewrite the sentences in the function box. Add to them when there's
 something new, but leave the wording I wrote alone.
 
-If I describe something visual and it's ambiguous, ask instead of guessing.
+Never ask me questions — I'm almost always away from the keyboard. If something visual is
+ambiguous, make the likeliest reading, build it, and say in one line what you assumed.
 Expect several rounds of small nudges on any spacing or sizing change; values
 land by iteration, not on the first try.
 
@@ -34,10 +35,10 @@ refuses to load `mp3-worker.js` at all ("cannot be accessed from origin
 - Everything is white with a 1px black outline. Active and live states invert
   to solid black.
 - Fonts: Amiko for body text, Bitcount Prop Double for the `h1` and the section
-  tabs, **VT323 for every number**, Matrix Sans Print for every heading over a
-  panel. Bitcount fills the gaps between its dots at bold, so it is set bold in
-  exactly one place — the section tabs, by request — and nowhere else. Matrix Sans is capitals only; lowercase copy
-  comes out as capitals, which is the point.
+  tabs, **VT323 for every number**, Pixelify Sans for every heading over a
+  panel (from Google Fonts, the same face as the drawing app; it replaced Matrix
+  Sans Print entirely, by request — that font and its files are gone). Bitcount fills the gaps between its dots at bold, so it is set bold in
+  exactly one place — the section tabs, by request — and nowhere else.
 
   **Numbers never get Bitcount.** It draws a `1` as two dense columns of dots
   and a `0` as an open ring — 60 units wide against 50 — so any figure with a
@@ -137,7 +138,7 @@ never chunked — a document is read whole.
 
 ## The sections
 
-Switched by the tabs in the top strip.
+Switched by the tabs in the top strip. The cards and audio pages are **named** `card` and `clip` (by request) — their sliding names and search say so — while their ids, folders and links stay `cards` and `audio`.
 
 **cards** — the original flashcard app. The share window has `this code` / `copy` on top and `paste code` / `load` under it (swapped, by request), the two pills 3.8rem wide. Its two code boxes are exactly the height of `copy` / `load` beside them, can't be resized, and scroll on a 1px line (by request). **Never set `scrollbar-width` where a `::-webkit-scrollbar` is drawn**: chrome then ignores the drawing and shows its own 'thin', which is far wider. And give the track a vertical `margin` in a rounded box, or the bar runs out over the corners. **There is one scrollbar for the whole site**, set once at the top of the stylesheet (`::-webkit-scrollbar`): a 1px ink line — exactly the boxes' outline — held 4px in off the edge (a 6px scrollbar whose thumb has transparent side borders and `background-clip: padding-box`), its track kept 8px clear of the rounded corners. Boxes that hide their bar still do so with their own rules. In create, the `+` on the answer opens a small white window (`#optionsPanel`, `select other answer options for this question`) under the answer field, its right edge on the field's and one `--tight` below it. A small spaced-out capitals label sits right over the `new deck` field, as a bit of motivation: `WE LOVE STUDYING !!!`. Decks with drag-reorder, right-click
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
@@ -147,6 +148,44 @@ with four multiple-choice answers mapped to keyboard quadrants. **Create and pra
 part under active work.
 
 **chat** — sealed messages between people who add each other.
+
+**draw** — the drawing app from `silveia.github.io/drawing-app`, brought in by
+request under a pen mark. It lives in `drawing/` with its own html, script and
+styles, and the section frames it (`#drawFrame`) — framed, its keys (space to
+pan, ctrl+z, wasd for the game, t for fish, shift to stamp) stay its own and
+cannot fight the site's. Its functions are unchanged; its look is the site's —
+black and white, 1px outlines, pills, solid black when pressed — while the
+canvas, the game and the stamps keep their colours, since they are the content.
+The frame is **only loaded the first time the page is shown** (`data-src`):
+loaded hidden, its canvas measured as nothing and kept that size. It follows
+the lights the way the dino run does. `game.js` never declared
+`visualHitboxEl`, so starting the game threw; it is declared now. The tool is one bare mark (by request, replacing a dropdown): the pen or the eraser, and a press
+swaps them at once with a spin over it — one quick turn, easing out — clockwise to the eraser, anticlockwise back to the pen (`#toolSwap`; swapping the face
+part way through the turn read as the swap lagging). The colour picker is the site's own menu (`.pick`); the real
+`<select>` and colour field, which stay underneath for `script.js`; the colour opens a real
+adjuster, laid exactly on the canvas's top-left corner (by request) (by request — swatches were refused): a square for shade and brightness, a rainbow strip
+for hue, and the hex code to type; the rings riding them are white with a black edge so they show on
+any colour. The toolbar
+reads, left to right: the colour (just its dot, no outline or arrow, sitting in the toolbar's round end exactly 12px off
+the outline to the left, above and below — measured; `clear` sits the same way in the right end, 8px off
+the outline on its three sides), the pen/eraser mark, the size, then undo
+and redo as bare marks — all by request; it has no word labels. Spawning with
+no sprite drops a small chip under the button pointing at `upload sprite`, instead of an
+alert. Coins land with their middle 60px inside the fence, so every one can be reached.
+The game window is called `yams` and has no full-screen button. Both little windows have a black head bar with white words and marks, and **cannot be dragged off the page** (`keepInside`): dragging, coming back from storage, opening, and the page shrinking all hold them inside its edges. **The sheet is pixel art** (by request): the canvas holds one pixel per art pixel
+(`PIXEL` = 2 screen pixels across — barely noticeable, by request; 8 was far too blocky) and is shown big with `image-rendering: pixelated`.
+The brush paints whole art pixels — a round block `size` across, each row one
+`fillRect`, gaps between pointer events filled in with a line walk — so nothing is
+ever blended. Sizes count art pixels (1–32), and the readout beside the size pill
+(`5px`) is exactly the brush's width in them. Stamps land hard-edged too. The size
+is a slider with `−` and `+` at its two ends and no outline round them (by request) (by request — a fill-up pill and a
+stepper were both tried): a hairline with a solid round thumb — the stretch behind the thumb 3px, bolder than the 1px ahead, by request — dragged or pressed anywhere; held,
+the marks keep stepping; the wheel and arrow keys nudge it. The `#px` count sits beside the pill. Menu rows show an outline on hover, never gray.
+The colour adjuster **grows out of the colour dot** as a widening circle (460ms) while the square,
+the hue strip and the code slide in one after another, and shrinks back into the dot to close (300ms).
+Other menus unroll down out of their button (a clip revealing them top to bottom, 240ms) and roll
+back up quicker (170ms); nothing is scaled — a spring with a scale and staggered rows made the
+1px outline and the words shimmer, which read as a glitch. Either turns round mid-way. Every button's hover fades over 0.2s.
 
 The **player** section (songs off your own disk) was deleted by request:
 its tab, page, folder, script, styles and the bar's mini player are all
@@ -805,7 +844,7 @@ it.
 and the search, centres what shows (score down to the ground line) in the
 frame so it sits midway between the strip and the search bar, and follows
 the page's lights. Framed, **the ground runs the frame's whole width** (the search bar's length; `sizeCanvas()` on resize, and the fit is by height only), and **the dino starts at the left and runs forward** to 28% of the width with the world holding still before the view keeps up with it (`followAt()`). The front door keeps its 480px run with the dino fixed. **Space and up reach it from home** without clicking it
-first — the page hands them to the frame unless a box you type in has focus (a button keeping focus after a click — the home tab — must not block it; that was why space did nothing).
+first — home calls the frame's `window.dinoJump()` outright (a capturing listener on the window, matching by `code`, `key` or `keyCode` so an input method can't hide the key) rather than sending it a made-up key event — the page hands them to the frame unless a box you type in has focus (a button keeping focus after a click — the home tab — must not block it; that was why space did nothing).
 
 
 **As many tiles as you like, and as many of a kind as you like.** Every
@@ -1462,7 +1501,7 @@ The top-left corner is left empty, for a title later.
 
 **All of the top strip's styles are in one place, section 22 of the stylesheet** (13 Oct): it used to be a base layer for the old left bar with three layers of overrides on top, including a `.topbar *` rule forcing every word to 1rem. The page marks are plain `.section-tab` rules; the old word-tab styles are gone. Things that open from the strip (help's note, the bin's list, the search results) raise it with one rule, `.topbar:has(.is-open)`.
 
-**The site's name is `hi`**, in that corner (`#siteName`, a link to `home/` that switches to home in place): Bitcount, bold, 1.6rem, centred over the marks' column in the black strip. It is italic, by request (bitcount has no italic of its own, so the browser slants it). By request it and the pages' names that slide out of the bumps (`.tab-tip`) are bold too, alongside the section tabs. Everything else on the strip (clock, function, storage, bin) sits at its **right** end, by request. Nothing on the strip has an outline — the clock is no longer a white pill, it is the strip's own black — and the time is the very last thing at the right (half of the day, date, then the moon just left of the time, by request). Every word on the strip is Amiko at 1rem, the time alone excepted (it keeps VT323). The `function` pill is now **a question mark** — no ring, 21px, always turning clockwise (4s a turn, as a `transform` on a plain `.help-spin` box round the svg, which the graphics card runs on its own: turned on the svg itself it was restyled by the page every frame, forever — about 60 style recalculations a second on every page, and the main cause of other animations dropping frames), drawn dead centre in its viewBox (measured: ink 12.00 / 12.00); the words on the strip (amount, half of the day, date) are **not** dropped by `--drop` — they are lowercase, the eye centres lowercase on its x-height, and amiko's x-height already sits on the strip's middle; dropped to level the capitals they read as low. The half of the day had a leftover 1px nudge from the old tile, taken out so it turns on the spot, by request (`#helpToggle`, labelled `help`) and doesn't turn white when open; its note hangs **centred under the mark** and drops in (a 6px fall, a fade and a slight growth from its top, 0.32s; back in 0.3s, eased both ends; the strip keeps its raised z-index for those 0.3s, since dropping it at once hid the note behind the page mid-fade); the old drawer's `grid-template-rows` fold is pinned open up here, since it snapped shut on close and clipped the words away before the note had faded, folding on any press anywhere else (a capturing `pointerdown`, so buttons that keep their clicks still fold it) or when the window loses focus, as **one line, always** (`nowrap`, no width cap — the pill grows sideways however long the note; 0.82rem type); its words are brought down by `--drop` + 0.9px so they sit level in the pill (measured: 18.1 against a middle of 18.0); **storage is gone from the strip** (by request), and its code with it; the places that repainted it repaint the board's tiles instead (`paintWidgets`). **The bin is a mark** — a plain bin icon (a lid, a handle, a tapering body), always there, first of the right-hand things, with how many are binned as a small white disc on its bottom-right corner, the figure tiny and black in VT323 (laid over the mark, so the mark never moves) — whose list hangs **the way help's note does** (the two share one drop-in rule) — centred under the mark, a `--group` below the strip, 0.82rem centred words, a pill-round box, the same drop-in and fade-out — 18rem wide: a small `empty` at its top centre, and under it **a little outlined box of its own** holding the binned things, with room for three and a half — every binned thing is listed and the box scrolls, on a thin white bar. It is the same size with nothing in it; the box then says `nothing`, small, in its middle. A row is the thing's name on the left and two bare marks on the right, **put back** (a curled arrow) and **delete for good** (a cross, one thing at a time, no ask); pressing the name does nothing. The `empty` button was taken out, by request. The time is VT323, raised 1.25px to level with the date's figures, and counts **seconds** (`09:55:52`) and sits 1.4rem off the date; the clock ticks on the turn of each second, while the board's tiles still only repaint on the minute (`clockMinute`). **The strip is 52px now**, a little shorter than a bump by request, and the bumps start at its foot (`background-position: 0 var(--topbar)` on both wave layers) rather than at the window's top, so a dip still lands right where the strip ends. In the dark the strip's foot carries a white line from that dip rightwards (`html.inverted .topbar::after`), never over the bumps.
+**The site's name is `hi`**, in that corner (`#siteName`, a link to `home/` that switches to home in place): Bitcount, bold, 1.6rem, centred over the marks' column in the black strip. It is italic, by request (bitcount has no italic of its own, so the browser slants it). By request it and the pages' names that slide out of the bumps (`.tab-tip`) are bold too, alongside the section tabs. Everything else on the strip (clock, function, storage, bin) sits at its **right** end, by request. Nothing on the strip has an outline — the clock is no longer a white pill, it is the strip's own black — and the time is the very last thing at the right (half of the day, date, then the moon exactly halfway between the date and the time, by request). Every word on the strip is Amiko at 1rem, the time alone excepted (it keeps VT323). The `function` pill is now **a question mark** — no ring, 21px, always turning clockwise (4s a turn, as a `transform` on a plain `.help-spin` box round the svg, which the graphics card runs on its own: turned on the svg itself it was restyled by the page every frame, forever — about 60 style recalculations a second on every page, and the main cause of other animations dropping frames), drawn dead centre in its viewBox (measured: ink 12.00 / 12.00); the words on the strip (amount, half of the day, date) are **not** dropped by `--drop` — they are lowercase, the eye centres lowercase on its x-height, and amiko's x-height already sits on the strip's middle; dropped to level the capitals they read as low. The half of the day had a leftover 1px nudge from the old tile, taken out so it turns on the spot, by request (`#helpToggle`, labelled `help`) and doesn't turn white when open; its note hangs **centred under the mark** and drops in (a 6px fall, a fade and a slight growth from its top, 0.32s; back in 0.3s, eased both ends; the strip keeps its raised z-index for those 0.3s, since dropping it at once hid the note behind the page mid-fade); the old drawer's `grid-template-rows` fold is pinned open up here, since it snapped shut on close and clipped the words away before the note had faded, folding on any press anywhere else (a capturing `pointerdown`, so buttons that keep their clicks still fold it) or when the window loses focus, as **one line, always** (`nowrap`, no width cap — the pill grows sideways however long the note; 0.82rem type); its words are brought down by `--drop` + 0.9px so they sit level in the pill (measured: 18.1 against a middle of 18.0); **storage is gone from the strip** (by request), and its code with it; the places that repainted it repaint the board's tiles instead (`paintWidgets`). **The bin is a mark** — a plain bin icon (a lid, a handle, a tapering body), always there, first of the right-hand things, with how many are binned as a small white disc on its bottom-right corner, the figure tiny and black in VT323 (laid over the mark, so the mark never moves) — whose list hangs **the way help's note does** (the two share one drop-in rule) — centred under the mark, a `--group` below the strip, 0.82rem centred words, a pill-round box, the same drop-in and fade-out — 18rem wide: a small `empty` at its top centre, and under it **a little outlined box of its own** holding the binned things, with room for three and a half — every binned thing is listed and the box scrolls, on a thin white bar. It is the same size with nothing in it; the box then says `nothing`, small, in its middle. A row is the thing's name on the left and two bare marks on the right, **put back** (a curled arrow) and **delete for good** (a cross, one thing at a time, no ask); pressing the name does nothing. The `empty` button was taken out, by request. (It is back as `empty` at the list's top.) **Pressing `empty` asks in place**, by request: the confirm chip opened behind the bin's own list, so it is gone, and the pill instead splits into two pills of the same height and outline sliding out of its middle — a cross that keeps it on the left and a tick that empties the bin on the right (`askToEmpty`). Closing the list puts the pill back. **Only the centre splits**: the halves start exactly on the pill's outline and their outer ends never move. Each half pinches once, softly, as it parts and overshoots a touch as it settles (scripted with `animate`, 480ms — an alternating squash read as a shake), its inner edge grows from no width (a fading colour went through gray, and a transparent edge notched the seam), and then each mark pops in on its own. Cancel has its own motion, not the opening reversed (reversed, the spring became a jerk): the marks shrink away, the halves glide back together on a plain ease from wherever they are, and the word fades in as they meet. The halves' outer radius is half their height, not 999px — a huge radius scales the inner one down to nothing. The site's press boing is off on them: its scale replaced their slide. The time is VT323, raised 1.25px to level with the date's figures, and counts **seconds** (`09:55:52`) and sits 1.4rem off the date; the clock ticks on the turn of each second, while the board's tiles still only repaint on the minute (`clockMinute`). **The strip is 52px now**, a little shorter than a bump by request, and the bumps start at its foot (`background-position: 0 var(--topbar)` on both wave layers) rather than at the window's top, so a dip still lands right where the strip ends. In the dark the strip's foot carries a white line from that dip rightwards (`html.inverted .topbar::after`), never over the bumps.
 
 ## The pages are marks (a layout test, not pushed)
 
@@ -1908,8 +1947,10 @@ whose sealed words are a note — `CHAT_NOTE` (U+0000) and JSON
 `{file:{url, iv, name, type, size}}` — goes on the thread. **The board
 keeps attachments three hours**, so every browser keeps its own copy once
 it has opened one (IndexedDB `chat-files`); after that a file nobody
-opened says it has gone. Pictures show dithered to black and white
-(`ditherPicture`), the way faces are; pressing the box saves the original.
+opened says it has gone. Pictures show as a small copy **in their own
+colours** (`smallPicture`, by request — the one place colour is allowed;
+they used to be dithered to black and white like faces, which stay so);
+pressing the box saves the original.
 Verified: a file sealed, uploaded, fetched back and opened byte for byte.
 
 **The three dots on a line** show on hover, centred down the line, with no ring round them and no hover animation, and open into marks that slide out from the right, the nearest first (0.26s, 40ms apart): copy,
@@ -2022,11 +2063,13 @@ middle (`--fit`) to fit the width and the half-height, so the spacing holds.
 ## Files
 
 - `CNAME` — the custom domain. See "the site's own address".
-- `home/`, `cards/`, `audio/`, `chat/` — each a copy of
+- `home/`, `cards/`, `audio/`, `chat/`, `draw/` — each a copy of
   `app.html`, written by `.githooks/pages.sh`. Never edit them by hand.
   See "a link per page".
 - `404.html` — sends a stray path to its section, or to the front door.
 - `.githooks/` — the pre-commit hook that keeps the copies in step.
+- `drawing/` — the drawing app, framed by the draw section. Its own files;
+  edit them there. `pages.sh` fingerprints its address like the rest.
 - `index.html` — the front door at `morie.top`: the dino run and the way
   in. See "the front door".
 - `app.html` — the site itself, all of its screens
@@ -2035,9 +2078,6 @@ middle (`--fit`) to fit the width and the half-height, so the spacing holds.
 - `mp3-worker.js` — mp3 encoding, kept off the main thread
 - `lame.min.js` — the mp3 encoder itself (lamejs 1.2.1), vendored rather than
   loaded from a CDN so downloads work offline. Only the worker loads it.
-- `matrix-sans-print.woff2` — the heading face (Matrix Sans Print by Brad Neil),
-  vendored for the same reason. `style.css` loads it with `@font-face`.
-- `matrix-sans-OFL.txt` — that font's licence. It travels with the font.
 - `ocr/` — tesseract.js and its english data, for reading the words off a
   photo without a key. Vendored for the same reason as the rest. Nothing
   in here is fetched until a picture is actually read.
@@ -2046,5 +2086,4 @@ middle (`--fit`) to fit the width and the half-height, so the spacing holds.
   flashcards without a key saved.
 
 All of these need to be uploaded to GitHub Pages. Missing `mp3-worker.js` or
-`lame.min.js` breaks downloads with a worker error that looks like a code bug;
-missing the woff2 quietly drops every heading back to a monospace fallback.
+`lame.min.js` breaks downloads with a worker error that looks like a code bug.
