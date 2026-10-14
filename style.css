@@ -223,7 +223,9 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	60%  { opacity: 1; transform: translateY(-3px) scale(1.004); }
 	100% { opacity: 1; transform: none; }
 }
-.screen:not([hidden]) { animation: rise-in var(--slow) var(--ease) backwards; }
+/* a page's arrival is unfoldSection() in the script: its boxes unfold one after another. nothing here
+   fades in — not the screen, not the panels, not the strip's marks (the question mark used to rise in
+   on every refresh, and stood out) */
 
 @keyframes fade-up {
 	from { opacity: 0; transform: translateY(4px); }
@@ -235,15 +237,6 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	60%  { opacity: 1; }
 	to   { opacity: 1; transform: none; }
 }
-.deck-bar:not([hidden]),
-.home-panel:not([hidden]),
-.home-body:not([hidden]),
-.recorder-panel:not([hidden]),
-.chat-panel:not([hidden]),
-.draw-panel:not([hidden]) {
-	animation: panel-in 0.34s var(--drawer) backwards;
-}
-.help-box:not([hidden]) { animation: panel-in 0.34s var(--drawer) 0.06s backwards; }
 
 @keyframes deal-in {
 	from { opacity: 0; transform: translateY(10px) rotate(-1.5deg); }
@@ -292,7 +285,6 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	display: flex;
 	height: calc(var(--vh, 1vh) * 100);
 	overflow: hidden;
-	transition: opacity 0.34s var(--ease);
 }
 
 .app-shell::after {
@@ -3727,7 +3719,6 @@ html.booting .booting-mark { display: flex; }
 }
 @media (prefers-reduced-motion: reduce) {
 	.spin-face { animation: none; }
-	.app-shell { transition: none; }
 }
 
 /* =========================================================
@@ -4417,13 +4408,12 @@ html.booting .booting-mark { display: flex; }
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	width: min(30rem, calc(100% - 2 * var(--group)));
-	padding: 3rem 2.5rem 2.25rem;
+	width: min(34rem, calc(100% - 2 * var(--group)));
+	padding: 3rem 2.5rem;            /* even all round: the fields sit 2.5rem in from either side */
 	color: var(--ink);
 	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 1.4rem;
-	animation: panel-in 0.34s var(--drawer) backwards;
 }
 /* the log-in card, and the log-in window, are drawn the other way round from the page, by request:
    black on a light page, white on a dark one — by swapping the colour tokens, as the bar does */
@@ -4449,10 +4439,47 @@ html.inverted .login-card, html.inverted #chatScreen {
 	border-radius: 50%;
 }
 .login-face svg { width: 58%; height: 58%; }
-.login-title { margin: 1.4rem 0 0; font-family: var(--head-font); font-size: 2rem; font-weight: 400; }
-.login-say { margin: 0.5rem 0 2rem; font-size: 0.95rem; }
+/* the log-in card's layout, settled by hand in the layout editor and tidied (14 oct): no picture, a
+   large title, the fields full width, and a short tall pill to sign in */
+.login-face { display: none; }
+.login-title { margin: 0; font-family: var(--head-font); font-size: 3.5rem; font-weight: 400; line-height: 1; }
+.login-say { margin: 1rem 0 2rem; font-size: 1rem; }
 .login-slot, .login-slot .ask-body { width: 100%; }
-.login-slot .ask-go { width: 100%; }
+.login-slot input { height: var(--field); font-size: 0.95rem; padding: 0 1.1rem; }
+.login-slot .ask-go {
+	align-self: center;
+	width: auto;
+	height: 3rem;
+	margin-top: 0.5rem;
+	padding: calc(var(--drop) * 2) 2.25rem 0;
+	font-size: 1.2rem;
+}
+.login-slot .ask-swap { font-size: 0.8rem; }
+/* username and password are named over their boxes, small, not written inside them */
+.door-pair { display: flex; flex-direction: column; gap: 0.4rem; }
+.door-label { padding-left: 0.35rem; font-size: 0.75rem; line-height: 1; }
+/* sits on the same line as 'username', one ordinary space after it; flagTaken() flashes it in and fades it */
+.taken-flag { white-space: pre; opacity: 0; }
+/* register asks for more than log in does; the extra rows only show while registering */
+.chat-door:not(.is-new) .door-new { display: none; }
+/* pineapple or pizza: two pills side by side, the one picked solid. picked once, never changed */
+.side-picks { display: grid; grid-template-columns: 1fr 1fr; gap: var(--tight); }
+.side-pick {
+	height: var(--field);
+	padding: calc(var(--drop) * 2) 0 0;
+	color: var(--ink);
+	background: var(--paper);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font: inherit;
+	font-size: 0.95rem;
+	cursor: var(--cur-tap);
+	transition: color 0.2s ease, background-color 0.2s ease;
+}
+.side-pick.is-on { color: var(--paper); background: var(--ink); }
+.side-picks.is-shaking { animation: field-shake 0.4s ease; }
+.account-side { margin: 0.15rem 0 0; font-size: 0.78rem; }
+.talk-start-side { margin: 0.2rem 0 0; font-size: 0.85rem; }
 
 .chat-door {
 	display: flex;
@@ -4461,6 +4488,29 @@ html.inverted .login-card, html.inverted #chatScreen {
 	min-width: 0;
 }
 
+/* the eye sits inside the password box at its right end, a bare mark: shut while hidden, open while shown */
+.word-wrap { position: relative; display: block; }
+.word-wrap .word-field { padding-right: 2.6rem; }
+.word-eye {
+	position: absolute;
+	top: 50%;
+	right: 0.7rem;
+	display: grid;
+	place-items: center;
+	width: 1.6rem;
+	height: 1.6rem;
+	padding: 0;
+	color: var(--ink);
+	background: none;
+	border: 0;
+	transform: translateY(-50%);
+	cursor: var(--cur-tap);
+}
+.word-eye svg { width: 18px; height: 18px; }
+.word-eye .eye-open, .word-eye.is-open .eye-shut { display: none; }
+.word-eye.is-open .eye-open { display: inline; }
+.word-eye.boing { animation: none; }
+.word-field.is-shown { -webkit-text-security: none; }
 .word-field {
 	-webkit-text-security: disc;
 	-webkit-user-drag: none;

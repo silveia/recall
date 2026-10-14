@@ -149,6 +149,8 @@ part under active work.
 
 **chat** — sealed messages between people who add each other.
 
+The page marks down the bar run home, card, clip, draw, chat — chat last, by request.
+
 **draw** — the drawing app from `silveia.github.io/drawing-app`, brought in by
 request under a pen mark. It lives in `drawing/` with its own html, script and
 styles, and the section frames it (`#drawFrame`) — framed, its keys (space to
@@ -1130,12 +1132,28 @@ delay's easing out in full: a `var()` inside a two-animation shorthand
 takes the whole declaration down with it if it doesn't resolve, and
 then **neither** animation runs.
 
+**The page no longer fades in when it is let go** — it is just there, and its boxes unfold (see "one
+entrance for every section").
+
 **The holding-back is set in the head, not the stylesheet**, so a page
 whose script never runs is never left hidden. The same inline snippet
 takes the class off after 2.5s whatever happens; `loadStoredClips()`
 takes it off sooner when the store answers.
 
 ## One entrance for every section
+
+**This replaces the fade below (14 Oct, by request — fades read as dull, and the question mark rising
+in on every refresh stood out).** Nothing fades in any more: not the shell after the boot, not the
+screen, not the section panels, not the strip. The frame — the bar, the strip and its marks — is simply
+there, and **the whole page slides a short way in** (`unfoldSection()` on `#homeScreen`, the same on
+every page): 40px, fading in as it travels, 420ms eased out, **from the side of the bar its mark is on**
+— switching to a page whose mark is lower in the bar brings it up from below, a higher one down from
+above. **A refresh does not move or flash at all** — it just appears (by request); only switching
+pages slides. (A wipe down each box, a box-by-box bubble and a whole-page
+bubble were all tried and refused; a fade is allowed, a full-page slide was not wanted.) It plays on a
+refresh once the boot lets go, and on
+switching pages; not again for the page already shown.
+
 
 One rule, one animation per section: `panel-in`, 0.34s, a 6px rise and
 a fade. Before this the list was uneven — the cards page carried a
@@ -1707,6 +1725,23 @@ with it.
 
 ## Chatting
 
+**The log-in card's layout was found by hand** in a temporary editor (since removed) and then tidied
+(14 Oct): no picture, the title 3.5rem in Pixelify, the line under it 1rem, the fields full width 2.5rem
+in from the card's sides, each named by a small label over it (0.75rem, near its left end; centring them was tried and put back)
+rather than by words written in it, a short tall `sign in` pill (3rem, 1.2rem type) centred under them, and the
+card's padding even all round, 34rem wide. **Register asks for more than log in**, in this order (by request): username, nickname, password,
+confirm password, and **pineapple or pizza** — two pills, one must be picked, and the pick is
+permanent: it rides on the account's `who` post (`side`), the first word on it stands, there is no
+way to change it, and it shows as `team pizza` under the handle in the account panel and at the top
+of a thread with that person (`sideOf()` follows renames). The nickname is posted signed, like any
+later change. **Everything missing or wrong shakes at once** (by request), on log in and register alike — an empty
+username, password or confirm, a confirm that doesn't match, no pick. A **taken username** also
+flashes `taken` one ordinary space after its label, on the same line as the word: there at once, faded away over a second (`flagTaken`). No email (asked for, then dropped:
+there is no server to send to it). **No sign in with Google**: asked for, and left out — it
+needs a Google Cloud client registered to the domain, and with no server there is nothing to check
+the token against, while the chat password is what wraps each account's private key; a Google login
+cannot stand in for it without weakening every account.
+
 The one page here that is not only yours. Everything else keeps to this
 browser; a chat cannot, because two people have to meet somewhere, and
 a static page has no server to be that place.
@@ -1749,6 +1784,9 @@ with, and only the people you added (or who wrote to you) are shown.
 **Right-click does nothing to a conversation** — it used to drop the
 person, which read as the conversation being deleted.
 
+**Opening the chat opens your last thread straight away**, from what this browser holds; waiting on
+the board drew the welcome first and swapped it for the thread a beat later, which read as a glitch.
+
 **Someone who writes to you turns up in your list** whether you added them or not (`openWhatIsWaiting`) — a message from your own other account sat in a thread nothing on screen led to.
 
 Someone added who has never opened the chat has no key to seal
@@ -1769,6 +1807,9 @@ about. It is `username`, `password`, `sign up` / `log in`, and
 `already have an account?`, like everything else anybody has ever
 signed into. What the page does with a message belongs in the function
 box.
+
+**Each password box has an eye** at its right end (by request, minimal): a shut eye — one curved
+lid — while it is hidden, an open eye while it shows; a press swaps it (`.word-eye`).
 
 **The password field is not a password field.** Chrome reserves its
 weak-and-breached warnings for `type="password"`, and it was firing

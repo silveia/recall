@@ -197,8 +197,8 @@ const sections = [
     { id: 'home', name: 'home' },
     { id: 'cards', name: 'card' },
     { id: 'audio', name: 'clip' },
-    { id: 'chat', name: 'chat' },
-    { id: 'draw', name: 'draw' }
+    { id: 'draw', name: 'draw' },
+    { id: 'chat', name: 'chat' }      // last in the bar, by request
 ];
 
 let decks = [
@@ -533,6 +533,27 @@ function waitForTip(tab, name) {
     else tipTimer = window.setTimeout(() => openTabTip(tab, name), TIP_WAIT);
 }
 
+// a page arriving: the whole page slides a short way in, the same on every page, from the side of the
+// bar its mark is on — a page whose mark is lower than the one you left comes up from below, a higher
+// one comes down from above — and fades in as it travels. a refresh doesn't move at all
+let unfoldedSection = null;
+function unfoldSection(force) {
+    if (document.documentElement.classList.contains('booting')) return;   // the boot calls this once it is shown
+    if (!force && unfoldedSection === activeSectionId) return;
+    const order = sections.map((one) => one.id);
+    const from = order.indexOf(unfoldedSection);
+    const to = order.indexOf(activeSectionId);
+    const way = from < 0 || to > from ? 1 : -1;      // 1: from below, -1: from above
+    unfoldedSection = activeSectionId;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    homeScreen.getAnimations().forEach((move) => { if (move.id === 'unfold') move.cancel(); });
+    const move = homeScreen.animate([
+        { opacity: 0, transform: `translateY(${way * 40}px)` },
+        { opacity: 1, transform: 'translateY(0)' }
+    ], { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    move.id = 'unfold';
+}
+
 function renderSections() {
     // show only the panels belonging to the active section
     homePanel.hidden = activeSectionId !== 'home';
@@ -579,6 +600,7 @@ function renderSections() {
         tab.classList.toggle('active', active);
         tab.setAttribute('aria-current', active ? 'page' : 'false');
     });
+    unfoldSection();
 }
 
 /* ---------- 5. decks ---------- */
@@ -4443,6 +4465,7 @@ const typeReady = document.fonts && document.fonts.load
 Promise.all([loadStoredClips(), typeReady]).catch(() => {}).finally(() => {
     window.requestAnimationFrame(() => {
         document.documentElement.classList.remove('booting');
+        unfoldedSection = activeSectionId;   // a refresh just appears, by request: only switching pages slides
     });
 });
 senseToggle.hidden = true;
@@ -7077,7 +7100,23 @@ const chatBody = document.getElementById('chatBody');
 
 [roomNameField, talkSay, chatHandle].forEach(stopGuessing);
 
-if (!CSS.supports('-webkit-text-security', 'disc')) chatWord.type = 'password';
+const MASK_IN_CSS = CSS.supports('-webkit-text-security', 'disc');
+document.querySelectorAll('.word-field').forEach((field) => { if (!MASK_IN_CSS) field.type = 'password'; });
+// the eye in a password box shows what is typed and hides it again: shut while it is hidden, open
+// while it shows
+document.querySelectorAll('.word-eye').forEach((eye) => {
+    const field = eye.parentElement.querySelector('.word-field');
+    eye.addEventListener('click', () => {
+        const showing = !field.classList.contains('is-shown');
+        field.classList.toggle('is-shown', showing);
+        if (!MASK_IN_CSS) field.type = showing ? 'text' : 'password';
+        eye.classList.toggle('is-open', showing);
+        eye.setAttribute('aria-pressed', String(showing));
+        eye.title = showing ? 'hide password' : 'show password';
+        eye.setAttribute('aria-label', eye.title);
+        field.focus();
+    });
+});
 ['copy', 'cut', 'dragstart'].forEach((kind) => chatWord.addEventListener(kind, (event) => event.preventDefault()));
 
 const CHAT_BOARD = 'https://ntfy.sh';
@@ -7123,6 +7162,17 @@ let chatProfiles = [];          // signed profile changes waiting to be checked
 let chatPriv = null;            // your own private key, this browser only
 let chatWith = null;            // whose thread is open, lowercased
 let chatDoorNew = false;   // assume an account already exists
+// pineapple or pizza: one of the two, picked once at sign-up, never changed, shown on the profile
+const SIDES = ['pineapple', 'pizza'];
+let pickedSide = '';
+// an account's pick, followed through any renames (a renamed account's new name may not carry it yet)
+function sideOf(name) {
+    const key = String(name || '').toLowerCase();
+    if (chatPeople[key] && chatPeople[key].side) return chatPeople[key].side;
+    const home = whoIs(key);
+    const found = Object.keys(chatPeople).find((one) => chatPeople[one].side && whoIs(one) === home);
+    return found ? chatPeople[found].side : '';
+}
 let chatStarting = false;
 let chatStream = null;
 
@@ -7271,6 +7321,7 @@ function takePost(post) {
         const key = post.name.toLowerCase();
         if (!chatPeople[key]) {
             chatPeople[key] = { name: post.name, word: post.word, pub: post.pub || null, keep: post.keep || null };
+            if (SIDES.includes(post.side)) chatPeople[key].side = post.side;   // picked once, at sign-up: the first word on it stands
         } else if (!chatPeople[key].pub && post.pub) {
             chatPeople[key].pub = post.pub;
             chatPeople[key].keep = post.keep || chatPeople[key].keep;
@@ -7304,8 +7355,10 @@ async function wakeChat() {
     if (mine && mine.name && mine.word) chatMe = mine;
     if (chatMe && !heldAccounts().some((one) => one.name.toLowerCase() === chatMe.name.toLowerCase())) stashAccount();
     paintPeople();
-    paintTalk();
-    paintChatShape();
+    // the last thread opens straight away from what this browser already holds — waiting for the
+    // board drew the welcome first and then swapped it for the thread a beat later, which was the glitch
+    if (chatMe) openWith(whoWasOpen());
+    else { paintTalk(); paintChatShape(); }
     chatWhoLine.textContent = 'catching up…';
 
     const onBoard = await catchUp();
@@ -7423,7 +7476,7 @@ function sayAgainWhatIsMissing(onBoard) {
     if (chatMe && !onBoard.has(`who:${chatMe.name.toLowerCase()}`)) {
         const me = chatPeople[chatMe.name.toLowerCase()];
         if (me && me.pub) {
-            missing.push({ k: 'who', name: me.name, word: me.word, pub: me.pub, keep: me.keep, at: Date.now() });
+            missing.push({ k: 'who', name: me.name, word: me.word, pub: me.pub, keep: me.keep, ...(me.side ? { side: me.side } : {}), at: Date.now() });
         }
     }
     const me = chatMe && chatPeople[chatMe.name.toLowerCase()];
@@ -7435,7 +7488,7 @@ function sayAgainWhatIsMissing(onBoard) {
         const them = chatPeople[key];
         if (!them || !them.pub || !them.word || onBoard.has(`who:${key}`)) return;
         if (chatMe && key === chatMe.name.toLowerCase()) return;   // already handled above
-        missing.push({ k: 'who', name: them.name, word: them.word, pub: them.pub, keep: them.keep, at: Date.now() });
+        missing.push({ k: 'who', name: them.name, word: them.word, pub: them.pub, keep: them.keep, ...(them.side ? { side: them.side } : {}), at: Date.now() });
     });
     missing.slice(0, 12).forEach((post, at) => {
         window.setTimeout(() => postToBoard(CHAT_TOPIC, post).catch(() => {}), at * 400);
@@ -7567,6 +7620,22 @@ function paintChatShape() {
 }
 
 // a field that has something wrong with it shakes, rather than a line of words appearing under it
+// several fields shaken together: only the first takes the focus
+function shakeAlong(field, first) {
+    if (!field) return;
+    if (first) { shake(field); return; }
+    field.classList.remove('is-shaking');
+    void field.offsetWidth;
+    field.classList.add('is-shaking');
+    field.addEventListener('animationend', () => field.classList.remove('is-shaking'), { once: true });
+}
+// a name already taken says so beside its label: 'taken' shows at once and fades away over a second
+function flagTaken() {
+    const flag = document.getElementById('takenFlag');
+    if (!flag) return;
+    flag.getAnimations().forEach((move) => move.cancel());
+    flag.animate([{ opacity: 1 }, { offset: 0.15, opacity: 1 }, { opacity: 0 }], { duration: 1180, easing: 'ease-out', fill: 'forwards' });
+}
 function shake(field) {
     if (!field) return;
     field.classList.remove('is-shaking');
@@ -8158,6 +8227,10 @@ function paintTalk() {
         const them = chatPeople[chatWith];
         document.getElementById('talkStartName').textContent = displayName(chatWith);
         document.getElementById('talkStartSay').textContent = `this is the start of your messages with @${them ? them.name : chatWith}. only the two of you can read them.`;
+        const side = sideOf(chatWith);
+        const sideLine = document.getElementById('talkStartSide');
+        sideLine.hidden = !side;
+        sideLine.textContent = side ? `team ${side}` : '';
     }
     if (!said.length) return;
 
@@ -8314,6 +8387,10 @@ function paintAccount() {
     if (!chatMe) return;
     document.getElementById('accName').textContent = displayName(chatMe.name);
     document.getElementById('accHandle').textContent = `@${chatMe.name}`;
+    const side = sideOf(chatMe.name);
+    const accSide = document.getElementById('accSide');
+    accSide.hidden = !side;
+    accSide.textContent = side ? `team ${side}` : '';
     paintFaces();
     paintAccountList();
 }
@@ -8451,7 +8528,9 @@ async function changeAccount(what, one, two) {
         await postProfile({ to });
         // the new name is claimed the ordinary way too, so nobody can sign up over it
         const now = chatPeople[to];
-        postToBoard(CHAT_TOPIC, { k: 'who', name: to, word: now.word, pub: now.pub, keep: now.keep, at: Date.now() }).catch(() => {});
+        const side = sideOf(chatMe.name) || sideOf(to);
+        if (side && !now.side) now.side = side;
+        postToBoard(CHAT_TOPIC, { k: 'who', name: to, word: now.word, pub: now.pub, keep: now.keep, ...(side ? { side } : {}), at: Date.now() }).catch(() => {});
         openSetRow(null);
         paintPeople(); paintTalk();
         return `you are @${to} now`;
@@ -8625,7 +8704,18 @@ function paintChatDoor() {
     document.getElementById('loginSay').textContent = chatDoorNew ? 'create a nice account' : 'sign in with username and password';
     chatGo.textContent = chatDoorNew ? 'sign up' : 'sign in';
     chatSwap.textContent = chatDoorNew ? 'already have an account?' : 'dont have an account?';
+    document.querySelector('.chat-door').classList.toggle('is-new', chatDoorNew);
 }
+document.querySelectorAll('#chatSide .side-pick').forEach((pick) => {
+    pick.addEventListener('click', () => {
+        pickedSide = pick.dataset.side;
+        document.querySelectorAll('#chatSide .side-pick').forEach((one) => {
+            const on = one === pick;
+            one.classList.toggle('is-on', on);
+            one.setAttribute('aria-checked', String(on));
+        });
+    });
+});
 
 function openChatDoor(signingUp) {
     closeAccount();
@@ -8663,8 +8753,17 @@ chatGo.addEventListener('click', async () => {
     if (doorBusy) return;
     let called = chatHandle.value.trim().slice(0, 20);
     const word = chatWord.value;
-    if (!called) { shake(chatHandle); return; }
-    if (!word) { shake(chatWord); return; }
+    const nick = chatDoorNew ? document.getElementById('chatNick').value.trim().slice(0, 32) : '';
+    // everything missing or wrong shakes at once, not just the first of them
+    const wrong = [];
+    if (!called) wrong.push(chatHandle);
+    if (!word) wrong.push(chatWord);
+    if (chatDoorNew) {
+        const again = document.getElementById('chatWord2');
+        if (!again.value || again.value !== word) wrong.push(again);
+        if (!SIDES.includes(pickedSide)) wrong.push(document.getElementById('chatSide'));
+    }
+    if (wrong.length) { wrong.forEach((field, at) => shakeAlong(field, at === 0)); return; }
 
     saySomethingChat('');
     doorWorking(true);
@@ -8688,6 +8787,7 @@ chatGo.addEventListener('click', async () => {
             called = called.toLowerCase();
             if (known) {
                 shake(chatHandle);
+                flagTaken();
                 return;
             }
             const pair = await makeKeyPair();
@@ -8698,6 +8798,7 @@ chatGo.addEventListener('click', async () => {
                 word: hash,
                 pub: pair.pub,
                 keep: await wrapPriv(pair.priv, word),
+                side: pickedSide,
                 at: Date.now()
             };
             takePost(post);
@@ -8725,7 +8826,11 @@ chatGo.addEventListener('click', async () => {
         addingFrom = null;
         stashAccount();
         keepKnown();
+        // a nickname given at sign-up is posted the way any later change is, signed
+        if (chatDoorNew && nick && chatPriv) await postProfile({ nick }).catch(() => {});
         chatWord.value = '';
+        document.getElementById('chatWord2').value = '';
+        document.getElementById('chatNick').value = '';
         saySomethingChat('');
         paintChatBar();
         paintPeople();

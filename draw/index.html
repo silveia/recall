@@ -74,7 +74,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400;600;700&amp;family=Bitcount+Prop+Double:wght@400;700&amp;family=VT323&amp;family=Pixelify+Sans:wght@400&amp;display=swap">
     <!-- the site's own pointer from the very first paint, before style.css has arrived -->
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
-    <link rel="stylesheet" href="style.css?v=a49bec14f6">
+    <link rel="stylesheet" href="style.css?v=c80c57c0e4">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -132,6 +132,7 @@
         <input id="accFaceFile" type="file" accept="image/*" hidden>
         <p class="account-name" id="accName"></p>
         <p class="account-handle" id="accHandle"></p>
+        <p class="account-side" id="accSide" hidden></p>
         <ul class="acc-list" id="accList" aria-label="accounts on this browser"></ul>
         <button class="basic-button acc-add" id="accAdd" type="button">add account</button>
         <div class="account-leave-wrap">
@@ -491,6 +492,7 @@
                                         <div class="talk-start" id="talkStart" hidden>
                                             <span class="talk-start-face face-pic" id="talkStartFace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>
                                             <h3 id="talkStartName"></h3>
+                                            <p class="talk-start-side" id="talkStartSide" hidden></p>
                                             <p id="talkStartSay"></p>
                                         </div>
                                     </div>
@@ -582,9 +584,33 @@
 
                             <div class="ask-body">
                                 <div class="chat-door">
-                                    <input id="chatHandle" type="text" maxlength="20" autocomplete="off" spellcheck="false" placeholder="username" aria-label="username">
-                                    <!-- not type="password" on purpose: masked in css, see CLAUDE.md -->
-                                    <input id="chatWord" type="text" class="word-field" name="morie-word" autocomplete="off" spellcheck="false" placeholder="password" aria-label="password">
+                                    <!-- the names sit over their boxes, small, rather than inside them. register asks for
+                                         more, in this order: username, nickname, password, confirm password, pineapple or pizza -->
+                                    <div class="door-pair">
+                                        <label class="door-label" for="chatHandle"><span class="door-word">username<span class="taken-flag" id="takenFlag" aria-live="polite"> taken</span></span></label>
+                                        <input id="chatHandle" type="text" maxlength="20" autocomplete="off" spellcheck="false" aria-label="username">
+                                    </div>
+                                    <div class="door-pair door-new">
+                                        <label class="door-label" for="chatNick">nickname</label>
+                                        <input id="chatNick" type="text" maxlength="32" autocomplete="off" spellcheck="false" aria-label="nickname">
+                                    </div>
+                                    <div class="door-pair">
+                                        <label class="door-label" for="chatWord">password</label>
+                                        <!-- not type="password" on purpose: masked in css, see CLAUDE.md -->
+                                        <span class="word-wrap"><input id="chatWord" type="text" class="word-field" name="morie-word" autocomplete="off" spellcheck="false" aria-label="password"><button type="button" class="word-eye" title="show password" aria-label="show password" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="eye-shut" d="M3 10.5c2.6 3.6 5.7 5.4 9 5.4s6.4-1.8 9-5.4"/><g class="eye-open"><path d="M3 12c2.6-4 5.7-6 9-6s6.4 2 9 6c-2.6 4-5.7 6-9 6s-6.4-2-9-6z"/><circle cx="12" cy="12" r="2.2"/></g></svg></button></span>
+                                    </div>
+                                    <div class="door-pair door-new">
+                                        <label class="door-label" for="chatWord2">confirm password</label>
+                                        <span class="word-wrap"><input id="chatWord2" type="text" class="word-field" name="morie-word-again" autocomplete="off" spellcheck="false" aria-label="confirm password"><button type="button" class="word-eye" title="show password" aria-label="show password" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="eye-shut" d="M3 10.5c2.6 3.6 5.7 5.4 9 5.4s6.4-1.8 9-5.4"/><g class="eye-open"><path d="M3 12c2.6-4 5.7-6 9-6s6.4 2 9 6c-2.6 4-5.7 6-9 6s-6.4-2-9-6z"/><circle cx="12" cy="12" r="2.2"/></g></svg></button></span>
+                                    </div>
+                                    <!-- one of two, picked once at sign-up and never changed; it shows on the profile -->
+                                    <div class="door-pair door-new">
+                                        <span class="door-label" id="chatSideLabel">pineapple or pizza?</span>
+                                        <div class="side-picks" id="chatSide" role="radiogroup" aria-labelledby="chatSideLabel">
+                                            <button type="button" class="side-pick" data-side="pineapple" role="radio" aria-checked="false">pineapple</button>
+                                            <button type="button" class="side-pick" data-side="pizza" role="radio" aria-checked="false">pizza</button>
+                                        </div>
+                                    </div>
                                     <button class="basic-button is-solid ask-go" id="chatGo" type="button">sign up</button>
                                     <button class="scratch-plain ask-swap" id="chatSwap" type="button">already have an account?</button>
                                 </div>
@@ -737,6 +763,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=c9c6a53cd3"></script>
+    <script src="script.js?v=3e9a3fa26d"></script>
 </body>
 </html>
