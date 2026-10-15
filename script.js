@@ -671,7 +671,7 @@ function sparkleBurst(x, y, count = 4) {
 // where the last press was, so a list opened by it can sparkle out of the pointer as well
 let lastPress = { x: 0, y: 0, at: 0 };
 document.addEventListener('pointerdown', (event) => { lastPress = { x: event.clientX, y: event.clientY, at: performance.now() }; }, true);
-function sparkleAround(el, count = 6, { fromPointer = false } = {}) {     // none out of the pointer: opening a list is a minor press
+function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}) {     // none out of the pointer: opening a list is a minor press
     if (!el || stillMotion()) return;
     // a little of both (by request): a spray out of the pointer that opened it, and a few round the list
     if (fromPointer && performance.now() - lastPress.at < 500) sparkleBurst(lastPress.x, lastPress.y);
@@ -691,12 +691,14 @@ function sparkleAround(el, count = 6, { fromPointer = false } = {}) {     // non
     spots.sort((a, b) => Math.hypot(a.x - ox, a.y - oy) - Math.hypot(b.x - ox, b.y - oy));
     spots.forEach((spot, i) => {
         const reach = spot.onIt ? 3 + Math.random() * 4 : 6 + Math.random() * 6;
+        // rising (the colour list): bubbles of every size, drifting up as bubbles do, over a longer moment
+        const up = rise ? 12 + Math.random() * 22 : 0;
         sparkle(spot.x, spot.y, {
-            size: 12 + Math.random() * 6,
-            dx: spot.out[0] * reach,
-            dy: spot.out[1] * reach,
-            delay: 120 + i * 40,
-            long: 300 + Math.random() * 100,
+            size: rise ? 8 + Math.random() * 14 : 12 + Math.random() * 6,
+            dx: spot.out[0] * reach + (rise ? (Math.random() - 0.5) * 8 : 0),
+            dy: spot.out[1] * reach - up,
+            delay: rise ? 100 + i * 34 + Math.random() * 60 : 120 + i * 40,
+            long: rise ? 480 + Math.random() * 260 : 300 + Math.random() * 100,
             white: spot.onIt ? true : null,
             ignore: el
         });
@@ -5646,7 +5648,7 @@ function placeTintList() {
     tintPop.style.right = '16px';     // in the window's corner, its right edge on the page's own (the dot sits in that corner)
 }
 function rollTintList(open) {
-    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop, 6, { fromPointer: false }); }     // only round the list: none out of the pointer for the colour (by request)
+    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop, 18, { fromPointer: false, rise: true }); }     // only round the list: none out of the pointer for the colour (by request)
     tintPop.classList.toggle('is-open', open);
 }
 window.addEventListener('resize', () => { if (tintPop.classList.contains('is-open')) placeTintList(); });
