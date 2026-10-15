@@ -76,7 +76,7 @@
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <!-- the site's colour, set before anything is drawn -->
     <script src="tint.js"></script>
-    <link rel="stylesheet" href="style.css?v=0db9739ee3">
+    <link rel="stylesheet" href="style.css?v=b881d0bf4f">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -555,7 +555,126 @@
 
                         <!-- the drawing app, framed so its keys (space to pan, ctrl+z, wasd) stay its own -->
                         <section class="draw-panel" id="drawPanel" aria-label="draw" hidden>
-                            <iframe class="draw-frame" id="drawFrame" data-src="drawing/index.html?v=3aaab5556c" title="draw"></iframe>
+                            <!-- the drawing app, built into the page (it used to be framed): its toolbar, the sheet,
+                                 and its two little windows. draw.js runs it, started the first time this is shown -->
+                            <div id="toolbar">
+                                <div class="toolbar-group">
+                                    <div class="field">
+                                        <div class="pick" id="colourPick">
+                                            <button type="button" class="pick-face colour-face" aria-haspopup="true" aria-expanded="false" title="colour"><span class="colour-dot"></span></button>
+                                            <div class="pick-menu tint" hidden>
+                                                <!-- a real colour adjuster: shade and brightness in the square, hue on the strip, and the code itself -->
+                                                <div class="tint-field" id="tintField" role="slider" tabindex="0" aria-label="shade and brightness" title="shade and brightness"><span class="tint-ring" id="tintRing"></span></div>
+                                                <div class="tint-hue" id="tintHue" role="slider" tabindex="0" aria-label="hue" title="hue" aria-valuemin="0" aria-valuemax="360"><span class="tint-ring" id="hueRing"></span></div>
+                                                <label class="tint-code"><span class="tint-now" id="tintNow"></span><span class="tint-hash">#</span><input type="text" id="tintCode" maxlength="6" spellcheck="false" autocomplete="off" aria-label="colour code"></label>
+                                            </div>
+                                            <input type="color" id="colorPicker" class="kept-under" value="#000000" tabindex="-1" aria-hidden="true">
+                                        </div>
+                                    </div>
+
+                                    <!-- the tool and the colour are the site's own menus; the real select and colour field stay
+                                         underneath (script.js reads them) and are set from here -->
+                                    <div class="field">
+                                        <!-- the tool is one bare mark: the pen or the eraser, swapped (with a spin) on every press -->
+                                        <button type="button" class="bare-mark tool-swap" id="toolSwap" title="pen" aria-label="pen — press for the eraser">
+                                            <span class="tool-turn" id="toolTurn">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="tool-pen" d="M5 19l1-4L16 5l3 3L9 18z"/><path class="tool-rub" d="M14.6 4.6a2 2 0 0 1 2.8 0l2 2a2 2 0 0 1 0 2.8L10 18.8H6.4L4.6 17a2 2 0 0 1 0-2.8z M9.2 9.9l4.9 4.9"/></svg>
+                                            </span>
+                                        </button>
+                                        <select id="brushType" class="kept-under" tabindex="-1" aria-hidden="true">
+                                            <option value="round">round brush</option>
+                                            <option value="eraser">eraser</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- the size: a slider in one outlined pill with less and more at its two ends, and how many
+                                         art pixels across beside it -->
+                                    <div class="field size-field">
+                                        <div class="size-step" id="sizeStep">
+                                            <button type="button" class="step-less" tabindex="-1" title="smaller" aria-label="smaller"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 12h10"/></svg></button>
+                                            <div class="size-track" id="sizeTrack" role="slider" tabindex="0" title="size" aria-label="size" aria-valuemin="1" aria-valuemax="64"><span class="size-done" id="sizeDone"></span><span class="size-thumb" id="sizeThumb"></span></div>
+                                            <button type="button" class="step-more" tabindex="-1" title="bigger" aria-label="bigger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 7v10M7 12h10"/></svg></button>
+                                        </div>
+                                        <span class="size-read" id="sizeRead">2px</span>
+                                        <input type="range" id="brushSize" class="kept-under" min="1" max="64" value="2" tabindex="-1" aria-hidden="true">
+                                    </div>
+
+                                    <!-- undo and redo, bare marks, the same as ctrl/cmd z and y -->
+                                    <div class="field history">
+                                        <button type="button" class="bare-mark" id="undoBtn" title="undo" aria-label="undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5 5 9l4 4"/><path d="M5 9h9a5 5 0 0 1 0 10h-2"/></svg></button>
+                                        <button type="button" class="bare-mark" id="redoBtn" title="redo" aria-label="redo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5 4 4-4 4"/><path d="M19 9h-9a5 5 0 0 0 0 10h2"/></svg></button>
+                                    </div>
+                                </div>
+
+                                <div class="toolbar-group">
+                                    <label class="uploadBtn" for="imageLoader">upload stamp</label>
+                                    <input type="file" id="imageLoader" accept="image/*" style="display: none;">
+
+                                    <label class="uploadBtn" for="charLoader">upload sprite</label>
+                                    <input type="file" id="charLoader" accept="image/*" style="display: none;">
+
+                                    <span class="spawn-wrap">
+                                        <button id="spawnBtn" type="button">spawn sprite</button>
+                                        <span class="sprite-hint" id="spriteHint" role="status" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 18 7 7M7 14V7h7"/></svg>pls upload sprite first</span>
+                                    </span>
+                                    <button id="clearBtn" type="button" class="is-solid">clear</button>
+                                </div>
+                            </div>
+
+                            <div id="canvas-container">
+                                <canvas id="paintCanvas" width="1200" height="800"></canvas>
+
+                                <div class="corner-buttons">
+                                    <button id="referenceBtn" type="button" title="reference" aria-label="Open Reference Window">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4.5 17.5l5-4.5 3.5 3 2.5-2 4 3.5"/></svg>
+                                    </button>
+                                    <button id="gameBtn" type="button" title="yams" aria-label="Open Yams Window">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 8h9a4 4 0 0 1 4 4.4l-.5 3.6a2.4 2.4 0 0 1-4.2 1.2L14.2 15H9.8l-1.6 2.2A2.4 2.4 0 0 1 4 16l-.5-3.6A4 4 0 0 1 7.5 8z"/><path d="M8 10.5v3M6.5 12h3"/><circle cx="15.5" cy="11" r="0.5" fill="currentColor"/><circle cx="17" cy="13" r="0.5" fill="currentColor"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="miniWindow" class="hidden-window">
+                                <div id="windowHeader">
+                                    <span>yams</span>
+                                    <div>
+                                        <button id="resetGameBtn" type="button" title="back to the start" aria-label="back to the start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18.5 12a6.5 6.5 0 1 1-1.9-4.6M18.5 4.5v3.5H15"/></svg></button>
+                                        <button id="closeWindowBtn" type="button" title="close" aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+                                    </div>
+                                </div>
+                                <div id="windowContent">
+                                    <div id="startScreen">
+                                        <button id="startGameBtn" type="button" class="is-solid">start</button>
+                                    </div>
+                                    <div id="gameScreen" class="hidden-game-element">
+                                        <div id="gameViewport">
+                                            <div id="coinCounterDisplay">
+                                                <span class="coin-icon">🪙</span> x <span id="coinScoreValue">0</span>
+                                            </div>
+                                            <div id="gameWorldBackground">
+                                                <div id="gamePlayer"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="miniWindow2" class="hidden-window">
+                                <div id="windowHeader2">
+                                    <span>reference</span>
+                                    <button id="closeWindowBtn2" type="button" title="close" aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+                                </div>
+
+                                <div class="windowContent2">
+                                    <label for="windowImageLoader" id="uploadBtn" title="upload a picture" style="display: inline-block;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15.5V5M7.5 9.5 12 5l4.5 4.5M5 15v3.5h14V15"/></svg>
+                                    </label>
+                                    <input type="file" id="windowImageLoader" accept="image/*" style="display: none;">
+
+                                    <img id="referenceImage" src="" alt="Preview" style="display: none; max-width: 100%; height: auto;">
+                                    <span id="uploadPlaceholder">upload file to view it here</span>
+                                </div>
+                            </div>
                         </section>
                     </section>
 
@@ -802,6 +921,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=0e212cb8ad"></script>
+    <script src="script.js?v=e1f8acc39e"></script>
+    <script src="draw.js?v=9574d8cea4"></script>
 </body>
 </html>

@@ -151,6 +151,18 @@ part under active work.
 
 The page marks down the bar run home, card, clip, draw, chat — chat last, by request.
 
+**draw is built into the page now (14 Oct, by request — this replaces the framing described below).** It
+was framed, a page of its own inside the page, with its own stylesheet, fonts, lights (sent by message),
+its own report of what to cut out of the colour layer, and a different entrance — which is why it always
+looked a little off. Now its toolbar, sheet and two little windows are ordinary markup in `#drawPanel`, its
+rules are one section at the foot of `style.css` (every one scoped to `.draw-panel`, in the site's own
+tokens and fills), and its code is **`draw.js`** — the old game.js, script.js and the menus script, whole,
+inside one function (`window.startDrawing`, run the first time the page is shown, so none of its names can
+meet the site's). Its keys only work on the draw page (`drawHere`), and the site's ctrl/cmd shortcuts stand
+aside there. Its little windows, sprites and fish are placed inside the page, not the whole window. Its
+holes are `window.drawHoles()`, read straight by `tintHoles`. Its loop for sprites and fish only runs while
+there is something to move. `drawing/` now holds only its pictures; `pages.sh` fingerprints `draw.js`.
+
 **draw** — the drawing app from `silveia.github.io/drawing-app`, brought in by
 request under a pen mark. It lives in `drawing/` with its own html, script and
 styles, and the section frames it (`#drawFrame`) — framed, its keys (space to
@@ -2201,8 +2213,8 @@ middle (`--fit`) to fit the width and the half-height, so the spacing holds.
   See "a link per page".
 - `404.html` — sends a stray path to its section, or to the front door.
 - `.githooks/` — the pre-commit hook that keeps the copies in step.
-- `drawing/` — the drawing app, framed by the draw section. Its own files;
-  edit them there. `pages.sh` fingerprints its address like the rest.
+- `draw.js` — the drawing app, built into the draw page (started the first
+  time it is shown). `drawing/` holds only its pictures.
 - `index.html` — the front door at `morie.top`: the dino run and the way
   in. See "the front door".
 - `app.html` — the site itself, all of its screens

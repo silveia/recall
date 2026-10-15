@@ -4001,18 +4001,6 @@ html.booting .booting-mark { display: flex; }
 /* =========================================================
    27. chat — people, and the talking with them
    ========================================================= */
-.draw-panel {
-	display: flex;
-	flex: 1;
-	min-height: 0;
-}
-.draw-frame {
-	flex: 1;
-	width: 100%;
-	min-height: 0;
-	border: 0;
-	background: var(--paper-fill);
-}
 
 .chat-panel {
 	display: flex;
@@ -4906,3 +4894,670 @@ html:not(.inverted) .page-marks { --paper: var(--tint-main); --ink: #ffffff; --l
 html.inverted .tab-tip svg { display: block; }   /* the bumps' own white edge, in the dark, drawn along the moving curve */
 .tab-tip span { position: relative; top: var(--drop-title); opacity: 0; transition: opacity 0.2s ease; }
 .tab-tip span.is-shown { opacity: 1; transition: opacity 0.45s ease; }   /* fades in once the shape is half out */
+
+/* =========================================================
+   draw — the drawing app, built into the page (14 Oct, by request: framed, it was a page of its own and
+   always looked a little off). its own rules, every one kept to the draw page, in the site's own colours
+   ========================================================= */
+.draw-panel {
+	--radius: 14px;
+	position: relative;     /* its little windows, sprites and fish are placed inside it */
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: var(--group);
+	min-height: 0;
+	overflow: hidden;
+	color: var(--ink);
+	font-family: var(--font);
+	font-size: 14px;
+}
+.draw-panel[hidden] { display: none; }
+/* ---------- 2. the toolbar: one row of pills over the canvas ---------- */
+.draw-panel #toolbar {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--tight) var(--group);
+    padding: var(--tight) var(--group);
+    background: var(--paper-fill);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    position: relative;
+    z-index: 10;
+}
+.draw-panel .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: var(--tight);
+}
+.draw-panel label { color: var(--ink); }
+.draw-panel .field {
+    display: flex;
+    align-items: center;
+    gap: var(--tight);
+    padding: 0 0.4rem;
+}
+.draw-panel button,
+.draw-panel .uploadBtn {
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.95rem;
+    color: var(--ink);
+    background: var(--paper-fill);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    white-space: nowrap;
+    cursor: var(--cur-tap);
+    /* a hover fades in rather than snapping, by request */
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.draw-panel button:hover,
+.draw-panel .uploadBtn:hover,
+.draw-panel button.is-solid {
+    color: var(--paper);
+    background: var(--ink-fill);
+}
+.draw-panel button.is-solid:hover { color: var(--ink); background: var(--paper-fill); }
+.draw-panel button { gap: 0.3rem; }
+/* the real select and colour field stay on the page for script.js, out of sight. not display:none —
+   a colour field that isn't laid out can't open its picker */
+.draw-panel .kept-under {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+.draw-panel #imageLoader,
+.draw-panel #charLoader { display: none; }
+/* the tool: one bare mark, the pen or the eraser; the one not in use is simply not drawn */
+.draw-panel .tool-swap .tool-turn { display: grid; place-items: center; }
+.draw-panel .tool-swap svg { width: 22px; height: 22px; }
+.draw-panel .tool-turn .tool-rub { display: none; }
+.draw-panel .tool-turn.is-rubbing .tool-pen { display: none; }
+.draw-panel .tool-turn.is-rubbing .tool-rub { display: inline; }
+/* undo and redo: bare marks, no ring, nothing on hover but the pointer */
+.draw-panel .history { gap: 2px; padding: 0; }
+.draw-panel .bare-mark,
+.draw-panel .bare-mark:hover {
+    width: 32px;
+    padding: 0;
+    color: var(--ink);
+    background: none;
+    border: 0;
+}
+.draw-panel .bare-mark svg { width: 20px; height: 20px; }
+.draw-panel .bare-mark:active { transform: scale(0.9); }
+/* the note when spawn is pressed with no sprite: a small black chip under the button, its arrow
+   pointing up and back at upload sprite, which sits just to its left */
+.draw-panel .spawn-wrap { position: relative; display: inline-flex; }
+.draw-panel .sprite-hint {
+    position: absolute;
+    top: calc(100% + var(--tight));
+    right: 50%;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.8rem 0.35rem 0.5rem;
+    color: var(--paper);
+    background: var(--ink-fill);
+    border-radius: 999px;
+    font-size: 13px;
+    white-space: nowrap;
+    pointer-events: none;
+    animation: draw-hint-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.draw-panel .sprite-hint[hidden] { display: none; }
+.draw-panel .sprite-hint svg { width: 16px; height: 16px; flex: none; }
+.draw-panel .sprite-hint.is-leaving { opacity: 0; transition: opacity 0.2s ease; }
+@keyframes draw-hint-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+/* ---------- the tool and colour menus, after the site's own (the right-click menu): an outlined box
+   on paper, plain rows, the one in use turned solid black ---------- */
+.draw-panel .pick { position: relative; display: flex; }
+/* flex, not block: a block round an inline button kept a line's descent under it, 1.75px that set the whole row off centre */
+.draw-panel .pick-face svg { width: 15px; height: 15px; flex: none; margin-right: -0.25rem; transition: transform 0.2s ease; }
+.draw-panel .pick-face[aria-expanded="true"] svg { transform: rotate(180deg); }
+.draw-panel .pick-face[aria-expanded="true"] { color: var(--paper); background: var(--ink-fill); }
+.draw-panel .pick-menu {
+    position: absolute;
+    top: calc(100% + var(--tight));
+    left: 0;
+    z-index: 60;
+    min-width: 100%;
+    padding: 0.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--paper-fill);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+.draw-panel .pick-menu[hidden] { display: none; }
+.draw-panel .pick-row {
+    height: auto;
+    justify-content: flex-start;
+    padding: 0.5rem 0.7rem;
+    border: 0;
+    border-radius: 8px;
+}
+.draw-panel .pick-row:hover { color: var(--ink); background: none; box-shadow: inset 0 0 0 1px var(--line); }
+/* an outline, never gray, by request */
+.draw-panel .pick-row.is-on,
+.draw-panel .pick-row.is-on:hover { color: var(--paper); background: var(--ink-fill); }
+/* the colour: its face is the colour in use; the menu is a real adjuster — a square for shade and
+   brightness, a strip for hue, and the code. the rings that ride them are white with a black edge, so
+   they show on any colour without anything gray */
+/* the colour is just its dot: no outline, no arrow, by request. it sits in the toolbar's round left
+   end exactly as far off the outline sideways as it is above and below (12px each way) */
+.draw-panel #toolbar { padding-left: 12px; padding-right: 8px; }
+/* clear sits in the right round end the same way: 8px off the outline to its right, above and below */
+.draw-panel .field:has(> #colourPick) { padding: 0; }
+.draw-panel .colour-face,
+.draw-panel .colour-face:hover,
+.draw-panel .pick-face.colour-face[aria-expanded="true"] {
+    width: 24px;
+    padding: 0;
+    color: var(--ink);
+    background: none;
+    border: 0;
+}
+.draw-panel .colour-face .colour-dot { width: 24px; height: 24px; transition: transform 0.2s ease; }
+.draw-panel .colour-face:hover .colour-dot,
+.draw-panel .colour-face[aria-expanded="true"] .colour-dot { transform: scale(1.1); }
+.draw-panel .colour-dot {
+    width: 20px;
+    height: 20px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    flex: none;
+}
+.draw-panel .tint {
+    width: 13.5rem;
+    min-width: 0;
+    padding: 0.6rem;
+    gap: 0.6rem;
+}
+.draw-panel .tint-field {
+    position: relative;
+    height: 9.5rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, var(--hue, #f00));
+    cursor: var(--cur-tap);
+    touch-action: none;
+    outline: none;
+}
+.draw-panel .tint-hue {
+    position: relative;
+    height: 14px;
+    margin: 0 7px;               /* the ring's half, so it reaches each end */
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px var(--line);
+    background: linear-gradient(to right, #f00 0%, #ff0 16.67%, #0f0 33.33%, #0ff 50%, #00f 66.67%, #f0f 83.33%, #f00 100%);
+    cursor: var(--cur-tap);
+    touch-action: none;
+    outline: none;
+}
+.draw-panel .tint-ring {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    transition: width 0.12s ease, height 0.12s ease;
+}
+.draw-panel .tint-field .tint-ring { top: 0; }
+.draw-panel .is-held > .tint-ring { width: 18px; height: 18px; }
+.draw-panel .tint-field:focus-visible,
+.draw-panel .tint-hue:focus-visible { box-shadow: 0 0 0 1px var(--line), 0 0 0 3px var(--paper), 0 0 0 4px var(--ink); }
+.draw-panel .tint-code {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    height: 30px;
+    padding: 0 0.6rem 0 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: var(--num-font);
+    font-size: 1.15rem;
+}
+.draw-panel .tint-now { width: 20px; height: 20px; flex: none; border: 1px solid var(--line); border-radius: 50%; }
+.draw-panel .tint-hash { line-height: 1; }
+.draw-panel .tint-code input {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    color: var(--ink);
+    background: none;
+    border: 0;
+    outline: none;
+    font: inherit;
+    text-transform: lowercase;
+}
+/* the size: less at the left end, a slider (a hairline and a solid round thumb) between, more at
+   the right end, with no outline round them — and the count beside it in vt323 like every number on the site */
+.draw-panel .size-field { gap: var(--tight); }
+.draw-panel .size-step {
+    display: flex;
+    align-items: center;
+    gap: 0;                      /* − and + sit close against the line, by request */
+    height: 32px;
+    padding: 0;                  /* no outline round it, by request: the marks and the line stand on their own */
+}
+.draw-panel .step-less,
+.draw-panel .step-more {
+    flex: none;
+    width: 18px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+}
+.draw-panel .step-less svg,
+.draw-panel .step-more svg { width: 15px; height: 15px; }
+/* bare marks: no background of their own, so nothing shows behind them — not on hover, and not as an oval
+   left fading behind the page when the lights change */
+.draw-panel .step-less,
+.draw-panel .step-more,
+.draw-panel .step-less:hover,
+.draw-panel .step-more:hover { color: var(--ink); background: none; }
+/* while the lights change, nothing fades: a fade let every button lag a fifth of a second behind the page */
+.draw-panel .step-less:active,
+.draw-panel .step-more:active { transform: scale(0.88); }
+.draw-panel .size-track {
+    position: relative;
+    width: 7rem;
+    height: 26px;
+    margin: 0 8px;              /* the thumb's half and a hair, so it reaches each end without covering the marks */
+    cursor: var(--cur-tap);
+    touch-action: none;
+    outline: none;
+}
+.draw-panel .size-track::before {          /* the line it runs along */
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background: var(--ink-fill);
+}
+/* the stretch behind the thumb is bolder than the stretch ahead of it */
+.draw-panel .size-done {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 0;
+    height: 3px;
+    background: var(--ink-fill);
+    border-radius: 999px;
+    transform: translateY(-50%);
+}
+.draw-panel .size-thumb {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 14px;
+    height: 14px;
+    background: var(--ink-fill);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: transform 0.15s ease;
+}
+.draw-panel .size-track:hover .size-thumb,
+.draw-panel .size-track.is-held .size-thumb { transform: translate(-50%, -50%) scale(1.15); }
+.draw-panel .size-track:focus-visible .size-thumb { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3px var(--ink); }
+.draw-panel .size-read {
+    min-width: 2.6rem;
+    font-family: var(--num-font);
+    font-size: 1.1rem;
+    line-height: 1;
+}
+/* ---------- 3. the canvas: the rest of the page, in an outlined box ---------- */
+.draw-panel #canvas-container {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow: hidden;
+    background: var(--paper-fill);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    z-index: 1;
+}
+.draw-panel canvas {
+    background-color: #fff;     /* the sheet stays white in both lights: it is the paper being drawn on */
+    cursor: crosshair;
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: pixelated;   /* one canvas pixel is one art pixel, shown big and hard-edged */
+}
+/* the game and the reference, as two round marks in the canvas's corner */
+.draw-panel .corner-buttons {
+    position: absolute;
+    right: var(--group);
+    bottom: var(--group);
+    display: flex;
+    flex-direction: column;
+    gap: var(--tight);
+    z-index: 3;
+}
+.draw-panel #gameBtn,
+.draw-panel #referenceBtn {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    transition: color 0.2s ease, background-color 0.2s ease, transform 0.1s ease;
+}
+.draw-panel #gameBtn svg,
+.draw-panel #referenceBtn svg { width: 22px; height: 22px; }
+/* drawn in the site's hairline, in whatever colour the button's words are */
+.draw-panel #gameBtn:hover,
+.draw-panel #referenceBtn:hover { transform: scale(1.05); }
+.draw-panel #gameBtn:active,
+.draw-panel #referenceBtn:active { transform: scale(0.95); }
+.draw-panel #uploadBtn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    width: 32px;
+    height: 32px;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: none;           /* a bare mark, no ring round it, by request */
+    border: 0;
+    cursor: var(--cur-tap);
+}
+.draw-panel #uploadBtn svg { width: 20px; height: 20px; color: var(--ink); display: block; }
+/* ---------- 4. the two little windows ---------- */
+.draw-panel #miniWindow,
+.draw-panel #miniWindow2 {
+    position: absolute;
+    background: var(--paper-fill);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    z-index: 20;
+}
+.draw-panel #miniWindow {
+    top: 10%;
+    left: 10%;
+    width: 300px;
+    height: 340px;
+}
+.draw-panel #miniWindow2 {
+    top: 30%;
+    left: 40%;
+    width: 400px;
+    height: 400px;
+    resize: both;
+    min-width: 200px;
+    min-height: 200px;
+    max-width: 90%;
+    max-height: 90%;
+}
+/* the head is the site's window title: the name centred in pixelify over a hairline rule, and the
+   marks at the right bare, with no rings — the × is the same × every window on the site closes with */
+.draw-panel #windowHeader,
+.draw-panel #windowHeader2 {
+    position: relative;
+    height: 42px;
+    padding: 0 8px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 2px;
+    color: var(--paper);          /* the bar is the other way round: white on black, by request */
+    background: var(--ink-fill);
+    border-bottom: 1px solid var(--line);
+    user-select: none;
+    cursor: move;
+}
+.draw-panel #windowHeader > span,
+.draw-panel #windowHeader2 > span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--head-font);
+    font-size: 1.2rem;
+    pointer-events: none;
+}
+.draw-panel #windowHeader div { display: flex; align-items: center; gap: 2px; }
+.draw-panel #closeWindowBtn,
+.draw-panel #resetGameBtn,
+.draw-panel #closeWindowBtn2 {
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    color: inherit;
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    font-family: var(--font);
+    line-height: 1;
+}
+/* the × and the turn arrow are one pair: the same hairline, the same size, on the same line */
+.draw-panel #closeWindowBtn svg,
+.draw-panel #closeWindowBtn2 svg,
+.draw-panel #resetGameBtn svg { display: block; width: 18px; height: 18px; }
+/* like the site's ×, they do nothing on hover or press */
+.draw-panel #closeWindowBtn:hover,
+.draw-panel #resetGameBtn:hover,
+.draw-panel #closeWindowBtn2:hover,
+.draw-panel #closeWindowBtn:active,
+.draw-panel #resetGameBtn:active,
+.draw-panel #closeWindowBtn2:active { color: inherit; background: none; transform: none; }
+.draw-panel #windowContent {
+    padding: 15px;
+    color: var(--ink);
+    font-size: 14px;
+    height: calc(100% - 42px);
+}
+.draw-panel #startScreen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+.draw-panel #startGameBtn {
+    height: 44px;
+    padding: 0 2rem;
+    font-family: var(--head-font);
+    font-size: 20px;
+}
+.draw-panel .windowContent2 {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 42px);
+    background: var(--paper-fill);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.draw-panel #windowImagePreview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+}
+.draw-panel #uploadPlaceholder {
+    color: var(--ink);
+    font-size: 12px;
+    position: absolute;
+    pointer-events: none;
+}
+/* ---------- 5. the game ---------- */
+.draw-panel #gameViewport {
+    position: absolute;
+    top: 42px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    background-color: #000;
+    margin: 0;
+    padding: 0;
+    display: block;
+}
+/* each on its own: a browser that doesn't know one of the two would drop a shared rule whole */
+.draw-panel #gameViewport:fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+.draw-panel #gameViewport:-webkit-full-screen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+.draw-panel #gameWorldBackground {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1024px;
+    height: 1024px;
+    background-image: url('drawing/map.png');
+    background-size: 1024px 1024px;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    transform-origin: top left;
+    margin: 0;
+    padding: 0;
+}
+.draw-panel #gamePlayer {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background-image: url('drawing/player.png');
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    pointer-events: none;
+}
+.draw-panel .map-coin {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    pointer-events: none;
+    transform-origin: center center;
+}
+.draw-panel #coinCounterDisplay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 2px 9px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #fff;
+    background: #000;
+    border: 1px solid #fff;
+    border-radius: 999px;
+    font-family: var(--num-font);
+    font-size: 16px;
+    z-index: 999999;
+    pointer-events: none;
+}
+.draw-panel .coin-icon { font-size: 14px; }
+.draw-panel .map-tree {
+    position: absolute;
+    width: 64px;
+    height: 96px;
+    background-image: url('drawing/tree.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    pointer-events: none;
+    transform: translate(-50%, -100%);
+    transform-origin: bottom center;
+}
+.draw-panel #gameViewport:fullscreen #coinCounterDisplay {
+    top: 30px;
+    left: 30px;
+    font-size: 32px;
+    padding: 6px 18px;
+    gap: 8px;
+}
+.draw-panel #gameViewport:-webkit-full-screen #coinCounterDisplay {
+    top: 30px;
+    left: 30px;
+    font-size: 32px;
+    padding: 6px 18px;
+    gap: 8px;
+}
+.draw-panel #gameViewport:fullscreen .coin-icon { font-size: 28px; }
+.draw-panel #gameViewport:-webkit-full-screen .coin-icon { font-size: 28px; }
+/* ---------- 6. the rest ---------- */
+.draw-panel .shimeji-char {
+    position: absolute;
+    width: 64px;
+    height: auto;
+    max-height: 100px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    z-index: 9999;
+    pointer-events: none;
+}
+.draw-panel .fullscreen-mode {
+    width: 100vw !important;
+    height: 100vh !important;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    z-index: 99999;
+    background-color: #000;
+}
+.draw-panel .hidden-window,
+.draw-panel .hidden-game-element { display: none !important; }
+.draw-panel .fish-particle {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    pointer-events: none;
+    z-index: 9999999;
+    animation: draw-fish-fountain 0.8s ease-out forwards;
+}
+@keyframes draw-fish-fountain {
+    0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0.5) rotate(var(--rot)); opacity: 0; }
+}

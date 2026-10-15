@@ -46,7 +46,6 @@ document.getElementById('siteName').addEventListener('click', (event) => {
 const audioPanel = document.getElementById('audioPanel');
 const chatPanel = document.getElementById('chatPanel');
 const drawPanel = document.getElementById('drawPanel');
-const drawFrame = document.getElementById('drawFrame');
 let chatSplitter = null;
 let chatReady = false;
 
@@ -574,14 +573,8 @@ const TINT_HOLES = '.tint-kind-dot, .hue-now, #siteTintField, #siteTintHue';
 function tintHoles() {
     const holes = [];
     const add = (box) => { if (box && box.width && box.height) holes.push(box); };
-    if (activeSectionId === 'draw' && drawFrame && drawFrame.src) {
-        // the drawing app says where its own holes are (drawFrameHoles, by message, so it works opened as
-        // a file too, where the page may not look inside the frame): the sheet, and what lies on it. they
-        // overlap on purpose — the path is filled even-odd, so a box inside a hole puts the layer back and
-        // a box inside that takes it out again
-        const frame = drawFrame.getBoundingClientRect();
-        drawFrameHoles.forEach((b) => add({ left: frame.left + b.left, top: frame.top + b.top, width: b.width, height: b.height, round: b.round }));
-    }
+    // the drawing page says what keeps its own colours: the sheet, and what lies on it (draw.js)
+    if (activeSectionId === 'draw' && typeof window.drawHoles === 'function') window.drawHoles().forEach(add);
     // the site's colour dropdown, while it is open: its colours are the colours themselves
     // while it is open its colours are cut out, each where it is drawn as it pops in (`colours-in`): its
     // box as it stands that frame, its rounding scaled with it
@@ -628,25 +621,6 @@ function cutTintHoleWhileMoving(long) {
 }
 window.addEventListener('resize', cutTintHole);
 window.addEventListener('site-tint', cutTintHole);
-// the drawing app tells the page where its holes are, and the page tells it the lights and the colour —
-// by message both ways, which works even where neither may reach into the other (opened as a file)
-let drawFrameHoles = [];
-window.addEventListener('message', (event) => {
-    if (!drawFrame || event.source !== drawFrame.contentWindow || !event.data || !Array.isArray(event.data.tintHoles)) return;
-    drawFrameHoles = event.data.tintHoles;
-    cutTintHole();
-});
-function tellDrawFrame() {
-    if (!drawFrame || !drawFrame.contentWindow) return;
-    try {
-        drawFrame.contentWindow.postMessage({
-            lights: document.documentElement.classList.contains('inverted'),
-            tint: window.siteTint ? window.siteTint.read() : null
-        }, '*');
-    } catch (error) { /* not loaded yet */ }
-}
-if (drawFrame) drawFrame.addEventListener('load', () => { tellDrawFrame(); cutTintHole(); });
-window.addEventListener('site-tint', tellDrawFrame);
 document.addEventListener('scroll', () => { if (activeSectionId === 'chat') window.requestAnimationFrame(cutTintHole); }, true);
 document.addEventListener('load', (event) => { if (event.target.tagName === 'IMG') cutTintHole(); }, true);
 
@@ -665,12 +639,9 @@ function renderSections() {
     if (activeSectionId !== 'home') {
         try { document.querySelector('.home-run').contentWindow.dinoReset(); } catch (error) { /* not loaded yet */ }
     }
-    // the drawing app is only loaded the first time its page is shown: loaded while hidden it measures
-    // its canvas as nothing, and keeps that size
-    // it is told the lights in its address, so it starts in them rather than turning over once loaded
-    if (activeSectionId === 'draw' && !drawFrame.src) {
-        drawFrame.src = drawFrame.dataset.src + (document.documentElement.classList.contains('inverted') ? '#dark' : '');
-    }
+    // the drawing app starts the first time its page is shown: started hidden it measures its sheet as
+    // nothing, and keeps that size
+    if (activeSectionId === 'draw' && typeof window.startDrawing === 'function') window.startDrawing();
     if (activeSectionId === 'home') paintGo();     // the go list's lines are current whenever home is shown
     if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
@@ -2395,6 +2366,7 @@ document.addEventListener('keydown', (event) => {
     if ((tag === 'INPUT' || tag === 'TEXTAREA') && event.key !== 'Escape') return;
 
     const pressed = event.key.toLowerCase();
+    if (activeSectionId === 'draw' && (event.ctrlKey || event.metaKey)) return;     // the drawing's own undo and zoom
     if ((event.ctrlKey || event.metaKey) && (pressed === 'y' || (pressed === 'z' && event.shiftKey))) {
         if (!redoStack.length) return;
         event.preventDefault();
@@ -4623,7 +4595,6 @@ function paintTheme(on) {
     document.querySelectorAll('.home-run').forEach((frame) => {
         try { frame.contentWindow.postMessage({ lights: on }, window.location.origin); } catch (error) { /* not loaded yet */ }
     });
-    if (typeof tellDrawFrame === 'function') tellDrawFrame();
     themeSwap.setAttribute('aria-pressed', String(on));
     themeSwap.title = on ? 'light' : 'dark';
     themeSwap.setAttribute('aria-label', on ? 'light' : 'dark');
