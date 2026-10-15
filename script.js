@@ -630,10 +630,10 @@ function sparkleOnDark(x, y, ignore = null) {
     }
     return document.documentElement.classList.contains('inverted');
 }
-function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white = null, ignore = null, dwindle = false } = {}) {
+function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white = null, ignore = null, dwindle = false, plus = false, spin = 0 } = {}) {
     if (stillMotion()) return;
     const one = document.createElement('span');
-    one.className = 'sparkle';
+    one.className = plus ? 'sparkle is-plus' : 'sparkle';
     one.style.width = `${size}px`;
     one.style.height = `${size}px`;
     const root = document.documentElement;
@@ -649,7 +649,14 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
     // minimal (by request): it pops to size, drifts a few pixels, and is gone — no slow shrink at the end
     const at = (t, s) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s})`;
     // a bubble (dwindle) pops up to size, then floats up getting smaller and smaller until it is gone
-    one.animate(dwindle ? [
+    // a plus (a click's) flies out freely, slowing, turning as it goes, and shrinks away
+    const turning = (t, s) => `${at(t, s)} rotate(${spin * t}deg)`;
+    one.animate(plus ? [
+        { transform: turning(0, 0) },
+        { transform: turning(0.3, 1.05), offset: 0.2 },
+        { transform: turning(0.75, 0.85), offset: 0.6 },
+        { transform: turning(1, 0) }
+    ] : dwindle ? [
         { transform: at(0, 0) },
         { transform: at(0.04, 1), offset: 0.06 },
         { transform: at(0.55, 0.6), offset: 0.55 },
@@ -659,15 +666,27 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
         { transform: at(0.35, 1), offset: 0.18 },
         { transform: at(1, 1), offset: 0.9 },
         { transform: at(1, 0) }
-    ], { duration: long, delay, easing: dwindle ? 'cubic-bezier(0.3, 0.6, 0.5, 1)' : 'linear', fill: 'backwards' }).onfinish = () => one.remove();
+    ], { duration: long, delay, easing: plus ? 'cubic-bezier(0.2, 0.7, 0.35, 1)' : dwindle ? 'cubic-bezier(0.3, 0.6, 0.5, 1)' : 'linear', fill: 'backwards' }).onfinish = () => one.remove();
 }
 // a little spray out of the pointer, on a small press
-function sparkleBurst(x, y, count = 4) {
+function sparkleBurst(x, y, count = 5) {
     const white = sparkleOnDark(x, y);
+    // freer than the lists' bubbles (by request): any way round the pointer, near or far, each turning its
+    // own way as it flies
+    const start = Math.random() * Math.PI * 2;
     for (let i = 0; i < count; i += 1) {
-        const way = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
-        const reach = 10 + Math.random() * 8;
-        sparkle(x + Math.cos(way) * 6, y + Math.sin(way) * 6, { size: 10 + Math.random() * 5, dx: Math.cos(way) * reach, dy: Math.sin(way) * reach, delay: Math.random() * 40, long: 280 + Math.random() * 100, white });
+        const way = start + (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 1.1;
+        const reach = 18 + Math.random() * 26;
+        sparkle(x + Math.cos(way) * 4, y + Math.sin(way) * 4, {
+            size: 9 + Math.random() * 6,
+            dx: Math.cos(way) * reach,
+            dy: Math.sin(way) * reach,
+            delay: Math.random() * 60,
+            long: 520 + Math.random() * 240,
+            white,
+            plus: true,
+            spin: (Math.random() < 0.5 ? -1 : 1) * (70 + Math.random() * 110)
+        });
     }
 }
 // round a list as it springs out of its mark: half of them on the list itself, near its edges and corners,

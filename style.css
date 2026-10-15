@@ -5726,3 +5726,9 @@ html.inverted .bin-dock { color: var(--ink); }
 	25% { rotate: -8deg; }
 	70% { rotate: 7deg; }
 }
+/* the clicks' sparkle (create, practice): a plain plus, thin arms tapering a little to their tips and no
+   bolder middle (by request) — the lists keep their bubbles */
+.sparkle.is-plus {
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.4 1H12.6L13.2 10.8L23 11.4V12.6L13.2 13.2L12.6 23H11.4L10.8 13.2L1 12.6V11.4L10.8 10.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.4 1H12.6L13.2 10.8L23 11.4V12.6L13.2 13.2L12.6 23H11.4L10.8 13.2L1 12.6V11.4L10.8 10.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}

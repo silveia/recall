@@ -2177,7 +2177,9 @@ edges and corners, white so they are plainly in front of it (all outside it, the
 it), and half start just outside its edges and fly outwards, coloured by what is round the list (`ignore`);
 the nearest its corner go first — the colour list, help's note, the search's results and the drawing's colour adjuster — not the windows (create, practice and
 the rest open as they always did, by request). **`sparkleBurst(x, y)`**:
-a few out of the pointer — **only on create and practice** (by request: on every minor press they stopped
+a few **plus signs** (thin arms tapering to their tips, no bolder middle — `.sparkle.is-plus`) out of the
+pointer, flying freely any way round it, near or far, each turning its own way as it goes and shrinking away
+— **only on create and practice** (by request: on every minor press they stopped
 being special); opening a list sparkles round the list only. **A sparkle is now a bubble** (by request, after a plain
 circle): a hollow ring with a little curved highlight at its top left, a touch bigger to read; the plus is
 kept, commented, in `.sparkle`. **The pop-ups pop**: no fade and no blur (both tried and refused) — the spring out of the mark from
