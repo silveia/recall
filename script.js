@@ -672,10 +672,10 @@ function sparkleBurst(x, y, count = 7) {
 // where the last press was, so a list opened by it can sparkle out of the pointer as well
 let lastPress = { x: 0, y: 0, at: 0 };
 document.addEventListener('pointerdown', (event) => { lastPress = { x: event.clientX, y: event.clientY, at: performance.now() }; }, true);
-function sparkleAround(el, count = 8) {
+function sparkleAround(el, count = 8, { fromPointer = true } = {}) {
     if (!el || stillMotion()) return;
     // a little of both (by request): a spray out of the pointer that opened it, and a few round the list
-    if (performance.now() - lastPress.at < 500) sparkleBurst(lastPress.x, lastPress.y, 6);
+    if (fromPointer && performance.now() - lastPress.at < 500) sparkleBurst(lastPress.x, lastPress.y, 6);
     const at = restSpot(el), w = el.offsetWidth, h = el.offsetHeight;
     const origin = getComputedStyle(el).transformOrigin.split(' ').map(parseFloat);
     const ox = at.x + (origin[0] || 0), oy = at.y + (origin[1] || 0);
@@ -707,7 +707,7 @@ window.sparkleAround = sparkleAround;
 // the small presses that sparkle: the page's own actions (create, practice and the rest of the pills)
 document.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || !event.target.closest) return;
-    if (event.target.closest('.quick-action, .basic-button, .square-button, .flip-card, .flip-next, .key-edit, .page-search-go, .tint-kind')) sparkleBurst(event.clientX, event.clientY);
+    if (event.target.closest('.quick-action, .basic-button, .square-button, .flip-card, .flip-next, .key-edit, .page-search-go')) sparkleBurst(event.clientX, event.clientY);
 }, true);
 // placed once when something opens, moves or the window changes — never every frame: measuring every copy
 // and writing it back on each frame of an animation made the browser redo its layout every frame, and the
@@ -5646,7 +5646,7 @@ function placeTintList() {
     tintPop.style.right = '16px';     // in the window's corner, its right edge on the page's own (the dot sits in that corner)
 }
 function rollTintList(open) {
-    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop); }
+    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop, 8, { fromPointer: false }); }     // only round the list: none out of the pointer for the colour (by request)
     tintPop.classList.toggle('is-open', open);
 }
 window.addEventListener('resize', () => { if (tintPop.classList.contains('is-open')) placeTintList(); });

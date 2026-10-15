@@ -2167,7 +2167,7 @@ Small (8–15px), many, and they *travel* — flying 16–44px out, quick then s
 middle (`.sparkle`, a mask, so it is painted like black is painted here: white in the dark, the colour layer's
 own colour at its spot in the light, black with no colour). Each twinkles once — grows, turns a quarter,
 shrinks — on the graphics card. **`sparkleAround(el)`**: a list opened by a press sparkles **out of the pointer** too (a spray, as on any small
-press — by request, "a little bit of both"); and as it springs out of its mark, half twinkle **on the list itself**, near its
+press — by request, "a little bit of both") — except the colour list, which only sparkles round itself; and as it springs out of its mark, half twinkle **on the list itself**, near its
 edges and corners, white so they are plainly in front of it (all outside it, they read as coming from behind
 it), and half start just outside its edges and fly outwards, coloured by what is round the list (`ignore`);
 the nearest its corner go first — the colour list, the bin's list (exactly as the colour list),
