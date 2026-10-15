@@ -2168,14 +2168,13 @@ Small (8–15px) and **minimal** (by request): a few at a time, each popping to 
 and gone after about a third of a second — no slow shrink, no spin (the first ones spun, then flew, and both
 were too much). **One sparkle shape only**: a plus with thin straight arms tapering to blunt points and a slightly bolder
 middle (`.sparkle`, a mask, so it is painted like black is painted here: white in the dark, the colour layer's
-own colour at its spot in the light, black with no colour). On the graphics card. **`sparkleAround(el)`**: a list opened by a press sparkles **out of the pointer** too (a spray, as on any small
+own colour at its spot in the light, black with no colour). On the graphics card. **The bin's list has no bubbles** (by request). **`sparkleAround(el)`**: a list opened by a press sparkles **out of the pointer** too (a spray, as on any small
 press — by request, "a little bit of both") — except the colour list, which only sparkles round itself — and with a proper burst: 11 bubbles of every size,
 starting at once (within about a fifth of a second), that pop up, rise a little and are gone (`rise`; by request, it felt plain — a version that dwindled away as
 it floated up was tried and put back; `dwindle` is kept in `sparkle` for it); and as it springs out of its mark, half twinkle **on the list itself**, near its
 edges and corners, white so they are plainly in front of it (all outside it, they read as coming from behind
 it), and half start just outside its edges and fly outwards, coloured by what is round the list (`ignore`);
-the nearest its corner go first — the colour list, the bin's list (exactly as the colour list),
-help's note, the search's results and the drawing's colour adjuster — not the windows (create, practice and
+the nearest its corner go first — the colour list, help's note, the search's results and the drawing's colour adjuster — not the windows (create, practice and
 the rest open as they always did, by request). **`sparkleBurst(x, y)`**:
 a few out of the pointer — **only on create and practice** (by request: on every minor press they stopped
 being special); opening a list sparkles round the list only. **A sparkle is now a bubble** (by request, after a plain

@@ -5572,7 +5572,6 @@ document.getElementById('binnedHead').addEventListener('click', (event) => {
     if (event.target.closest('.empty-ask')) return;
     event.stopPropagation();
     railBinned.classList.toggle('is-open');
-    if (railBinned.classList.contains('is-open')) sparkleAround(document.getElementById('binnedList'));     // exactly as the colour list
     if (!railBinned.classList.contains('is-open')) askToEmpty(false);
     else closeTintList();     // the two lists hang side by side; one open shuts the other
 });
