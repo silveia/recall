@@ -2079,8 +2079,8 @@ function renderBinned() {
                 event.stopPropagation();
                 const at = deletedStack.indexOf(entry);
                 if (at === -1) return;
-                deletedStack.splice(at, 1);
-                then();
+                const removed = deletedStack.splice(at, 1);
+                if (then() === false) deletedStack.splice(at, 0, ...removed);
                 renderBinned();
                 paintWidgets();
             });
@@ -2096,7 +2096,7 @@ function renderBinned() {
 function restoreDeleted(undone) {
     // a card whose deck has since gone goes into the deck that is open, rather than nowhere
     const home = undone.type === 'card' ? decks.find((item) => item.id === undone.deckId) || activeDeck() : null;
-    if (undone.type === 'card' && !home) return;
+    if (undone.type === 'card' && !home) return false;     // stays in the bin rather than vanishing from it
     if (undone.id) forgetBinned(undone.id);
 
     if (undone.type === 'clip') {
@@ -5371,6 +5371,7 @@ document.getElementById('binnedHead').addEventListener('click', (event) => {
     event.stopPropagation();
     railBinned.classList.toggle('is-open');
     if (!railBinned.classList.contains('is-open')) askToEmpty(false);
+    else closeTintList();     // the two lists hang side by side; one open shuts the other
 });
 document.addEventListener('click', (event) => {
     if (!event.target.closest || !event.target.closest('#railBinned')) { railBinned.classList.remove('is-open'); askToEmpty(false); }
@@ -5443,6 +5444,7 @@ function tintFromHsv(keepCode) {
 // shut (by request) — never faded (its colours are cut out of the layer, and a fade there came up out of
 // black). drawn by this script frame by frame together with its holes, which are its colours' boxes put
 // through the same turn; either way turns round from wherever it is
+let closeTintList = () => {};     // set once the colour list is wired up
 function rollTintList(open) {
     if (!tintFlip.raf) {
         tintPop.style.transform = 'none';
@@ -5474,13 +5476,19 @@ function rollTintList(open) {
     tintFlip.raf = requestAnimationFrame(step);
 }
 if (window.siteTint) {
+    closeTintList = () => { if (railTint.classList.contains('is-open')) setOpen(false); };
     const setOpen = (open) => {
         railTint.classList.toggle('is-open', open);
         tintHead.setAttribute('aria-expanded', String(open));
         if (open) paintTint();
         rollTintList(open);     // which keeps the holes with it, frame by frame
     };
-    tintHead.addEventListener('click', (event) => { event.stopPropagation(); setOpen(!railTint.classList.contains('is-open')); });
+    tintHead.addEventListener('click', (event) => {
+        event.stopPropagation();
+        railBinned.classList.remove('is-open');     // the bin's list shuts as this one opens
+        askToEmpty(false);
+        setOpen(!railTint.classList.contains('is-open'));
+    });
     tintPop.addEventListener('click', (event) => event.stopPropagation());
     document.addEventListener('click', () => { if (railTint.classList.contains('is-open')) setOpen(false); });
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && railTint.classList.contains('is-open')) setOpen(false); });
@@ -7406,7 +7414,8 @@ document.querySelectorAll('.word-eye').forEach((eye) => {
         field.focus();
     });
 });
-['copy', 'cut', 'dragstart'].forEach((kind) => chatWord.addEventListener(kind, (event) => event.preventDefault()));
+// both password boxes (the confirm one too): their dots can't be copied or dragged out as the words
+document.querySelectorAll('.word-field').forEach((field) => ['copy', 'cut', 'dragstart'].forEach((kind) => field.addEventListener(kind, (event) => event.preventDefault())));
 
 const CHAT_BOARD = 'https://ntfy.sh';
 // a test can point the chat at a board of its own (localStorage chat-era-test); nobody else sets it
@@ -9036,8 +9045,15 @@ function doorWorking(busy) {
     chatSwap.disabled = doorBusy;
     // the button keeps its own word the whole time — no 'unlocking your key…' flashing past;
     // it is only locked, so a second press can't start a second account
-    chatGo.textContent = chatDoorNew ? 'sign up' : 'log in';
+    chatGo.textContent = chatDoorNew ? 'sign up' : 'sign in';     // the same words paintChatDoor gives it
 }
+// enter in any of the door's boxes is the button
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || event.isComposing || !event.target.matches || !event.target.matches('input')) return;
+    if (!event.target.closest('.chat-door')) return;
+    event.preventDefault();
+    chatGo.click();
+});
 
 chatGo.addEventListener('click', async () => {
     if (doorBusy) return;

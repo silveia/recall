@@ -76,7 +76,10 @@
         if (!t || typeof t !== 'object') return Object.assign({}, FIRST);
         var out = { mode: t.mode === 'gradient' ? 'gradient' : 'solid' };
         out.solid = t.solid || (out.mode === 'solid' && t.a) || FIRST.solid;
-        if (out.solid === '#314444') out.solid = FIRST.solid;   // the old first colour, kept by switching modes: black is the first colour now
+        // the old first colour, kept by switching modes before black was the first colour again — read as
+        // black only in what was kept before then (no `v`), so #314444 picked on purpose stays
+        if (!t.v && out.solid === '#314444') out.solid = FIRST.solid;
+        out.v = 2;
         out.a = (out.mode === 'gradient' || t.solid) && t.a ? t.a : FIRST.a;
         out.b = t.b || FIRST.b;
         return out;

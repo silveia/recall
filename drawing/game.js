@@ -350,14 +350,7 @@ function runGameTick() {
 
     if (Math.random() < 0.01) spawnCoinOutsideView();
 
-    coinAnimTimer++;
-    if (coinAnimTimer >= 45) { 
-        coinAnimTimer = 0;
-        coinPositions.forEach(coin => {
-            const baseSrc = coin.element.src.split('?')[0];
-            coin.element.src = `${baseSrc}?v=${Date.now()}_${Math.random()}`;
-        });
-    }
+    // the coins' gif loops on its own: reloading it under a new address every 45 frames fetched it again ~27 times a second
     const playerCenterX = playerEl.offsetLeft;
     const playerCenterY = playerEl.offsetTop; 
 
@@ -441,6 +434,7 @@ window.teleportToSpawn = function() {
 };
 
 document.body.addEventListener('keydown', (e) => {
+    if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) return;     // typing a colour code doesn't walk
     const key = e.key.toLowerCase();
     if (key in keysPressed && !keysPressed[key]) {
         keysPressed[key] = true;
@@ -487,3 +481,24 @@ document.addEventListener('DOMContentLoaded', () => {
         updateViewportDimensions();
     });
 });
+
+// keys let go of while the frame wasn't listening never say so: the player stops rather than walking on
+window.addEventListener('blur', () => {
+    for (let key in keysPressed) keysPressed[key] = false;
+    keyHistory = [];
+});
+
+// the yams window shut: the loop stops and the keys let go, so nothing walks or runs on behind it
+window.stopCustomGame = function () {
+    isPlaying = false;
+    if (gameLoopId) cancelAnimationFrame(gameLoopId);
+    gameLoopId = null;
+    for (let key in keysPressed) keysPressed[key] = false;
+    keyHistory = [];
+};
+// and opened again, it carries on where it was
+window.resumeCustomGame = function () {
+    if (isPlaying) return;
+    isPlaying = true;
+    gameLoopId = requestAnimationFrame(runGameTick);
+};

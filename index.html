@@ -295,7 +295,11 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         });
     }
 
+    // one frame loop at a time: a reset (leaving home) left the old one waiting, and the next jump started
+    // a second beside it, so the run went at double speed
+    let frameId = 0;
     function reset() {
+        cancelAnimationFrame(frameId);
         dino = { y: 0, v: 0 };
         dinoX = START_X;
         cacti = [];
@@ -339,7 +343,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
             state = 'run';
             hintEl.textContent = '';
             startEl.classList.add('is-gone');   // gone for good: it only comes back on a refresh
-            last = performance.now(); requestAnimationFrame(tick);
+            last = performance.now(); cancelAnimationFrame(frameId); frameId = requestAnimationFrame(tick);
         }
         if (dino.y === 0) dino.v = 9.5;
     }
@@ -355,10 +359,11 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 
         // until it reaches its spot the dino does the running and the world holds still; after, the
         // world moves past it
+        // the gap to the next cactus only counts down while the world moves: counted while the dino
+        // walked in, two cacti could land on the same spot
         if (dinoX < followAt()) dinoX = Math.min(followAt(), dinoX + speed * s);
-        else cacti.forEach((one) => { one.x -= speed * s; });
+        else { cacti.forEach((one) => { one.x -= speed * s; }); nextGap -= speed * s; }
         cacti = cacti.filter((one) => one.x > -30);
-        nextGap -= speed * s;
         if (nextGap <= 0) {
             cacti.push({ x: W + 10, art: CACTI[Math.random() < 0.7 ? 0 : 1] });
             // never closer than a jump can clear and land from with room to jump again: how far the world
@@ -383,7 +388,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         draw();
         if (hit) return over(false);
         if (score >= MAX) return over(true);              // the top of the board: that's the end
-        requestAnimationFrame(tick);
+        frameId = requestAnimationFrame(tick);
     }
 
     function over(passed) {
@@ -484,6 +489,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         { id: 'home', roots: ['homePanel'] },
         { id: 'cards', roots: ['homeBody', 'makerScreen', 'studyScreen'] },
         { id: 'audio', roots: ['audioPanel'] },
+        { id: 'draw', roots: ['drawPanel'] },
         { id: 'chat', roots: ['chatPanel'] }
     ];
     let pageWords = null;

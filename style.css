@@ -3154,7 +3154,6 @@ html.inverted .topbar::after {
 	pointer-events: none;
 }
 .strip-middle .mid-side > *, .strip-middle > .clock-time { pointer-events: auto; }
-.strip-middle > .clock-time { order: 0; }   /* it carried an order from the old row, which sent it to the end */
 /* the date is hidden, and the half of the day sits right over the time, small, in capitals (by request) */
 .strip-middle .clock-date { display: none; }
 .time-stack { position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
@@ -3168,9 +3167,9 @@ html.inverted .topbar::after {
    the day and the date fade out and the question mark fades in where they were (`.help-peek`, set by the
    script); away again, they swap back. it stays while its note is open, and the note hangs centred under it.
    placed by margins, not a transform, so the note still measures from it */
-.time-stack > .help-box { position: absolute; top: 50%; left: 50%; margin: -17px 0 0 -17px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+.time-stack > .help-box { position: absolute; top: 50%; left: 50%; margin: -17px 0 0 -17px; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.25s ease, visibility 0s linear 0.25s; }   /* hidden too, so it can't be tabbed to while it isn't there */
 .time-stack > :not(.help-box) { transition: opacity 0.25s ease; }
-.topbar.help-peek .time-stack > .help-box { opacity: 1; pointer-events: auto; }
+.topbar.help-peek .time-stack > .help-box { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 0.25s ease, visibility 0s; }
 .topbar.help-peek .time-stack > :not(.help-box) { opacity: 0; }
 /* the controls together at the strip's right end (14 Oct, by request): the colour, the lights, the bin —
    bare marks, evenly apart */

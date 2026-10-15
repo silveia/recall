@@ -174,7 +174,7 @@ the outline on its three sides), the pen/eraser mark, the size, then undo
 and redo as bare marks — all by request; it has no word labels. Spawning with
 no sprite drops a small chip under the button pointing at `upload sprite`, instead of an
 alert. Coins land with their middle 60px inside the fence, so every one can be reached.
-The game window is called `yams` and has no full-screen button. Both little windows have a black head bar with white words and marks, and **cannot be dragged off the page** (`keepInside`): dragging, coming back from storage, opening, and the page shrinking all hold them inside its edges. **The sheet is pixel art** (by request): the canvas holds one pixel per art pixel
+**Fixed 14 Oct:** undo and redo put a snapshot back at its own size (stretched over a sheet that had grown, it blurred); the drawing is now **kept in this browser** (`mySavedArt`, written 600ms after a change — it was read on load but never written); a pen's tip draws with the toolbar's tool, the eraser included; held shift stamps once, not once per key repeat; ctrl+shift+z is redo; nothing on the canvas or in the game answers keys typed in the colour code; keys held when the frame loses focus are let go; `clear` caps undo and empties redo; shutting `yams` stops its loop (`stopCustomGame`), and opening it again carries on (`resumeCustomGame`); the coins' gif is no longer re-fetched every 45 frames. The game window is called `yams` and has no full-screen button. Both little windows have a black head bar with white words and marks, and **cannot be dragged off the page** (`keepInside`): dragging, coming back from storage, opening, and the page shrinking all hold them inside its edges. **The sheet is pixel art** (by request): the canvas holds one pixel per art pixel
 (`PIXEL` = 1 screen pixel across — the sheet doubled again by request; 8 was far too blocky, then 2) and is shown big with `image-rendering: pixelated`.
 The brush paints whole art pixels — a round block `size` across, each row one
 `fillRect`, gaps between pointer events filled in with a line walk — so nothing is
@@ -1886,6 +1886,8 @@ password fields and the button right there on the page. It is the same
 form as the log-in window, carried onto the page (`placeDoor`) and back
 into the window when `add account` needs it, so there is one form and
 one set of listeners.
+
+**Fixed 14 Oct:** enter in any of the door's boxes is the button; the button keeps `sign in` after a failed try (it went back to `log in`); the confirm password can't be copied or dragged out either. In the strip, the bin's list and the colour list shut each other (both stopped their clicks, so neither heard the other open); a card put back from the bin whose deck is gone stays in the bin instead of vanishing; help can't be tabbed to while hidden.
 
 **Signed in, the chat is always laid out as a messaging app**,
 nobody added or not — by request, after an empty page with things

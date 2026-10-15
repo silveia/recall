@@ -105,6 +105,8 @@ gameBtn.addEventListener('click', () => {
     miniWindow2.style.zIndex = '99';
     localStorage.setItem('gameWindowOpen', 'true');
     tuckIn(miniWindow, 'miniWindowLeft', 'miniWindowTop');
+    // a game that was going when the window shut carries on
+    if (!gameScreen.classList.contains('hidden-game-element') && typeof window.resumeCustomGame === 'function') window.resumeCustomGame();
 });
 
 referenceBtn.addEventListener('click', () => {
@@ -118,6 +120,7 @@ referenceBtn.addEventListener('click', () => {
 
 closeWindowBtn.addEventListener('click', () => {
     miniWindow.classList.add('hidden-window'); 
+    if (typeof window.stopCustomGame === 'function') window.stopCustomGame();     // shut is stopped: the game loop and its keys
     localStorage.setItem('gameWindowOpen', 'false');
 });
 
@@ -359,7 +362,7 @@ window.addEventListener('load', () => {
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.imageSmoothingEnabled = false;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
         };
         img.src = savedDataUrl;
     }
@@ -426,11 +429,8 @@ canvas.addEventListener('pointerdown', (e) => {
             ctx.lineWidth = eraserSize;
             brushSize.value = eraserSize;
         } else {
-            currentTool = 'round';
-            brushType.value = 'round';
-            canvas.style.cursor = 'crosshair';
-            ctx.lineWidth = penSize;
-            brushSize.value = penSize;
+            currentTool = brushType.value;     // the pen's tip draws with whatever the toolbar has (the eraser too)
+            canvas.style.cursor = currentTool === 'eraser' ? 'cell' : 'crosshair';
         }
     } else {
         currentTool = brushType.value;
@@ -538,6 +538,16 @@ function paintLine(from, to) {
 }
 
 window.addEventListener('pointerup', resetTracking);
+// the drawing is kept in this browser (it was read back on load, but nothing ever wrote it): a moment after
+// each change, so a long stroke isn't encoded over and over
+let keepArtSoon = 0;
+function keepArt() {
+    clearTimeout(keepArtSoon);
+    keepArtSoon = setTimeout(() => {
+        try { localStorage.setItem('mySavedArt', canvas.toDataURL()); } catch (error) { /* too big for the store: kept for this visit */ }
+    }, 600);
+}
+window.addEventListener('pointerup', () => { if (undoStack.length) keepArt(); });
 
 function draw(e) {
     if (isPanning) {
@@ -599,6 +609,8 @@ function spawnFloatingFish() {
 }
 
 window.addEventListener('keydown', (e) => {
+    // typing in a box (the colour code) is typing, not the canvas's shortcuts
+    if (e.target.closest && e.target.closest('input, textarea, select, [contenteditable]')) return;
     if (e.key === ' ' || e.code === 'Space') {
         if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
             e.preventDefault();
@@ -643,7 +655,8 @@ window.addEventListener('keydown', (e) => {
         }
         if (e.key.toLowerCase() === 'z') {
             e.preventDefault(); 
-            executeUndo();
+            if (e.shiftKey) executeRedo();     // ctrl+shift+z is redo, as everywhere else on the site
+            else executeUndo();
         }
         if (e.key.toLowerCase() === 'y') {
             e.preventDefault();
@@ -655,7 +668,7 @@ window.addEventListener('keydown', (e) => {
         isTKeyPressed = true;
     }
 
-    if (e.key === 'Shift') {
+    if (e.key === 'Shift' && !e.repeat) {     // one stamp per press: held, the key repeats and filled undo with stamps
         drawCustomShape(mouseX, mouseY);
     }
 });
@@ -671,6 +684,15 @@ window.addEventListener('keyup', (e) => {
     }
 });
 
+// keys let go of while the frame wasn't listening (the page behind it clicked, the window left) never
+// say so, so they are let go of here: no endless fish, no stuck panning
+window.addEventListener('blur', () => {
+    isTKeyPressed = false;
+    isSpacePressed = false;
+    isPanning = false;
+    canvas.style.cursor = 'crosshair';
+});
+
 function drawCustomShape(x, y) {
     if (!isImageLoaded || isTKeyPressed) return; 
 
@@ -684,6 +706,7 @@ function drawCustomShape(x, y) {
     const at = cellAt(x, y);
     x = at.x + 0.5;
     y = at.y + 0.5;
+    keepArt();
     const baseSize = Math.max(1, Math.round(Number(brushSize.value) * 2.5)); 
     const aspect = stampImage.width / stampImage.height;
     let targetWidth = baseSize;
@@ -807,7 +830,10 @@ class Shimeji {
 clearBtn.addEventListener('click', () => {
     const preSnapshot = canvas.toDataURL();
     undoStack.push(preSnapshot);
+    if (undoStack.length > MAX_STATES) undoStack.shift();
+    redoStack = [];
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    keepArt();
     characters.forEach(char => char.element.remove());
     characters.length = 0;
 });
@@ -868,7 +894,8 @@ function executeUndo() {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.imageSmoothingEnabled = false;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);     // at its own size: stretched to a sheet that had grown since, it blurred
+        keepArt();
     };
     img.src = previousState;
 }
@@ -882,7 +909,8 @@ function executeRedo() {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.imageSmoothingEnabled = false;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        keepArt();
     };
     img.src = nextState;
 }
