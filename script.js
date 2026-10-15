@@ -698,14 +698,13 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
     spots.forEach((spot, i) => {
         const reach = spot.onIt ? 3 + Math.random() * 4 : 6 + Math.random() * 6;
         // rising (the colour list): bubbles of every size, drifting up as bubbles do, over a longer moment
-        const up = rise ? 26 + Math.random() * 34 : 0;
+        const up = rise ? 12 + Math.random() * 22 : 0;
         sparkle(spot.x, spot.y, {
             size: rise ? 8 + Math.random() * 14 : 12 + Math.random() * 6,
             dx: spot.out[0] * reach + (rise ? (Math.random() - 0.5) * 8 : 0),
             dy: spot.out[1] * reach - up,
             delay: rise ? i * 14 + Math.random() * 30 : 120 + i * 40,     // the colour list's start at once
-            long: rise ? 800 + Math.random() * 400 : 300 + Math.random() * 100,
-            dwindle: rise,
+            long: rise ? 480 + Math.random() * 260 : 300 + Math.random() * 100,
             white: spot.onIt ? true : null,
             ignore: el
         });
