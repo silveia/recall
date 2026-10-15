@@ -630,7 +630,7 @@ function sparkleOnDark(x, y, ignore = null) {
     }
     return document.documentElement.classList.contains('inverted');
 }
-function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 560, white = null, ignore = null } = {}) {
+function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white = null, ignore = null } = {}) {
     if (stillMotion()) return;
     const one = document.createElement('span');
     one.className = 'sparkle';
@@ -646,23 +646,22 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 560, white 
         one.style.backgroundPosition = `${-(x + dx * 0.7 - size / 2)}px ${-(y + dy * 0.7 - size / 2)}px`;
     } else one.style.background = '#000';
     sparkleLayer.append(one);
-    // out it flies, quick then slowing, popping up to size and away again, turning only a little
-    const turn = (Math.random() - 0.5) * 30;
-    const at = (t, s, r) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s}) rotate(${r}deg)`;
+    // minimal (by request): it pops to size, drifts a few pixels, and is gone — no slow shrink at the end
+    const at = (t, s) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s})`;
     one.animate([
-        { transform: at(0, 0.2, 0) },
-        { transform: at(0.45, 1.1, turn * 0.5), offset: 0.25 },
-        { transform: at(0.8, 0.9, turn * 0.85), offset: 0.6 },
-        { transform: at(1, 0, turn) }
-    ], { duration: long, delay, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'backwards' }).onfinish = () => one.remove();
+        { transform: at(0, 0) },
+        { transform: at(0.35, 1), offset: 0.18 },
+        { transform: at(1, 1), offset: 0.9 },
+        { transform: at(1, 0) }
+    ], { duration: long, delay, easing: 'linear', fill: 'backwards' }).onfinish = () => one.remove();
 }
 // a little spray out of the pointer, on a small press
-function sparkleBurst(x, y, count = 7) {
+function sparkleBurst(x, y, count = 4) {
     const white = sparkleOnDark(x, y);
     for (let i = 0; i < count; i += 1) {
         const way = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
-        const reach = 22 + Math.random() * 22;
-        sparkle(x, y, { size: 8 + Math.random() * 5, dx: Math.cos(way) * reach, dy: Math.sin(way) * reach, delay: Math.random() * 50, long: 480 + Math.random() * 200, white });
+        const reach = 10 + Math.random() * 8;
+        sparkle(x + Math.cos(way) * 6, y + Math.sin(way) * 6, { size: 8 + Math.random() * 4, dx: Math.cos(way) * reach, dy: Math.sin(way) * reach, delay: Math.random() * 40, long: 280 + Math.random() * 100, white });
     }
 }
 // round a list as it springs out of its mark: half of them on the list itself, near its edges and corners,
@@ -672,10 +671,10 @@ function sparkleBurst(x, y, count = 7) {
 // where the last press was, so a list opened by it can sparkle out of the pointer as well
 let lastPress = { x: 0, y: 0, at: 0 };
 document.addEventListener('pointerdown', (event) => { lastPress = { x: event.clientX, y: event.clientY, at: performance.now() }; }, true);
-function sparkleAround(el, count = 8, { fromPointer = true } = {}) {
+function sparkleAround(el, count = 6, { fromPointer = true } = {}) {
     if (!el || stillMotion()) return;
     // a little of both (by request): a spray out of the pointer that opened it, and a few round the list
-    if (fromPointer && performance.now() - lastPress.at < 500) sparkleBurst(lastPress.x, lastPress.y, 6);
+    if (fromPointer && performance.now() - lastPress.at < 500) sparkleBurst(lastPress.x, lastPress.y);
     const at = restSpot(el), w = el.offsetWidth, h = el.offsetHeight;
     const origin = getComputedStyle(el).transformOrigin.split(' ').map(parseFloat);
     const ox = at.x + (origin[0] || 0), oy = at.y + (origin[1] || 0);
@@ -691,13 +690,13 @@ function sparkleAround(el, count = 8, { fromPointer = true } = {}) {
     }
     spots.sort((a, b) => Math.hypot(a.x - ox, a.y - oy) - Math.hypot(b.x - ox, b.y - oy));
     spots.forEach((spot, i) => {
-        const reach = spot.onIt ? 6 + Math.random() * 8 : 14 + Math.random() * 18;
+        const reach = spot.onIt ? 3 + Math.random() * 4 : 6 + Math.random() * 6;
         sparkle(spot.x, spot.y, {
             size: 10 + Math.random() * 5,
             dx: spot.out[0] * reach,
             dy: spot.out[1] * reach,
-            delay: 120 + i * 30,
-            long: 600 + Math.random() * 220,
+            delay: 120 + i * 40,
+            long: 300 + Math.random() * 100,
             white: spot.onIt ? true : null,
             ignore: el
         });
@@ -5551,7 +5550,7 @@ function openSwapPicks(entry, card) {
 const helpToggle = document.getElementById('helpToggle');
 
 function setHelpOpen(open) {
-    if (open && !helpBox.classList.contains('is-open')) window.requestAnimationFrame(() => sparkleAround(document.getElementById('helpBody'), 5));
+    if (open && !helpBox.classList.contains('is-open')) window.requestAnimationFrame(() => sparkleAround(document.getElementById('helpBody'), 4));
     helpBox.classList.toggle('is-open', open);
     helpToggle.setAttribute('aria-expanded', String(open));
 }
@@ -5646,7 +5645,7 @@ function placeTintList() {
     tintPop.style.right = '16px';     // in the window's corner, its right edge on the page's own (the dot sits in that corner)
 }
 function rollTintList(open) {
-    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop, 8, { fromPointer: false }); }     // only round the list: none out of the pointer for the colour (by request)
+    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop, 6, { fromPointer: false }); }     // only round the list: none out of the pointer for the colour (by request)
     tintPop.classList.toggle('is-open', open);
 }
 window.addEventListener('resize', () => { if (tintPop.classList.contains('is-open')) placeTintList(); });
@@ -5811,7 +5810,7 @@ function showFound(open) {
     if (open) {
         pageFound.hidden = false;
         wrap.classList.add('is-open');
-        window.requestAnimationFrame(() => sparkleAround(pageFound, 5));     // a few as the results drop
+        window.requestAnimationFrame(() => sparkleAround(pageFound, 4));     // a few as the results drop
     }
     pageFound.style.clipPath = open ? FOUND_OPEN : FOUND_SHUT;
     foundMove = pageFound.animate([{ clipPath: from === 'none' ? FOUND_OPEN : from }, { clipPath: open ? FOUND_OPEN : FOUND_SHUT }],

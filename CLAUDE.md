@@ -2162,11 +2162,11 @@ home.
 
 **Sparkles lie over everything** (z 2147483647) and **take their colour from what they land on**
 (`sparkleOnDark`): white over anything filled dark (create, the bar, a pressed row), the ink over the page.
-Small (8–15px), many, and they *travel* — flying 16–44px out, quick then slowing, with only a slight turn
-(by request: the first ones spun and took too much room). **One sparkle shape only**: a plus with thin straight arms tapering to blunt points and a slightly bolder
+Small (8–15px) and **minimal** (by request): a few at a time, each popping to size, drifting a few pixels,
+and gone after about a third of a second — no slow shrink, no spin (the first ones spun, then flew, and both
+were too much). **One sparkle shape only**: a plus with thin straight arms tapering to blunt points and a slightly bolder
 middle (`.sparkle`, a mask, so it is painted like black is painted here: white in the dark, the colour layer's
-own colour at its spot in the light, black with no colour). Each twinkles once — grows, turns a quarter,
-shrinks — on the graphics card. **`sparkleAround(el)`**: a list opened by a press sparkles **out of the pointer** too (a spray, as on any small
+own colour at its spot in the light, black with no colour). On the graphics card. **`sparkleAround(el)`**: a list opened by a press sparkles **out of the pointer** too (a spray, as on any small
 press — by request, "a little bit of both") — except the colour list, which only sparkles round itself; and as it springs out of its mark, half twinkle **on the list itself**, near its
 edges and corners, white so they are plainly in front of it (all outside it, they read as coming from behind
 it), and half start just outside its edges and fly outwards, coloured by what is round the list (`ignore`);
