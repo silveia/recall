@@ -15,14 +15,14 @@
    kept in localStorage 'site-tint' as { mode: 'solid' | 'gradient', solid, a, b } — solid is the one
    colour, a the gradient's bottom and b its top. the solid colour and the gradient are kept apart, so
    changing one never touches the other, and switching between them brings each back as it was left.
-   nothing kept means the first colour, a solid #314444. */
+   nothing kept means plain black, and a gradient first chosen is makoto. */
 (function () {
     var KEY = 'site-tint';
     var PRESETS = {
         black: { mode: 'solid', solid: '#000000' },
         makoto: { mode: 'gradient', a: '#0305b6', b: '#02cdff' }
     };
-    var FIRST = { mode: 'solid', solid: '#314444', a: '#0305b6', b: '#02cdff' };
+    var FIRST = { mode: 'solid', solid: '#000000', a: '#0305b6', b: '#02cdff' };
 
     function rgbOf(hex) {
         var h = String(hex || '').replace('#', '');
@@ -76,6 +76,7 @@
         if (!t || typeof t !== 'object') return Object.assign({}, FIRST);
         var out = { mode: t.mode === 'gradient' ? 'gradient' : 'solid' };
         out.solid = t.solid || (out.mode === 'solid' && t.a) || FIRST.solid;
+        if (out.solid === '#314444') out.solid = FIRST.solid;   // the old first colour, kept by switching modes: black is the first colour now
         out.a = (out.mode === 'gradient' || t.solid) && t.a ? t.a : FIRST.a;
         out.b = t.b || FIRST.b;
         return out;

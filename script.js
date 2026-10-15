@@ -566,6 +566,22 @@ function unfoldSection(force) {
 // not the app round it, whose black takes the layer like everything else) and colour pictures in the
 // chat. measured at once — a frame late showed the layer on them first — and every frame while the page
 // slides in, since they move with it
+// a box with rounded corners as a polygon, so it can be turned in perspective (the colour list's flip)
+function roundedPoly({ left, top, width, height, round }) {
+    const r = Math.min(round || 0, width / 2, height / 2);
+    if (!r) return [[left, top], [left + width, top], [left + width, top + height], [left, top + height]];
+    const out = [];
+    const corner = (cx, cy, from) => { for (let i = 0; i <= 8; i += 1) { const a = (from + i / 8 * 90) * Math.PI / 180; out.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } };
+    corner(left + width - r, top + r, -90);
+    corner(left + width - r, top + height - r, 0);
+    corner(left + r, top + height - r, 90);
+    corner(left + r, top + r, 180);
+    return out;
+}
+// the colour list while it flips (rollTintList): its angle, and its colours' boxes at rest
+const tintFlip = { angle: 0, raf: 0, rest: null };
+const TINT_DEPTH = 900;
+const TINT_HOLES = '.tint-kind-dot, .hue-now, #siteTintField, #siteTintHue';
 function tintHoles() {
     const holes = [];
     const add = (box) => { if (box && box.width && box.height) holes.push(box); };
@@ -578,20 +594,28 @@ function tintHoles() {
         drawFrameHoles.forEach((b) => add({ left: frame.left + b.left, top: frame.top + b.top, width: b.width, height: b.height, round: b.round }));
     }
     // the site's colour dropdown, while it is open: its colours are the colours themselves
-    // cut only as far down as it has unrolled — opening and closing too, so nothing in it fades
+    // while it flips down (or back up), each colour is cut where it is drawn: its box at rest, turned about
+    // the list's top edge and put through the same perspective, frame by frame
     const tintBox = document.getElementById('railTint');
     const tintList = document.getElementById('tintPop');
-    if (tintBox && tintList && getComputedStyle(tintList).visibility === 'visible') {
-        const list = tintList.getBoundingClientRect();
-        const clip = getComputedStyle(tintList).clipPath.split('round')[0].match(/-?[\d.]+(px|%)?/g) || [];
-        const bottom = clip.length ? (clip[2] || clip[0]) : '0px';
-        const cut = bottom.endsWith('%') ? list.height * parseFloat(bottom) / 100 : parseFloat(bottom) || 0;
-        const shown = list.bottom - cut;
-        tintBox.querySelectorAll('.tint-kind-dot, .hue-now, #siteTintField, #siteTintHue').forEach((el) => {
+    if (tintBox && tintList && tintFlip.raf && tintFlip.rest) {
+        const { left, top, width, boxes } = tintFlip.rest;
+        const turn = tintFlip.angle * Math.PI / 180, ox = width / 2;
+        const seen = ([x, y]) => {
+            const w = 1 - (y * Math.sin(turn)) / TINT_DEPTH;      // perspective(d) after rotateX, about the top middle
+            return [left + ox + (x - ox) / w, top + (y * Math.cos(turn)) / w];
+        };
+        boxes.forEach((box) => {
+            const poly = roundedPoly(box).map(seen);
+            const xs = poly.map((pt) => pt[0]), ys = poly.map((pt) => pt[1]);
+            const wide = Math.max(...xs) - Math.min(...xs), tall = Math.max(...ys) - Math.min(...ys);
+            if (wide > 0.5 && tall > 0.5) add({ left: Math.min(...xs), top: Math.min(...ys), width: wide, height: tall, poly });
+        });
+    } else if (tintBox && tintList && tintBox.classList.contains('is-open')) {
+        tintBox.querySelectorAll(TINT_HOLES).forEach((el) => {
             if (el.closest('[hidden]')) return;
             const box = el.getBoundingClientRect();
-            const height = Math.min(box.bottom, shown) - box.top;
-            if (height > 0) add({ left: box.left, top: box.top, width: box.width, height, round: Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, height / 2) });
+            add({ left: box.left, top: box.top, width: box.width, height: box.height, round: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0 });
         });
     }
     if (activeSectionId === 'chat') {
@@ -610,6 +634,7 @@ function cutTintHole() {
     const w = window.innerWidth + 10, h = window.innerHeight + 10;
     const n = (v) => v.toFixed(1);
     const shape = (b) => {
+        if (b.poly) return ` M${b.poly.map(([x, y]) => `${n(x)} ${n(y)}`).join('L')}Z`;
         const r = Math.min(b.round || 0, b.width / 2, b.height / 2);
         const x = b.left, y = b.top, x2 = b.left + b.width, y2 = b.top + b.height;
         if (!r) return ` M${n(x)} ${n(y)}H${n(x2)}V${n(y2)}H${n(x)}Z`;
@@ -5414,25 +5439,46 @@ function keepTint(next, keepCode) {
 function tintFromHsv(keepCode) {
     keepTint({ ...tintNow, [tintEnd]: hsvToHex(tintHsv) }, keepCode);
 }
-// the colour list unrolls down out of the strip and rolls back up, from wherever it is — never faded
-// (its colours are cut out of the layer, and a fade there came up out of black)
-const TINT_SHUT = 'inset(0px 0px 100% round 18px)', TINT_OPEN = 'inset(0px 0px 0% round 18px)';
-let tintRoll = null;
+// the colour list flips down from its top edge like a page turned over the strip, and flips back up to
+// shut (by request) — never faded (its colours are cut out of the layer, and a fade there came up out of
+// black). drawn by this script frame by frame together with its holes, which are its colours' boxes put
+// through the same turn; either way turns round from wherever it is
 function rollTintList(open) {
-    const from = tintRoll ? getComputedStyle(tintPop).clipPath : (open ? TINT_SHUT : TINT_OPEN);
-    if (tintRoll) tintRoll.cancel();
-    tintRoll = tintPop.animate([{ clipPath: from }, { clipPath: open ? TINT_OPEN : TINT_SHUT }],
-        { duration: open ? 240 : 170, easing: open ? 'cubic-bezier(0.2, 0.8, 0.3, 1)' : 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' });
-    const roll = tintRoll;
-    roll.onfinish = () => { if (tintRoll === roll && open) { roll.cancel(); tintRoll = null; } };
+    if (!tintFlip.raf) {
+        tintPop.style.transform = 'none';
+        tintPop.style.transformOrigin = '50% 0';     // the turn is worked out about the top middle
+        const list = tintPop.getBoundingClientRect();
+        tintFlip.rest = {
+            left: list.left, top: list.top, width: list.width,
+            boxes: Array.from(tintPop.querySelectorAll(TINT_HOLES)).filter((el) => !el.closest('[hidden]')).map((el) => {
+                const box = el.getBoundingClientRect();
+                return { left: box.left - list.left, top: box.top - list.top, width: box.width, height: box.height, round: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0 };
+            })
+        };
+        tintFlip.angle = open ? -90 : 0;
+    }
+    const from = tintFlip.angle, to = open ? 0 : -90;
+    const long = open ? 480 : 280;
+    // open: a little past flat and back, like a page landing; shut: eased in
+    const ease = open ? (p) => 1 + 2.2 * Math.pow(p - 1, 3) + 1.2 * Math.pow(p - 1, 2) : (p) => p * p;
+    const start = performance.now();
+    cancelAnimationFrame(tintFlip.raf);
+    const step = (now) => {
+        const p = Math.max(0, Math.min(1, (now - start) / long));
+        tintFlip.angle = from + (to - from) * ease(p);
+        tintPop.style.transform = `perspective(${TINT_DEPTH}px) rotateX(${tintFlip.angle.toFixed(2)}deg)`;
+        tintFlip.raf = p < 1 ? requestAnimationFrame(step) : 0;
+        if (!tintFlip.raf) tintPop.style.transform = open ? '' : `perspective(${TINT_DEPTH}px) rotateX(-90deg)`;
+        cutTintHole();
+    };
+    tintFlip.raf = requestAnimationFrame(step);
 }
 if (window.siteTint) {
     const setOpen = (open) => {
         railTint.classList.toggle('is-open', open);
         tintHead.setAttribute('aria-expanded', String(open));
         if (open) paintTint();
-        rollTintList(open);
-        cutTintHoleWhileMoving(420);     // the colours in it keep their colours while it drops in and out
+        rollTintList(open);     // which keeps the holes with it, frame by frame
     };
     tintHead.addEventListener('click', (event) => { event.stopPropagation(); setOpen(!railTint.classList.contains('is-open')); });
     tintPop.addEventListener('click', (event) => event.stopPropagation());
@@ -5473,6 +5519,21 @@ if (window.siteTint) {
     paintTint();
 }
 
+// help takes the time's place: the time hovered for half a second fades out and the question mark fades
+// in where it was; away again they swap back, unless help's note is open (then once it shuts)
+{
+    const strip = document.querySelector('.topbar');
+    const time = document.querySelector('.time-stack');
+    let peekIn = 0;
+    const back = () => { clearTimeout(peekIn); if (!helpBox.classList.contains('is-open')) strip.classList.remove('help-peek'); };
+    time.addEventListener('pointerenter', () => {
+        clearTimeout(peekIn);
+        if (!strip.classList.contains('help-peek')) peekIn = setTimeout(() => strip.classList.add('help-peek'), 500);
+    });
+    time.addEventListener('pointerleave', back);
+    new MutationObserver(() => { if (!helpBox.classList.contains('is-open') && !time.matches(':hover')) back(); })
+        .observe(helpBox, { attributes: true, attributeFilter: ['class'] });
+}
 helpToggle.addEventListener('click', (event) => {
     event.stopPropagation();
     setHelpOpen(!helpBox.classList.contains('is-open'));

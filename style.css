@@ -2822,7 +2822,7 @@ html.inverted .topbar::after {
 }
 
 /* the search over every page, at the strip's right end */
-.page-search { --field: 34px; position: relative; z-index: 20; flex: none; width: 20rem; margin: 0 0 0 4px; }   /* the bin right up against it, by request */   /* at the strip's right end now, by request, and narrower so the centred clock keeps its room */
+.page-search { --field: 34px; position: relative; z-index: 20; flex: none; width: 24rem; margin: 0; }   /* at the strip's left, beside hi (14 Oct): the thing used most, where the eye starts */
 .page-search input {
 	width: 100%;
 	height: var(--field);
@@ -3135,12 +3135,12 @@ html.inverted .topbar::after {
 .help-box { position: relative; flex: none; }
 /* help sits at the strip's left now, beside hi and well off it (by request); its note hangs from its
    left edge rather than its middle, or it would run off the window */
-.topbar > .help-box { margin-left: 28px; }
-.topbar > .help-box .help-body { left: -10px; translate: none; transform-origin: 0 0; }
+/* the controls sit at the strip's right end, so what hangs from help and the bin hangs from their right
+   edge, or it would run off the window */
+.strip-right .rail-binned .binned-list, .strip-right .rail-tint .tint-pop { left: auto; right: -10px; translate: none; transform-origin: 100% 0; }
 /* the right-hand group (the bin, help and the clock) is lifted a pixel together: measured it sits on
    the strip's middle, but its lowercase words carry their weight low and it read as sitting low, by request */
-.topbar .rail-binned, .topbar .strip-middle { top: -1px; }
-.topbar .rail-binned { position: relative; }
+.topbar .strip-right, .topbar .strip-middle { top: -1px; }
 /* the middle of the strip (by request): the time on the strip's exact centre, the half of the day, the
    date and the moon to its left, help and the colour to its right. the two sides share the room left
    over equally, which is what puts the time on the centre. it lies over the whole strip and lets presses
@@ -3163,9 +3163,19 @@ html.inverted .topbar::after {
 .time-stack .clock-suffix { position: absolute; bottom: 100%; left: 50%; top: auto; transform: translateX(-50%); margin-bottom: -2px; font-size: 0.6rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.08em; }
 .mid-side { display: flex; flex: 1 1 0; align-items: center; gap: 0.6rem; min-width: 0; }
 .mid-left { justify-content: flex-end; }
-.mid-right { justify-content: flex-start; gap: 0.6rem; padding-left: 0.4rem; }
-/* the bin and the search at the strip's right end */
-.topbar > .rail-binned { margin-left: auto; }
+.mid-right { justify-content: flex-start; gap: 0.6rem; }   /* no padding on one side only: it made the two sides unequal and pushed the time 3px off the middle */
+/* help takes the time's own place (14 Oct, by request): hovered for half a second, the time, the half of
+   the day and the date fade out and the question mark fades in where they were (`.help-peek`, set by the
+   script); away again, they swap back. it stays while its note is open, and the note hangs centred under it.
+   placed by margins, not a transform, so the note still measures from it */
+.time-stack > .help-box { position: absolute; top: 50%; left: 50%; margin: -17px 0 0 -17px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+.time-stack > :not(.help-box) { transition: opacity 0.25s ease; }
+.topbar.help-peek .time-stack > .help-box { opacity: 1; pointer-events: auto; }
+.topbar.help-peek .time-stack > :not(.help-box) { opacity: 0; }
+/* the controls together at the strip's right end (14 Oct, by request): the colour, the lights, the bin —
+   bare marks, evenly apart */
+.strip-right { position: relative; z-index: 1; display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+.strip-right .theme-swap { order: 0; margin: 0 0.35rem; }   /* it carried an order from the old row */
 .help-head {
 	display: flex;
 	align-items: center;
@@ -3179,6 +3189,11 @@ html.inverted .topbar::after {
 	border-radius: 999px;
 	cursor: var(--cur-tap);
 }
+/* in the time's place it reads as a button (by request): a round outline, filled on hover and while its
+   note is open, the mark turning the other way round in it, as every pressed thing here does */
+.time-stack .help-head { width: 34px; height: 34px; border: 1px solid var(--line); transition: background-color 0.2s ease, color 0.2s ease; }
+.time-stack .help-head:hover, .time-stack .help-box.is-open .help-head { color: var(--paper); background: var(--ink-fill); }
+.time-stack .help-spin { width: 19px; height: 19px; }
 /* the turning is on a plain box round the mark, as a transform the graphics card runs on its own: on the
    svg itself it was redone by the page every frame, forever, and slowed every other animation down */
 .help-spin { display: block; width: 21px; height: 21px; will-change: transform; animation: help-spin 4s linear infinite; }
@@ -3217,9 +3232,12 @@ html.inverted .topbar::after {
 }
 
 /* the colour list does not fade: its colours are cut out of the colour layer, and anything fading in
-   a hole shows the black under it first — the colours came up out of black. it unrolls down out of
-   the strip instead (a clip played by the script, `rollTintList`, 240ms; back up in 170ms), and the holes are cut only as far as it shows */
-.tint-pop { opacity: 1; transform: none; transition: visibility 0s linear 0.17s; }
+   a hole shows the black under it first — the colours came up out of black. it flips down from its top
+   edge like a page instead (played by the script, `rollTintList`, 480ms; back up in 280ms), each colour
+   cut where it is drawn in the turn */
+.tint-pop { opacity: 1; transform: none; transform-origin: 50% 0; backface-visibility: hidden; transition: visibility 0s linear 0.3s; }
+/* its rings are white only, no black rim (by request) */
+.tint-pop .hue-ring { box-shadow: none; }
 .rail-tint.is-open .tint-pop { transition: visibility 0s; }
 
 /* the clock: the moon, the half of the day, the date, and the time last, at the very right */
@@ -4624,14 +4642,9 @@ html:not(.inverted) .login-card, html:not(.inverted) #chatScreen {
 	--hover: #151515;
 }
 html:not(.inverted) .login-card, html:not(.inverted) #chatScreen { background: var(--tint-grad); }
-html.inverted .login-card, html.inverted #chatScreen {
-	--paper: #ffffff;
-	--ink: var(--tint-main);
-	--line: var(--tint-main);
-	--paper-fill: var(--paper);
-	--ink-fill: var(--tint-fill);   /* TEMPORARY: the gradient */
-	--hover: #f1f1f1;
-}
+/* in the dark it is not turned round any more (by request): see-through, with the page's own white
+   words and outline, so it lies on the dark page rather than as a white slab on it */
+html.inverted .login-card, html.inverted #chatScreen { background: transparent; }
 .login-face {
 	display: grid;
 	place-items: center;

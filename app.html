@@ -168,79 +168,7 @@
             <!-- the bars swapped round: the pages down the left, the clock, the function note, storage
                  and the bin along the top -->
             <header class="topbar">
-                <!-- help, at the strip's left beside hi (by request). one paragraph per section; keep it current -->
-                <section class="help-box" aria-label="?">
-                    <button class="help-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody" aria-label="help" title="help">
-                        <span class="help-spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.6 7.94a3.5 3.5 0 0 1 6.8 1.2c0 2.3-3.4 3-3.4 5.2"/><circle cx="12" cy="17.94" r="0.45" fill="currentColor"/></svg></span>
-                    </button>
-
-                    <div class="help-body" id="helpBody"><div class="help-body-inner">
-
-                    <p class="help-note" data-section="home" hidden>explore around mu website, option/alt to see button function</p>
-
-                    <p class="help-note" data-section="cards" hidden>create flashcards and practice, explore around w features and enjoy studying</p>
-
-                    <p class="help-note" data-section="audio" hidden>the only one who uses this is ME so no information is required</p>
-
-                    <p class="help-note" data-section="chat" hidden>this is a chat. dont share passwords or personal info for security is genuine ass, please lock in</p>
-
-                    <p class="help-note" data-section="draw" hidden>draw on the canvas, space and drag to move around, ctrl/cmd + and - to zoom, shift to stamp, hold t for fish</p>
-                    </div></div>
-                </section>
-                <!-- the clock in the very middle of the strip (by request): the half of the day, the date and the
-                     moon to its left, help and the colour to its right; the two sides take equal room, so the
-                     time sits on the centre exactly -->
-                <div class="strip-middle">
-                    <div class="mid-side mid-left">
-                        <p class="clock-date" id="clockDate"></p>
-                        <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="dark" title="dark">
-                            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                                <path fill="currentColor"
-                                      d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
-                            </svg>
-                        </button>
-                    </div>
-                    <!-- the half of the day sits right over the time -->
-                    <div class="time-stack">
-                        <span class="clock-suffix" id="clockSuffix"></span>
-                        <p class="clock-time" id="clockTime">--:--</p>
-                        <span class="clock-numdate" id="clockNumDate"></span>
-                    </div>
-                    <div class="mid-side mid-right">
-                        <!-- the site's colour: a dot showing it, which drops the adjuster -->
-                        <section class="rail-tint" id="railTint" aria-label="colour">
-                            <button class="tint-head" id="tintHead" type="button" title="colour" aria-label="colour" aria-expanded="false"><span class="tint-swatch"></span></button>
-                            <div class="tint-pop" id="tintPop">
-                            <!-- icons only: a solid colour on the left, a gradient on the right -->
-                            <div class="tint-kinds">
-                                <button type="button" class="tint-kind" data-mode="solid" title="solid" aria-label="one colour"><span class="tint-kind-dot" id="tintSolidDot"></span></button>
-                                <button type="button" class="tint-kind" data-mode="gradient" title="gradient" aria-label="a gradient"><span class="tint-kind-dot" id="tintGradDot"></span></button>
-                            </div>
-                            <!-- the same adjuster as the drawing page: shade and brightness, hue, and the code -->
-                            <div class="hue-field" id="siteTintField" role="slider" tabindex="0" aria-label="shade and brightness" title="shade and brightness"><span class="hue-ring" id="siteTintRing"></span></div>
-                            <div class="hue-strip" id="siteTintHue" role="slider" tabindex="0" aria-label="hue" title="hue"><span class="hue-ring" id="siteHueRing"></span></div>
-                            <!-- the code: one in a solid colour; in a gradient both ends side by side, the top on the left, and the one pressed is the one the adjuster changes -->
-                            <div class="hue-codes" id="tintCodes">
-                                <label class="hue-code" data-stop="b" title="top"><span class="hue-now"></span><span class="hue-hash">#</span><input type="text" maxlength="6" spellcheck="false" autocomplete="off" aria-label="top colour code"></label>
-                                <label class="hue-code" data-stop="a" title="bottom"><span class="hue-now"></span><span class="hue-hash">#</span><input type="text" maxlength="6" spellcheck="false" autocomplete="off" aria-label="colour code"></label>
-                            </div>
-                        </div>
-                    </section>
-                    </div>
-                </div>
-
-                <!-- at the right end: the bin, then the search -->
-                <section class="rail-binned" id="railBinned" aria-label="recently binned">
-                    <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
-                    <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
-                        <span class="binned-count" id="binnedCount"></span>
-                    </div>
-                    <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
-                    <ol class="binned-list" id="binnedList"></ol>
-                </section>
-
-                <!-- one search over every page: a page's name, or any word on it. at the strip's right end -->
+                <!-- one search over every page: a page's name, or any word on it. at the strip's left, beside hi -->
                 <div class="page-search" id="pageSearch">
                     <svg class="page-search-mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>
                     <input id="pageSearchField" type="search" placeholder="search page..." aria-label="search the pages" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
@@ -249,7 +177,77 @@
                     </button>
                     <ol class="page-found" id="pageFound" hidden></ol>
                 </div>
-
+                <!-- the clock alone in the very middle of the strip (by request): the half of the day over it, the
+                     date under it; laid over the whole strip, so the time sits on the centre exactly -->
+                <div class="strip-middle">
+                    <div class="mid-side mid-left">
+                        <p class="clock-date" id="clockDate"></p>
+                    </div>
+                    <!-- the half of the day sits right over the time -->
+                    <div class="time-stack">
+                        <span class="clock-suffix" id="clockSuffix"></span>
+                        <p class="clock-time" id="clockTime">--:--</p>
+                        <span class="clock-numdate" id="clockNumDate"></span>
+                        <!-- help, in the time's own place: hovered for half a second, the time fades out and this fades in. one paragraph per section; keep it current -->
+                        <section class="help-box" aria-label="?">
+                            <button class="help-head" id="helpToggle" type="button" aria-expanded="false" aria-controls="helpBody" aria-label="help" title="help">
+                                <span class="help-spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.6 7.94a3.5 3.5 0 0 1 6.8 1.2c0 2.3-3.4 3-3.4 5.2"/><circle cx="12" cy="17.94" r="0.45" fill="currentColor"/></svg></span>
+                            </button>
+    
+                            <div class="help-body" id="helpBody"><div class="help-body-inner">
+    
+                            <p class="help-note" data-section="home" hidden>explore around mu website, option/alt to see button function</p>
+    
+                            <p class="help-note" data-section="cards" hidden>create flashcards and practice, explore around w features and enjoy studying</p>
+    
+                            <p class="help-note" data-section="audio" hidden>the only one who uses this is ME so no information is required</p>
+    
+                            <p class="help-note" data-section="chat" hidden>this is a chat. dont share passwords or personal info for security is genuine ass, please lock in</p>
+    
+                            <p class="help-note" data-section="draw" hidden>draw on the canvas, space and drag to move around, ctrl/cmd + and - to zoom, shift to stamp, hold t for fish</p>
+                            </div></div>
+                        </section>
+                    </div>
+                    <div class="mid-side mid-right"></div>
+                </div>
+                <!-- the controls together at the right end: the colour, the lights, the bin -->
+                <div class="strip-right">
+                    <!-- the site's colour: a dot showing it, which drops the adjuster -->
+                    <section class="rail-tint" id="railTint" aria-label="colour">
+                        <button class="tint-head" id="tintHead" type="button" title="colour" aria-label="colour" aria-expanded="false"><span class="tint-swatch"></span></button>
+                        <div class="tint-pop" id="tintPop">
+                        <!-- icons only: a solid colour on the left, a gradient on the right -->
+                        <div class="tint-kinds">
+                            <button type="button" class="tint-kind" data-mode="solid" title="solid" aria-label="one colour"><span class="tint-kind-dot" id="tintSolidDot"></span></button>
+                            <button type="button" class="tint-kind" data-mode="gradient" title="gradient" aria-label="a gradient"><span class="tint-kind-dot" id="tintGradDot"></span></button>
+                        </div>
+                        <!-- the same adjuster as the drawing page: shade and brightness, hue, and the code -->
+                        <div class="hue-field" id="siteTintField" role="slider" tabindex="0" aria-label="shade and brightness" title="shade and brightness"><span class="hue-ring" id="siteTintRing"></span></div>
+                        <div class="hue-strip" id="siteTintHue" role="slider" tabindex="0" aria-label="hue" title="hue"><span class="hue-ring" id="siteHueRing"></span></div>
+                        <!-- the code: one in a solid colour; in a gradient both ends side by side, the top on the left, and the one pressed is the one the adjuster changes -->
+                        <div class="hue-codes" id="tintCodes">
+                            <label class="hue-code" data-stop="b" title="top"><span class="hue-now"></span><span class="hue-hash">#</span><input type="text" maxlength="6" spellcheck="false" autocomplete="off" aria-label="top colour code"></label>
+                            <label class="hue-code" data-stop="a" title="bottom"><span class="hue-now"></span><span class="hue-hash">#</span><input type="text" maxlength="6" spellcheck="false" autocomplete="off" aria-label="colour code"></label>
+                        </div>
+                    </div>
+                    </section>
+                    <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="dark" title="dark">
+                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                            <path fill="currentColor"
+                                  d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
+                        </svg>
+                    </button>
+                    <!-- the bin, last of all -->
+                    <section class="rail-binned" id="railBinned" aria-label="recently binned">
+                        <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
+                        <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
+                            <span class="binned-count" id="binnedCount"></span>
+                        </div>
+                        <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+                        <ol class="binned-list" id="binnedList"></ol>
+                    </section>
+                </div>
             </header>
 
             <div class="app-body">
