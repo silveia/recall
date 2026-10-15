@@ -630,7 +630,7 @@ function sparkleOnDark(x, y, ignore = null) {
     }
     return document.documentElement.classList.contains('inverted');
 }
-function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white = null, ignore = null } = {}) {
+function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white = null, ignore = null, dwindle = false } = {}) {
     if (stillMotion()) return;
     const one = document.createElement('span');
     one.className = 'sparkle';
@@ -648,12 +648,18 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
     sparkleLayer.append(one);
     // minimal (by request): it pops to size, drifts a few pixels, and is gone — no slow shrink at the end
     const at = (t, s) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s})`;
-    one.animate([
+    // a bubble (dwindle) pops up to size, then floats up getting smaller and smaller until it is gone
+    one.animate(dwindle ? [
+        { transform: at(0, 0) },
+        { transform: at(0.06, 1), offset: 0.1 },
+        { transform: at(0.55, 0.6), offset: 0.55 },
+        { transform: at(1, 0) }
+    ] : [
         { transform: at(0, 0) },
         { transform: at(0.35, 1), offset: 0.18 },
         { transform: at(1, 1), offset: 0.9 },
         { transform: at(1, 0) }
-    ], { duration: long, delay, easing: 'linear', fill: 'backwards' }).onfinish = () => one.remove();
+    ], { duration: long, delay, easing: dwindle ? 'cubic-bezier(0.3, 0.6, 0.5, 1)' : 'linear', fill: 'backwards' }).onfinish = () => one.remove();
 }
 // a little spray out of the pointer, on a small press
 function sparkleBurst(x, y, count = 4) {
@@ -692,13 +698,14 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
     spots.forEach((spot, i) => {
         const reach = spot.onIt ? 3 + Math.random() * 4 : 6 + Math.random() * 6;
         // rising (the colour list): bubbles of every size, drifting up as bubbles do, over a longer moment
-        const up = rise ? 12 + Math.random() * 22 : 0;
+        const up = rise ? 26 + Math.random() * 34 : 0;
         sparkle(spot.x, spot.y, {
             size: rise ? 8 + Math.random() * 14 : 12 + Math.random() * 6,
             dx: spot.out[0] * reach + (rise ? (Math.random() - 0.5) * 8 : 0),
             dy: spot.out[1] * reach - up,
             delay: rise ? 100 + i * 34 + Math.random() * 60 : 120 + i * 40,
-            long: rise ? 480 + Math.random() * 260 : 300 + Math.random() * 100,
+            long: rise ? 800 + Math.random() * 400 : 300 + Math.random() * 100,
+            dwindle: rise,
             white: spot.onIt ? true : null,
             ignore: el
         });
