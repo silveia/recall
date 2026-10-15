@@ -5701,9 +5701,12 @@ html.inverted .bin-dock { color: var(--ink); }
 	position: absolute;
 	left: 0;
 	top: 0;
-	/* a plain circle for now, by request, to see it. the plus it was, to put back:
+	/* the plus it was first, to put back:
 	   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.5 0.5H12.5L13.5 9.4Q13.9 10.1 14.6 10.5L23.5 11.5V12.5L14.6 13.5Q13.9 13.9 13.5 14.6L12.5 23.5H11.5L10.5 14.6Q10.1 13.9 9.4 13.5L0.5 12.5V11.5L9.4 10.5Q10.1 10.1 10.5 9.4Z'/%3E%3C/svg%3E") center / contain no-repeat; */
-	border-radius: 50%;
+	/* a bubble (by request, after a plain circle): a hollow ring with a little curved highlight inside it,
+	   up at its top left */
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10.6' fill='none' stroke='%23000' stroke-width='1.8'/%3E%3Cpath d='M6.6 10.2A5.8 5.8 0 0 1 10.2 6.6' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10.6' fill='none' stroke='%23000' stroke-width='1.8'/%3E%3Cpath d='M6.6 10.2A5.8 5.8 0 0 1 10.2 6.6' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
 	will-change: transform;
 }
 

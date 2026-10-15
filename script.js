@@ -661,7 +661,7 @@ function sparkleBurst(x, y, count = 4) {
     for (let i = 0; i < count; i += 1) {
         const way = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
         const reach = 10 + Math.random() * 8;
-        sparkle(x + Math.cos(way) * 6, y + Math.sin(way) * 6, { size: 8 + Math.random() * 4, dx: Math.cos(way) * reach, dy: Math.sin(way) * reach, delay: Math.random() * 40, long: 280 + Math.random() * 100, white });
+        sparkle(x + Math.cos(way) * 6, y + Math.sin(way) * 6, { size: 10 + Math.random() * 5, dx: Math.cos(way) * reach, dy: Math.sin(way) * reach, delay: Math.random() * 40, long: 280 + Math.random() * 100, white });
     }
 }
 // round a list as it springs out of its mark: half of them on the list itself, near its edges and corners,
@@ -692,7 +692,7 @@ function sparkleAround(el, count = 6, { fromPointer = false } = {}) {     // non
     spots.forEach((spot, i) => {
         const reach = spot.onIt ? 3 + Math.random() * 4 : 6 + Math.random() * 6;
         sparkle(spot.x, spot.y, {
-            size: 10 + Math.random() * 5,
+            size: 12 + Math.random() * 6,
             dx: spot.out[0] * reach,
             dy: spot.out[1] * reach,
             delay: 120 + i * 40,

@@ -2176,8 +2176,9 @@ the nearest its corner go first — the colour list, the bin's list (exactly as 
 help's note, the search's results and the drawing's colour adjuster — not the windows (create, practice and
 the rest open as they always did, by request). **`sparkleBurst(x, y)`**:
 a few out of the pointer — **only on create and practice** (by request: on every minor press they stopped
-being special); opening a list sparkles round the list only. **For now a sparkle is a plain circle** (by
-request, to see it); the plus is kept, commented, in `.sparkle`. **The pop-ups pop**: no fade and no blur (both tried and refused) — the spring out of the mark from
+being special); opening a list sparkles round the list only. **A sparkle is now a bubble** (by request, after a plain
+circle): a hollow ring with a little curved highlight at its top left, a touch bigger to read; the plus is
+kept, commented, in `.sparkle`. **The pop-ups pop**: no fade and no blur (both tried and refused) — the spring out of the mark from
 small, a quicker shrink back.
 
 **Smoothness:** the copies of the colour layer are placed once when something opens, moves or the window
