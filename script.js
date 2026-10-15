@@ -506,12 +506,13 @@ function openTabTip(tab, name) {
     let tip = tips.get(id);
     if (!tip) {
         const el = document.createElement('div');
-        el.className = 'tab-tip';
+        el.className = 'tab-tip own-layer';     // over the colour layer, with its own copy of it
         el.setAttribute('aria-hidden', 'true');
         el.innerHTML = `<svg><path/></svg><span>${name}</span>`;
         document.body.append(el);
         const spot = tab.getBoundingClientRect();
         el.style.top = `${Math.round(spot.top + spot.height / 2 - el.offsetHeight / 2)}px`;
+        placeOwnLayer(el);
         // the shape starts where a bump tile does, so the bump's arc goes in at the same numbers
         const shell = getComputedStyle(document.documentElement);
         tip = {
@@ -558,10 +559,12 @@ function unfoldSection(force) {
     // the same goes for any page with something cut out of the colour layer (colour pictures in the chat):
     // a hole fading in shows the black under it first, so those pictures came up out of black
     const fade = activeSectionId === 'draw' || (document.documentElement.classList.contains('tinted') && tintHoles().length) ? 1 : 0;
-    const move = homeScreen.animate([
-        { opacity: fade, top: `${way * 40}px` },
-        { opacity: 1, top: '0px' }
-    ], { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    // with no fade the opacity is left alone altogether: even held at 1, an opacity being animated gathers the
+    // page into one picture under the colour layer, and the drawing's sheet (which lies over it) went under
+    // it for the length of the slide
+    const move = homeScreen.animate(fade === 1
+        ? [{ top: `${way * 40}px` }, { top: '0px' }]
+        : [{ opacity: fade, top: `${way * 40}px` }, { opacity: 1, top: '0px' }], { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
     move.id = 'unfold';
 }
 
@@ -572,43 +575,53 @@ function unfoldSection(force) {
 function tintHoles() {
     const holes = [];
     const add = (box) => { if (box && box.width && box.height) holes.push(box); };
-    // the drawing page says what keeps its own colours: the sheet, and what lies on it (draw.js)
-    // not while the page is still held back on a refresh: the shell is see-through then, and a hole showed
-    // the black behind it until the page came in — the sheet flashed black
-    const holding = document.documentElement.classList.contains('booting');
-    if (activeSectionId === 'draw' && !holding && typeof window.drawHoles === 'function') window.drawHoles().forEach(add);
-    // what keeps its colours on the page under the site's own floating things: the drawing's sheet, the chat's
-    // colour pictures. (the colour list lies above the layer and needs none of this)
-    const bases = [];
-    if (activeSectionId === 'draw' && !holding && window.drawSheetBox) bases.push(window.drawSheetBox);
-    if (activeSectionId === 'chat') {
+    // the chat's colour pictures. (the drawing's sheet lies over the layer instead, and everything that
+    // floats over it carries its own copy of the layer — see placeOwnLayers)
+    if (activeSectionId === 'chat' && !document.documentElement.classList.contains('booting')) {
         document.querySelectorAll('.said-file img, .tray-look img').forEach((img) => {
             const box = img.getBoundingClientRect();
-            if (box.bottom > 0 && box.top < window.innerHeight) { add(box); bases.push(box); }
-        });
-    }
-    // whatever the site floats over them (the strip's lists, the search's results, a window, the confirm
-    // chip) puts the layer back there — the path is filled even-odd — or it showed as raw black over them.
-    // judged by what is on screen, not by what is open: a list fades and shrinks for a moment after it
-    // shuts, and that moment over a hole was the black flash on every close
-    if (bases.length) {
-        document.querySelectorAll('.help-body, .binned-list, .page-found, .modal-panel, #confirmChip').forEach((el) => {
-            if (!el.getClientRects().length) return;      // not laid out at all (hidden, display: none)
-            const look = getComputedStyle(el);
-            if (look.visibility !== 'visible' || Number(look.opacity) === 0) return;
-            const box = el.getBoundingClientRect();
-            bases.forEach((base) => {
-                const left = Math.max(box.left, base.left), top = Math.max(box.top, base.top);
-                const right = Math.min(box.right, base.right), bottom = Math.min(box.bottom, base.bottom);
-                // square: the corners it leaves are over the sheet or the picture, and a rounded cut where the
-                // edge cuts it notched it
-                if (right > left && bottom > top) add({ left, top, width: right - left, height: bottom - top, round: 0 });
-            });
+            if (box.bottom > 0 && box.top < window.innerHeight) add(box);
         });
     }
     return holes;
 }
+// every .own-layer carries its own copy of the colour layer (style.css, "the colour, in layers"), pinned
+// to where its box sits at rest on the window: worked out from the layout, which a scale or a turn in the
+// middle of a spring doesn't touch, so the copy never jumps while the box moves
+function restSpot(el) {
+    const look = getComputedStyle(el);
+    if (look.position === 'fixed') return { x: parseFloat(look.left) || 0, y: parseFloat(look.top) || 0 };
+    let x = 0, y = 0, node = el;
+    while (node) {
+        x += node.offsetLeft;
+        y += node.offsetTop;
+        const parent = node.offsetParent;
+        for (let up = node.parentElement; up && up !== parent; up = up.parentElement) { x -= up.scrollLeft; y -= up.scrollTop; }
+        if (!parent) break;
+        x += parent.clientLeft - parent.scrollLeft;
+        y += parent.clientTop - parent.scrollTop;
+        const parentLook = getComputedStyle(parent);
+        if (parentLook.position === 'fixed') { x += parseFloat(parentLook.left) || 0; y += parseFloat(parentLook.top) || 0; break; }
+        node = parent;
+    }
+    // a `translate` of its own (help's note is centred with one) does move it at rest
+    const shift = look.translate && look.translate !== 'none' ? look.translate.split(' ') : [];
+    const along = (part, size) => (!part ? 0 : part.endsWith('%') ? parseFloat(part) / 100 * size : parseFloat(part) || 0);
+    return { x: x + along(shift[0], el.offsetWidth), y: y + along(shift[1], el.offsetHeight) };
+}
+function placeOwnLayer(el) {
+    if (!el.getClientRects().length) return;     // not laid out: nothing to place
+    const at = restSpot(el);
+    el.style.setProperty('--at-x', `${at.x.toFixed(1)}px`);
+    el.style.setProperty('--at-y', `${at.y.toFixed(1)}px`);
+}
+function placeOwnLayers() {
+    if (!document.documentElement.classList.contains('tinted')) return;
+    document.querySelectorAll('.own-layer').forEach(placeOwnLayer);
+}
+window.placeOwnLayers = placeOwnLayers;
 function cutTintHole() {
+    placeOwnLayers();
     const root = document.documentElement;
     if (!root.classList.contains('tinted')) { root.style.removeProperty('--tint-hole'); return; }
     const holes = tintHoles();
@@ -690,6 +703,7 @@ function renderSections() {
     sectionTabs.querySelectorAll('.section-tab').forEach((tab) => {
         const active = tab.dataset.section === activeSectionId;
         tab.classList.toggle('active', active);
+        tab.classList.toggle('own-layer', active);     // the filled one carries its own copy of the colour (its mark is dark)
         tab.setAttribute('aria-current', active ? 'page' : 'false');
     });
     unfoldSection();
@@ -7370,6 +7384,7 @@ function placeSayWhat() {
     const middle = pointerAt.y - box.height / 2;
     sayWhat.style.left = `${Math.round(left)}px`;
     sayWhat.style.top = `${Math.round(Math.max(8, Math.min(window.innerHeight - box.height - 8, middle)))}px`;
+    placeOwnLayer(sayWhat);
 }
 
 window.addEventListener('pointermove', (event) => {

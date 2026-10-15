@@ -627,8 +627,8 @@ startGameBtn.addEventListener('click', () => {
 gameBtn.addEventListener('click', () => {
     miniWindow.classList.remove('hidden-window'); 
     miniWindow.style.display = 'block'; 
-    miniWindow.style.zIndex = '100';
-    miniWindow2.style.zIndex = '99';
+    miniWindow.style.zIndex = '2147483005';
+    miniWindow2.style.zIndex = '2147483004';
     localStorage.setItem('gameWindowOpen', 'true');
     tuckIn(miniWindow, 'miniWindowLeft', 'miniWindowTop');
     // a game that was going when the window shut carries on
@@ -638,8 +638,8 @@ gameBtn.addEventListener('click', () => {
 referenceBtn.addEventListener('click', () => {
     miniWindow2.classList.remove('hidden-window');
     miniWindow2.style.display = 'block';
-    miniWindow2.style.zIndex = '100';
-    miniWindow.style.zIndex = '99';
+    miniWindow2.style.zIndex = '2147483005';
+    miniWindow.style.zIndex = '2147483004';
     localStorage.setItem('referenceWindowOpen', 'true');
     tuckIn(miniWindow2, 'miniWindow2Left', 'miniWindow2Top');
 });
@@ -663,13 +663,13 @@ resetGameBtn.addEventListener('click', () => {
 });
 
 miniWindow.addEventListener('mousedown', () => {
-    miniWindow.style.zIndex = '100';
-    miniWindow2.style.zIndex = '99';
+    miniWindow.style.zIndex = '2147483005';
+    miniWindow2.style.zIndex = '2147483004';
 });
 
 miniWindow2.addEventListener('mousedown', () => {
-    miniWindow2.style.zIndex = '100';
-    miniWindow.style.zIndex = '99';
+    miniWindow2.style.zIndex = '2147483005';
+    miniWindow.style.zIndex = '2147483004';
 });
 
 windowHeader.addEventListener('mousedown', (e) => {
@@ -679,8 +679,8 @@ windowHeader.addEventListener('mousedown', (e) => {
     
     windowHeader.style.backgroundColor = '';   // the held look is the stylesheet's (.is-held)
     windowHeader.classList.add('is-held'); 
-    miniWindow.style.zIndex = '100';
-    miniWindow2.style.zIndex = '99';
+    miniWindow.style.zIndex = '2147483005';
+    miniWindow2.style.zIndex = '2147483004';
 });
 
 windowHeader2.addEventListener('mousedown', (e) => {
@@ -690,8 +690,8 @@ windowHeader2.addEventListener('mousedown', (e) => {
     
     windowHeader2.style.backgroundColor = '';   // the held look is the stylesheet's (.is-held)
     windowHeader2.classList.add('is-held'); 
-    miniWindow.style.zIndex = '99';
-    miniWindow2.style.zIndex = '100';
+    miniWindow.style.zIndex = '2147483004';
+    miniWindow2.style.zIndex = '2147483005';
 });
 
 // a little window is kept wholly on the page: dragged, put back from storage, or left behind by the
@@ -1115,7 +1115,7 @@ function spawnFloatingFish() {
     fish.style.height = 'auto';
     fish.style.imageRendering = 'pixelated';
     fish.style.pointerEvents = 'none';
-    fish.style.zIndex = '9999999';
+    fish.style.zIndex = '2147483006';     // over the sheet, which lies over the colour layer
     fish.style.marginTop = '-60px';  
     fish.style.marginLeft = '-60px'; 
     
@@ -1541,13 +1541,12 @@ brushSize.addEventListener('input', (e) => {
             var at = ' at ' + cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px)';
             menu.shapes = { shut: 'circle(' + (dot.width / 2) + 'px' + at, open: 'circle(' + reach + 'px' + at };
             // then what is in it comes in one after another: the square, the strip, the code
-            // with the site's colour on they only slide: they are cut out of the colour layer, and a
-            // part fading in a hole shows the black under it first
-            if (!menu.moving) {
-                var still = document.documentElement.classList.contains('tinted') ? 1 : 0;
+            // with the site's colour on they don't move at all: a part on the move gathers what is in it into one
+            // picture, and the colour dot in the code went under the adjuster's copy of the colour layer for the slide
+            if (!menu.moving && !document.documentElement.classList.contains('tinted')) {
                 Array.prototype.forEach.call(menu.children, function (part, i) {
                     part.animate([
-                        { opacity: still, transform: 'translateY(8px)' },
+                        { opacity: 0, transform: 'translateY(8px)' },
                         { opacity: 1, transform: 'none' }
                     ], { duration: 360, delay: 110 + i * 70, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' });
                 });
@@ -1800,43 +1799,13 @@ brushSize.addEventListener('input', (e) => {
     };
 })();
 
-// what keeps its own colours is cut out of the site's colour layer (the site's tintHoles asks for these):
-// the sheet, where it shows inside its box and rounded like it; over it, what puts the layer back (a corner
-// button, a window, the open adjuster) cut to the sheet; and what takes it out again (a window's inside, the
-// colour square, the dot) taken whole. filled even-odd by the site
-window.drawHoles = function () {
-    const out = [];
-    let sheetBox = null;
-    const shown = (el) => el && !el.hidden && !el.closest('[hidden], .hidden-window');
-    const push = (l, t, r, b, round) => { if (r > l && b > t) out.push({ left: l, top: t, width: r - l, height: b - t, round }); };
-    const roundOf = (el) => parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
-    const whole = (el) => { if (!shown(el)) return; const b = el.getBoundingClientRect(); push(b.left, b.top, b.right, b.bottom, roundOf(el)); };
-    const overSheet = (el) => {
-        if (!shown(el) || !sheetBox) return;
-        const b = el.getBoundingClientRect();
-        push(Math.max(b.left, sheetBox.left), Math.max(b.top, sheetBox.top), Math.min(b.right, sheetBox.right), Math.min(b.bottom, sheetBox.bottom), roundOf(el));
-    };
-    const b = container.getBoundingClientRect(), c = canvas.getBoundingClientRect(), i = container.clientLeft;
-    sheetBox = { left: Math.max(b.left + i, c.left), top: Math.max(b.top + i, c.top), right: Math.min(b.right - i, c.right), bottom: Math.min(b.bottom - i, c.bottom) };
-    push(sheetBox.left, sheetBox.top, sheetBox.right, sheetBox.bottom, Math.max(0, roundOf(container) - i));
-    window.drawSheetBox = sheetBox;     // the site cuts what it floats over the sheet to this
-    DRAW_ROOT.querySelectorAll('.corner-buttons button').forEach(overSheet);
-    [miniWindow, miniWindow2].forEach((win) => {
-        if (win.classList.contains('hidden-window')) return;
-        overSheet(win);
-        whole(win.querySelector('#windowContent, .windowContent2'));
-    });
-    whole(DRAW_ROOT.querySelector('.colour-dot'));
-    const pop = DRAW_ROOT.querySelector('.tint');
-    if (pop && !pop.hidden) { overSheet(pop); whole(document.getElementById('tintField')); whole(document.getElementById('tintHue')); whole(document.getElementById('tintNow')); }
-    return out;
-};
-// they move with anything that moves on the page, and for a moment after (menus and windows animate)
-['pointerdown', 'pointerup', 'click', 'input', 'keydown', 'keyup', 'wheel'].forEach((name) => {
-    DRAW_ROOT.addEventListener(name, () => window.cutTintHoleWhileMoving(500), { capture: true, passive: true });
-});
-window.addEventListener('pointermove', (event) => { if (event.buttons && drawHere()) window.cutTintHole(); }, { passive: true });
-new ResizeObserver(() => window.cutTintHole()).observe(container);
+// the sheet lies over the site's colour layer, and what lies over the sheet carries its own copy of the layer
+// (.own-layer: the windows, the colour adjuster, the corner marks, the note), pinned to where each sits —
+// so they are placed again whenever something here may have moved them
+['pointerup', 'click', 'keyup'].forEach((name) => DRAW_ROOT.addEventListener(name, () => requestAnimationFrame(window.placeOwnLayers), { capture: true, passive: true }));
+window.addEventListener('mousemove', () => { if (isDraggingWindow || isDraggingWindow2) window.placeOwnLayers(); }, { passive: true });
+new ResizeObserver(() => window.placeOwnLayers()).observe(DRAW_ROOT);
+window.placeOwnLayers();
 
 };
 // opened straight onto the draw page, the site has already shown it before this file arrived

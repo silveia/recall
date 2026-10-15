@@ -2851,7 +2851,6 @@ html:not(.inverted) .topbar {
 	top: 0;
 	left: calc(var(--rail) - var(--wave-w) / 2);   /* in behind the first bump, so the row is one black */
 	right: 0;
-	z-index: 4;
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
@@ -2862,10 +2861,9 @@ html:not(.inverted) .topbar {
 	background: var(--bar);
 	font-family: var(--font);
 	font-size: 1rem;
-	/* raised over the page while something hangs from it, and kept there until that has gone back up */
-	transition: z-index 0s linear 0.3s;
 }
-.topbar:has(.is-open) { z-index: 75; transition: z-index 0s; }
+/* no z-index of its own (14 Oct): as a stacking context it held what hangs from it under the colour layer,
+   and those now lie over it (see "the colour, in layers") */
 /* in the dark the strip and the page are one black, so its foot gets a white line — from the dip
    where the first bump starts, never reaching back over the bumps */
 html.inverted .topbar::after {
@@ -2880,7 +2878,7 @@ html.inverted .topbar::after {
 }
 
 /* the search over every page, at the strip's right end */
-.page-search { --field: 34px; position: relative; z-index: 20; flex: none; width: 24rem; margin: 0; }   /* at the strip's left, beside hi (14 Oct): the thing used most, where the eye starts */
+.page-search { --field: 34px; position: relative; flex: none; width: 24rem; margin: 0; }   /* at the strip's left, beside hi (14 Oct): the thing used most, where the eye starts */
 .page-search input {
 	width: 100%;
 	height: var(--field);
@@ -2985,8 +2983,8 @@ html.inverted .topbar::after {
 .tint-swatch { width: 18px; height: 18px; background: var(--tint-fill); border: 1px solid var(--line); border-radius: 50%; }
 /* the colour list lies above the site's colour layer (by request, after one black flash too many): it is
    moved to the foot of <body> and given the top place, so its colours are simply its colours — nothing cut
-   out of the layer, nothing that can show the black under a hole. it paints its own back in the layer's
-   colour or gradient (fixed, so it is the same part of it the strip shows), with the strip's white words */
+   out of the layer, nothing that can show the black under a hole. it carries its own copy of the layer
+   (.own-layer, see "the colour, in layers"), with the strip's white words */
 .tint-pop {
 	--paper: #000;
 	--ink: #fff;
@@ -2998,15 +2996,14 @@ html.inverted .topbar::after {
 	left: auto;
 	right: 0;
 	transform-origin: 100% 0;
-	z-index: 2147483001;     /* over the colour layer (body::after, 2147483000) */
+	z-index: 2147483020;     /* over the colour layer (body::after, 2147483000) */
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
 	width: 14rem;
 	padding: 12px;
 	color: var(--ink);
-	background: var(--tint-layer, #000);
-	background-attachment: fixed;
+	background: var(--paper);
 	border: 1px solid var(--line);
 	border-radius: 18px;
 	font-family: var(--font);
@@ -3242,7 +3239,7 @@ html.inverted .topbar::after {
 .topbar.help-peek .time-stack > :not(.help-box) { opacity: 0; }
 /* the controls together at the strip's right end (14 Oct, by request): the colour, the lights, the bin —
    bare marks, evenly apart */
-.strip-right { position: relative; z-index: 1; display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+.strip-right { position: relative; display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 .strip-right .theme-swap { order: 0; margin: 0 0.35rem; }   /* it carried an order from the old row */
 .help-head {
 	display: flex;
@@ -5568,3 +5565,58 @@ html.inverted .tab-tip svg { display: block; }   /* the bumps' own white edge, i
     0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
     100% { transform: translate(var(--tx), var(--ty)) scale(0.5) rotate(var(--rot)); opacity: 0; }
 }
+
+/* =========================================================
+   the colour, in layers (14 Oct, by request: "all the black stuff should work like a layer clipped to the
+   gradient", after one black flash too many)
+   ---------------------------------------------------------
+   the site's colour is one layer over the whole window (body::after). what must keep its own colours — the
+   drawing — used to be cut out of it with holes worked out by script frame by frame, and whenever a hole was
+   a frame behind (a list fading, a window moving, a page arriving) the black under it showed. there are no
+   holes on the draw page now:
+   - the sheet itself lies OVER the colour layer, so its colours are simply its colours
+   - anything that lies over the sheet (the drawing's windows, its colour adjuster, its corner marks, its
+     note; the strip's lists, the colour list, the pages' names, the option-key label) lies over it too, and
+     carries its OWN copy of the colour layer, clipped to itself (.own-layer::after) — the same gradient at
+     the same place on the window, so it reads exactly as the layer would. what in it keeps its colours (the
+     game, the reference picture, the colour square) lies over that copy
+   - each copy is pinned to where its box sits at rest (--at-x/--at-y, placeOwnLayers in script.js), not
+     `fixed`: a fixed background inside anything scaled or turned is drawn against the box instead of the
+     window, which a spring would show. if it is ever a hair off, it is a shade off — never black
+   ========================================================= */
+html.tint-layer.tinted .own-layer { isolation: isolate; }
+html.tint-layer.tinted .own-layer::after {
+	content: '';
+	position: absolute;
+	inset: calc(var(--own-edge, 0px) * -1);      /* over its own outline too, where it has one in black */
+	z-index: 50;
+	pointer-events: none;
+	border-radius: inherit;
+	background-image: var(--tint-layer);
+	background-repeat: no-repeat;
+	background-size: calc(var(--vw, 1vw) * 100) calc(var(--vh, 1vh) * 100);
+	background-position: calc((var(--at-x, 0px) - var(--own-edge, 0px)) * -1) calc((var(--at-y, 0px) - var(--own-edge, 0px)) * -1);
+	mix-blend-mode: screen;
+}
+/* the order over the layer (2147483000): the sheet, then what lies on it, then the site's own floating things */
+.draw-panel canvas { position: relative; z-index: 2147483001; }
+.draw-panel #canvas-container { z-index: auto; }
+.draw-panel #toolbar { z-index: auto; }
+.draw-panel .corner-buttons,
+.draw-panel .pick-menu,
+.draw-panel .sprite-hint,
+.draw-panel #miniWindow,
+.draw-panel #miniWindow2 { z-index: 2147483004; }     /* the two windows are put in front of each other by draw.js, at 2147483004 and 5 */
+.draw-panel .shimeji-char { z-index: 2147483006; }
+.draw-panel .colour-dot { position: relative; z-index: 2147483004; }     /* the brush's colour is its colour */
+.help-body, .binned-list, .page-found, .tint-pop, .tab-tip, .say-what { z-index: 2147483020; }
+/* the drawing's things with a black outline in the light: the copy covers the outline as well */
+.draw-panel .corner-buttons button, .draw-panel .pick-menu, .draw-panel #miniWindow, .draw-panel #miniWindow2 { --own-edge: 1px; }
+.draw-panel .corner-buttons button { position: relative; }     /* each copy is its own button's, not the pair's */
+.draw-panel #miniWindow, .draw-panel #miniWindow2 { overflow: clip; overflow-clip-margin: 1px; }
+/* what in them keeps its own colours lies over the copy */
+.draw-panel #gameViewport { z-index: 60; }
+.draw-panel #referenceImage { position: relative; z-index: 60; }
+.draw-panel .tint-field, .draw-panel .tint-hue, .draw-panel .tint-now { position: relative; z-index: 60; }
+/* the colour list is black like the strip, and its copy colours it; its colours lie over the copy */
+.tint-pop :is(.tint-kind-dot, .hue-now, .hue-field, .hue-strip) { position: relative; z-index: 60; }

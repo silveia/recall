@@ -76,7 +76,7 @@
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <!-- the site's colour, set before anything is drawn -->
     <script src="tint.js"></script>
-    <link rel="stylesheet" href="style.css?v=518e06795b">
+    <link rel="stylesheet" href="style.css?v=c9ec2f1c84">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -155,7 +155,7 @@
     </div>
 
     <div class="app-shell">
-        <div class="say-what" id="sayWhat" aria-hidden="true"></div>
+        <div class="say-what own-layer" id="sayWhat" aria-hidden="true"></div>
 
         <!-- the site's name, in the top-left corner over the first bump: it goes home -->
         <a class="site-name" id="siteName" href="home/" title="home">hi</a>
@@ -177,7 +177,7 @@
                     <button class="page-search-go" id="pageSearchGo" type="button" aria-label="go" title="go">
                         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 6l6 6-6 6"/></svg>
                     </button>
-                    <ol class="page-found" id="pageFound" hidden></ol>
+                    <ol class="page-found own-layer" id="pageFound" hidden></ol>
                 </div>
                 <!-- the clock alone in the very middle of the strip (by request): the half of the day over it, the
                      date under it; laid over the whole strip, so the time sits on the centre exactly -->
@@ -196,7 +196,7 @@
                                 <span class="help-spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.6 7.94a3.5 3.5 0 0 1 6.8 1.2c0 2.3-3.4 3-3.4 5.2"/><circle cx="12" cy="17.94" r="0.45" fill="currentColor"/></svg></span>
                             </button>
     
-                            <div class="help-body" id="helpBody"><div class="help-body-inner">
+                            <div class="help-body own-layer" id="helpBody"><div class="help-body-inner">
     
                             <p class="help-note" data-section="home" hidden>explore around mu website, option/alt to see button function</p>
     
@@ -217,7 +217,7 @@
                     <!-- the site's colour: a dot showing it, which drops the adjuster -->
                     <section class="rail-tint" id="railTint" aria-label="colour">
                         <button class="tint-head" id="tintHead" type="button" title="colour" aria-label="colour" aria-expanded="false"><span class="tint-swatch"></span></button>
-                        <div class="tint-pop" id="tintPop">
+                        <div class="tint-pop own-layer" id="tintPop">
                         <!-- icons only: a solid colour on the left, a gradient on the right -->
                         <div class="tint-kinds">
                             <button type="button" class="tint-kind" data-mode="solid" title="solid" aria-label="one colour"><span class="tint-kind-dot" id="tintSolidDot"></span></button>
@@ -247,7 +247,7 @@
                             <span class="binned-count" id="binnedCount"></span>
                         </div>
                         <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
-                        <ol class="binned-list" id="binnedList"></ol>
+                        <ol class="binned-list own-layer" id="binnedList"></ol>
                     </section>
                 </div>
             </header>
@@ -562,7 +562,7 @@
                                     <div class="field">
                                         <div class="pick" id="colourPick">
                                             <button type="button" class="pick-face colour-face" aria-haspopup="true" aria-expanded="false" title="colour"><span class="colour-dot"></span></button>
-                                            <div class="pick-menu tint" hidden>
+                                            <div class="pick-menu tint own-layer" hidden>
                                                 <!-- a real colour adjuster: shade and brightness in the square, hue on the strip, and the code itself -->
                                                 <div class="tint-field" id="tintField" role="slider" tabindex="0" aria-label="shade and brightness" title="shade and brightness"><span class="tint-ring" id="tintRing"></span></div>
                                                 <div class="tint-hue" id="tintHue" role="slider" tabindex="0" aria-label="hue" title="hue" aria-valuemin="0" aria-valuemax="360"><span class="tint-ring" id="hueRing"></span></div>
@@ -615,7 +615,7 @@
 
                                     <span class="spawn-wrap">
                                         <button id="spawnBtn" type="button">spawn sprite</button>
-                                        <span class="sprite-hint" id="spriteHint" role="status" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 18 7 7M7 14V7h7"/></svg>pls upload sprite first</span>
+                                        <span class="sprite-hint own-layer" id="spriteHint" role="status" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 18 7 7M7 14V7h7"/></svg>pls upload sprite first</span>
                                     </span>
                                     <button id="clearBtn" type="button" class="is-solid">clear</button>
                                 </div>
@@ -625,16 +625,16 @@
                                 <canvas id="paintCanvas" width="1200" height="800"></canvas>
 
                                 <div class="corner-buttons">
-                                    <button id="referenceBtn" type="button" title="reference" aria-label="Open Reference Window">
+                                    <button id="referenceBtn" class="own-layer" type="button" title="reference" aria-label="Open Reference Window">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4.5 17.5l5-4.5 3.5 3 2.5-2 4 3.5"/></svg>
                                     </button>
-                                    <button id="gameBtn" type="button" title="yams" aria-label="Open Yams Window">
+                                    <button id="gameBtn" class="own-layer" type="button" title="yams" aria-label="Open Yams Window">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 8h9a4 4 0 0 1 4 4.4l-.5 3.6a2.4 2.4 0 0 1-4.2 1.2L14.2 15H9.8l-1.6 2.2A2.4 2.4 0 0 1 4 16l-.5-3.6A4 4 0 0 1 7.5 8z"/><path d="M8 10.5v3M6.5 12h3"/><circle cx="15.5" cy="11" r="0.5" fill="currentColor"/><circle cx="17" cy="13" r="0.5" fill="currentColor"/></svg>
                                     </button>
                                 </div>
                             </div>
 
-                            <div id="miniWindow" class="hidden-window">
+                            <div id="miniWindow" class="hidden-window own-layer">
                                 <div id="windowHeader">
                                     <span>yams</span>
                                     <div>
@@ -659,7 +659,7 @@
                                 </div>
                             </div>
 
-                            <div id="miniWindow2" class="hidden-window">
+                            <div id="miniWindow2" class="hidden-window own-layer">
                                 <div id="windowHeader2">
                                     <span>reference</span>
                                     <button id="closeWindowBtn2" type="button" title="close" aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
@@ -921,7 +921,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=569ea098b0"></script>
-    <script src="draw.js?v=99c4252059"></script>
+    <script src="script.js?v=112f624438"></script>
+    <script src="draw.js?v=a106267d97"></script>
 </body>
 </html>

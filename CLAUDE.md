@@ -2143,6 +2143,38 @@ came up out of black. The colour list **unrolls** down out of the strip instead 
 240ms / 170ms back), its holes cut only as far as it shows; a page with holes on it (draw, chat with
 colour pictures) slides in without the fade; and with a colour on, the drawing adjuster's parts only slide.
 
+## The colour, in layers — no holes on the draw page (14 Oct)
+
+By request ("all the black stuff should work like a layer clipped to the gradient", after many black
+flashes). **This replaces every note above about the draw page's holes, `drawHoles`, `drawSheetBox`,
+floaters putting the layer back, and the colour list painting its own back.** The colour is still one layer
+over the window (`body::after`, screen), but what must keep its own colours is no longer cut out of it with
+holes worked out frame by frame — a hole a frame late was every black flash. Instead:
+
+- **The drawing's sheet lies over the layer** (`canvas` at z 2147483001; its box and toolbar are no longer
+  stacking contexts, so it can).
+- **Everything that lies over the sheet lies over it too, and carries its own copy of the layer**
+  (`.own-layer`: `isolation` plus an `::after` with the same gradient, screen-blended within the box):
+  the drawing's two windows, colour adjuster, corner marks and note (z 2147483004–6), and the site's floating
+  things — help's note, the bin's list, the search's results, the colour list, the pages' names, the
+  option-key label (z 2147483020). The page marks lie over the names (2147483021) — they are white, which
+  needs no colouring; the filled one carries a copy. What in them keeps its colours (the game, the reference
+  picture, the colour squares and dots) lies over the copy (z 60).
+- **Each copy is pinned to where its box sits at rest** (`--at-x`/`--at-y`, `placeOwnLayers` /
+  `restSpot` in script.js, from the layout, so a spring's scale or turn doesn't move it). Not
+  `background-attachment: fixed`: inside anything scaled, turned or blurred that is drawn against the box.
+  Placed again with every hole pass, on the drawing page's presses and drags, and on resize.
+- **An own-layer box must be opaque across its whole shape**: the copy paints wherever the box is
+  see-through. And **nothing inside it may move by transform** while it is shown (it gathers what is in it
+  under the copy) — which is why the drawing adjuster's parts no longer slide in with a colour on.
+- `--own-edge: 1px` where the box's outline is black (the drawing's windows, adjuster, corner marks), so the
+  copy covers the outline too; the windows clip with `overflow: clip` and a 1px margin so it shows.
+- The strip is no longer a stacking context (it held its lists under the layer); the bar the bin sits in and
+  the search lost their z-index for the same reason.
+- The draw page slides in without touching opacity: an opacity being animated gathers the page under the
+  layer for the slide.
+- Holes remain only for the chat's colour pictures (and are never cut while a refresh holds the page back).
+
 ## The front door
 
 **The site's pointer is set inline in `app.html`'s head**, before
