@@ -161,6 +161,18 @@
         <!-- the page marks ride over the bar and its bumps, so each circle shows whole in its bump -->
         <nav class="section-tabs page-marks" id="sectionTabs" aria-label="sections"></nav>
 
+        <!-- the bin, at the foot of the black bar (by request: like the bin in a dock — the pages at the top,
+             the bin waiting at the bottom); its list opens out to the right -->
+        <section class="rail-binned bin-dock" id="railBinned" aria-label="recently binned">
+            <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
+            <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
+                <span class="binned-count own-layer" id="binnedCount"></span>
+            </div>
+            <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+            <ol class="binned-list own-layer" id="binnedList"></ol>
+        </section>
+
         <aside class="rail rail-left" aria-label="menu">
         </aside>
 
@@ -210,9 +222,16 @@
                     </div>
                     <div class="mid-side mid-right"></div>
                 </div>
-                <!-- the controls together at the right end: the colour, the lights, the bin -->
+                <!-- the controls together at the right end: the lights, then the colour in the very corner (by request) -->
                 <div class="strip-right">
-                    <!-- the site's colour: a dot showing it, which drops the adjuster -->
+                    <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="dark" title="dark">
+                        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                            <!-- drawn in the same hairline as every other mark, so it sits with the colour dot as a pair -->
+                            <path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"
+                                  d="M16.5 3.5 A 8.5 8.5 0 0 0 16.5 20.5 A 21 21 0 0 1 16.5 3.5 Z"/>
+                        </svg>
+                    </button>
+                    <!-- the site's colour: a dot showing it, in the strip's very corner, which opens the adjuster from that corner -->
                     <section class="rail-tint" id="railTint" aria-label="colour">
                         <button class="tint-head" id="tintHead" type="button" title="colour" aria-label="colour" aria-expanded="false"><span class="tint-swatch"></span></button>
                         <div class="tint-pop own-layer" id="tintPop">
@@ -230,22 +249,6 @@
                             <label class="hue-code" data-stop="a" title="bottom"><span class="hue-now"></span><span class="hue-hash">#</span><input type="text" maxlength="6" spellcheck="false" autocomplete="off" aria-label="colour code"></label>
                         </div>
                     </div>
-                    </section>
-                    <button class="theme-swap" id="themeSwap" type="button" aria-pressed="false" aria-label="dark" title="dark">
-                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                            <path fill="currentColor"
-                                  d="M16.5 3 A 9 9 0 0 0 16.5 21 A 22 22 0 0 1 16.5 3 Z"/>
-                        </svg>
-                    </button>
-                    <!-- the bin, last of all -->
-                    <section class="rail-binned" id="railBinned" aria-label="recently binned">
-                        <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
-                        <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
-                            <span class="binned-count" id="binnedCount"></span>
-                        </div>
-                        <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
-                        <ol class="binned-list own-layer" id="binnedList"></ol>
                     </section>
                 </div>
             </header>
@@ -273,7 +276,6 @@
                                 <section class="home-box home-jot" aria-label="notes">
                                     <div class="widget-head"><h3>notes</h3></div>
                                     <textarea id="homeJot" spellcheck="false" placeholder="write something down ( ˘▽˘)っ" aria-label="notes"></textarea>
-                                    <p class="jot-count" id="jotCount" aria-live="polite"></p>
                                 </section>
                                 <section class="home-box home-flip" aria-label="flip">
                                     <div class="widget-head"><h3>flip</h3></div>

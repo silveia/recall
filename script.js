@@ -649,8 +649,19 @@ window.addEventListener('site-tint', cutTintHole);
 // the holes follow the page being let in on a refresh (none are cut before), and anything opening or shutting
 // in the strip, which may lie over the drawing's sheet
 new MutationObserver(() => cutTintHole()).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-new MutationObserver(() => { if (activeSectionId === 'draw' || activeSectionId === 'chat') cutTintHoleWhileMoving(700); })
+new MutationObserver(() => cutTintHoleWhileMoving(700))
     .observe(document.querySelector('.topbar'), { attributes: true, attributeFilter: ['class', 'hidden'], subtree: true });
+// the bin at the foot of the bar: its list's copy of the colour is placed as it opens, and the bin itself
+// sits in the last whole bump that fits the window, below the page marks
+new MutationObserver(() => cutTintHoleWhileMoving(700)).observe(document.getElementById('railBinned'), { attributes: true, attributeFilter: ['class'] });
+function placeBin() {
+    const shell = getComputedStyle(document.documentElement);
+    const bump = parseFloat(shell.getPropertyValue('--wave-h')) || 64, strip = parseFloat(shell.getPropertyValue('--topbar')) || 52;
+    const fits = Math.floor((window.innerHeight - strip) / bump);
+    document.documentElement.style.setProperty('--bin-row', String(Math.max(sections.length, fits - 1)));
+}
+placeBin();
+window.addEventListener('resize', placeBin);
 document.addEventListener('scroll', () => { if (activeSectionId === 'chat') window.requestAnimationFrame(cutTintHole); }, true);
 document.addEventListener('load', (event) => { if (event.target.tagName === 'IMG') cutTintHole(); }, true);
 
@@ -5105,24 +5116,17 @@ if (flipCard) {
     });
 }
 
-// the notes: kept in this browser as they are typed, with a count of the words in the corner
+// the notes: kept in this browser as they are typed (the word count was taken off, by request)
 {
     const pad = document.getElementById('homeJot');
-    const count = document.getElementById('jotCount');
     if (pad) {
         try { pad.value = localStorage.getItem('home-jot') || ''; } catch (error) { /* nothing kept */ }
-        const tally = () => {
-            const words = pad.value.trim() ? pad.value.trim().split(/\s+/).length : 0;
-            count.textContent = words ? `${words} ${words === 1 ? 'word' : 'words'}` : '';
-        };
         let keepSoon = 0;
         pad.addEventListener('input', () => {
-            tally();
             clearTimeout(keepSoon);
             keepSoon = setTimeout(() => { try { localStorage.setItem('home-jot', pad.value); } catch (error) { /* full */ } }, 300);
         });
         pad.addEventListener('blur', () => { try { localStorage.setItem('home-jot', pad.value); } catch (error) { /* full */ } });
-        tally();
     }
 }
 
@@ -5529,9 +5533,9 @@ function tintFromHsv(keepCode) {
 let closeTintList = () => {};     // set once the colour list is wired up
 document.body.append(tintPop);
 function placeTintList() {
-    const dot = tintHead.getBoundingClientRect(), strip = document.querySelector('.topbar').getBoundingClientRect();
+    const strip = document.querySelector('.topbar').getBoundingClientRect();
     tintPop.style.top = `${strip.bottom + 8}px`;     // level with help's note and the bin's list
-    tintPop.style.right = `${Math.max(8, window.innerWidth - dot.right - 10)}px`;
+    tintPop.style.right = '16px';     // in the window's corner, its right edge on the page's own (the dot sits in that corner)
 }
 function rollTintList(open) {
     if (open) placeTintList();

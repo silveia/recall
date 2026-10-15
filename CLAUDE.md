@@ -2145,6 +2145,20 @@ came up out of black. The colour list **unrolls** down out of the strip instead 
 240ms / 170ms back), its holes cut only as far as it shows; a page with holes on it (draw, chat with
 colour pictures) slides in without the fade; and with a colour on, the drawing adjuster's parts only slide.
 
+## The strip's corner, the bin in the bar, notes (14 Oct, by request)
+
+**The colour dot is in the strip's very top-right corner**, the moon just before it, and the colour list
+opens from that corner (16px in, its right edge on the page's). The moon is now the same hairline as every
+other mark (an outlined crescent) and both sit in the same 36px box with a 20px mark, so side by side they
+read as a pair — they were centred, but a filled 16px crescent beside an 18px ring looked off. **The colour
+list has no blur.** **The bin is at the foot of the black bar** (`.bin-dock`, my recommendation, like the bin
+in a dock: pages at the top, the bin waiting at the bottom), in the marks' column, in the last whole bump that
+fits the window (`--bin-row`, `placeBin`); its list opens out to the right, its left edge on the page's boxes.
+It lies over the colour layer with the marks; its count and list carry their own copies. **The notes have no
+word count.** **The page column starts under the strip** (`margin-top: var(--topbar)` on `.app-content`, not
+padding): a page sliding in from above was drawn over the strip for a moment — the white flash moving up to
+home.
+
 ## The colour, in layers — no holes on the draw page (14 Oct)
 
 By request ("all the black stuff should work like a layer clipped to the gradient", after many black

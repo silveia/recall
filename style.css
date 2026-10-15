@@ -403,7 +403,9 @@ html.tint-layer.tinted body::after {
 	flex: 1;
 	min-width: 0;
 	overflow-y: auto;
-	padding-top: var(--topbar);
+	margin-top: var(--topbar);     /* starts under the strip, not behind it: the strip is no longer over the page
+	                                  (14 Oct), and a page sliding in from above was drawn over it for a moment —
+	                                  the white flash moving up to home. its own clip now stops at the strip's foot */
 }
 
 /* =========================================================
@@ -641,7 +643,6 @@ html.tint-layer.tinted body::after {
 	line-height: 1.9rem;
 }
 .home-jot textarea::placeholder { color: var(--muted); }
-.jot-count { margin: 0; font-family: var(--num-font); font-size: 0.95rem; text-align: right; line-height: 1; min-height: 1em; }
 /* flip: a card from your decks, turned over on a press like a real one — the question on white, the
    answer on the other side in black — springing as it turns. next deals another */
 .flip-card {
@@ -3002,7 +3003,7 @@ html.inverted .topbar::after {
 	border-radius: 999px;
 	cursor: var(--cur-tap);
 }
-.tint-swatch { width: 18px; height: 18px; background: var(--tint-fill); border: 1px solid var(--line); border-radius: 50%; }
+.tint-swatch { width: 20px; height: 20px; background: var(--tint-fill); border: 1px solid var(--line); border-radius: 50%; }
 /* the colour list lies above the site's colour layer (by request, after one black flash too many): it is
    moved to the foot of <body> and given the top place, so its colours are simply its colours — nothing cut
    out of the layer, nothing that can show the black under a hole. it carries its own copy of the layer
@@ -3225,7 +3226,6 @@ html.inverted .topbar::after {
    left edge rather than its middle, or it would run off the window */
 /* the controls sit at the strip's right end, so what hangs from help and the bin hangs from their right
    edge, or it would run off the window */
-.strip-right .rail-binned .binned-list { left: auto; right: -10px; translate: none; transform-origin: 100% 0; }
 /* the right-hand group (the bin, help and the clock) is lifted a pixel together: measured it sits on
    the strip's middle, but its lowercase words carry their weight low and it read as sitting low, by request */
 .topbar .strip-right, .topbar .strip-middle { top: -1px; }
@@ -3262,7 +3262,9 @@ html.inverted .topbar::after {
 /* the controls together at the strip's right end (14 Oct, by request): the colour, the lights, the bin —
    bare marks, evenly apart */
 .strip-right { position: relative; display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
-.strip-right .theme-swap { order: 0; margin: 0 0.35rem; }   /* it carried an order from the old row */
+.strip-right .theme-swap { order: 0; width: 36px; height: 36px; margin: 0; }   /* the moon and the colour are one pair (by request: side by side they looked off): the same 36px box, a 20px mark in the same hairline */
+.strip-right .theme-swap svg { width: 20px; height: 20px; }
+.strip-right { gap: 4px; margin-right: -6px; }     /* the dot sits as far in from the window's edge as the strip's other ends */
 .help-head {
 	display: flex;
 	align-items: center;
@@ -3325,7 +3327,7 @@ html.inverted .topbar::after {
 
 /* its rings are white only, no black rim (by request) */
 .tint-pop .hue-ring { box-shadow: none; }
-.tint-pop { transform-origin: 100% 0; }     /* it springs from its top right, under its dot */
+.tint-pop { transform-origin: 100% 0; filter: none !important; }     /* it springs from its top right corner, under its dot; no blur (by request) */
 
 /* the clock: the moon, the half of the day, the date, and the time last, at the very right */
 .clock-suffix { position: relative; top: 0.75px; order: 1; line-height: 1; }
@@ -5649,3 +5651,22 @@ html.tint-layer.tinted .own-layer::after {
 .draw-panel .tint-field, .draw-panel .tint-hue, .draw-panel .tint-now { position: relative; z-index: 60; }
 /* the colour list is black like the strip, and its copy colours it; its colours lie over the copy */
 .tint-pop :is(.tint-kind-dot, .hue-now, .hue-field, .hue-strip) { position: relative; z-index: 60; }
+
+/* the bin, at the foot of the black bar (14 Oct, by request — it was in the strip): in the marks' own column,
+   in the last whole bump that fits the window (--bin-row, set by script.js), its list opening out to the
+   right, its foot on the bin's. it lies over the colour layer with the marks — it is white on the bar, which
+   needs no colouring; its count and its list carry their own copies */
+.bin-dock {
+	position: absolute;
+	left: calc((var(--rail) + var(--wave-out)) / 2 - 22px);
+	top: calc(var(--topbar) + var(--bin-row, 6) * var(--wave-h) + (var(--wave-h) - 44px) / 2);
+	z-index: 2147483021;
+	width: 44px;
+	height: 44px;
+	justify-content: center;
+}
+html:not(.inverted) .bin-dock { --paper: var(--tint-main); --ink: #ffffff; --line: #ffffff; --paper-fill: var(--tint-fill); --ink-fill: var(--ink); color: var(--ink); }
+html.inverted .bin-dock { color: var(--ink); }
+.bin-dock .binned-head { width: 44px; height: 44px; }
+.bin-dock .binned-head svg { width: 24px; height: 24px; }
+.bin-dock .binned-list { top: auto; bottom: 0; left: calc(100% + 28px); translate: none; transform-origin: 0 100%; }     /* its left edge on the page's boxes' (12px off the crests), clear of the bumps */
