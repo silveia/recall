@@ -2171,7 +2171,8 @@ press — by request, "a little bit of both"); and as it springs out of its mark
 edges and corners, white so they are plainly in front of it (all outside it, they read as coming from behind
 it), and half start just outside its edges and fly outwards, coloured by what is round the list (`ignore`);
 the nearest its corner go first — the colour list, the bin's list (exactly as the colour list),
-help's note, the search's results, every window, and the drawing's colour adjuster. **`sparkleBurst(x, y)`**:
+help's note, the search's results and the drawing's colour adjuster — not the windows (create, practice and
+the rest open as they always did, by request). **`sparkleBurst(x, y)`**:
 a few out of the pointer on a small press (create, practice, the pills and square buttons, flip, the search's
 go). **The pop-ups pop**: no fade and no blur (both tried and refused) — the spring out of the mark from
 small, a quicker shrink back.

@@ -1646,10 +1646,8 @@ function showScreen(screen) {
 
     window.clearTimeout(modalExitTimer);
     modalVeil.classList.remove('is-leaving');
-    const opening = screen.hidden;
     modalVeil.hidden = false;
     WINDOWS.forEach((one) => { one.hidden = one !== screen; });
-    if (opening) window.requestAnimationFrame(() => sparkleAround(screen, 9));
     if (screen !== notesScreen) returnNotesPanel();
 
     const held = document.activeElement;
