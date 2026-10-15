@@ -161,7 +161,11 @@ inside one function (`window.startDrawing`, run the first time the page is shown
 meet the site's). Its keys only work on the draw page (`drawHere`), and the site's ctrl/cmd shortcuts stand
 aside there. Its little windows, sprites and fish are placed inside the page, not the whole window. Its
 holes are `window.drawHoles()`, read straight by `tintHoles`. Its loop for sprites and fish only runs while
-there is something to move. `drawing/` now holds only its pictures; `pages.sh` fingerprints `draw.js`.
+there is something to move. **Anything the site floats over the sheet** (the strip's lists, the search's results, a window,
+the confirm chip) puts the layer back where it covers it (`drawSheetBox`, square-cut): the sheet is a hole,
+so the colour list over it showed raw black and its colours were put back under the layer. **No holes are
+cut while a refresh holds the page back** (`booting`): the shell is see-through then, and the sheet's hole
+showed the black behind it — the black flash on refresh; they are cut the moment the page comes in. `drawing/` now holds only its pictures; `pages.sh` fingerprints `draw.js`.
 
 **draw** — the drawing app from `silveia.github.io/drawing-app`, brought in by
 request under a pen mark. It lives in `drawing/` with its own html, script and

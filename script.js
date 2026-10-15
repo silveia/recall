@@ -574,7 +574,22 @@ function tintHoles() {
     const holes = [];
     const add = (box) => { if (box && box.width && box.height) holes.push(box); };
     // the drawing page says what keeps its own colours: the sheet, and what lies on it (draw.js)
-    if (activeSectionId === 'draw' && typeof window.drawHoles === 'function') window.drawHoles().forEach(add);
+    // not while the page is still held back on a refresh: the shell is see-through then, and a hole showed
+    // the black behind it until the page came in — the sheet flashed black
+    const holding = document.documentElement.classList.contains('booting');
+    if (activeSectionId === 'draw' && !holding && typeof window.drawHoles === 'function') window.drawHoles().forEach(add);
+    // whatever the site floats over the sheet (the strip's lists, the search's results, a window) puts the
+    // layer back there — the path is filled even-odd — or it showed as raw black over the sheet, and a
+    // colour cut out inside it (the colour list's) was put back under the layer instead
+    if (activeSectionId === 'draw' && !holding && window.drawSheetBox) {
+        const sheet = window.drawSheetBox;
+        document.querySelectorAll('.help-box.is-open .help-body, .rail-binned.is-open .binned-list, .rail-tint.is-open .tint-pop, .page-found:not([hidden]), .modal-veil:not([hidden]) .modal-panel:not([hidden]), #confirmChip:not([hidden])').forEach((el) => {
+            const box = el.getBoundingClientRect();
+            const left = Math.max(box.left, sheet.left), top = Math.max(box.top, sheet.top);
+            const right = Math.min(box.right, sheet.right), bottom = Math.min(box.bottom, sheet.bottom);
+            if (right > left && bottom > top) add({ left, top, width: right - left, height: bottom - top, round: 0 });     // square: the corners it leaves are over the white sheet, where the layer is white anyway, and a rounded cut where the sheet cuts it notched it
+        });
+    }
     // the site's colour dropdown, while it is open: its colours are the colours themselves
     // while it is open its colours are cut out, each where it is drawn as it pops in (`colours-in`): its
     // box as it stands that frame, its rounding scaled with it
@@ -621,6 +636,11 @@ function cutTintHoleWhileMoving(long) {
 }
 window.addEventListener('resize', cutTintHole);
 window.addEventListener('site-tint', cutTintHole);
+// the holes follow the page being let in on a refresh (none are cut before), and anything opening or shutting
+// in the strip, which may lie over the drawing's sheet
+new MutationObserver(() => cutTintHole()).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+new MutationObserver(() => { if (activeSectionId === 'draw') cutTintHoleWhileMoving(700); })
+    .observe(document.querySelector('.topbar'), { attributes: true, attributeFilter: ['class', 'hidden'], subtree: true });
 document.addEventListener('scroll', () => { if (activeSectionId === 'chat') window.requestAnimationFrame(cutTintHole); }, true);
 document.addEventListener('load', (event) => { if (event.target.tagName === 'IMG') cutTintHole(); }, true);
 

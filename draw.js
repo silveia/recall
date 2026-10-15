@@ -1819,6 +1819,7 @@ window.drawHoles = function () {
     const b = container.getBoundingClientRect(), c = canvas.getBoundingClientRect(), i = container.clientLeft;
     sheetBox = { left: Math.max(b.left + i, c.left), top: Math.max(b.top + i, c.top), right: Math.min(b.right - i, c.right), bottom: Math.min(b.bottom - i, c.bottom) };
     push(sheetBox.left, sheetBox.top, sheetBox.right, sheetBox.bottom, Math.max(0, roundOf(container) - i));
+    window.drawSheetBox = sheetBox;     // the site cuts what it floats over the sheet to this
     DRAW_ROOT.querySelectorAll('.corner-buttons button').forEach(overSheet);
     [miniWindow, miniWindow2].forEach((win) => {
         if (win.classList.contains('hidden-window')) return;
