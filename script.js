@@ -554,11 +554,20 @@ function unfoldSection(force) {
     // page going from black to white
     // the same goes for any page with something cut out of the colour layer (colour pictures in the chat):
     // a hole fading in shows the black under it first, so those pictures came up out of black
-    const fade = activeSectionId === 'draw' || (document.documentElement.classList.contains('tinted') && tintHoles().length) ? 1 : 0;
-    const move = homeScreen.animate([
-        { opacity: fade, top: `${way * 40}px` },
-        { opacity: 1, top: '0px' }
-    ], { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    const holes = activeSectionId === 'draw' || (document.documentElement.classList.contains('tinted') && tintHoles().length);
+    // a page with nothing cut out of the colour layer arrives like a candy edit (by request): it springs
+    // in a little past its place and settles, growing from just under its size and coming into focus out
+    // of a soft blur. a page with holes keeps the plain slide — a hole can't follow a page that grows
+    const move = holes
+        ? homeScreen.animate([
+            { opacity: 1, top: `${way * 40}px` },
+            { opacity: 1, top: '0px' }
+        ], { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' })
+        : homeScreen.animate([
+            { opacity: 0, top: `${way * 46}px`, transform: 'scale(0.965)', filter: 'blur(8px)', offset: 0 },
+            { opacity: 1, filter: 'blur(0px)', offset: 0.45 },
+            { opacity: 1, top: '0px', transform: 'scale(1)', filter: 'blur(0px)' }
+        ], { duration: 640, easing: getComputedStyle(document.documentElement).getPropertyValue('--spring').trim() || 'ease-out' });
     move.id = 'unfold';
 }
 
@@ -566,7 +575,7 @@ function unfoldSection(force) {
 // not the app round it, whose black takes the layer like everything else) and colour pictures in the
 // chat. measured at once — a frame late showed the layer on them first — and every frame while the page
 // slides in, since they move with it
-// a box with rounded corners as a polygon, so it can be turned in perspective (the colour list's flip)
+// a box with rounded corners as a polygon, so it can be scaled and turned (the colour list's spring)
 function roundedPoly({ left, top, width, height, round }) {
     const r = Math.min(round || 0, width / 2, height / 2);
     if (!r) return [[left, top], [left + width, top], [left + width, top + height], [left, top + height]];
@@ -578,9 +587,9 @@ function roundedPoly({ left, top, width, height, round }) {
     corner(left + r, top + r, 180);
     return out;
 }
-// the colour list while it flips (rollTintList): its angle, and its colours' boxes at rest
-const tintFlip = { angle: 0, raf: 0, rest: null };
-const TINT_DEPTH = 900;
+// the colour list while it springs out of its dot or back (rollTintList): its scale, turn and lift, the
+// point it grows from, and its colours' boxes at rest
+const tintFlip = { scale: 1, turn: 0, lift: 0, ox: 0, oy: 0, raf: 0, rest: null };
 const TINT_HOLES = '.tint-kind-dot, .hue-now, #siteTintField, #siteTintHue';
 function tintHoles() {
     const holes = [];
@@ -594,16 +603,17 @@ function tintHoles() {
         drawFrameHoles.forEach((b) => add({ left: frame.left + b.left, top: frame.top + b.top, width: b.width, height: b.height, round: b.round }));
     }
     // the site's colour dropdown, while it is open: its colours are the colours themselves
-    // while it flips down (or back up), each colour is cut where it is drawn: its box at rest, turned about
-    // the list's top edge and put through the same perspective, frame by frame
+    // while it springs open (or shut), each colour is cut where it is drawn: its box at rest put through
+    // the same scale, turn and lift about the same point, frame by frame
     const tintBox = document.getElementById('railTint');
     const tintList = document.getElementById('tintPop');
     if (tintBox && tintList && tintFlip.raf && tintFlip.rest) {
-        const { left, top, width, boxes } = tintFlip.rest;
-        const turn = tintFlip.angle * Math.PI / 180, ox = width / 2;
+        const { left, top, boxes } = tintFlip.rest;
+        const { scale, ox, oy, lift } = tintFlip, turn = tintFlip.turn * Math.PI / 180;
+        const cos = Math.cos(turn), sin = Math.sin(turn);
         const seen = ([x, y]) => {
-            const w = 1 - (y * Math.sin(turn)) / TINT_DEPTH;      // perspective(d) after rotateX, about the top middle
-            return [left + ox + (x - ox) / w, top + (y * Math.cos(turn)) / w];
+            const qx = (x - ox) * scale, qy = (y - oy) * scale;
+            return [left + ox + qx * cos - qy * sin, top + oy + lift + qx * sin + qy * cos];
         };
         boxes.forEach((box) => {
             const poly = roundedPoly(box).map(seen);
@@ -5440,37 +5450,42 @@ function keepTint(next, keepCode) {
 function tintFromHsv(keepCode) {
     keepTint({ ...tintNow, [tintEnd]: hsvToHex(tintHsv) }, keepCode);
 }
-// the colour list flips down from its top edge like a page turned over the strip, and flips back up to
-// shut (by request) — never faded (its colours are cut out of the layer, and a fade there came up out of
-// black). drawn by this script frame by frame together with its holes, which are its colours' boxes put
-// through the same turn; either way turns round from wherever it is
+// the colour list springs out of its dot like a candy edit (by request): from small and a little turned,
+// running a hair past its size and settling; it shrinks back into the dot quicker. never faded — its colours
+// are cut out of the layer, and a fade there came up out of black. drawn by this script frame by frame
+// together with its holes, which are its colours' boxes put through the same move; either way turns round
+// from wherever it is
 let closeTintList = () => {};     // set once the colour list is wired up
+const springOut = (p) => (p >= 1 ? 1 : 1 - Math.exp(-6 * p) * Math.cos(8 * p));
 function rollTintList(open) {
     if (!tintFlip.raf) {
         tintPop.style.transform = 'none';
-        tintPop.style.transformOrigin = '50% 0';     // the turn is worked out about the top middle
-        const list = tintPop.getBoundingClientRect();
+        const list = tintPop.getBoundingClientRect(), dot = tintHead.querySelector('.tint-swatch').getBoundingClientRect();
+        tintFlip.ox = dot.left + dot.width / 2 - list.left;     // it grows out of the dot
+        tintFlip.oy = dot.top + dot.height / 2 - list.top;
+        tintPop.style.transformOrigin = `${tintFlip.ox}px ${tintFlip.oy}px`;
         tintFlip.rest = {
-            left: list.left, top: list.top, width: list.width,
+            left: list.left, top: list.top,
             boxes: Array.from(tintPop.querySelectorAll(TINT_HOLES)).filter((el) => !el.closest('[hidden]')).map((el) => {
                 const box = el.getBoundingClientRect();
                 return { left: box.left - list.left, top: box.top - list.top, width: box.width, height: box.height, round: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0 };
             })
         };
-        tintFlip.angle = open ? -90 : 0;
+        if (open) Object.assign(tintFlip, { scale: 0.2, turn: -10, lift: -8 });
     }
-    const from = tintFlip.angle, to = open ? 0 : -90;
-    const long = open ? 480 : 280;
-    // open: a little past flat and back, like a page landing; shut: eased in
-    const ease = open ? (p) => 1 + 2.2 * Math.pow(p - 1, 3) + 1.2 * Math.pow(p - 1, 2) : (p) => p * p;
+    const from = { scale: tintFlip.scale, turn: tintFlip.turn, lift: tintFlip.lift };
+    const to = open ? { scale: 1, turn: 0, lift: 0 } : { scale: 0.2, turn: -6, lift: -6 };
+    const long = open ? 640 : 220;
+    const ease = open ? springOut : (p) => p * p * p;
     const start = performance.now();
     cancelAnimationFrame(tintFlip.raf);
     const step = (now) => {
         const p = Math.max(0, Math.min(1, (now - start) / long));
-        tintFlip.angle = from + (to - from) * ease(p);
-        tintPop.style.transform = `perspective(${TINT_DEPTH}px) rotateX(${tintFlip.angle.toFixed(2)}deg)`;
+        const e = ease(p);
+        ['scale', 'turn', 'lift'].forEach((k) => { tintFlip[k] = from[k] + (to[k] - from[k]) * e; });
+        tintPop.style.transform = `translateY(${tintFlip.lift.toFixed(2)}px) rotate(${tintFlip.turn.toFixed(2)}deg) scale(${Math.max(0.001, tintFlip.scale).toFixed(4)})`;
         tintFlip.raf = p < 1 ? requestAnimationFrame(step) : 0;
-        if (!tintFlip.raf) tintPop.style.transform = open ? '' : `perspective(${TINT_DEPTH}px) rotateX(-90deg)`;
+        if (!tintFlip.raf) tintPop.style.transform = open ? '' : 'scale(0.001)';
         cutTintHole();
     };
     tintFlip.raf = requestAnimationFrame(step);

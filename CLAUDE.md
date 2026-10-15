@@ -1171,6 +1171,18 @@ is two movements at once, and the fade waited 160ms before starting,
 which is the wait you could feel. Measured: 37% open at 100ms, 87% at
 200ms, settled by 300ms.
 
+## Candy motion
+
+By request, the plain and odd animations move like candy edits — a spring that runs a hair past where it
+is going and settles. **`--spring`** in `:root` is that curve (a damped spring, 1 − e^(−6t)·cos(8t), as a
+`linear()` easing); use it for anything new that pops. **Help's note and the bin's list** spring out of
+their mark from small and a little turned, coming into focus out of a soft blur, and shrink and blur away
+quicker. **The colour list** springs out of its own dot the same way but without the fade or the blur
+(its colours are cut out of the layer, where a fade comes up out of black): `rollTintList` draws it frame
+by frame and cuts each colour's box through the same scale, turn and lift (`tintFlip`), so the holes stay
+exactly on it. **A page arriving** springs in a little past its place, growing from just under its size out
+of a blur — except a page with holes (draw, chat with pictures), which keeps the plain slide.
+
 ## What sits over what
 
 One order for everything that floats, so nothing slips behind what it is

@@ -34,6 +34,9 @@
    1. tokens
    ========================================================= */
 :root {
+	/* the site's spring (by request, after the smooth bouncy transitions of candy edits): it runs a little
+	   past where it is going and settles back — a damped spring, 1 − e^(−6t)·cos(8t), as a curve */
+	--spring: linear(0, 0.1564, 0.3177, 0.4737, 0.6176, 0.7448, 0.8527, 0.9405, 1.0088, 1.0589, 1.0929, 1.1130, 1.1219, 1.1219, 1.1154, 1.1043, 1.0906, 1.0755, 1.0603, 1.0458, 1.0325, 1.0210, 1.0113, 1.0036, 0.9976, 0.9933, 0.9905, 0.9889, 0.9884, 0.9886, 0.9893, 0.9905, 0.9918, 0.9933, 0.9947, 0.9960, 0.9973, 0.9983, 0.9992, 0.9998, 1);
 	/* the site's colour (the adjuster in the strip, siteTint() in app.html's head): --tint-main is what
 	   black text and outlines become, --tint-fill what black fills become — a colour, or a gradient laid
 	   over the whole window (fixed), so every filled thing shows its own part of one layer. both are
@@ -3216,28 +3219,33 @@ html.inverted .topbar::after {
 /* the note and the bin's list drop in from their mark — a short fall, a fade and a little growth from
    the top middle — and go back the same way, eased at both ends. hidden after the fade, so neither can
    be pressed while shut */
+/* what hangs from the strip pops out of its mark like a candy edit (by request): it springs up from small
+   and a touch turned, runs a hair past its size and settles, coming into focus out of a soft blur as it
+   does; it goes back quicker, shrinking and blurring away. hidden after, so it can't be pressed while shut */
 .help-body, .binned-list, .tint-pop {
 	transform-origin: 50% 0;
 	opacity: 0;
-	transform: translateY(-6px) scale(0.96);
+	transform: translateY(-10px) scale(0.6) rotate(-4deg);
+	filter: blur(6px);
 	visibility: hidden;
-	transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.3s;
+	transition: opacity 0.18s ease-in, transform 0.22s cubic-bezier(0.5, 0, 0.75, 0), filter 0.2s ease-in, visibility 0s linear 0.22s;
 }
 .help-box.is-open .help-body, .rail-binned.is-open .binned-list, .rail-tint.is-open .tint-pop {
 	opacity: 1;
 	transform: none;
+	filter: none;
 	visibility: visible;
-	transition: opacity 0.26s ease, transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15), visibility 0s;
+	transition: opacity 0.2s ease-out, transform 0.62s var(--spring), filter 0.32s ease-out, visibility 0s;
 }
 
 /* the colour list does not fade: its colours are cut out of the colour layer, and anything fading in
-   a hole shows the black under it first — the colours came up out of black. it flips down from its top
-   edge like a page instead (played by the script, `rollTintList`, 480ms; back up in 280ms), each colour
-   cut where it is drawn in the turn */
-.tint-pop { opacity: 1; transform: none; transform-origin: 50% 0; backface-visibility: hidden; transition: visibility 0s linear 0.3s; }
+   a hole shows the black under it first — the colours came up out of black. it springs out of its dot
+   instead, like everything that hangs from the strip, only without the fade and blur (played by the script,
+   `rollTintList`), each colour cut where it is drawn on the way */
+.tint-pop { opacity: 1; transform: none; filter: none; transition: visibility 0s linear 0.24s; }
+.rail-tint.is-open .tint-pop { transform: none; filter: none; transition: visibility 0s; }
 /* its rings are white only, no black rim (by request) */
 .tint-pop .hue-ring { box-shadow: none; }
-.rail-tint.is-open .tint-pop { transition: visibility 0s; }
 
 /* the clock: the moon, the half of the day, the date, and the time last, at the very right */
 .clock-suffix { position: relative; top: 0.75px; order: 1; line-height: 1; }
