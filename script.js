@@ -651,7 +651,7 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
     // a bubble (dwindle) pops up to size, then floats up getting smaller and smaller until it is gone
     one.animate(dwindle ? [
         { transform: at(0, 0) },
-        { transform: at(0.06, 1), offset: 0.1 },
+        { transform: at(0.04, 1), offset: 0.06 },
         { transform: at(0.55, 0.6), offset: 0.55 },
         { transform: at(1, 0) }
     ] : [
@@ -703,7 +703,7 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
             size: rise ? 8 + Math.random() * 14 : 12 + Math.random() * 6,
             dx: spot.out[0] * reach + (rise ? (Math.random() - 0.5) * 8 : 0),
             dy: spot.out[1] * reach - up,
-            delay: rise ? 100 + i * 34 + Math.random() * 60 : 120 + i * 40,
+            delay: rise ? i * 14 + Math.random() * 30 : 120 + i * 40,     // the colour list's start at once
             long: rise ? 800 + Math.random() * 400 : 300 + Math.random() * 100,
             dwindle: rise,
             white: spot.onIt ? true : null,
@@ -5655,7 +5655,7 @@ function placeTintList() {
     tintPop.style.right = '16px';     // in the window's corner, its right edge on the page's own (the dot sits in that corner)
 }
 function rollTintList(open) {
-    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop, 18, { fromPointer: false, rise: true }); }     // only round the list: none out of the pointer for the colour (by request)
+    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop, 14, { fromPointer: false, rise: true }); }     // only round the list: none out of the pointer for the colour (by request)
     tintPop.classList.toggle('is-open', open);
 }
 window.addEventListener('resize', () => { if (tintPop.classList.contains('is-open')) placeTintList(); });
