@@ -714,13 +714,22 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
     ];
     const SIZES = [17, 11, 14, 9, 15, 12, 10, 13];
     if (rise) {
+        // each wanders inside its own stretch of the edge (up to 8% of the side along it, a few pixels in or
+        // out) and the sizes are shuffled, so no two openings look alike; one that lands too near another is
+        // placed again, so they never overlap
+        const sizes = SIZES.slice().sort(() => Math.random() - 0.5);
         PLACES.forEach(([side, place, onIt], i) => {
-            const t = place + (Math.random() - 0.5) * 0.04;
-            const gap = onIt ? -14 : 8;
-            const x = side === 0 || side === 2 ? at.x + 12 + t * (w - 24) : side === 1 ? at.x + w + gap : at.x - gap;
-            const y = side === 1 || side === 3 ? at.y + 12 + t * (h - 24) : side === 0 ? at.y - gap : at.y + h + gap;
-            const out = [side === 3 ? -1 : side === 1 ? 1 : 0, side === 0 ? -1 : side === 2 ? 1 : 0];
-            spots.push({ x, y, out, onIt, size: SIZES[i] });
+            const size = sizes[i];
+            let x = 0, y = 0;
+            for (let tries = 0; tries < 8; tries += 1) {
+                const t = place + (Math.random() - 0.5) * 0.16;
+                const gap = (onIt ? -14 : 8) + (Math.random() - 0.5) * 8;
+                x = side === 0 || side === 2 ? at.x + 12 + t * (w - 24) : side === 1 ? at.x + w + gap : at.x - gap;
+                y = side === 1 || side === 3 ? at.y + 12 + t * (h - 24) : side === 0 ? at.y - gap : at.y + h + gap;
+                if (spots.every((other) => Math.hypot(other.x - x, other.y - y) > (other.size + size) / 2 + 10)) break;
+            }
+            const out = [side === 3 ? -1 : side === 1 ? 1 : (Math.random() - 0.5) * 0.4, side === 0 ? -1 : side === 2 ? 1 : (Math.random() - 0.5) * 0.4];
+            spots.push({ x, y, out, onIt, size });
         });
     }
     for (let i = 0; i < (rise ? 0 : count); i += 1) {
