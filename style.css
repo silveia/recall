@@ -331,7 +331,7 @@ html.tint-layer.tinted body::after {
 .app-shell::after {
 	content: '';
 	position: absolute;
-	top: 0;
+	top: var(--topbar);     /* from the strip's foot: the strip is no longer over them (14 Oct), and they repeated up into it */
 	bottom: 0;
 	left: calc(var(--rail) - var(--wave-w) / 2);
 	z-index: 3;
@@ -346,15 +346,15 @@ html.tint-layer.tinted body::after {
 	mask-repeat: repeat-y, no-repeat;
 	-webkit-mask-size: var(--wave-w) var(--wave-h), calc(var(--wave-w) * 6 / 39) 100%;
 	mask-size: var(--wave-w) var(--wave-h), calc(var(--wave-w) * 6 / 39) 100%;   /* the strip that hides the seams stops exactly at the dips: any wider and it poked out of each inner corner */
-	-webkit-mask-position: 0 var(--topbar), 0 0;
-	mask-position: 0 var(--topbar), 0 0;   /* the first bump starts at the strip's foot, not the window's top */
+	-webkit-mask-position: 0 0, 0 0;
+	mask-position: 0 0, 0 0;   /* the first bump starts at the strip's foot, where this starts */
 	clip-path: inset(0 calc(var(--wave-w) / 2 - var(--wave-out) - 1px) 0 0);
 }
 
 .app-shell::before {
 	content: '';
 	position: absolute;
-	top: 0;
+	top: var(--topbar);
 	bottom: 0;
 	left: calc(var(--rail) - var(--wave-w) / 2);
 	z-index: 4;
@@ -364,7 +364,7 @@ html.tint-layer.tinted body::after {
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M6.61 0 A 37.5 37.5 0 0 1 6.61 66' fill='none' stroke='%23ffffff' stroke-width='0.975' stroke-linecap='round'/%3E%3C/svg%3E");
 	background-repeat: repeat-y;
 	background-size: var(--wave-w) var(--wave-h);
-	background-position: 0 var(--topbar);
+	background-position: 0 0;
 }
 
 .app-right {

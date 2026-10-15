@@ -2171,7 +2171,9 @@ holes worked out frame by frame — a hole a frame late was every black flash. I
   copy covers the outline too. The drawing's windows clip their insides (the reference one has a resize
   corner, which needs `overflow: hidden`), so their outline is an inset shadow instead, inside the copy.
 - The strip is no longer a stacking context (it held its lists under the layer); the bar the bin sits in and
-  the search lost their z-index for the same reason.
+  the search lost their z-index for the same reason. With the strip no longer over the bumps, the bumps and
+  their outline (`.app-shell::after`/`::before`) start at the strip's foot (`top: var(--topbar)`) — they
+  repeat upwards too, and showed through the strip beside `hi`.
 - The draw page slides in without touching opacity: an opacity being animated gathers the page under the
   layer for the slide.
 - Holes remain only for the chat's colour pictures (and are never cut while a refresh holds the page back).
