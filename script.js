@@ -665,32 +665,35 @@ function sparkleBurst(x, y, count = 7) {
         sparkle(x, y, { size: 8 + Math.random() * 5, dx: Math.cos(way) * reach, dy: Math.sin(way) * reach, delay: Math.random() * 50, long: 480 + Math.random() * 200, white });
     }
 }
-// round a list as it springs out of its mark: just outside its edges (on its edge they sat on the list
-// itself once it had grown, the list's colour on the list's colour — they looked to be behind it), the
-// nearest the corner it grows from first, each flying outwards over what is round the list, and coloured
-// by that, not by the list
-function sparkleAround(el, count = 10) {
+// round a list as it springs out of its mark: half of them on the list itself, near its edges and corners,
+// white so they show in front of it (all of them outside it read as coming from behind it); the other half
+// just outside its edges, flying outwards over what is round it and coloured by that. the nearest the
+// corner it grows from go first
+function sparkleAround(el, count = 12) {
     if (!el || stillMotion()) return;
     const at = restSpot(el), w = el.offsetWidth, h = el.offsetHeight;
     const origin = getComputedStyle(el).transformOrigin.split(' ').map(parseFloat);
     const ox = at.x + (origin[0] || 0), oy = at.y + (origin[1] || 0);
-    const clear = 8;
     const spots = [];
     for (let i = 0; i < count; i += 1) {
+        const onIt = i % 2 === 0;
         const side = Math.floor(Math.random() * 4), t = Math.random();
-        const x = side === 0 ? at.x + t * w : side === 1 ? at.x + w + clear : side === 2 ? at.x + t * w : at.x - clear;
-        const y = side === 0 ? at.y - clear : side === 1 ? at.y + t * h : side === 2 ? at.y + h + clear : at.y + t * h;
-        spots.push({ x, y, out: [side === 3 ? -1 : side === 1 ? 1 : (Math.random() - 0.5) * 0.6, side === 0 ? -1 : side === 2 ? 1 : (Math.random() - 0.5) * 0.6] });
+        const gap = onIt ? -(10 + Math.random() * 14) : 8;      // inside its edge, or just past it
+        const x = side === 0 || side === 2 ? at.x + 12 + t * (w - 24) : side === 1 ? at.x + w + gap : at.x - gap;
+        const y = side === 1 || side === 3 ? at.y + 12 + t * (h - 24) : side === 0 ? at.y - gap : at.y + h + gap;
+        const out = [side === 3 ? -1 : side === 1 ? 1 : (Math.random() - 0.5) * 0.6, side === 0 ? -1 : side === 2 ? 1 : (Math.random() - 0.5) * 0.6];
+        spots.push({ x, y, out, onIt });
     }
     spots.sort((a, b) => Math.hypot(a.x - ox, a.y - oy) - Math.hypot(b.x - ox, b.y - oy));
     spots.forEach((spot, i) => {
-        const reach = 14 + Math.random() * 18;
+        const reach = spot.onIt ? 6 + Math.random() * 8 : 14 + Math.random() * 18;
         sparkle(spot.x, spot.y, {
             size: 10 + Math.random() * 5,
             dx: spot.out[0] * reach,
             dy: spot.out[1] * reach,
-            delay: 80 + i * 32,
-            long: 560 + Math.random() * 220,
+            delay: 120 + i * 30,
+            long: 600 + Math.random() * 220,
+            white: spot.onIt ? true : null,
             ignore: el
         });
     });

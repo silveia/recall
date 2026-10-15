@@ -2166,9 +2166,10 @@ Small (8–15px), many, and they *travel* — flying 16–44px out, quick then s
 (by request: the first ones spun and took too much room). **One sparkle shape only**: a plus with thin straight arms tapering to blunt points and a slightly bolder
 middle (`.sparkle`, a mask, so it is painted like black is painted here: white in the dark, the colour layer's
 own colour at its spot in the light, black with no colour). Each twinkles once — grows, turns a quarter,
-shrinks — on the graphics card. **`sparkleAround(el)`**: a handful round a list as it springs out of its mark, starting just outside its
-edges (on its edge they sat on the grown list, its colour on its colour, and read as behind it) and coloured
-by what is round it, not by the list (`ignore`), nearest its corner first, flying outwards — the colour list, the bin's list (exactly as the colour list),
+shrinks — on the graphics card. **`sparkleAround(el)`**: as a list springs out of its mark, half twinkle **on the list itself**, near its
+edges and corners, white so they are plainly in front of it (all outside it, they read as coming from behind
+it), and half start just outside its edges and fly outwards, coloured by what is round the list (`ignore`);
+the nearest its corner go first — the colour list, the bin's list (exactly as the colour list),
 help's note, the search's results, every window, and the drawing's colour adjuster. **`sparkleBurst(x, y)`**:
 a few out of the pointer on a small press (create, practice, the pills and square buttons, flip, the search's
 go). **The pop-ups pop**: no fade and no blur (both tried and refused) — the spring out of the mark from
