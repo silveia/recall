@@ -2197,6 +2197,11 @@ html.tint-layer.tinted body::after {
 	min-width: 0;
 	align-self: stretch;
 }
+/* copy all and match clips: outlined rather than solid (by request: they stood out too much), and they
+   spring up a little on hover, as create and practice do */
+.scratch-acts .scratch-all { transition: transform 0.5s var(--spring), color 0.2s ease, background-color 0.2s ease; }
+.scratch-acts .scratch-all:hover { transform: translateY(-3px); }
+.scratch-acts .scratch-all:active { transform: translateY(-1px); }
 
 .scratch-bring {
 	flex: none;
@@ -2268,8 +2273,21 @@ html.tint-layer.tinted body::after {
 	border-color: var(--ink);
 	font-size: 1rem;
 }
-.meter-idle { transition: background-color 0.3s var(--ease), color 0.3s var(--ease), border-color 0.3s var(--ease); }
-.bar-meter:hover .meter-idle { color: var(--ink); background: var(--paper-fill); border-color: var(--line); }
+/* the record button: round at both ends (by request), and instead of fading to white on hover its letters
+   draw a little apart and then sway, very slowly, each a beat behind the last — only for the big, one-of-a-
+   kind buttons like this one (by request). transforms only, and only while the pointer is on it */
+.meter-idle { border-radius: 999px; }
+.rec-word { display: inline-flex; }
+.rec-letter { display: inline-block; transition: transform 0.6s var(--spring); }
+.bar-meter:hover .rec-letter {
+	transform: translateX(calc(var(--i) * 3px));
+	animation: rec-sway 2.4s ease-in-out calc(0.45s + (var(--i) + 2.5) * 0.12s) infinite;
+}
+@keyframes rec-sway {
+	0%, 100% { transform: translateX(calc(var(--i) * 3px)) translateY(0) rotate(0deg); }
+	25% { transform: translateX(calc(var(--i) * 3px + 0.6px)) translateY(-1.5px) rotate(-3deg); }
+	75% { transform: translateX(calc(var(--i) * 3px - 0.6px)) translateY(1px) rotate(2.5deg); }
+}
 .live-stop { flex: none; font-size: 0.78rem; }
 .live-meter { color: var(--paper); background: var(--ink-fill); }
 .live-meter #levelCanvas { flex: 1; min-width: 0; height: 10px; }
@@ -5684,4 +5702,15 @@ html.inverted .bin-dock { color: var(--ink); }
 	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.5 0.5H12.5L13.5 9.4Q13.9 10.1 14.6 10.5L23.5 11.5V12.5L14.6 13.5Q13.9 13.9 13.5 14.6L12.5 23.5H11.5L10.5 14.6Q10.1 13.9 9.4 13.5L0.5 12.5V11.5L9.4 10.5Q10.1 10.1 10.5 9.4Z'/%3E%3C/svg%3E") center / contain no-repeat;
 	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.5 0.5H12.5L13.5 9.4Q13.9 10.1 14.6 10.5L23.5 11.5V12.5L14.6 13.5Q13.9 13.9 13.5 14.6L12.5 23.5H11.5L10.5 14.6Q10.1 13.9 9.4 13.5L0.5 12.5V11.5L9.4 10.5Q10.1 10.1 10.5 9.4Z'/%3E%3C/svg%3E") center / contain no-repeat;
 	will-change: transform;
+}
+
+/* the drawing's corner marks spin round once on hover — a whole turn that runs a little past and wobbles back
+   into place, like the face on create and practice wiggles (by request) */
+.draw-panel #gameBtn:hover svg, .draw-panel #referenceBtn:hover svg { animation: mark-spin 0.8s var(--ease); }
+@keyframes mark-spin {
+	0% { transform: rotate(0deg); }
+	15% { transform: rotate(-18deg); }
+	65% { transform: rotate(380deg); }
+	82% { transform: rotate(354deg); }
+	100% { transform: rotate(360deg); }
 }

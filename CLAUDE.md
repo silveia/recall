@@ -144,7 +144,7 @@ Switched by the tabs in the top strip. The cards and audio pages are **named** `
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
 with four multiple-choice answers mapped to keyboard quadrants. **Create and practice are big windows** (82% of the window each way, up to 76rem wide — by request, still windows rather than full screen): create's card list fills what is left and scrolls; practice's question takes about two fifths of the height and the four answers the rest.
 
-**audio** — a Chrome tab recorder that splits clips by speaker. There is no separate record button: the long box across the top is it — black with `record` in the middle; while recording it is the live meter, and a press on it stops. This is the
+**audio** — a Chrome tab recorder that splits clips by speaker. There is no separate record button: the long box across the top is it — black with `record` in the middle; **round at both ends, and on hover its letters draw a little apart and then sway, very slowly, each a beat behind the last** (by request, in place of fading to white — kept for the big one-of-a-kind buttons like this; `.rec-letter`); while recording it is the live meter, and a press on it stops. This is the
 part under active work.
 
 **chat** — sealed messages between people who add each other.
@@ -206,7 +206,7 @@ The colour adjuster **grows out of the colour dot** as a widening circle (460ms)
 the hue strip and the code slide in one after another, and shrinks back into the dot to close (300ms).
 Other menus unroll down out of their button (a clip revealing them top to bottom, 240ms) and roll
 back up quicker (170ms); nothing is scaled — a spring with a scale and staggered rows made the
-1px outline and the words shimmer, which read as a glitch. Either turns round mid-way. Every button's hover fades over 0.2s.
+1px outline and the words shimmer, which read as a glitch. Either turns round mid-way. Every button's hover fades over 0.2s. The two round marks in the canvas's corner spin once on hover — a whole turn that runs past and wobbles back, like the face on create and practice (by request).
 
 The **player** section (songs off your own disk) was deleted by request:
 its tab, page, folder, script, styles and the bar's mini player are all
@@ -319,6 +319,8 @@ the window lists them all. Pressing one **swaps the songs on the spot**:
 nothing is fetched, nothing is signed into, and the exporter is only
 wanted the first time a playlist comes in. The name comes off the file's
 own name, without its extension and with the underscores opened out.
+
+**`copy all` and `match clips` are outlined, not solid** (by request: they stood out too much), and spring up a little on hover as create and practice do.
 
 **Exportify itself runs in the window.** Measured with `curl -I`: it
 sends no `x-frame-options` and no `frame-ancestors`, so it can be

@@ -76,7 +76,7 @@
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <!-- the site's colour, set before anything is drawn -->
     <script src="tint.js"></script>
-    <link rel="stylesheet" href="style.css?v=d4b156637c">
+    <link rel="stylesheet" href="style.css?v=511beed8cb">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -411,7 +411,7 @@
                                 <!-- the whole long box is the record button; while recording it is the meter, and a press stops -->
                                 <button class="bar-meter" id="recordToggle" type="button" aria-label="record">
                                     <span class="record-status" id="recordStatus" aria-live="polite"></span>
-                                    <span class="meter-idle">record</span>
+                                    <span class="meter-idle"><span class="rec-word" aria-hidden="true"><span class="rec-letter" style="--i:-2.5">r</span><span class="rec-letter" style="--i:-1.5">e</span><span class="rec-letter" style="--i:-0.5">c</span><span class="rec-letter" style="--i:0.5">o</span><span class="rec-letter" style="--i:1.5">r</span><span class="rec-letter" style="--i:2.5">d</span></span></span>
                                     <span class="live-meter">
                                         <span class="clip-pulse"></span>
                                         <canvas id="levelCanvas" width="600" height="10"></canvas>
@@ -484,8 +484,8 @@
                                     <div class="clip-side-body"><ol class="scratch-list" id="scratchList"></ol></div>
                                     <p class="scratch-note" id="scratchNote" aria-live="polite"></p>
                                     <div class="scratch-acts">
-                                        <button class="basic-button scratch-all" id="scratchCopyAll" type="button" hidden>copy all</button>
-                                        <button class="basic-button scratch-all scratch-match" id="scratchMatch" type="button" hidden title="line the clips up by length">match clips</button>
+                                        <button class="basic-button is-plain scratch-all" id="scratchCopyAll" type="button" hidden>copy all</button>
+                                        <button class="basic-button is-plain scratch-all scratch-match" id="scratchMatch" type="button" hidden title="line the clips up by length">match clips</button>
                                     </div>
                                 </aside>
                             </div>
