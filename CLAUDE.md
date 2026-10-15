@@ -2160,7 +2160,10 @@ home.
 
 ## Sparkles, and the pop (14 Oct, by request)
 
-**One sparkle shape only**: a plus with thin straight arms tapering to blunt points and a slightly bolder
+**Sparkles lie over everything** (z 2147483647) and **take their colour from what they land on**
+(`sparkleOnDark`): white over anything filled dark (create, the bar, a pressed row), the ink over the page.
+Small (6–12px), many, and they *travel* — flying 16–44px out, quick then slowing, with only a slight turn
+(by request: the first ones spun and took too much room). **One sparkle shape only**: a plus with thin straight arms tapering to blunt points and a slightly bolder
 middle (`.sparkle`, a mask, so it is painted like black is painted here: white in the dark, the colour layer's
 own colour at its spot in the light, black with no colour). Each twinkles once — grows, turns a quarter,
 shrinks — on the graphics card. **`sparkleAround(el)`**: a handful round a list as it springs out of its mark,

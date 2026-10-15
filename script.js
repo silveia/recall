@@ -617,41 +617,57 @@ sparkleLayer.className = 'sparkles';
 sparkleLayer.setAttribute('aria-hidden', 'true');
 document.body.append(sparkleLayer);
 const stillMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-function sparkle(x, y, { size = 12, dx = 0, dy = 0, delay = 0, long = 620 } = {}) {
+// what a sparkle lands on decides its colour: over anything filled dark (a black button, the bar, a pressed
+// row — black under the colour layer) it is white; over the page it is the ink, i.e. the colour layer's own
+// colour at that spot in the light, white in the dark
+function sparkleOnDark(x, y) {
+    const under = document.elementsFromPoint(x, y).find((el) => !el.closest('.sparkles'));
+    for (let el = under; el && el !== document.documentElement; el = el.parentElement) {
+        const paint = getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
+        if (!paint || (paint[3] !== undefined && Number(paint[3]) === 0)) continue;
+        const [r, g, b] = paint.map(Number);
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b < 128;
+    }
+    return document.documentElement.classList.contains('inverted');
+}
+function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 560, white = null } = {}) {
     if (stillMotion()) return;
     const one = document.createElement('span');
     one.className = 'sparkle';
     one.style.width = `${size}px`;
     one.style.height = `${size}px`;
     const root = document.documentElement;
-    if (root.classList.contains('inverted')) one.style.background = '#fff';
+    const onDark = white === null ? sparkleOnDark(x, y) : white;
+    if (onDark) one.style.background = '#fff';
     else if (root.classList.contains('tinted')) {
-        // the layer's own gradient, laid so that the part showing is the part of the window it sits on
+        // the layer's own gradient, laid so that the part showing is the part of the window it flies over
         one.style.backgroundImage = getComputedStyle(root).getPropertyValue('--tint-layer');
         one.style.backgroundSize = `${window.innerWidth}px ${window.innerHeight}px`;
-        one.style.backgroundPosition = `${-(x - size / 2)}px ${-(y - size / 2)}px`;
+        one.style.backgroundPosition = `${-(x + dx * 0.7 - size / 2)}px ${-(y + dy * 0.7 - size / 2)}px`;
     } else one.style.background = '#000';
-    one.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) scale(0)`;
     sparkleLayer.append(one);
+    // out it flies, quick then slowing, popping up to size and away again, turning only a little
+    const turn = (Math.random() - 0.5) * 30;
     const at = (t, s, r) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s}) rotate(${r}deg)`;
     one.animate([
-        { transform: at(0, 0, 0) },
-        { transform: at(0.55, 1.15, 45), offset: 0.38 },
-        { transform: at(0.8, 0.85, 70), offset: 0.7 },
-        { transform: at(1, 0, 90) }
-    ], { duration: long, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }).onfinish = () => one.remove();
+        { transform: at(0, 0.2, 0) },
+        { transform: at(0.45, 1.1, turn * 0.5), offset: 0.25 },
+        { transform: at(0.8, 0.9, turn * 0.85), offset: 0.6 },
+        { transform: at(1, 0, turn) }
+    ], { duration: long, delay, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)', fill: 'backwards' }).onfinish = () => one.remove();
 }
-// a few out of the pointer, on a small press
-function sparkleBurst(x, y, count = 5) {
+// a little spray out of the pointer, on a small press
+function sparkleBurst(x, y, count = 7) {
+    const white = sparkleOnDark(x, y);
     for (let i = 0; i < count; i += 1) {
-        const turn = (i / count) * Math.PI * 2 + Math.random() * 0.9;
-        const reach = 14 + Math.random() * 14;
-        sparkle(x, y, { size: 10 + Math.random() * 7, dx: Math.cos(turn) * reach, dy: Math.sin(turn) * reach, delay: Math.random() * 60, long: 520 + Math.random() * 160 });
+        const way = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
+        const reach = 22 + Math.random() * 22;
+        sparkle(x, y, { size: 6 + Math.random() * 5, dx: Math.cos(way) * reach, dy: Math.sin(way) * reach, delay: Math.random() * 50, long: 480 + Math.random() * 200, white });
     }
 }
-// a handful round a list as it springs out of its mark: along its edges, the nearest the corner it grows
-// from first, each drifting a little outwards as it twinkles
-function sparkleAround(el, count = 7) {
+// round a list as it springs out of its mark: along its edges, the nearest the corner it grows from first,
+// each flying a little way outwards
+function sparkleAround(el, count = 10) {
     if (!el || stillMotion()) return;
     const at = restSpot(el), w = el.offsetWidth, h = el.offsetHeight;
     const origin = getComputedStyle(el).transformOrigin.split(' ').map(parseFloat);
@@ -661,16 +677,19 @@ function sparkleAround(el, count = 7) {
         const side = Math.floor(Math.random() * 4), t = Math.random();
         const x = side === 0 ? at.x + t * w : side === 1 ? at.x + w : side === 2 ? at.x + t * w : at.x;
         const y = side === 0 ? at.y : side === 1 ? at.y + t * h : side === 2 ? at.y + h : at.y + t * h;
-        spots.push({ x, y, out: [side === 3 ? -1 : side === 1 ? 1 : 0, side === 0 ? -1 : side === 2 ? 1 : 0] });
+        spots.push({ x, y, out: [side === 3 ? -1 : side === 1 ? 1 : (Math.random() - 0.5) * 0.6, side === 0 ? -1 : side === 2 ? 1 : (Math.random() - 0.5) * 0.6] });
     }
     spots.sort((a, b) => Math.hypot(a.x - ox, a.y - oy) - Math.hypot(b.x - ox, b.y - oy));
-    spots.forEach((spot, i) => sparkle(spot.x, spot.y, {
-        size: 12 + Math.random() * 8,
-        dx: spot.out[0] * (6 + Math.random() * 8),
-        dy: spot.out[1] * (6 + Math.random() * 8),
-        delay: 90 + i * 45,
-        long: 600 + Math.random() * 200
-    }));
+    spots.forEach((spot, i) => {
+        const reach = 16 + Math.random() * 20;
+        sparkle(spot.x, spot.y, {
+            size: 7 + Math.random() * 5,
+            dx: spot.out[0] * reach,
+            dy: spot.out[1] * reach,
+            delay: 80 + i * 32,
+            long: 520 + Math.random() * 220
+        });
+    });
 }
 window.sparkleAround = sparkleAround;
 // the small presses that sparkle: the page's own actions (create, practice and the rest of the pills)

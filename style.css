@@ -5638,6 +5638,7 @@ html.tint-layer.tinted .own-layer::after {
 .page-marks { z-index: 2147483021; }
 /* the drawing's things with a black outline in the light: the copy covers the outline as well */
 .draw-panel .corner-buttons button, .draw-panel .pick-menu { --own-edge: 1px; }
+.tint-pop, .help-body { --own-edge: 1px; }     /* the copy covers their outline as well: kept inside it, a sliver of black showed round the rounded corners */
 .draw-panel .corner-buttons button { position: relative; }     /* each copy is its own button's, not the pair's */
 .draw-panel #miniWindow, .draw-panel #miniWindow2 { border: 0; box-shadow: inset 0 0 0 1px var(--line); }
 .draw-panel .windowContent2 { background: none; }     /* the window's own white shows through, and its inset outline with it */
@@ -5671,10 +5672,11 @@ html.inverted .bin-dock { color: var(--ink); }
 .bin-dock .binned-list { top: 0; bottom: auto; left: calc(100% + 28px); translate: none; transform-origin: 0 0; }     /* opens from its top-left corner, by the bin, exactly as the colour list opens from its corner; its left edge on the page's boxes' (12px off the crests) */
 
 /* sparkles (14 Oct, by request): one shape only — a plus whose arms thin to points and swell a little in the
-   middle — cut from whatever paints it (a mask), so it can be the colour layer's own colour at its spot while
-   lying over everything. a few pop round a list as it lands and out of the pointer on a press (sparkleAround,
-   sparkleBurst); each twinkles once — grows, turns a quarter, shrinks — on the graphics card */
-.sparkles { position: fixed; inset: 0; z-index: 2147483030; overflow: hidden; pointer-events: none; }
+   middle — cut from whatever paints it (a mask), so it can be white over anything filled and the colour
+   layer's own colour over the page, while lying over everything. a few pop round a list as it lands and out
+   of the pointer on a press (sparkleAround, sparkleBurst); each flies out, slowing, grows and shrinks, with
+   only a slight turn — on the graphics card */
+.sparkles { position: fixed; inset: 0; z-index: 2147483647; overflow: hidden; pointer-events: none; }     /* the very top: over everything, windows and lists included */
 .sparkle {
 	position: absolute;
 	left: 0;
