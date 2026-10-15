@@ -620,8 +620,8 @@ const stillMotion = () => window.matchMedia && window.matchMedia('(prefers-reduc
 // what a sparkle lands on decides its colour: over anything filled dark (a black button, the bar, a pressed
 // row — black under the colour layer) it is white; over the page it is the ink, i.e. the colour layer's own
 // colour at that spot in the light, white in the dark
-function sparkleOnDark(x, y) {
-    const under = document.elementsFromPoint(x, y).find((el) => !el.closest('.sparkles'));
+function sparkleOnDark(x, y, ignore = null) {
+    const under = document.elementsFromPoint(x, y).find((el) => !el.closest('.sparkles') && !(ignore && ignore.contains(el)));
     for (let el = under; el && el !== document.documentElement; el = el.parentElement) {
         const paint = getComputedStyle(el).backgroundColor.match(/[\d.]+/g);
         if (!paint || (paint[3] !== undefined && Number(paint[3]) === 0)) continue;
@@ -630,14 +630,14 @@ function sparkleOnDark(x, y) {
     }
     return document.documentElement.classList.contains('inverted');
 }
-function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 560, white = null } = {}) {
+function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 560, white = null, ignore = null } = {}) {
     if (stillMotion()) return;
     const one = document.createElement('span');
     one.className = 'sparkle';
     one.style.width = `${size}px`;
     one.style.height = `${size}px`;
     const root = document.documentElement;
-    const onDark = white === null ? sparkleOnDark(x, y) : white;
+    const onDark = white === null ? sparkleOnDark(x + dx * 0.5, y + dy * 0.5, ignore) : white;
     if (onDark) one.style.background = '#fff';
     else if (root.classList.contains('tinted')) {
         // the layer's own gradient, laid so that the part showing is the part of the window it flies over
@@ -662,32 +662,36 @@ function sparkleBurst(x, y, count = 7) {
     for (let i = 0; i < count; i += 1) {
         const way = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.7;
         const reach = 22 + Math.random() * 22;
-        sparkle(x, y, { size: 6 + Math.random() * 5, dx: Math.cos(way) * reach, dy: Math.sin(way) * reach, delay: Math.random() * 50, long: 480 + Math.random() * 200, white });
+        sparkle(x, y, { size: 8 + Math.random() * 5, dx: Math.cos(way) * reach, dy: Math.sin(way) * reach, delay: Math.random() * 50, long: 480 + Math.random() * 200, white });
     }
 }
-// round a list as it springs out of its mark: along its edges, the nearest the corner it grows from first,
-// each flying a little way outwards
+// round a list as it springs out of its mark: just outside its edges (on its edge they sat on the list
+// itself once it had grown, the list's colour on the list's colour — they looked to be behind it), the
+// nearest the corner it grows from first, each flying outwards over what is round the list, and coloured
+// by that, not by the list
 function sparkleAround(el, count = 10) {
     if (!el || stillMotion()) return;
     const at = restSpot(el), w = el.offsetWidth, h = el.offsetHeight;
     const origin = getComputedStyle(el).transformOrigin.split(' ').map(parseFloat);
     const ox = at.x + (origin[0] || 0), oy = at.y + (origin[1] || 0);
+    const clear = 8;
     const spots = [];
     for (let i = 0; i < count; i += 1) {
         const side = Math.floor(Math.random() * 4), t = Math.random();
-        const x = side === 0 ? at.x + t * w : side === 1 ? at.x + w : side === 2 ? at.x + t * w : at.x;
-        const y = side === 0 ? at.y : side === 1 ? at.y + t * h : side === 2 ? at.y + h : at.y + t * h;
+        const x = side === 0 ? at.x + t * w : side === 1 ? at.x + w + clear : side === 2 ? at.x + t * w : at.x - clear;
+        const y = side === 0 ? at.y - clear : side === 1 ? at.y + t * h : side === 2 ? at.y + h + clear : at.y + t * h;
         spots.push({ x, y, out: [side === 3 ? -1 : side === 1 ? 1 : (Math.random() - 0.5) * 0.6, side === 0 ? -1 : side === 2 ? 1 : (Math.random() - 0.5) * 0.6] });
     }
     spots.sort((a, b) => Math.hypot(a.x - ox, a.y - oy) - Math.hypot(b.x - ox, b.y - oy));
     spots.forEach((spot, i) => {
-        const reach = 16 + Math.random() * 20;
+        const reach = 14 + Math.random() * 18;
         sparkle(spot.x, spot.y, {
-            size: 7 + Math.random() * 5,
+            size: 10 + Math.random() * 5,
             dx: spot.out[0] * reach,
             dy: spot.out[1] * reach,
             delay: 80 + i * 32,
-            long: 520 + Math.random() * 220
+            long: 560 + Math.random() * 220,
+            ignore: el
         });
     });
 }
