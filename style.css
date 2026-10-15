@@ -5610,6 +5610,9 @@ html.tint-layer.tinted .own-layer::after {
 .draw-panel .shimeji-char { z-index: 2147483006; }
 .draw-panel .colour-dot { position: relative; z-index: 2147483004; }     /* the brush's colour is its colour */
 .help-body, .binned-list, .page-found, .tint-pop, .tab-tip, .say-what { z-index: 2147483020; }
+/* the page marks over their names: the name slides out from behind its mark. they are white, which needs no
+   colouring; the filled one carries its own copy (script.js gives it .own-layer) */
+.page-marks { z-index: 2147483021; }
 /* the drawing's things with a black outline in the light: the copy covers the outline as well */
 .draw-panel .corner-buttons button, .draw-panel .pick-menu { --own-edge: 1px; }
 .draw-panel .corner-buttons button { position: relative; }     /* each copy is its own button's, not the pair's */
