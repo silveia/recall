@@ -685,7 +685,26 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
     const origin = getComputedStyle(el).transformOrigin.split(' ').map(parseFloat);
     const ox = at.x + (origin[0] || 0), oy = at.y + (origin[1] || 0);
     const spots = [];
-    for (let i = 0; i < count; i += 1) {
+    // the colour list's bubbles have set places (by request: left to chance they clumped, a different way
+    // each time) — spread round its edges, more of them down the left and along the bottom, a few pixels of
+    // wobble and nothing more. side: 0 top, 1 right, 2 bottom, 3 left; t along that side; on it or past it
+    const PLACES = [
+        [3, 0.32, false], [3, 0.6, true], [3, 0.86, false],
+        [2, 0.16, true], [2, 0.42, false], [2, 0.74, true],
+        [1, 0.55, false], [0, 0.3, false]
+    ];
+    const SIZES = [17, 11, 14, 9, 15, 12, 10, 13];
+    if (rise) {
+        PLACES.forEach(([side, place, onIt], i) => {
+            const t = place + (Math.random() - 0.5) * 0.04;
+            const gap = onIt ? -14 : 8;
+            const x = side === 0 || side === 2 ? at.x + 12 + t * (w - 24) : side === 1 ? at.x + w + gap : at.x - gap;
+            const y = side === 1 || side === 3 ? at.y + 12 + t * (h - 24) : side === 0 ? at.y - gap : at.y + h + gap;
+            const out = [side === 3 ? -1 : side === 1 ? 1 : 0, side === 0 ? -1 : side === 2 ? 1 : 0];
+            spots.push({ x, y, out, onIt, size: SIZES[i] });
+        });
+    }
+    for (let i = 0; i < (rise ? 0 : count); i += 1) {
         const onIt = i % 2 === 0;
         const side = Math.floor(Math.random() * 4), t = Math.random();
         const gap = onIt ? -(10 + Math.random() * 14) : 8;      // inside its edge, or just past it
@@ -698,10 +717,10 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
     spots.forEach((spot, i) => {
         const reach = spot.onIt ? 3 + Math.random() * 4 : 6 + Math.random() * 6;
         // rising (the colour list): bubbles of every size, drifting up as bubbles do, over a longer moment
-        const up = rise ? 12 + Math.random() * 22 : 0;
+        const up = rise ? 16 + (i % 3) * 7 : 0;
         sparkle(spot.x, spot.y, {
-            size: rise ? 8 + Math.random() * 14 : 12 + Math.random() * 6,
-            dx: spot.out[0] * reach + (rise ? (Math.random() - 0.5) * 8 : 0),
+            size: spot.size || 12 + Math.random() * 6,
+            dx: spot.out[0] * reach + (rise ? (Math.random() - 0.5) * 4 : 0),
             dy: spot.out[1] * reach - up,
             delay: rise ? i * 14 + Math.random() * 30 : 120 + i * 40,     // the colour list's start at once
             long: rise ? 480 + Math.random() * 260 : 300 + Math.random() * 100,
