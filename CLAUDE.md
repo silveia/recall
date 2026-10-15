@@ -2167,8 +2167,9 @@ holes worked out frame by frame — a hole a frame late was every black flash. I
 - **An own-layer box must be opaque across its whole shape**: the copy paints wherever the box is
   see-through. And **nothing inside it may move by transform** while it is shown (it gathers what is in it
   under the copy) — which is why the drawing adjuster's parts no longer slide in with a colour on.
-- `--own-edge: 1px` where the box's outline is black (the drawing's windows, adjuster, corner marks), so the
-  copy covers the outline too; the windows clip with `overflow: clip` and a 1px margin so it shows.
+- `--own-edge: 1px` where the box's outline is black (the drawing's adjuster and corner marks), so the
+  copy covers the outline too. The drawing's windows clip their insides (the reference one has a resize
+  corner, which needs `overflow: hidden`), so their outline is an inset shadow instead, inside the copy.
 - The strip is no longer a stacking context (it held its lists under the layer); the bar the bin sits in and
   the search lost their z-index for the same reason.
 - The draw page slides in without touching opacity: an opacity being animated gathers the page under the

@@ -5611,9 +5611,13 @@ html.tint-layer.tinted .own-layer::after {
 .draw-panel .colour-dot { position: relative; z-index: 2147483004; }     /* the brush's colour is its colour */
 .help-body, .binned-list, .page-found, .tint-pop, .tab-tip, .say-what { z-index: 2147483020; }
 /* the drawing's things with a black outline in the light: the copy covers the outline as well */
-.draw-panel .corner-buttons button, .draw-panel .pick-menu, .draw-panel #miniWindow, .draw-panel #miniWindow2 { --own-edge: 1px; }
+.draw-panel .corner-buttons button, .draw-panel .pick-menu { --own-edge: 1px; }
 .draw-panel .corner-buttons button { position: relative; }     /* each copy is its own button's, not the pair's */
-.draw-panel #miniWindow, .draw-panel #miniWindow2 { overflow: clip; overflow-clip-margin: 1px; }
+.draw-panel #miniWindow, .draw-panel #miniWindow2 { border: 0; box-shadow: inset 0 0 0 1px var(--line); }
+.draw-panel .windowContent2 { background: none; }     /* the window's own white shows through, and its inset outline with it */
+/* the windows' outline is drawn inside them, so their copy of the layer (clipped to the inside, as the
+   window clips everything) covers it; an outside border stayed raw black in the light. clipped by the
+   ordinary overflow: hidden, which the reference window's resize corner needs */
 /* what in them keeps its own colours lies over the copy */
 .draw-panel #gameViewport { z-index: 60; }
 .draw-panel #referenceImage { position: relative; z-index: 60; }
