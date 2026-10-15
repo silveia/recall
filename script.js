@@ -711,6 +711,30 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
     });
 }
 window.sparkleAround = sparkleAround;
+// the floating buttons (record): the letters float from the moment the pointer arrives, and on leaving each
+// glides back from wherever it was in its float — taken off mid-float it snapped home
+document.querySelectorAll('.floaty').forEach((button) => {
+    const letters = () => button.querySelectorAll('.rec-letter');
+    button.addEventListener('pointerenter', () => {
+        letters().forEach((one) => { one.style.transform = ''; });
+        button.classList.add('is-floating');
+    });
+    button.addEventListener('pointerleave', () => {
+        const held = Array.from(letters(), (one) => getComputedStyle(one).transform);
+        button.classList.remove('is-floating');
+        letters().forEach((one, i) => {
+            one.style.transition = 'none';
+            one.style.transform = held[i] === 'none' ? '' : held[i];
+        });
+        void button.offsetWidth;
+        letters().forEach((one) => { one.style.transition = ''; one.style.transform = ''; });
+    });
+});
+// each mark that grows on hover keeps its own line width, so it can thin as it grows (style.css)
+document.querySelectorAll('.square-button svg, .binned-head svg, .key-edit svg, .draw-panel .bare-mark svg, .draw-panel #uploadBtn svg').forEach((mark) => {
+    const width = parseFloat(mark.getAttribute('stroke-width') || getComputedStyle(mark).strokeWidth) || 1.7;
+    mark.style.setProperty('--sw', String(width));
+});
 // the presses that sparkle
 document.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || !event.target.closest) return;

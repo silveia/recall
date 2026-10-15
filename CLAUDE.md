@@ -144,7 +144,7 @@ Switched by the tabs in the top strip. The cards and audio pages are **named** `
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
 with four multiple-choice answers mapped to keyboard quadrants. **Create and practice are big windows** (82% of the window each way, up to 76rem wide — by request, still windows rather than full screen): create's card list fills what is left and scrolls; practice's question takes about two fifths of the height and the four answers the rest.
 
-**audio** — a Chrome tab recorder that splits clips by speaker. There is no separate record button: the long box across the top is it — black with `record` in the middle; **round at both ends, and on hover its letters draw a little apart and then float freely — each on its own drift, tilt and clock, set on each letter in app.html, so they never move in step** (by request, in place of fading to white, and an even sway was too neat; kept for the big one-of-a-kind buttons like this; `.rec-letter`); while recording it is the live meter, and a press on it stops. This is the
+**audio** — a Chrome tab recorder that splits clips by speaker. There is no separate record button: the long box across the top is it — black with `record` in the middle; **round at both ends, and on hover its letters float — freely, slowly (5–7s a round) and steadily, each on its own drift, tilt and clock set in app.html — from the moment the pointer arrives, while they draw a little apart (the parting is `translate`, the float `transform`), and on leaving each glides back from wherever it is** (`.floaty`, script.js; by request, in place of fading to white — an even sway was too neat, waiting for the parting before floating too stiff, and a snap home too abrupt; kept for the big one-of-a-kind buttons like this); while recording it is the live meter, and a press on it stops. This is the
 part under active work.
 
 **chat** — sealed messages between people who add each other.
@@ -2192,7 +2192,9 @@ corner, as the colour list opens from its corner.
 
 **Icon buttons rock on hover** (by request): the square icon buttons, the bin, the time tile's pen, the
 drawing's undo and redo and the reference window's upload — the symbol grows a little (`scale`), then rocks
-slowly to and fro (`rotate`, `icon-rock`), turning, not moving, for as long as the pointer is on it.
+slowly to and fro (`rotate`, `icon-rock`), turning, not moving, for as long as the pointer is on it. **They no longer change colour on hover** (the fill
+swap drowned the motion out), and **their lines thin as they grow** (`--sw`, each mark's own width, set by
+script.js), so a bigger mark is not a bolder one.
 
 ## The colour, in layers — no holes on the draw page (14 Oct)
 
