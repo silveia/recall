@@ -671,7 +671,7 @@ function sparkleBurst(x, y, count = 4) {
 // where the last press was, so a list opened by it can sparkle out of the pointer as well
 let lastPress = { x: 0, y: 0, at: 0 };
 document.addEventListener('pointerdown', (event) => { lastPress = { x: event.clientX, y: event.clientY, at: performance.now() }; }, true);
-function sparkleAround(el, count = 6, { fromPointer = true } = {}) {
+function sparkleAround(el, count = 6, { fromPointer = false } = {}) {     // none out of the pointer: opening a list is a minor press
     if (!el || stillMotion()) return;
     // a little of both (by request): a spray out of the pointer that opened it, and a few round the list
     if (fromPointer && performance.now() - lastPress.at < 500) sparkleBurst(lastPress.x, lastPress.y);
@@ -703,10 +703,11 @@ function sparkleAround(el, count = 6, { fromPointer = true } = {}) {
     });
 }
 window.sparkleAround = sparkleAround;
-// the small presses that sparkle: the page's own actions (create, practice and the rest of the pills)
+// the presses that sparkle
 document.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || !event.target.closest) return;
-    if (event.target.closest('.quick-action, .basic-button, .square-button, .flip-card, .flip-next, .key-edit, .page-search-go')) sparkleBurst(event.clientX, event.clientY);
+    // only the page's special presses — create and practice — so the sparkles stay special (by request)
+    if (event.target.closest('.quick-action')) sparkleBurst(event.clientX, event.clientY);
 }, true);
 // placed once when something opens, moves or the window changes — never every frame: measuring every copy
 // and writing it back on each frame of an animation made the browser redo its layout every frame, and the

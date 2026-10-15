@@ -2274,19 +2274,21 @@ html.tint-layer.tinted body::after {
 	font-size: 1rem;
 }
 /* the record button: round at both ends (by request), and instead of fading to white on hover its letters
-   draw a little apart and then sway, very slowly, each a beat behind the last — only for the big, one-of-a-
-   kind buttons like this one (by request). transforms only, and only while the pointer is on it */
+   draw a little apart and then float, freely — each letter on its own drift, tilt and clock (set on each in
+   app.html), so they never move in step (an even sway read as too neat, by request). only for the big,
+   one-of-a-kind buttons like this one. transforms only, and only while the pointer is on it */
 .meter-idle { border-radius: 999px; }
 .rec-word { display: inline-flex; }
-.rec-letter { display: inline-block; transition: transform 0.6s var(--spring); }
+.rec-letter { display: inline-block; transition: transform 0.7s var(--spring); }
 .bar-meter:hover .rec-letter {
 	transform: translateX(calc(var(--i) * 3px));
-	animation: rec-sway 2.4s ease-in-out calc(0.45s + (var(--i) + 2.5) * 0.12s) infinite;
+	animation: rec-float var(--dur) ease-in-out calc(0.4s + var(--lag)) infinite;
 }
-@keyframes rec-sway {
-	0%, 100% { transform: translateX(calc(var(--i) * 3px)) translateY(0) rotate(0deg); }
-	25% { transform: translateX(calc(var(--i) * 3px + 0.6px)) translateY(-1.5px) rotate(-3deg); }
-	75% { transform: translateX(calc(var(--i) * 3px - 0.6px)) translateY(1px) rotate(2.5deg); }
+@keyframes rec-float {
+	0%, 100% { transform: translate(calc(var(--i) * 3px), 0) rotate(0deg); }
+	30% { transform: translate(calc(var(--i) * 3px + var(--fx)), var(--fy)) rotate(var(--fr)); }
+	62% { transform: translate(calc(var(--i) * 3px - var(--fx) * 0.6), calc(var(--fy) * -0.7)) rotate(calc(var(--fr) * -0.7)); }
+	84% { transform: translate(calc(var(--i) * 3px + var(--fx) * 0.3), calc(var(--fy) * 0.35)) rotate(calc(var(--fr) * 0.4)); }
 }
 .live-stop { flex: none; font-size: 0.78rem; }
 .live-meter { color: var(--paper); background: var(--ink-fill); }
@@ -5699,18 +5701,28 @@ html.inverted .bin-dock { color: var(--ink); }
 	position: absolute;
 	left: 0;
 	top: 0;
-	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.5 0.5H12.5L13.5 9.4Q13.9 10.1 14.6 10.5L23.5 11.5V12.5L14.6 13.5Q13.9 13.9 13.5 14.6L12.5 23.5H11.5L10.5 14.6Q10.1 13.9 9.4 13.5L0.5 12.5V11.5L9.4 10.5Q10.1 10.1 10.5 9.4Z'/%3E%3C/svg%3E") center / contain no-repeat;
-	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.5 0.5H12.5L13.5 9.4Q13.9 10.1 14.6 10.5L23.5 11.5V12.5L14.6 13.5Q13.9 13.9 13.5 14.6L12.5 23.5H11.5L10.5 14.6Q10.1 13.9 9.4 13.5L0.5 12.5V11.5L9.4 10.5Q10.1 10.1 10.5 9.4Z'/%3E%3C/svg%3E") center / contain no-repeat;
+	/* a plain circle for now, by request, to see it. the plus it was, to put back:
+	   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.5 0.5H12.5L13.5 9.4Q13.9 10.1 14.6 10.5L23.5 11.5V12.5L14.6 13.5Q13.9 13.9 13.5 14.6L12.5 23.5H11.5L10.5 14.6Q10.1 13.9 9.4 13.5L0.5 12.5V11.5L9.4 10.5Q10.1 10.1 10.5 9.4Z'/%3E%3C/svg%3E") center / contain no-repeat; */
+	border-radius: 50%;
 	will-change: transform;
 }
 
-/* the drawing's corner marks spin round once on hover — a whole turn that runs a little past and wobbles back
-   into place, like the face on create and practice wiggles (by request) */
-.draw-panel #gameBtn:hover svg, .draw-panel #referenceBtn:hover svg { animation: mark-spin 0.8s var(--ease); }
-@keyframes mark-spin {
-	0% { transform: rotate(0deg); }
-	15% { transform: rotate(-18deg); }
-	65% { transform: rotate(380deg); }
-	82% { transform: rotate(354deg); }
-	100% { transform: rotate(360deg); }
+/* the drawing's corner marks wiggle on hover, the way the face under create and practice does (by request:
+   a whole spin was not it) */
+.draw-panel #gameBtn:hover svg, .draw-panel #referenceBtn:hover svg { animation: face-wiggle 0.5s var(--ease); }
+
+/* icon buttons (by request): on hover the symbol grows a little and then rocks to and fro, slowly, like the
+   record button's letters float — turning, not moving. size and turn are their own properties, so the growth
+   eases in once and the rocking runs under it */
+.square-button svg, .binned-head svg, .key-edit svg, .draw-panel .bare-mark:not(.tool-swap) svg, .draw-panel #uploadBtn svg {
+	transition: scale 0.45s var(--spring);
+}
+.square-button:hover svg, .binned-head:hover svg, .key-edit:hover svg, .draw-panel .bare-mark:not(.tool-swap):hover svg, .draw-panel #uploadBtn:hover svg {
+	scale: 1.14;
+	animation: icon-rock 2.6s ease-in-out 0.3s infinite;
+}
+@keyframes icon-rock {
+	0%, 100% { rotate: 0deg; }
+	25% { rotate: -8deg; }
+	70% { rotate: 7deg; }
 }

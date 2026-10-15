@@ -144,7 +144,7 @@ Switched by the tabs in the top strip. The cards and audio pages are **named** `
 rename and delete, undo with Ctrl+Z (and redo with Ctrl+Shift+Z or Ctrl+Y), a create screen, and a practice screen
 with four multiple-choice answers mapped to keyboard quadrants. **Create and practice are big windows** (82% of the window each way, up to 76rem wide — by request, still windows rather than full screen): create's card list fills what is left and scrolls; practice's question takes about two fifths of the height and the four answers the rest.
 
-**audio** — a Chrome tab recorder that splits clips by speaker. There is no separate record button: the long box across the top is it — black with `record` in the middle; **round at both ends, and on hover its letters draw a little apart and then sway, very slowly, each a beat behind the last** (by request, in place of fading to white — kept for the big one-of-a-kind buttons like this; `.rec-letter`); while recording it is the live meter, and a press on it stops. This is the
+**audio** — a Chrome tab recorder that splits clips by speaker. There is no separate record button: the long box across the top is it — black with `record` in the middle; **round at both ends, and on hover its letters draw a little apart and then float freely — each on its own drift, tilt and clock, set on each letter in app.html, so they never move in step** (by request, in place of fading to white, and an even sway was too neat; kept for the big one-of-a-kind buttons like this; `.rec-letter`); while recording it is the live meter, and a press on it stops. This is the
 part under active work.
 
 **chat** — sealed messages between people who add each other.
@@ -206,7 +206,7 @@ The colour adjuster **grows out of the colour dot** as a widening circle (460ms)
 the hue strip and the code slide in one after another, and shrinks back into the dot to close (300ms).
 Other menus unroll down out of their button (a clip revealing them top to bottom, 240ms) and roll
 back up quicker (170ms); nothing is scaled — a spring with a scale and staggered rows made the
-1px outline and the words shimmer, which read as a glitch. Either turns round mid-way. Every button's hover fades over 0.2s. The two round marks in the canvas's corner spin once on hover — a whole turn that runs past and wobbles back, like the face on create and practice (by request).
+1px outline and the words shimmer, which read as a glitch. Either turns round mid-way. Every button's hover fades over 0.2s. The two round marks in the canvas's corner wiggle on hover, exactly as the face under create and practice does (by request — a whole spin was not it).
 
 The **player** section (songs off your own disk) was deleted by request:
 its tab, page, folder, script, styles and the bar's mini player are all
@@ -2175,8 +2175,9 @@ it), and half start just outside its edges and fly outwards, coloured by what is
 the nearest its corner go first — the colour list, the bin's list (exactly as the colour list),
 help's note, the search's results and the drawing's colour adjuster — not the windows (create, practice and
 the rest open as they always did, by request). **`sparkleBurst(x, y)`**:
-a few out of the pointer on a small press (create, practice, the pills and square buttons, flip, the search's
-go). **The pop-ups pop**: no fade and no blur (both tried and refused) — the spring out of the mark from
+a few out of the pointer — **only on create and practice** (by request: on every minor press they stopped
+being special); opening a list sparkles round the list only. **For now a sparkle is a plain circle** (by
+request, to see it); the plus is kept, commented, in `.sparkle`. **The pop-ups pop**: no fade and no blur (both tried and refused) — the spring out of the mark from
 small, a quicker shrink back.
 
 **Smoothness:** the copies of the colour layer are placed once when something opens, moves or the window
@@ -2186,6 +2187,10 @@ animation, they made the browser redo its layout each frame and the colour list'
 **The bin is in the bump straight under the last page mark** (`--bin-row` = the number of pages): at the bar's
 foot it moved with the window height, which differs from browser to browser. Its list opens from its top-left
 corner, as the colour list opens from its corner.
+
+**Icon buttons rock on hover** (by request): the square icon buttons, the bin, the time tile's pen, the
+drawing's undo and redo and the reference window's upload — the symbol grows a little (`scale`), then rocks
+slowly to and fro (`rotate`, `icon-rock`), turning, not moving, for as long as the pointer is on it.
 
 ## The colour, in layers — no holes on the draw page (14 Oct)
 
