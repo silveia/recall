@@ -1,10 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html class="tint-layer" lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>:p</title>
 <!-- the front door: a tiny dino run in the middle, and the way in -->
+<script src="tint.js"></script>
 <script>
 try { if (localStorage.getItem('page-inverted') === 'yes') document.documentElement.classList.add('inverted'); } catch (error) {}
 // framed under the home board: the run alone, no way in (you're already in)
@@ -16,12 +17,16 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 <style>
 	:root {
 		--paper: #fff;
-		--ink: #000;
+		--ink: var(--tint-main, #000);   /* the site's colour (tint.js) */
 		--cur-dot: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default;
 		--cur-tap: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, pointer;
 	}
-	html.inverted { --paper: #000; --ink: #fff; }
+	html.inverted { --paper: var(--tint-main, #000); --ink: #fff; }
 	html { background: var(--paper); color: var(--ink); cursor: var(--cur-dot); }
+	/* the site's colour: one layer over everything, blended to screen (see style.css) */
+	html.tint-layer.tinted { --tint-main: #000 !important; }
+	html.tint-layer.tinted body::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: var(--tint-layer); mix-blend-mode: screen; pointer-events: none; }
+	html.embedded.tint-layer.tinted body::after { display: none; }   /* framed on home, the site's own layer lies over it already: two layers drew the wrong part of the gradient */
 	body {
 		display: grid;
 		place-items: center;
@@ -321,7 +326,10 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         showScore(shown);
     });
 
+    const AIR_TIME = 2 * 9.5 / 0.6;    // frames a jump stays up: its lift over the fall each frame, twice
     let overAt = 0;
+    // home resets the run when it is left for another page
+    window.dinoReset = () => { if (state !== 'ready') reset(); };
     function jump() {
         if (state === 'over') {
             if (performance.now() - overAt < 350) return;   // no instant restart off the crash
@@ -353,7 +361,11 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         nextGap -= speed * s;
         if (nextGap <= 0) {
             cacti.push({ x: W + 10, art: CACTI[Math.random() < 0.7 ? 0 : 1] });
-            nextGap = 160 + Math.random() * 180 + speed * 12;
+            // never closer than a jump can clear and land from with room to jump again: how far the world
+            // moves in one jump's air time at this speed, a third more, and the dino's and a wide cactus's
+            // widths — then a random stretch on top (cacti used to come a jump apart at speed, which left
+            // no time to land)
+            nextGap = speed * AIR_TIME * 1.35 + 14 * P + Math.random() * (140 + speed * 14);
         }
 
         score = Math.min(MAX, score + 0.1 * s);
@@ -580,6 +592,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
         if (event.origin === window.location.origin && event.data && typeof event.data.lights === 'boolean') takeLights(event.data.lights);
     });
     window.addEventListener('storage', (event) => { if (event.key === 'page-inverted') takeLights(event.newValue === 'yes'); });
+    window.addEventListener('site-tint', () => { colours(); draw(); });   // the site's colour changed
     window.addEventListener('pageshow', () => {
         try { takeLights(localStorage.getItem('page-inverted') === 'yes'); } catch (error) { /* keeps what it has */ }
     });

@@ -6,7 +6,10 @@
     <title>draw</title>
     <script>
         // the lights follow the page this is framed in, before anything is drawn
-        try {
+        // the site says the lights in the address (#dark) when it first loads this page, which works
+        // however the site is opened
+        if (location.hash.indexOf('dark') >= 0) document.documentElement.classList.add('inverted');
+        else try {
             var on = window.parent !== window
                 ? window.parent.document.documentElement.classList.contains('inverted')
                 : localStorage.getItem('page-inverted') === 'yes';
@@ -16,6 +19,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiko:wght@400&amp;family=Pixelify+Sans:wght@400&amp;family=VT323&amp;display=swap">
+    <script>
+        // framed in the site, the site's colour layer lies over this page: everything black stays black
+        // here and the layer colours it (only the canvas is cut out of it, by the site)
+        if (window.parent !== window) document.documentElement.classList.add('tint-layer');
+    </script>
+    <script src="../tint.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -55,11 +64,11 @@
             <div class="field size-field">
                 <div class="size-step" id="sizeStep">
                     <button type="button" class="step-less" tabindex="-1" title="smaller" aria-label="smaller"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M7 12h10"/></svg></button>
-                    <div class="size-track" id="sizeTrack" role="slider" tabindex="0" title="size" aria-label="size" aria-valuemin="1" aria-valuemax="32"><span class="size-done" id="sizeDone"></span><span class="size-thumb" id="sizeThumb"></span></div>
+                    <div class="size-track" id="sizeTrack" role="slider" tabindex="0" title="size" aria-label="size" aria-valuemin="1" aria-valuemax="64"><span class="size-done" id="sizeDone"></span><span class="size-thumb" id="sizeThumb"></span></div>
                     <button type="button" class="step-more" tabindex="-1" title="bigger" aria-label="bigger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 7v10M7 12h10"/></svg></button>
                 </div>
                 <span class="size-read" id="sizeRead">2px</span>
-                <input type="range" id="brushSize" class="kept-under" min="1" max="32" value="2" tabindex="-1" aria-hidden="true">
+                <input type="range" id="brushSize" class="kept-under" min="1" max="64" value="2" tabindex="-1" aria-hidden="true">
             </div>
 
             <!-- undo and redo, bare marks, the same as ctrl/cmd z and y -->
@@ -181,10 +190,13 @@
                     var at = ' at ' + cx.toFixed(1) + 'px ' + cy.toFixed(1) + 'px)';
                     menu.shapes = { shut: 'circle(' + (dot.width / 2) + 'px' + at, open: 'circle(' + reach + 'px' + at };
                     // then what is in it comes in one after another: the square, the strip, the code
+                    // with the site's colour on they only slide: they are cut out of the colour layer, and a
+                    // part fading in a hole shows the black under it first
                     if (!menu.moving) {
+                        var still = document.documentElement.classList.contains('tinted') ? 1 : 0;
                         Array.prototype.forEach.call(menu.children, function (part, i) {
                             part.animate([
-                                { opacity: 0, transform: 'translateY(8px)' },
+                                { opacity: still, transform: 'translateY(8px)' },
                                 { opacity: 1, transform: 'none' }
                             ], { duration: 360, delay: 110 + i * 70, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' });
                         });
@@ -440,7 +452,13 @@
     <script>
         // framed in the site, the lights change with it
         (function () {
-            var take = function (on) { document.documentElement.classList.toggle('inverted', on); };
+            var take = function (on) {
+                var root = document.documentElement;
+                if (root.classList.contains('inverted') === on) return;
+                root.classList.add('theming');           // the swap is instant: no fade lags behind it
+                root.classList.toggle('inverted', on);
+                requestAnimationFrame(function () { requestAnimationFrame(function () { root.classList.remove('theming'); }); });
+            };
             try {
                 var host = window.parent.document.documentElement;
                 if (host !== document.documentElement) {
@@ -448,9 +466,79 @@
                         .observe(host, { attributes: true, attributeFilter: ['class'] });
                 }
             } catch (error) { /* not ours to read */ }
+            // the page sends the lights and the colour (by message: opened as a file, this page may not
+            // read the page it sits in, and the page may not read this one)
             window.addEventListener('message', function (event) {
-                if (event.origin === location.origin && event.data && typeof event.data.lights === 'boolean') take(event.data.lights);
+                if (event.source !== window.parent || !event.data) return;
+                if (typeof event.data.lights === 'boolean') take(event.data.lights);
+                if ('tint' in event.data && window.siteTint) window.siteTint.apply(event.data.tint);
             });
+
+            // and this page tells the page what must keep its own colours, in this page's own pixels: the
+            // sheet (where it shows inside its box, rounded like it), and over it the corner buttons, any
+            // open window and the inside of it, the colour dot and, while it is open, the colour adjuster
+            if (window.parent === window) return;
+            var holes = function () {
+                // filled even-odd by the page: the sheet is a hole; what puts the layer back over it (a button,
+                // a window, the open adjuster) is cut to the sheet, or the part of it off the sheet would turn
+                // into a hole; what takes the layer out again (a window's inside, the colour square, the dot)
+                // is taken whole
+                var out = [], sheetBox = null;
+                var shown = function (el) { return el && !el.hidden && !el.closest('[hidden], .hidden-window'); };
+                var push = function (l, t, r, btm, round) { if (r > l && btm > t) out.push({ left: l, top: t, width: r - l, height: btm - t, round: round }); };
+                var whole = function (el) {
+                    if (!shown(el)) return;
+                    var b = el.getBoundingClientRect();
+                    push(b.left, b.top, b.right, b.bottom, parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0);
+                };
+                var overSheet = function (el) {
+                    if (!shown(el) || !sheetBox) return;
+                    var b = el.getBoundingClientRect();
+                    push(Math.max(b.left, sheetBox.left), Math.max(b.top, sheetBox.top), Math.min(b.right, sheetBox.right), Math.min(b.bottom, sheetBox.bottom),
+                        parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0);
+                };
+                var box = document.getElementById('canvas-container'), sheet = document.getElementById('paintCanvas');
+                if (box && sheet) {
+                    var b = box.getBoundingClientRect(), c = sheet.getBoundingClientRect(), i = box.clientLeft;
+                    sheetBox = { left: Math.max(b.left + i, c.left), top: Math.max(b.top + i, c.top), right: Math.min(b.right - i, c.right), bottom: Math.min(b.bottom - i, c.bottom) };
+                    push(sheetBox.left, sheetBox.top, sheetBox.right, sheetBox.bottom, Math.max(0, (parseFloat(getComputedStyle(box).borderTopLeftRadius) || 0) - i));
+                }
+                document.querySelectorAll('.corner-buttons button').forEach(overSheet);
+                ['miniWindow', 'miniWindow2'].forEach(function (id) {
+                    var win = document.getElementById(id);
+                    if (!win || win.classList.contains('hidden-window')) return;
+                    overSheet(win);
+                    whole(win.querySelector('#windowContent, .windowContent2'));
+                });
+                whole(document.querySelector('.colour-dot'));
+                var pop = document.querySelector('.tint');
+                if (pop && !pop.hidden) { overSheet(pop); whole(document.getElementById('tintField')); whole(document.getElementById('tintHue')); whole(document.getElementById('tintNow')); }
+                return out;
+            };
+            var last = '';
+            var report = function () {
+                var now = JSON.stringify(holes());
+                if (now === last) return;
+                last = now;
+                window.parent.postMessage({ tintHoles: JSON.parse(now) }, '*');
+            };
+            // after anything that can move them, and every frame for a moment after (menus and windows animate)
+            var until = 0, running = false;
+            var follow = function () {
+                until = performance.now() + 500;
+                if (running) return;
+                running = true;
+                var step = function () { report(); if (performance.now() < until) requestAnimationFrame(step); else running = false; };
+                requestAnimationFrame(step);
+            };
+            ['pointerdown', 'pointerup', 'click', 'input', 'keydown', 'keyup', 'wheel', 'resize'].forEach(function (name) {
+                window.addEventListener(name, follow, { capture: true, passive: true });
+            });
+            window.addEventListener('pointermove', function (event) { if (event.buttons) follow(); }, { capture: true, passive: true });
+            window.addEventListener('mousemove', function (event) { if (event.buttons) follow(); }, { capture: true, passive: true });
+            window.addEventListener('load', follow);
+            if (window.ResizeObserver) new ResizeObserver(follow).observe(document.getElementById('canvas-container'));
+            follow();
             window.addEventListener('storage', function (event) { if (event.key === 'page-inverted') take(event.newValue === 'yes'); });
         })();
     </script>

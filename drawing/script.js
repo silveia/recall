@@ -12,7 +12,7 @@ let charImgUrl = '';
 let isCharImageLoaded = false;
 
 // the sheet is pixel art: every art pixel is PIXEL screen pixels across, and sizes count art pixels
-const PIXEL = 2;      // barely there, by request (8 was far too blocky)
+const PIXEL = 1;      // one art pixel per screen pixel: twice the sheet of 2, by request (8, then 2, came first)
 let penSize = 2;
 let eraserSize = 10;
 let lastCell = null;   // the art pixel the stroke last reached, so a fast stroke is filled in between
@@ -306,6 +306,28 @@ function resizeCanvas() {
     }
 }
 
+// the sheet grows with its box: it used to be sized once, when the page loaded, and a box that grew
+// after (the frame settling, the window made bigger) left a band under it. what is drawn stays exactly
+// where it was, pixel for pixel; the sheet never shrinks, so nothing is ever cut off
+function growCanvas() {
+    if (!canvas.dataset.initialized || !container) return;
+    const cols = Math.max(canvas.width, Math.ceil(container.clientWidth / PIXEL));
+    const rows = Math.max(canvas.height, Math.ceil(container.clientHeight / PIXEL));
+    if (cols === canvas.width && rows === canvas.height) return;
+    const keep = document.createElement('canvas');
+    keep.width = canvas.width;
+    keep.height = canvas.height;
+    keep.getContext('2d').drawImage(canvas, 0, 0);
+    canvas.width = cols;
+    canvas.height = rows;
+    canvas.style.width = `${cols * PIXEL}px`;
+    canvas.style.height = `${rows * PIXEL}px`;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(keep, 0, 0);
+}
+if (window.ResizeObserver && container) new ResizeObserver(growCanvas).observe(container);
+
 window.addEventListener('load', () => {
     resizeCanvas(); 
 
@@ -361,6 +383,9 @@ brushType.addEventListener('change', () => {
 });
 
 const resetTracking = () => {
+    // the stroke runs on to where the pointer actually stopped
+    if (isDrawing && strokePts.length > 1) strokeTo(strokePts[strokePts.length - 1]);
+    strokePts = [];
     isDrawing = false;
     isPanning = false; 
     canvas.style.cursor = isSpacePressed ? 'grab' : 'crosshair';
@@ -434,7 +459,42 @@ canvas.addEventListener('pointerdown', (e) => {
 
     lastCell = cellAt(mouseX, mouseY);
     paintCell(lastCell.x, lastCell.y);
+    strokePts = [artPoint(mouseX, mouseY)];
 });
+
+// a stroke follows the pointer through every position the browser recorded between frames (not just
+// the one it hands over per frame), and runs through them as a smooth curve — a curve through the
+// midpoints, each bent by the point between — so a quick round stroke stays round instead of breaking
+// into straight pieces
+let strokePts = [];
+function artPoint(x, y) {
+    return { x: x * canvas.width / canvas.clientWidth, y: y * canvas.height / canvas.clientHeight };
+}
+function strokeTo(pt) {
+    const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) };
+    if (!lastCell) paintCell(cell.x, cell.y);
+    else if (cell.x !== lastCell.x || cell.y !== lastCell.y) paintLine(lastCell, cell);
+    lastCell = cell;
+}
+function strokeAdd(pt) {
+    strokePts.push(pt);
+    const n = strokePts.length;
+    if (n < 2) return;
+    const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    if (n === 2) { strokeTo(mid(strokePts[0], strokePts[1])); return; }
+    const a = strokePts[n - 3], b = strokePts[n - 2], c = strokePts[n - 1];
+    const from = mid(a, b), to = mid(b, c);
+    const reach = Math.hypot(b.x - from.x, b.y - from.y) + Math.hypot(to.x - b.x, to.y - b.y);
+    const steps = Math.max(1, Math.ceil(reach));          // about one sample per art pixel along it
+    for (let i = 1; i <= steps; i++) {
+        const t = i / steps, u = 1 - t;
+        strokeTo({
+            x: u * u * from.x + 2 * u * t * b.x + t * t * to.x,
+            y: u * u * from.y + 2 * u * t * b.y + t * t * to.y
+        });
+    }
+    if (strokePts.length > 3) strokePts.shift();
+}
 
 // pixel art: the pointer lands on an art pixel, and the brush is a block of whole art pixels round it
 function cellAt(x, y) {
@@ -497,10 +557,11 @@ function draw(e) {
     
     livePoints.push({ x: mouseX, y: mouseY });
 
-    const cell = cellAt(mouseX, mouseY);
-    if (!lastCell) { paintCell(cell.x, cell.y); }
-    else if (cell.x !== lastCell.x || cell.y !== lastCell.y) { paintLine(lastCell, cell); }
-    lastCell = cell;
+    const between = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
+    (between.length ? between : [e]).forEach((one) => {
+        const at = getCanvasCoordinates(one.clientX, one.clientY);
+        strokeAdd(artPoint(at.x, at.y));
+    });
 }
 
 window.addEventListener('pointermove', draw);

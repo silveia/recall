@@ -547,12 +547,106 @@ function unfoldSection(force) {
     unfoldedSection = activeSectionId;
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     homeScreen.getAnimations().forEach((move) => { if (move.id === 'unfold') move.cancel(); });
+    // moved by its position, not by a transform: anything transformed draws a fixed background as its
+    // own, so every gradient fill on the page showed the wrong part of the layer for the length of the
+    // slide — the flash. moved by `top`, the page's fills stay cut from the one layer the whole way
+    // the draw page slides without the fade: its big white sheet fading in over the dark read as the
+    // page going from black to white
+    // the same goes for any page with something cut out of the colour layer (colour pictures in the chat):
+    // a hole fading in shows the black under it first, so those pictures came up out of black
+    const fade = activeSectionId === 'draw' || (document.documentElement.classList.contains('tinted') && tintHoles().length) ? 1 : 0;
     const move = homeScreen.animate([
-        { opacity: 0, transform: `translateY(${way * 40}px)` },
-        { opacity: 1, transform: 'translateY(0)' }
+        { opacity: fade, top: `${way * 40}px` },
+        { opacity: 1, top: '0px' }
     ], { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
     move.id = 'unfold';
 }
+
+// what keeps its own colours is cut out of the colour layer: the drawing on the draw page (the canvas,
+// not the app round it, whose black takes the layer like everything else) and colour pictures in the
+// chat. measured at once — a frame late showed the layer on them first — and every frame while the page
+// slides in, since they move with it
+function tintHoles() {
+    const holes = [];
+    const add = (box) => { if (box && box.width && box.height) holes.push(box); };
+    if (activeSectionId === 'draw' && drawFrame && drawFrame.src) {
+        // the drawing app says where its own holes are (drawFrameHoles, by message, so it works opened as
+        // a file too, where the page may not look inside the frame): the sheet, and what lies on it. they
+        // overlap on purpose — the path is filled even-odd, so a box inside a hole puts the layer back and
+        // a box inside that takes it out again
+        const frame = drawFrame.getBoundingClientRect();
+        drawFrameHoles.forEach((b) => add({ left: frame.left + b.left, top: frame.top + b.top, width: b.width, height: b.height, round: b.round }));
+    }
+    // the site's colour dropdown, while it is open: its colours are the colours themselves
+    // cut only as far down as it has unrolled — opening and closing too, so nothing in it fades
+    const tintBox = document.getElementById('railTint');
+    const tintList = document.getElementById('tintPop');
+    if (tintBox && tintList && getComputedStyle(tintList).visibility === 'visible') {
+        const list = tintList.getBoundingClientRect();
+        const clip = getComputedStyle(tintList).clipPath.split('round')[0].match(/-?[\d.]+(px|%)?/g) || [];
+        const bottom = clip.length ? (clip[2] || clip[0]) : '0px';
+        const cut = bottom.endsWith('%') ? list.height * parseFloat(bottom) / 100 : parseFloat(bottom) || 0;
+        const shown = list.bottom - cut;
+        tintBox.querySelectorAll('.tint-kind-dot, .hue-now, #siteTintField, #siteTintHue').forEach((el) => {
+            if (el.closest('[hidden]')) return;
+            const box = el.getBoundingClientRect();
+            const height = Math.min(box.bottom, shown) - box.top;
+            if (height > 0) add({ left: box.left, top: box.top, width: box.width, height, round: Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, height / 2) });
+        });
+    }
+    if (activeSectionId === 'chat') {
+        document.querySelectorAll('.said-file img, .tray-look img').forEach((img) => {
+            const box = img.getBoundingClientRect();
+            if (box.bottom > 0 && box.top < window.innerHeight) add(box);
+        });
+    }
+    return holes;
+}
+function cutTintHole() {
+    const root = document.documentElement;
+    if (!root.classList.contains('tinted')) { root.style.removeProperty('--tint-hole'); return; }
+    const holes = tintHoles();
+    if (!holes.length) { root.style.removeProperty('--tint-hole'); return; }
+    const w = window.innerWidth + 10, h = window.innerHeight + 10;
+    const n = (v) => v.toFixed(1);
+    const shape = (b) => {
+        const r = Math.min(b.round || 0, b.width / 2, b.height / 2);
+        const x = b.left, y = b.top, x2 = b.left + b.width, y2 = b.top + b.height;
+        if (!r) return ` M${n(x)} ${n(y)}H${n(x2)}V${n(y2)}H${n(x)}Z`;
+        const a = (ex, ey) => `A${n(r)} ${n(r)} 0 0 1 ${n(ex)} ${n(ey)}`;
+        return ` M${n(x + r)} ${n(y)}H${n(x2 - r)}${a(x2, y + r)}V${n(y2 - r)}${a(x2 - r, y2)}H${n(x + r)}${a(x, y2 - r)}V${n(y + r)}${a(x + r, y)}Z`;
+    };
+    root.style.setProperty('--tint-hole', `path(evenodd, 'M0 0H${w}V${h}H0Z${holes.map(shape).join('')}')`);
+}
+// follows the page for the length of its slide
+function cutTintHoleWhileMoving(long) {
+    const until = performance.now() + long;
+    const step = () => { cutTintHole(); if (performance.now() < until) window.requestAnimationFrame(step); };
+    step();
+}
+window.addEventListener('resize', cutTintHole);
+window.addEventListener('site-tint', cutTintHole);
+// the drawing app tells the page where its holes are, and the page tells it the lights and the colour —
+// by message both ways, which works even where neither may reach into the other (opened as a file)
+let drawFrameHoles = [];
+window.addEventListener('message', (event) => {
+    if (!drawFrame || event.source !== drawFrame.contentWindow || !event.data || !Array.isArray(event.data.tintHoles)) return;
+    drawFrameHoles = event.data.tintHoles;
+    cutTintHole();
+});
+function tellDrawFrame() {
+    if (!drawFrame || !drawFrame.contentWindow) return;
+    try {
+        drawFrame.contentWindow.postMessage({
+            lights: document.documentElement.classList.contains('inverted'),
+            tint: window.siteTint ? window.siteTint.read() : null
+        }, '*');
+    } catch (error) { /* not loaded yet */ }
+}
+if (drawFrame) drawFrame.addEventListener('load', () => { tellDrawFrame(); cutTintHole(); });
+window.addEventListener('site-tint', tellDrawFrame);
+document.addEventListener('scroll', () => { if (activeSectionId === 'chat') window.requestAnimationFrame(cutTintHole); }, true);
+document.addEventListener('load', (event) => { if (event.target.tagName === 'IMG') cutTintHole(); }, true);
 
 function renderSections() {
     // show only the panels belonging to the active section
@@ -565,9 +659,16 @@ function renderSections() {
     audioPanel.hidden = activeSectionId !== 'audio';
     chatPanel.hidden = activeSectionId !== 'chat';
     drawPanel.hidden = activeSectionId !== 'draw';
+    // leaving home resets the dino run under it, by request
+    if (activeSectionId !== 'home') {
+        try { document.querySelector('.home-run').contentWindow.dinoReset(); } catch (error) { /* not loaded yet */ }
+    }
     // the drawing app is only loaded the first time its page is shown: loaded while hidden it measures
     // its canvas as nothing, and keeps that size
-    if (activeSectionId === 'draw' && !drawFrame.src) drawFrame.src = drawFrame.dataset.src;
+    // it is told the lights in its address, so it starts in them rather than turning over once loaded
+    if (activeSectionId === 'draw' && !drawFrame.src) {
+        drawFrame.src = drawFrame.dataset.src + (document.documentElement.classList.contains('inverted') ? '#dark' : '');
+    }
     if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
     if (activeSectionId !== 'audio') openSensing(false);
@@ -601,6 +702,7 @@ function renderSections() {
         tab.setAttribute('aria-current', active ? 'page' : 'false');
     });
     unfoldSection();
+    cutTintHoleWhileMoving(480);     // after the slide has started, so the first frame is measured where it is drawn
 }
 
 /* ---------- 5. decks ---------- */
@@ -4491,6 +4593,9 @@ function paintClock() {
     clockDate.textContent = now
         .toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })
         .toLowerCase();
+    // and in figures right under the time, month first: 10 . 14
+    const pad = (n) => String(n).padStart(2, '0');
+    document.getElementById('clockNumDate').textContent = `${pad(now.getMonth() + 1)} . ${pad(now.getDate())}`;
     // the time tile and the board change on the turn of the minute, off this same tick
     if (now.getMinutes() !== clockMinute) { clockMinute = now.getMinutes(); paintKey(); paintWidgets(); }
 }
@@ -4515,6 +4620,7 @@ function paintTheme(on) {
     document.querySelectorAll('.home-run').forEach((frame) => {
         try { frame.contentWindow.postMessage({ lights: on }, window.location.origin); } catch (error) { /* not loaded yet */ }
     });
+    if (typeof tellDrawFrame === 'function') tellDrawFrame();
     themeSwap.setAttribute('aria-pressed', String(on));
     themeSwap.title = on ? 'light' : 'dark';
     themeSwap.setAttribute('aria-label', on ? 'light' : 'dark');
@@ -5244,6 +5350,128 @@ document.getElementById('binnedHead').addEventListener('click', (event) => {
 document.addEventListener('click', (event) => {
     if (!event.target.closest || !event.target.closest('#railBinned')) { railBinned.classList.remove('is-open'); askToEmpty(false); }
 });
+
+// the site's colour: a solid colour or a gradient (two icons), and the drawing page's adjuster for the
+// colour itself — in a gradient, the two little ends choose which one it is changing. each change shows at
+// once across the site and its frames (tint.js does the arithmetic and keeps it)
+const railTint = document.getElementById('railTint');
+const tintPop = document.getElementById('tintPop');
+const tintHead = document.getElementById('tintHead');
+// the solid colour and the gradient are kept apart (tint.js fills out what is kept): the adjuster only
+// ever changes the one on show, so a solid colour never moves the gradient's bottom, nor the other way
+let tintNow = window.siteTint ? window.siteTint.read() : null;
+let tintEnd = 'solid';                                   // which colour the adjuster is changing: solid, or a (the bottom) / b (the top)
+let tintHsv = { h: 0, s: 0, v: 0 };
+const hexToHsv = (hex) => {
+    const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+    const most = Math.max(r, g, b), least = Math.min(r, g, b), d = most - least;
+    let h = 0;
+    if (d) h = most === r ? ((g - b) / d) % 6 : most === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return { h: d ? (h * 60 + 360) % 360 : tintHsv.h, s: most ? d / most : 0, v: most };
+};
+const hsvToHex = ({ h, s: sat, v }) => {
+    const f = (n) => {
+        const k = (n + h / 60) % 6;
+        const c = v - v * sat * Math.max(0, Math.min(k, 4 - k, 1));
+        return `0${Math.round(c * 255).toString(16)}`.slice(-2);
+    };
+    return `#${f(5)}${f(3)}${f(1)}`;
+};
+const tintColourOf = (which) => tintNow[which];
+function paintTint(keepCode) {
+    const mode = tintNow.mode;
+    if (mode === 'solid') tintEnd = 'solid';
+    else if (tintEnd === 'solid') tintEnd = 'a';
+    document.getElementById('tintSolidDot').style.background = tintNow.solid;
+    document.getElementById('tintGradDot').style.background = `linear-gradient(to bottom, ${tintNow.b}, ${tintNow.a})`;
+    tintPop.querySelectorAll('.tint-kind').forEach((one) => one.classList.toggle('is-on', one.dataset.mode === mode));
+    const codes = document.getElementById('tintCodes');
+    codes.classList.toggle('is-pair', mode === 'gradient');
+    codes.querySelectorAll('.hue-code').forEach((one) => {
+        const stop = mode === 'solid' && one.dataset.stop === 'a' ? 'solid' : one.dataset.stop;
+        one.hidden = mode !== 'gradient' && stop === 'b';
+        if (one.hidden) return;
+        one.classList.toggle('is-on', stop === tintEnd);
+        one.querySelector('.hue-now').style.background = tintColourOf(stop);
+        const field = one.querySelector('input');
+        if (!(keepCode && stop === tintEnd) && document.activeElement !== field) field.value = tintColourOf(stop).slice(1);
+    });
+    const hex = tintColourOf(tintEnd);
+    if (hsvToHex(tintHsv) !== hex.toLowerCase()) tintHsv = hexToHsv(hex);
+    document.getElementById('siteTintField').style.setProperty('--hue', `hsl(${tintHsv.h}, 100%, 50%)`);
+    const ring = document.getElementById('siteTintRing');
+    ring.style.left = `${tintHsv.s * 100}%`;
+    ring.style.top = `${(1 - tintHsv.v) * 100}%`;
+    document.getElementById('siteHueRing').style.left = `${tintHsv.h / 360 * 100}%`;
+    cutTintHoleWhileMoving(60);
+}
+function keepTint(next, keepCode) {
+    tintNow = next;
+    window.siteTint.save(next);
+    paintTint(keepCode);
+}
+// the adjuster changed the colour it is on
+function tintFromHsv(keepCode) {
+    keepTint({ ...tintNow, [tintEnd]: hsvToHex(tintHsv) }, keepCode);
+}
+// the colour list unrolls down out of the strip and rolls back up, from wherever it is — never faded
+// (its colours are cut out of the layer, and a fade there came up out of black)
+const TINT_SHUT = 'inset(0px 0px 100% round 18px)', TINT_OPEN = 'inset(0px 0px 0% round 18px)';
+let tintRoll = null;
+function rollTintList(open) {
+    const from = tintRoll ? getComputedStyle(tintPop).clipPath : (open ? TINT_SHUT : TINT_OPEN);
+    if (tintRoll) tintRoll.cancel();
+    tintRoll = tintPop.animate([{ clipPath: from }, { clipPath: open ? TINT_OPEN : TINT_SHUT }],
+        { duration: open ? 240 : 170, easing: open ? 'cubic-bezier(0.2, 0.8, 0.3, 1)' : 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' });
+    const roll = tintRoll;
+    roll.onfinish = () => { if (tintRoll === roll && open) { roll.cancel(); tintRoll = null; } };
+}
+if (window.siteTint) {
+    const setOpen = (open) => {
+        railTint.classList.toggle('is-open', open);
+        tintHead.setAttribute('aria-expanded', String(open));
+        if (open) paintTint();
+        rollTintList(open);
+        cutTintHoleWhileMoving(420);     // the colours in it keep their colours while it drops in and out
+    };
+    tintHead.addEventListener('click', (event) => { event.stopPropagation(); setOpen(!railTint.classList.contains('is-open')); });
+    tintPop.addEventListener('click', (event) => event.stopPropagation());
+    document.addEventListener('click', () => { if (railTint.classList.contains('is-open')) setOpen(false); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && railTint.classList.contains('is-open')) setOpen(false); });
+    tintPop.querySelectorAll('.tint-kind').forEach((one) => one.addEventListener('click', () => {
+        if (one.dataset.mode !== tintNow.mode) keepTint({ ...tintNow, mode: one.dataset.mode });
+    }));
+    const drag = (el, take) => {
+        const at = (event) => {
+            const box = el.getBoundingClientRect();
+            take(Math.max(0, Math.min(1, (event.clientX - box.left) / box.width)), Math.max(0, Math.min(1, (event.clientY - box.top) / box.height)));
+            tintFromHsv();
+        };
+        el.addEventListener('pointerdown', (event) => { event.preventDefault(); el.setPointerCapture(event.pointerId); at(event); });
+        el.addEventListener('pointermove', (event) => { if (el.hasPointerCapture(event.pointerId)) at(event); });
+    };
+    drag(document.getElementById('siteTintField'), (x, y) => { tintHsv.s = x; tintHsv.v = 1 - y; });
+    drag(document.getElementById('siteTintHue'), (x) => { tintHsv.h = Math.min(359.9, x * 360); });
+    // pressing either code is choosing that end; typing in it changes it
+    tintPop.querySelectorAll('.hue-code').forEach((one) => {
+        const code = one.querySelector('input');
+        const stopOf = () => (tintNow.mode === 'solid' ? 'solid' : one.dataset.stop);
+        const pick = () => { if (tintEnd !== stopOf()) { tintEnd = stopOf(); tintHsv = hexToHsv(tintColourOf(tintEnd)); paintTint(); } };
+        one.addEventListener('pointerdown', pick);
+        code.addEventListener('focus', pick);
+        code.addEventListener('input', () => {
+            let typed = code.value.replace(/[^0-9a-f]/gi, '').slice(0, 6);
+            if (typed !== code.value) code.value = typed;
+            if (typed.length === 3) typed = typed.split('').map((c) => c + c).join('');
+            if (typed.length !== 6) return;
+            tintHsv = hexToHsv(`#${typed.toLowerCase()}`);
+            tintFromHsv(true);
+        });
+        code.addEventListener('blur', () => { code.value = tintColourOf(stopOf()).slice(1); });
+    });
+    window.addEventListener('site-tint', () => { tintNow = window.siteTint.read(); paintTint(); });
+    paintTint();
+}
 
 helpToggle.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -8292,6 +8520,7 @@ function paintTalk() {
     });
 
     talkLog.scrollTop = stuck ? talkLog.scrollHeight : was;
+    cutTintHole();      // colour pictures keep their colours
 }
 
 function saidAt(ms) {

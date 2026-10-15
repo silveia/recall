@@ -175,10 +175,12 @@ and redo as bare marks — all by request; it has no word labels. Spawning with
 no sprite drops a small chip under the button pointing at `upload sprite`, instead of an
 alert. Coins land with their middle 60px inside the fence, so every one can be reached.
 The game window is called `yams` and has no full-screen button. Both little windows have a black head bar with white words and marks, and **cannot be dragged off the page** (`keepInside`): dragging, coming back from storage, opening, and the page shrinking all hold them inside its edges. **The sheet is pixel art** (by request): the canvas holds one pixel per art pixel
-(`PIXEL` = 2 screen pixels across — barely noticeable, by request; 8 was far too blocky) and is shown big with `image-rendering: pixelated`.
+(`PIXEL` = 1 screen pixel across — the sheet doubled again by request; 8 was far too blocky, then 2) and is shown big with `image-rendering: pixelated`.
 The brush paints whole art pixels — a round block `size` across, each row one
 `fillRect`, gaps between pointer events filled in with a line walk — so nothing is
-ever blended. Sizes count art pixels (1–32), and the readout beside the size pill
+ever blended. A stroke takes **every pointer position the browser recorded** (`getCoalescedEvents`),
+not one a frame, and runs through them as a smooth curve through the midpoints — a quick round stroke
+used to break into straight pieces. Sizes count art pixels (1–64), and the readout beside the size pill
 (`5px`) is exactly the brush's width in them. Stamps land hard-edged too. The size
 is a slider with `−` and `+` at its two ends and no outline round them (by request) (by request — a fill-up pill and a
 stepper were both tried): a hairline with a solid round thumb — the stretch behind the thumb 3px, bolder than the 1px ahead, by request — dragged or pressed anywhere; held,
@@ -1519,6 +1521,19 @@ The top-left corner is left empty, for a title later.
 
 **All of the top strip's styles are in one place, section 22 of the stylesheet** (13 Oct): it used to be a base layer for the old left bar with three layers of overrides on top, including a `.topbar *` rule forcing every word to 1rem. The page marks are plain `.section-tab` rules; the old word-tab styles are gone. Things that open from the strip (help's note, the bin's list, the search results) raise it with one rule, `.topbar:has(.is-open)`.
 
+**Help (the turning question mark) sits at the strip's left beside `hi`**, 28px off it, its note hanging from its left edge; the colour dot takes its old place right of the time; **the bin sits right up against the search** (4px). **The date sits right under the time in figures, `MM . DD`** (Amiko, bold, small — the one number not in VT323, by request (Pixelify was tried); the worded date is hidden). **The date is hidden from the strip, and the half of the day sits right over the time**, small, in
+capitals (`.time-stack`, by request). **The colour dropdown is icons only** (by request): a solid dot on
+the left and a gradient dot on the right (the one in use ringed), and under them the drawing page's
+adjuster — a square for shade and brightness, a hue strip, the code; in a gradient both ends' codes
+share that bottom row (by request — they fit), the top's on the left, and pressing one is choosing
+which end the adjuster changes (ringed). A gradient chosen for the first time starts as
+makoto. Its colours are cut out of the colour layer while it is open, so they show as themselves.
+**The strip, rearranged (14 Oct, by request; this replaces the placements below):** the **time sits
+on the strip's exact centre** — the half of the day, the date and the moon to its left (the moon still
+halfway between the date and the time), help and the colour dot to its right; the two sides share the
+leftover room equally, which is what centres the time (`.strip-middle`, laid over the whole strip). The
+**bin and the search sit at the right end**, the search narrowed to 20rem so the middle keeps its room.
+
 **The site's name is `hi`**, in that corner (`#siteName`, a link to `home/` that switches to home in place): Bitcount, bold, 1.6rem, centred over the marks' column in the black strip. It is italic, by request (bitcount has no italic of its own, so the browser slants it). By request it and the pages' names that slide out of the bumps (`.tab-tip`) are bold too, alongside the section tabs. Everything else on the strip (clock, function, storage, bin) sits at its **right** end, by request. Nothing on the strip has an outline — the clock is no longer a white pill, it is the strip's own black — and the time is the very last thing at the right (half of the day, date, then the moon exactly halfway between the date and the time, by request). Every word on the strip is Amiko at 1rem, the time alone excepted (it keeps VT323). The `function` pill is now **a question mark** — no ring, 21px, always turning clockwise (4s a turn, as a `transform` on a plain `.help-spin` box round the svg, which the graphics card runs on its own: turned on the svg itself it was restyled by the page every frame, forever — about 60 style recalculations a second on every page, and the main cause of other animations dropping frames), drawn dead centre in its viewBox (measured: ink 12.00 / 12.00); the words on the strip (amount, half of the day, date) are **not** dropped by `--drop` — they are lowercase, the eye centres lowercase on its x-height, and amiko's x-height already sits on the strip's middle; dropped to level the capitals they read as low. The half of the day had a leftover 1px nudge from the old tile, taken out so it turns on the spot, by request (`#helpToggle`, labelled `help`) and doesn't turn white when open; its note hangs **centred under the mark** and drops in (a 6px fall, a fade and a slight growth from its top, 0.32s; back in 0.3s, eased both ends; the strip keeps its raised z-index for those 0.3s, since dropping it at once hid the note behind the page mid-fade); the old drawer's `grid-template-rows` fold is pinned open up here, since it snapped shut on close and clipped the words away before the note had faded, folding on any press anywhere else (a capturing `pointerdown`, so buttons that keep their clicks still fold it) or when the window loses focus, as **one line, always** (`nowrap`, no width cap — the pill grows sideways however long the note; 0.82rem type); its words are brought down by `--drop` + 0.9px so they sit level in the pill (measured: 18.1 against a middle of 18.0); **storage is gone from the strip** (by request), and its code with it; the places that repainted it repaint the board's tiles instead (`paintWidgets`). **The bin is a mark** — a plain bin icon (a lid, a handle, a tapering body), always there, first of the right-hand things, with how many are binned as a small white disc on its bottom-right corner, the figure tiny and black in VT323 (laid over the mark, so the mark never moves) — whose list hangs **the way help's note does** (the two share one drop-in rule) — centred under the mark, a `--group` below the strip, 0.82rem centred words, a pill-round box, the same drop-in and fade-out — 18rem wide: a small `empty` at its top centre, and under it **a little outlined box of its own** holding the binned things, with room for three and a half — every binned thing is listed and the box scrolls, on a thin white bar. It is the same size with nothing in it; the box then says `nothing`, small, in its middle. A row is the thing's name on the left and two bare marks on the right, **put back** (a curled arrow) and **delete for good** (a cross, one thing at a time, no ask); pressing the name does nothing. The `empty` button was taken out, by request. (It is back as `empty` at the list's top.) **Pressing `empty` asks in place**, by request: the confirm chip opened behind the bin's own list, so it is gone, and the pill instead splits into two pills of the same height and outline sliding out of its middle — a cross that keeps it on the left and a tick that empties the bin on the right (`askToEmpty`). Closing the list puts the pill back. **Only the centre splits**: the halves start exactly on the pill's outline and their outer ends never move. Each half pinches once, softly, as it parts and overshoots a touch as it settles (scripted with `animate`, 480ms — an alternating squash read as a shake), its inner edge grows from no width (a fading colour went through gray, and a transparent edge notched the seam), and then each mark pops in on its own. Cancel has its own motion, not the opening reversed (reversed, the spring became a jerk): the marks shrink away, the halves glide back together on a plain ease from wherever they are, and the word fades in as they meet. The halves' outer radius is half their height, not 999px — a huge radius scales the inner one down to nothing. The site's press boing is off on them: its scale replaced their slide. The time is VT323, raised 1.25px to level with the date's figures, and counts **seconds** (`09:55:52`) and sits 1.4rem off the date; the clock ticks on the turn of each second, while the board's tiles still only repaint on the minute (`clockMinute`). **The strip is 52px now**, a little shorter than a bump by request, and the bumps start at its foot (`background-position: 0 var(--topbar)` on both wave layers) rather than at the window's top, so a dip still lands right where the strip ends. In the dark the strip's foot carries a white line from that dip rightwards (`html.inverted .topbar::after`), never over the bumps.
 
 ## The pages are marks (a layout test, not pushed)
@@ -2033,6 +2048,54 @@ Verified end to end on the proxied machine, two separate browsers:
 sealed both ways, each read the other's, and from outside the board the
 messages are opaque base64 with none of the words in them.
 
+## The site's colour
+
+By request, black can become any colour, or a gradient. **`tint.js`** (loaded in the head of the
+site, the front door and the drawing app, so nothing is drawn black first) keeps the choice in
+`localStorage['site-tint']` and writes two tokens on the root: **`--tint-main`**, what black words and
+outlines become — the colour, or the darker end of a gradient, darkened and saturated a touch until it
+reads on white — and **`--tint-fill`**, what the **big black backgrounds** become: the colour, or the gradient laid
+over the whole window (`fixed`) — the bar, its bumps, the strip, the names out of the bumps — so they
+share one layer; **`--tint-grad`** is the same gradient sized to its own box, for the log-in card.
+**Everything else is two colours, white and the dark one, solid** (by request): buttons, words,
+outlines, pops — `--ink-fill` / `--paper-fill` fill with `--tint-main`, and a hover only ever swaps
+those two. **One layer over everything (this replaces the token approach below for the site and the front door,
+by request: "it's all supposed to blend with the gradient and match with the back").** Pages that opt in
+(`<html class="tint-layer">`: the site and the front door) keep every black thing black underneath —
+`--tint-main`, `--tint-fill` and `--tint-grad` are forced to black — and lay the colour or gradient over the
+whole window (`body::after`, fixed, `mix-blend-mode: lighten`, no pointer events): black becomes the
+layer, white stays white, so words, outlines, marks and fills all show exactly the part of the gradient
+behind them. Nothing carries a gradient of its own, so nothing shows the wrong part while it moves — the
+flash a page slide gave is gone. What keeps its own colours is **cut out of the layer** (`--tint-hole`, a clip with a hole per
+thing, `tintHoles()`): the white sheet on the draw page — only the sheet, where it shows inside its box (in the dark the box round it is black and takes the layer), following pans and zooms; the drawing app's black is
+black underneath (`tint-layer` when framed) and takes the layer like the rest — and colour pictures in
+the chat. **The drawing app reports its own holes, by message** (`tintHoles` posted to the page; the page sends
+back the lights and the colour) — opened as a file the page may not look inside the frame, and the whole
+frame was cut out and left black and white. What puts the layer back over the sheet (a button, a window,
+the open adjuster) is cut to the sheet, or the part of it off the sheet became a hole. **The sheet grows
+with its box** (`growCanvas`, a ResizeObserver, keeping every pixel where it was): sized once at load, a
+box that grew after left a band under it, black in the dark. Each hole is rounded like the thing it is for (a square hole round the round colour dot or the canvas's corners showed black). The holes are measured at once and every frame while the page slides (a hole a frame late, or
+left behind by the slide, was the glitch going from chat to draw), and again on scroll, resize, a
+picture loading and the thread redrawing. The front door framed on home has no layer of its own — two
+layers drew the wrong part of the gradient.
+**Temporarily, by request, fills show the fixed gradient again** (`--ink-fill` / `--paper-fill` = `--tint-fill`, each marked TEMPORARY in the stylesheet; solid was `--tint-main`). The log-in boxes and the strip's search are see-through. A fixed gradient on things inside the page flickered for a moment as the page slid in (a
+moving box draws its fixed background wrong), which is why the gradient keeps to the big backgrounds. Every place that swaps the two colours (the strip, the page marks, the log-in card,
+the dark mode) defines both fills too. **The bumps are cut with masks now**, the bar under them and
+the ::after past it, because a black picture cannot take a colour. **Presets: black, and makoto**
+(#0305b6 at the bottom, #02cdff at the top). The adjuster is a dot in the strip, right of help; it
+drops a list like the bin's — presets, solid or gradient, and a circle per colour that opens the picker.
+Frames follow through storage events.
+**The solid colour and the gradient are kept apart** (`{ mode, solid, a, b }`, 14 Oct): changing one
+never moves the other — the solid colour used to be the gradient's bottom, and switching reset the top —
+and switching brings each back as it was left. **Nothing kept means a solid `#314444`** (by request).
+**The layer is blended with `screen`, not `lighten`**: black still becomes the layer and white stays
+white, but a grey becomes the layer that much lighter, so placeholders and the chat's times read as the
+colour at a lower strength (in a gradient, its own part of it, lighter) rather than as grey.
+**Nothing that is cut out of the layer may fade** (14 Oct): under a hole is plain black, so a fade there
+came up out of black. The colour list **unrolls** down out of the strip instead (`rollTintList`, a clip,
+240ms / 170ms back), its holes cut only as far as it shows; a page with holes on it (draw, chat with
+colour pictures) slides in without the fade; and with a colour on, the drawing adjuster's parts only slide.
+
 ## The front door
 
 **The site's pointer is set inline in `app.html`'s head**, before
@@ -2060,7 +2123,7 @@ first and grown after, by script: done with CSS `:hover` it started
 growing before the pointer's position was known, which is why it
 seemed to come from the middle. It listens for the first move as well
 as the enter event. Don't name anything in that script `ink` — the game
-already uses it for its colour, and the clash stopped the whole page. One press after a crash both resets and runs
+already uses it for its colour, and the clash stopped the whole page. **Cacti are never closer than a jump can clear and land from with room to jump again** — the world's travel in one jump's air time at the current speed, plus a third, plus both widths, then a random stretch (they could come a jump apart at speed). **Leaving home resets the run** under it (`window.dinoReset`). One press after a crash both resets and runs
 (it used to take two, which felt like a glitch). Space, up or a tap jumps; the best
 score is kept under `front-dino` — written the moment it is beaten, so a refresh mid-run keeps it, and shared live (`storage` event) between the front door and the run framed under the home board. It belongs to the browser, not to a chat account. It is all inline in `index.html` and
 does not load `style.css`, so the two cursor tokens are **copied** in

@@ -34,12 +34,26 @@
    1. tokens
    ========================================================= */
 :root {
+	/* the site's colour (the adjuster in the strip, siteTint() in app.html's head): --tint-main is what
+	   black text and outlines become, --tint-fill what black fills become — a colour, or a gradient laid
+	   over the whole window (fixed), so every filled thing shows its own part of one layer. both are
+	   plain black until a colour is chosen */
+	--tint-main: #000;
+	--tint-fill: #000;
+	--tint-top: #000;    /* the colour at the top of the window: what the strip shows */
+	--tint-grad: #000;   /* the same gradient sized to the box it fills, for a big box inside the page (the log-in card) */
 	--paper: #ffffff;
-	--ink: #000;
+	--ink: var(--tint-main);
+	/* fills: whichever of the two tokens is the black one fills with the dark colour, solid. the gradient
+	   is kept for the big backgrounds only — the bar and its bumps, the strip, the names out of the bumps,
+	   the log-in card — by request: a fixed gradient on things inside the page flickered as a page slid in
+	   (a moving box draws its fixed background wrong for a moment), and buttons read better solid */
+	--ink-fill: var(--tint-fill);   /* TEMPORARY, by request: fills show the fixed gradient again (solid was var(--tint-main)) */
+	--paper-fill: var(--paper);
 	--muted: #8a8a8a;   /* placeholder text only */
 	--hover: #f1f1f1;   /* tinted hover surface */
-	--line: #000;
-	--bar: #000;
+	--line: var(--tint-main);
+	--bar: var(--tint-fill);
 	--bar-ink: #ffffff;
 	--col: 34rem;      /* max width of the content column */
 	/* each bump is an arc of a circle (radius 37.5 of the tile's 39, so about 38.5px); the bar is as
@@ -74,8 +88,10 @@
 }
 
 html.inverted {
-	--paper: #000;
+	--paper: var(--tint-main);
 	--ink: #ffffff;
+	--paper-fill: var(--tint-fill);   /* TEMPORARY: the gradient (solid was var(--tint-main)) */
+	--ink-fill: var(--ink);
 	--line: #ffffff;
 	--hover: #151515;
 }
@@ -107,7 +123,7 @@ html { cursor: var(--cur-dot); }
 	max-width: 18rem;
 	padding: calc(0.3rem + var(--drop)) 0.7rem calc(0.3rem - var(--drop));
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: 999px;
 	font-size: 0.75rem;
 	line-height: 1.3;
@@ -153,7 +169,7 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 body {
 	margin: 0;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	font-family: var(--font);
 	font-size: 1rem;
 	line-height: 1.5;
@@ -177,7 +193,7 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 700; }
 
 :focus, :focus-visible { outline: none; }
 
-::selection { color: var(--paper); background: var(--ink); }
+::selection { color: var(--paper); background: var(--ink-fill); }
 
 .app-content, .rail, #recordingList, .sense-controls,
 .deck-list-slot, #cardList, #deckCardList {
@@ -190,7 +206,7 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 700; }
    scrollbar-width on a box that should show it — chrome then ignores all of this */
 ::-webkit-scrollbar { width: 6px; height: 6px; background: none; }
 ::-webkit-scrollbar-track { background: none; margin: 8px; }
-::-webkit-scrollbar-thumb { background: var(--ink); background-clip: padding-box; border: solid transparent; border-width: 0 4px 0 1px; }
+::-webkit-scrollbar-thumb { background: var(--ink-fill); background-clip: padding-box; border: solid transparent; border-width: 0 4px 0 1px; }
 ::-webkit-scrollbar-thumb:horizontal { border-width: 1px 0 4px 0; }
 ::-webkit-scrollbar-corner, ::-webkit-resizer { background: none; }
 .app-content::-webkit-scrollbar,
@@ -215,6 +231,28 @@ button, summary {
 	100% { transform: scale(1, 1); }
 }
 button.boing { animation: button-boing 0.22s var(--ease); }
+/* the site's colour is ONE layer over the whole window (by request: everything black — words, outlines,
+   marks, fills — shows the gradient, each matching exactly the part of the gradient behind it). underneath,
+   black stays black; the layer lies over everything, blended to screen, so black becomes the layer,
+   white stays white, and every grey in between becomes the layer that much lighter — a placeholder or a
+   faint time reads as the colour at a lower strength, never as a grey (lighten turned greys grey). nothing on the page carries a gradient of its own, so nothing can show the wrong part
+   of it while it moves — the flash is gone by construction. the drawing page is cut out of it
+   (--tint-hole), so a drawing keeps its own colours */
+html.tint-layer.tinted {
+	--tint-main: #000 !important;
+	--tint-fill: #000 !important;
+	--tint-grad: #000 !important;
+}
+html.tint-layer.tinted body::after {
+	content: '';
+	position: fixed;
+	inset: 0;
+	z-index: 2147483000;
+	background: var(--tint-layer);
+	mix-blend-mode: screen;
+	pointer-events: none;
+	clip-path: var(--tint-hole, none);
+}
 
 .square-button:active, .deck-card:active { transform: none; }
 
@@ -296,13 +334,17 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	z-index: 3;
 	width: var(--wave-w);
 	pointer-events: none;
-	background-color: var(--paper);
-	background-image:
-		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E"),
-		linear-gradient(var(--bar), var(--bar));
-	background-repeat: repeat-y, no-repeat;
-	background-size: var(--wave-w) var(--wave-h), calc(var(--wave-w) * 6 / 39) 100%;   /* the strip that hides the seams stops exactly at the dips: any wider and it poked out of each inner corner */
-	background-position: 0 var(--topbar), 0 0;   /* the first bump starts at the strip's foot, not the window's top */
+	/* the bumps, filled from the site's one colour layer and cut to their shape with a mask (they used
+	   to be black pictures, which a colour cannot reach); the bar under them is cut the same way */
+	background: var(--tint-fill);
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E"), linear-gradient(#000, #000);
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E"), linear-gradient(#000, #000);
+	-webkit-mask-repeat: repeat-y, no-repeat;
+	mask-repeat: repeat-y, no-repeat;
+	-webkit-mask-size: var(--wave-w) var(--wave-h), calc(var(--wave-w) * 6 / 39) 100%;
+	mask-size: var(--wave-w) var(--wave-h), calc(var(--wave-w) * 6 / 39) 100%;   /* the strip that hides the seams stops exactly at the dips: any wider and it poked out of each inner corner */
+	-webkit-mask-position: 0 var(--topbar), 0 0;
+	mask-position: 0 var(--topbar), 0 0;   /* the first bump starts at the strip's foot, not the window's top */
 	clip-path: inset(0 calc(var(--wave-w) / 2 - var(--wave-out) - 1px) 0 0);
 }
 
@@ -335,6 +377,16 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: 0 0 var(--rail);
 	overflow: hidden;
 	background: var(--bar);   /* the black column the bumps hang off; the page marks ride over it */
+	/* its right-hand stretch is carved into the bumps' dips: whole up to the strip at the dips, and
+	   bump-shaped past it (the paper used to be painted over it instead, which a colour layer can't do) */
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E"), linear-gradient(#000, #000);
+	mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='39' height='66' viewBox='0 0 39 66'%3E%3Cpath d='M0 0 H6 A 37.5 37.5 0 0 1 6 66 H0 Z' fill='%23000'/%3E%3C/svg%3E"), linear-gradient(#000, #000);
+	-webkit-mask-repeat: repeat-y, no-repeat;
+	mask-repeat: repeat-y, no-repeat;
+	-webkit-mask-size: var(--wave-w) var(--wave-h), calc(var(--rail) - var(--wave-w) / 2 + var(--wave-w) * 6 / 39) 100%;
+	mask-size: var(--wave-w) var(--wave-h), calc(var(--rail) - var(--wave-w) / 2 + var(--wave-w) * 6 / 39) 100%;
+	-webkit-mask-position: calc(var(--rail) - var(--wave-w) / 2) var(--topbar), 0 0;
+	mask-position: calc(var(--rail) - var(--wave-w) / 2) var(--topbar), 0 0;
 }
 
 .app-body {
@@ -435,7 +487,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: min(34rem, 100%);
 	max-height: 100%;
 	padding: var(--group) var(--gap) var(--gap);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -487,7 +539,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	align-self: center;
 	padding: calc(0.65rem + var(--drop)) min(1.5rem, 10%) calc(0.65rem - var(--drop));
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border: 1px solid var(--ink);
 	border-radius: 999px;
 	font-weight: 600;
@@ -500,19 +552,19 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 .basic-button.is-solid {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--ink);
 }
 .basic-button.is-solid:disabled { cursor: var(--cur-dot); }
 
 .basic-button.is-plain {
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border-color: var(--ink);
 }
 .basic-button.is-plain:hover, .basic-button.is-plain:focus-visible {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 }
 
 .empty-message {
@@ -572,7 +624,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: var(--field);
 	height: var(--field);
 	padding: 0;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	line-height: 1;
@@ -580,7 +632,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 }
 .square-button:hover {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--ink);
 }
 
@@ -590,7 +642,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-width: 0;
 	height: var(--field);
 	padding: 0 0.75rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -599,10 +651,10 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 .square-button.is-solid {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--ink);
 }
-.square-button.is-solid:hover { color: var(--ink); background: var(--paper); }
+.square-button.is-solid:hover { color: var(--ink); background: var(--paper-fill); }
 
 .share-picker { position: relative; z-index: 30; flex: none; }
 
@@ -615,7 +667,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 28rem;
 	max-width: calc(var(--vw, 1vw) * 78);
 	padding: var(--tight);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -634,7 +686,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	box-sizing: border-box;
 	height: var(--field);
 	padding: calc((var(--field) - 2px - 0.8rem * 1.4) / 2) 0.7rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-size: 0.8rem;
@@ -775,17 +827,17 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: 0.7rem;
 	width: 100%;
 	padding: 0.6rem 0.7rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	text-align: left;
 	cursor: var(--cur-tap);
 	transition-property: color, background-color, border-color;   /* a drag moves it by transform */
 }
-.deck-card:hover { color: var(--paper); background: var(--ink); }
+.deck-card:hover { color: var(--paper); background: var(--ink-fill); }
 .deck-card.active-deck {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--ink);
 	cursor: var(--cur-dot);
 }
@@ -794,12 +846,12 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	position: relative;
 	z-index: 2;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	will-change: transform;
 }
-.deck-card.active-deck.is-lifted { color: var(--paper); background: var(--ink); }
+.deck-card.active-deck.is-lifted { color: var(--paper); background: var(--ink-fill); }
 
-.sorting-rows .deck-card:not(.active-deck):hover { color: var(--ink); background: var(--paper); }
+.sorting-rows .deck-card:not(.active-deck):hover { color: var(--ink); background: var(--paper-fill); }
 
 .deck-shape {
 	display: grid;
@@ -822,7 +874,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-width: 0;
 	min-height: 0;
 	padding: var(--tight);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -860,7 +912,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: 0.75rem;
 	margin: 0;
 	padding: 0.6rem 0.7rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -933,7 +985,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .stage-card.is-lifted {
 	position: relative;
 	z-index: 2;
-	background: var(--paper);
+	background: var(--paper-fill);
 	outline: 1px solid var(--line);
 	outline-offset: -1px;
 	will-change: transform;
@@ -1046,14 +1098,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .deck-card.is-renaming {
 	cursor: var(--cur-dot);
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--ink);
 }
 .deck-inline-input {
 	flex: 1;
 	min-width: 0;
 	padding: 0.5rem 0.4rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--ink);
 	border-radius: 6px;
 	font-weight: 600;
@@ -1078,13 +1130,13 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	gap: 0.2rem;
 	min-height: 0;
 	padding: calc(0.7rem + 5px) 1rem 0.7rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	cursor: var(--cur-tap);
 	transition: transform var(--quick) var(--ease);
 }
-.quick-action.primary { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.quick-action.primary { color: var(--paper); background: var(--ink-fill); border-color: var(--ink); }
 
 .quick-action:hover { transform: translateY(-4px); }
 .quick-action:active { transform: translateY(-1px); }
@@ -1177,7 +1229,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 100%;
 	height: var(--field);
 	padding: 0 0.8rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -1216,7 +1268,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	margin: 0;
 	padding: 0 0.25rem 0 0.25rem;
 	overflow-y: auto;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	list-style: none;
@@ -1268,7 +1320,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .square-button.is-packing .icon-pause { display: block; }
 
 .square-button:disabled { cursor: var(--cur-dot); }
-.square-button:disabled:hover { color: var(--ink); background: var(--paper); }
+.square-button:disabled:hover { color: var(--ink); background: var(--paper-fill); }
 .square-button:disabled:active { transform: none; }
 
 #cardList .card-item {
@@ -1304,7 +1356,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	margin: 0;
 	padding: 1.5rem 1.25rem;
 	overflow-y: auto;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-size: clamp(1.3rem, calc(var(--vw, 1vw) * 4), 2.1rem);
@@ -1351,7 +1403,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	padding: 1rem 1.25rem;
 	font-size: 1.05rem;
 	text-align: center;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-weight: 600;
@@ -1363,18 +1415,18 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .answer-button:nth-child(2) { animation-delay: 0.07s; }
 .answer-button:nth-child(3) { animation-delay: 0.12s; }
 .answer-button:nth-child(4) { animation-delay: 0.17s; }
-.answer-button:hover { color: var(--paper); background: var(--ink); }
+.answer-button:hover { color: var(--paper); background: var(--ink-fill); }
 
 .answer-button:active:not(.correct):not(.incorrect) {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	transform: none;
 }
 .answer-button.correct:hover, .answer-button.incorrect:hover { color: inherit; background: inherit; }
 
 .answer-button.correct {
 	color: var(--ink);
-	background: var(--paper);      /* white, by request, so the tick drawn over it stands out */
+	background: var(--paper-fill);      /* white, by request, so the tick drawn over it stands out */
 	border-color: var(--ink);
 }
 .answer-button.correct:not(.is-right) { animation: pop 0.35s var(--ease); }
@@ -1383,7 +1435,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .answer-button.correct:not(.is-right),
 .answer-button.correct:not(.is-right):hover {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--ink);
 }
 
@@ -1431,14 +1483,14 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 .answer-button.incorrect {
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border-color: var(--ink);
 	animation: wrong-knock 0.5s ease-in-out forwards;
 }
 @keyframes wrong-knock {
-	0%   { transform: none; color: var(--paper); background: var(--ink); }
-	14%  { transform: translateX(-5px); color: var(--paper); background: var(--ink); }
-	30%  { transform: translateX(4px); color: var(--ink); background: var(--paper); }
+	0%   { transform: none; color: var(--paper); background: var(--ink-fill); }
+	14%  { transform: translateX(-5px); color: var(--paper); background: var(--ink-fill); }
+	30%  { transform: translateX(4px); color: var(--ink); background: var(--paper-fill); }
 	46%  { transform: translateX(-3px); }
 	62%  { transform: translateX(2px); }
 	100% { transform: scale(0.97); }
@@ -1467,7 +1519,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	z-index: 60;
 	width: 11rem;
 	padding: 0.3rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
@@ -1519,7 +1571,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 17rem;
 	max-width: calc(var(--vw, 1vw) * 78);
 	padding: 0.8rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -1532,20 +1584,20 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .confirm-answers .chip-button { flex: 1; }
 .chip-button {
 	padding: 0.25rem 0.85rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font-size: 0.85rem;
 	font-weight: 700;
 	cursor: var(--cur-tap);
 }
-.chip-button:hover { color: var(--paper); background: var(--ink); }
-#confirmChipYes { color: var(--paper); background: var(--ink); }
-#confirmChipYes:hover { color: var(--ink); background: var(--paper); }
+.chip-button:hover { color: var(--paper); background: var(--ink-fill); }
+#confirmChipYes { color: var(--paper); background: var(--ink-fill); }
+#confirmChipYes:hover { color: var(--ink); background: var(--paper-fill); }
 
 .square-button.is-armed {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--ink);
 }
 
@@ -1604,7 +1656,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	height: var(--field);
 	padding: calc(var(--drop) * 2) 0.9rem 0;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font: inherit;
@@ -1612,7 +1664,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	cursor: var(--cur-tap);
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
-.bundle-one:hover { color: var(--paper); background: var(--ink); }
+.bundle-one:hover { color: var(--paper); background: var(--ink-fill); }
 .bundle-one strong {
 	flex: 1;
 	min-width: 0;
@@ -1665,7 +1717,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	height: var(--field);
 	padding: 0 0.75rem;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font: inherit;
@@ -1700,7 +1752,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	margin: 0;
 	padding: calc(0.3rem + var(--drop)) 0.62rem calc(0.3rem - var(--drop));
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: 0.8rem;
 	font-size: 0.66rem;
 	line-height: 1.35;
@@ -1770,7 +1822,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	height: var(--field);
 	padding: calc(var(--drop) * 2) 0.9rem 0;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font: inherit;
@@ -1787,8 +1839,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	font-weight: 600;
 }
 .list-pick small { flex: none; font-family: var(--num-font); font-size: 1rem; }
-.list-pick:hover { color: var(--paper); background: var(--ink); }
-.list-pick.is-on { color: var(--paper); background: var(--ink); }
+.list-pick:hover { color: var(--paper); background: var(--ink-fill); }
+.list-pick.is-on { color: var(--paper); background: var(--ink-fill); }
 
 .list-forget {
 	flex: none;
@@ -1811,7 +1863,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	right: var(--group);
 	margin: 0;
 	padding: var(--tight) var(--group);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font-size: 0.82rem;
@@ -1829,7 +1881,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	min-width: 0;
 	height: min(calc(var(--vh, 1vh) * 74), 36rem);
 	min-height: 18rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border-radius: var(--radius);
 	overflow: hidden;
 }
@@ -1841,7 +1893,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	align-items: center;
 	justify-content: center;
 	gap: 0.45rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	transition: opacity 0.3s var(--ease);
 }
 .list-site.is-here .site-wait { opacity: 0; pointer-events: none; }
@@ -1951,7 +2003,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	height: 1.15rem;
 	aspect-ratio: 1;
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: 999px;
 	font-family: var(--num-font);
 	font-size: 0.82rem;
@@ -1967,7 +2019,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 100%;
 	height: var(--field);
 	padding: 0 0.9rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	color: var(--ink);
@@ -1975,6 +2027,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	font-size: 0.85rem;
 }
 .ask-screen input::placeholder, .login-slot input::placeholder { color: var(--ink); opacity: 1; }
+/* the log-in boxes are see-through, so the card's colour shows through them, by request */
+.login-slot input, #chatScreen input { background: transparent; }
 .ask-go { align-self: stretch; height: var(--field); padding: calc(var(--drop) * 2) 1.5rem 0; }
 .ask-forget { align-self: center; }
 
@@ -1985,7 +2039,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 100%;
 	min-width: 0;
 	padding: 0.35rem var(--tight);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	color: var(--ink);
@@ -1995,8 +2049,8 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	cursor: var(--cur-tap);
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
-.scratch-song:hover { background: var(--ink); color: var(--paper); }
-.scratch-song.is-copied { background: var(--ink); color: var(--paper); }
+.scratch-song:hover { background: var(--ink-fill); color: var(--paper); }
+.scratch-song.is-copied { background: var(--ink-fill); color: var(--paper); }
 .scratch-song .scratch-at {
 	flex: none;
 	display: grid;
@@ -2009,13 +2063,13 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 
 .scratch-song.is-got .scratch-at {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: 999px;
 }
 .scratch-song.is-got:hover .scratch-at,
 .scratch-song.is-got.is-copied .scratch-at {
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 }
 
 .scratch-twice {
@@ -2090,7 +2144,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: min(640px, calc(calc(var(--vw, 1vw) * 100) - 2rem));
 	max-height: calc(calc(var(--vh, 1vh) * 100) - 5rem);
 	padding: var(--tight);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	overflow: auto;
@@ -2129,21 +2183,21 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	justify-content: center;
 	padding-top: calc(var(--drop) * 2);
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--ink);
 	font-size: 1rem;
 }
 .meter-idle { transition: background-color 0.3s var(--ease), color 0.3s var(--ease), border-color 0.3s var(--ease); }
-.bar-meter:hover .meter-idle { color: var(--ink); background: var(--paper); border-color: var(--line); }
+.bar-meter:hover .meter-idle { color: var(--ink); background: var(--paper-fill); border-color: var(--line); }
 .live-stop { flex: none; font-size: 0.78rem; }
-.live-meter { color: var(--paper); background: var(--ink); }
+.live-meter { color: var(--paper); background: var(--ink-fill); }
 .live-meter #levelCanvas { flex: 1; min-width: 0; height: 10px; }
 .live-meter .clip-label { flex: none; font-size: 0.78rem; }
 .live-meter .switch-count {
 	flex: none;
 	padding: 0.1rem 0.5rem;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border-radius: 999px;
 	font-size: 0.72rem;
 	font-weight: 700;
@@ -2164,7 +2218,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	justify-content: center;
 	gap: 0.4rem;
 	padding: 0 0.75rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	margin: 0;
@@ -2184,7 +2238,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 100%;
 	height: 3.25rem;
 	padding: 0 0.6rem;
-	background: var(--ink);
+	background: var(--ink-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	overflow: hidden;
@@ -2271,7 +2325,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 }
 .sense-controls input[type="range"]::-webkit-slider-runnable-track {
 	height: 2px;
-	background: var(--ink);
+	background: var(--ink-fill);
 	border: 0;
 	border-radius: 999px;
 }
@@ -2281,20 +2335,20 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 0.85rem;
 	height: 0.85rem;
 	margin-top: -0.365rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--ink);
 	border-radius: 999px;
 }
 .sense-controls input[type="range"]::-moz-range-track {
 	height: 2px;
-	background: var(--ink);
+	background: var(--ink-fill);
 	border: 0;
 	border-radius: 999px;
 }
 .sense-controls input[type="range"]::-moz-range-thumb {
 	width: 0.85rem;
 	height: 0.85rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--ink);
 	border-radius: 999px;
 }
@@ -2370,7 +2424,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 .recording-item.is-lifted {
 	position: relative;
 	z-index: 2;
-	background: var(--paper);
+	background: var(--paper-fill);
 	outline: 1px solid var(--line);
 	outline-offset: -1px;
 	cursor: var(--cur-held);
@@ -2400,7 +2454,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	flex: 1;
 	min-width: 0;
 	height: 15px;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	overflow: hidden;
@@ -2413,7 +2467,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	bottom: 0;
 	left: 0;
 	width: 0;
-	background: var(--ink);
+	background: var(--ink-fill);
 }
 
 .clip-text {
@@ -2488,7 +2542,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 5px;
 	height: 5px;
 	margin: -2.5px 0 0 -2.5px;
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: 999px;
 	animation: clip-waiting 0.9s ease-in-out infinite;
 }
@@ -2545,7 +2599,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	bottom: -2px;
 	width: 9px;
 	margin-left: -4.5px;
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: 2px;
 	cursor: var(--cur-wide);
 	touch-action: none;
@@ -2556,7 +2610,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
    18. audio — the live row and its pulse
    ========================================================= */
 .live-meter .clip-track {
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--paper);
 }
 
@@ -2640,7 +2694,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	width: 20rem;
 	max-width: calc(calc(var(--vw, 1vw) * 100) - 2rem);
 	padding: 0.8rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
@@ -2686,7 +2740,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 #optionsPanel {
 	width: 15rem;
 	padding: 0.8rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -2702,7 +2756,7 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	align-items: center;
 	max-width: 100%;
 	padding: 0.3rem 0.7rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font-size: 0.85rem;
@@ -2720,15 +2774,17 @@ button.boing { animation: button-boing 0.22s var(--ease); }
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
-.option-pick.is-picked { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.option-pick.is-picked { color: var(--paper); background: var(--ink-fill); border-color: var(--ink); }
 
 /* =========================================================
    22. the top strip — hi, the search, the bin, help and the clock
    ========================================================= */
 /* the strip is black in the light as well as the dark, so what sits on it takes the dark's tokens */
 html:not(.inverted) .topbar {
-	--paper: #000;
+	--paper: var(--tint-main);
 	--ink: #ffffff;
+	--paper-fill: var(--tint-fill);   /* TEMPORARY: the gradient (solid was var(--tint-main)) */
+	--ink-fill: var(--ink);
 	--line: #ffffff;
 	--hover: #151515;
 }
@@ -2758,21 +2814,21 @@ html.inverted .topbar::after {
 	content: '';
 	position: absolute;
 	top: 100%;
-	left: var(--wave-out);
+	left: calc(var(--wave-w) * 6.61 / 39);   /* exactly where the first bump's outline starts: from --wave-out it poked a pixel past it */
 	right: 0;
 	height: 1px;
 	background: #fff;
 	pointer-events: none;
 }
 
-/* the search over every page, at the strip's left, 64px off hi's letters */
-.page-search { --field: 34px; position: relative; z-index: 20; flex: none; width: 34rem; margin: 0 auto 0 24px; }
+/* the search over every page, at the strip's right end */
+.page-search { --field: 34px; position: relative; z-index: 20; flex: none; width: 20rem; margin: 0 0 0 4px; }   /* the bin right up against it, by request */   /* at the strip's right end now, by request, and narrower so the centred clock keeps its room */
 .page-search input {
 	width: 100%;
 	height: var(--field);
 	padding: 0 3rem 0 2.6rem;
 	color: var(--ink);
-	background: var(--paper);
+	background: transparent;   /* the strip shows through the search, whatever colour it is */
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font: inherit;
@@ -2782,7 +2838,12 @@ html.inverted .topbar::after {
 	appearance: none;
 }
 .page-search input::-webkit-search-cancel-button { display: none; }
-.page-search input::placeholder { color: var(--muted); }
+.page-search input::placeholder {
+	/* a see-through white on the strip, not grey (by request): under the screened layer, 60% white over
+	   black comes out as the strip's own colour 60% of the way to white */
+	color: rgba(255, 255, 255, 0.6);
+	opacity: 1;
+}
 .page-search.is-open input { border-radius: calc(var(--field) / 2) calc(var(--field) / 2) 0 0; border-bottom-color: transparent; }
 .page-search-mark { position: absolute; left: 0.95rem; top: 50%; width: 1.05rem; height: 1.05rem; transform: translateY(-50%); pointer-events: none; }
 /* its go is a bare >, placed without a transform so nothing that animates one (a press's boing)
@@ -2819,7 +2880,7 @@ html.inverted .topbar::after {
 	padding: 0 5px 6px;
 	overflow-y: auto;
 	list-style: none;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-top: 0;
 	border-radius: 0 0 calc(var(--field) / 2) calc(var(--field) / 2);
@@ -2843,13 +2904,115 @@ html.inverted .topbar::after {
 .page-hit:hover { border-color: var(--line); }
 .page-hit b { font-size: 0.88rem; }
 .page-hit span { overflow: hidden; font-size: 0.8rem; white-space: nowrap; text-overflow: ellipsis; }
-.page-hit mark { color: var(--paper); background: var(--ink); }   /* a plain highlight, flush with the letters */
+.page-hit mark { color: var(--paper); background: var(--ink-fill); }   /* a plain highlight, flush with the letters */
 .page-hit small { font-family: var(--num-font); font-size: 1rem; }
 .page-none { padding: 0.35rem 0.8rem; font-size: 0.82rem; }
 
 /* the bin: a mark, with how many are in it on a small disc at its corner (laid over it, so the mark
    never moves); its list drops centred under it, the way help's note does */
 .rail-binned { position: relative; display: flex; flex: none; align-items: center; }
+/* the site's colour: a dot in the strip showing it, dropping the adjuster the way the bin drops its list */
+.rail-tint { position: relative; display: flex; flex: none; align-items: center; }
+.tint-head {
+	display: grid;
+	place-items: center;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	background: none;
+	border: 0;
+	border-radius: 999px;
+	cursor: var(--cur-tap);
+}
+.tint-swatch { width: 18px; height: 18px; background: var(--tint-fill); border: 1px solid var(--line); border-radius: 50%; }
+.tint-pop {
+	position: absolute;
+	top: calc(100% + var(--group));
+	left: 50%;
+	translate: -50% 0;
+	z-index: 70;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: 14rem;
+	padding: 12px;
+	color: var(--ink);
+	background: var(--paper-fill);
+	border: 1px solid var(--line);
+	border-radius: 18px;
+	font-family: var(--font);
+	font-size: 0.82rem;
+	font-weight: 400;
+}
+.tint-kinds { display: flex; justify-content: center; gap: 14px; }
+.tint-kind {
+	display: grid;
+	place-items: center;
+	width: 34px;
+	height: 34px;
+	padding: 0;
+	background: none;
+	border: 0;
+	border-radius: 50%;
+	cursor: var(--cur-tap);
+}
+.tint-kind-dot { display: block; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 50%; }
+/* the one in use wears a ring */
+.tint-kind.is-on { box-shadow: 0 0 0 1px var(--line); }
+/* the adjuster, as on the drawing page: a square for shade and brightness, a strip for hue, the code */
+.hue-field {
+	position: relative;
+	height: 9rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, var(--hue, #f00));
+	cursor: var(--cur-tap);
+	touch-action: none;
+	outline: none;
+}
+.hue-strip {
+	position: relative;
+	height: 14px;
+	margin: 0 7px;
+	border-radius: 999px;
+	box-shadow: 0 0 0 1px var(--line);
+	background: linear-gradient(to right, #f00 0%, #ff0 16.67%, #0f0 33.33%, #0ff 50%, #00f 66.67%, #f0f 83.33%, #f00 100%);
+	cursor: var(--cur-tap);
+	touch-action: none;
+	outline: none;
+}
+.hue-ring {
+	position: absolute;
+	top: 50%;
+	left: 0;
+	width: 14px;
+	height: 14px;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000;
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+}
+.hue-field .hue-ring { top: 0; }
+.hue-code {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	height: 30px;
+	padding: 0 0.6rem 0 0.35rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font-family: var(--num-font);
+	font-size: 1.15rem;
+}
+.hue-now { width: 20px; height: 20px; flex: none; border: 1px solid var(--line); border-radius: 50%; }
+/* a gradient's two codes share the row; the one the adjuster is on wears a second ring */
+.hue-codes { display: flex; gap: 8px; }
+.hue-codes .hue-code { flex: 1; min-width: 0; cursor: var(--cur-tap); }
+.hue-codes .hue-code[hidden] { display: none; }
+.hue-codes.is-pair .hue-code { gap: 0.2rem; padding: 0 0.4rem 0 0.25rem; }
+.hue-codes.is-pair .hue-code.is-on { box-shadow: 0 0 0 1px var(--line); }
+.hue-code input { flex: 1; min-width: 0; padding: 0; color: var(--ink); background: none; border: 0; outline: none; font: inherit; text-transform: lowercase; }
 .binned-head {
 	position: relative;
 	display: flex;
@@ -2871,7 +3034,7 @@ html.inverted .topbar::after {
 	height: 10px;
 	padding: 0 2px;
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: 999px;
 	font-family: var(--num-font);
 	font-size: 0.6rem;
@@ -2896,7 +3059,7 @@ html.inverted .topbar::after {
 	padding: 8px;
 	overflow: hidden;
 	list-style: none;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 18px;
 }
@@ -2917,7 +3080,7 @@ html.inverted .topbar::after {
 	height: 100%;
 	padding: 0;
 	color: inherit;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	visibility: hidden;
 	pointer-events: none;
@@ -2931,7 +3094,7 @@ html.inverted .topbar::after {
 .empty-ask.is-asking .empty-no { visibility: visible; pointer-events: auto; }
 .empty-ask.is-leaving .empty-yes,
 .empty-ask.is-leaving .empty-no { pointer-events: none; }
-.empty-yes:hover, .empty-no:hover { color: var(--paper); background: var(--ink); }
+.empty-yes:hover, .empty-no:hover { color: var(--paper); background: var(--ink-fill); }
 /* no boing on these: its scale replaced their slide, and a press threw both back to the middle */
 .empty-yes.boing, .empty-no.boing { animation: none; }
 .binned-empty {
@@ -2940,14 +3103,14 @@ html.inverted .topbar::after {
 	height: 22px;
 	padding: 0 0.7rem;
 	color: inherit;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font: inherit;
 	font-size: 0.72rem;
 	cursor: var(--cur-tap);
 }
-.binned-empty:hover { color: var(--paper); background: var(--ink); }
+.binned-empty:hover { color: var(--paper); background: var(--ink-fill); }
 /* the binned things sit in a little box of their own, which is what scrolls */
 .binned-box {
 	display: flex;
@@ -2970,9 +3133,39 @@ html.inverted .topbar::after {
 /* help: a question mark, always turning clockwise, drawn dead centre in its box so it turns on the
    spot. its note hangs centred under it, one line however long */
 .help-box { position: relative; flex: none; }
+/* help sits at the strip's left now, beside hi and well off it (by request); its note hangs from its
+   left edge rather than its middle, or it would run off the window */
+.topbar > .help-box { margin-left: 28px; }
+.topbar > .help-box .help-body { left: -10px; translate: none; transform-origin: 0 0; }
 /* the right-hand group (the bin, help and the clock) is lifted a pixel together: measured it sits on
    the strip's middle, but its lowercase words carry their weight low and it read as sitting low, by request */
-.topbar .rail-binned, .topbar .help-box, .topbar .rail-clock { position: relative; top: -1px; }
+.topbar .rail-binned, .topbar .strip-middle { top: -1px; }
+.topbar .rail-binned { position: relative; }
+/* the middle of the strip (by request): the time on the strip's exact centre, the half of the day, the
+   date and the moon to its left, help and the colour to its right. the two sides share the room left
+   over equally, which is what puts the time on the centre. it lies over the whole strip and lets presses
+   through where there is nothing */
+.strip-middle {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	pointer-events: none;
+}
+.strip-middle .mid-side > *, .strip-middle > .clock-time { pointer-events: auto; }
+.strip-middle > .clock-time { order: 0; }   /* it carried an order from the old row, which sent it to the end */
+/* the date is hidden, and the half of the day sits right over the time, small, in capitals (by request) */
+.strip-middle .clock-date { display: none; }
+.time-stack { position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
+/* the date in figures, MM . DD, right under the time (by request), as small as the half of the day over it */
+.time-stack .clock-numdate { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 0; font-family: var(--font); font-size: 0.62rem; line-height: 1; white-space: pre; }   /* in amiko, by request: the one number not in vt323 */
+.time-stack .clock-suffix { position: absolute; bottom: 100%; left: 50%; top: auto; transform: translateX(-50%); margin-bottom: -2px; font-size: 0.6rem; line-height: 1; text-transform: uppercase; letter-spacing: 0.08em; }
+.mid-side { display: flex; flex: 1 1 0; align-items: center; gap: 0.6rem; min-width: 0; }
+.mid-left { justify-content: flex-end; }
+.mid-right { justify-content: flex-start; gap: 0.6rem; padding-left: 0.4rem; }
+/* the bin and the search at the strip's right end */
+.topbar > .rail-binned { margin-left: auto; }
 .help-head {
 	display: flex;
 	align-items: center;
@@ -3001,7 +3194,7 @@ html.inverted .topbar::after {
 	padding: 0.5rem 1.2rem;
 	white-space: nowrap;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 }
@@ -3009,23 +3202,27 @@ html.inverted .topbar::after {
 /* the note and the bin's list drop in from their mark — a short fall, a fade and a little growth from
    the top middle — and go back the same way, eased at both ends. hidden after the fade, so neither can
    be pressed while shut */
-.help-body, .binned-list {
+.help-body, .binned-list, .tint-pop {
 	transform-origin: 50% 0;
 	opacity: 0;
 	transform: translateY(-6px) scale(0.96);
 	visibility: hidden;
 	transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.3s;
 }
-.help-box.is-open .help-body, .rail-binned.is-open .binned-list {
+.help-box.is-open .help-body, .rail-binned.is-open .binned-list, .rail-tint.is-open .tint-pop {
 	opacity: 1;
 	transform: none;
 	visibility: visible;
 	transition: opacity 0.26s ease, transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.15), visibility 0s;
 }
 
+/* the colour list does not fade: its colours are cut out of the colour layer, and anything fading in
+   a hole shows the black under it first — the colours came up out of black. it unrolls down out of
+   the strip instead (a clip played by the script, `rollTintList`, 240ms; back up in 170ms), and the holes are cut only as far as it shows */
+.tint-pop { opacity: 1; transform: none; transition: visibility 0s linear 0.17s; }
+.rail-tint.is-open .tint-pop { transition: visibility 0s; }
+
 /* the clock: the moon, the half of the day, the date, and the time last, at the very right */
-.rail-clock { display: flex; flex: none; order: 99; align-items: center; gap: 0.6rem; height: 36px; }
-.clock-top { display: contents; }   /* its moon and half of the day take their own places in the row */
 .clock-suffix { position: relative; top: 0.75px; order: 1; line-height: 1; }
 .clock-date { position: relative; top: 0.75px; order: 2; margin: 0; }   /* the date and the half of the day sat high on the strip; lowered together so they share a line (measured: lowercase 26.6, figures 25.25 of 26) */
 .theme-swap { order: 3; margin: 0 0.7rem; }   /* the moon sits dead between the date and the time, by request */
@@ -3112,7 +3309,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	gap: var(--tight);
 	min-width: 0;
 	padding: var(--widget-pad);     /* apple: one even inset on every side */
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 1.4rem;
 	overflow: hidden;
@@ -3134,7 +3331,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	height: var(--tile);
 	padding: var(--widget-pad);
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 1.4rem;
 	font: inherit;
@@ -3152,14 +3349,14 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	height: 1.9rem;
 	padding: 0;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 50%;
 	cursor: var(--cur-tap);
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease), transform var(--quick) var(--ease);
 }
 .key-edit svg { width: 0.95rem; height: 0.95rem; }
-.key-edit:hover { color: var(--paper); background: var(--ink); transform: scale(1.06); }
+.key-edit:hover { color: var(--paper); background: var(--ink-fill); transform: scale(1.06); }
 .widget-head {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr);
@@ -3285,13 +3482,13 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	gap: 0.6rem;
 	min-width: 0;
 	padding: 0.4rem 0.55rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 0.8rem;
 	text-align: left;
 	cursor: var(--cur-tap);
 }
-.widget-jump:hover { color: var(--paper); background: var(--ink); }
+.widget-jump:hover { color: var(--paper); background: var(--ink-fill); }
 .widget-jump .deck-shape { width: 20px; height: 20px; }
 .widget-jump-text { display: flex; flex-direction: column; min-width: 0; }
 .widget-jump-text strong,
@@ -3308,7 +3505,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	height: 12.5rem;    /* over the search: the score, the words, the run and room for 'died' */
 	min-height: 0;
 	border: 0;
-	background: var(--paper);
+	background: var(--paper-fill);
 }
 .home-panel.is-editing .widget-card {
 	cursor: var(--cur-grab);
@@ -3349,10 +3546,10 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	width: 100%;
 	max-width: none;
 }
-.widget-pick.is-on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.widget-pick.is-on { color: var(--paper); background: var(--ink-fill); border-color: var(--ink); }
 
 .widget-pick { cursor: var(--cur-tap); }
-.widget-pick:hover { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.widget-pick:hover { color: var(--paper); background: var(--ink-fill); border-color: var(--ink); }
 
 /* =========================================================
    24. cards — notes in, cards out
@@ -3375,7 +3572,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	/* it opens downwards, so it is the top and bottom that ramp with the opening (--skin): a fixed
 	   padding came in whole the moment it left shut, which was the jolt on pulling it back out */
 	padding: calc(var(--tight) * var(--skin, 1)) var(--tight);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 }
@@ -3418,16 +3615,16 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	font-size: 0.8rem;
 	cursor: var(--cur-tap);
 }
-.notes-button:hover { color: var(--paper); background: var(--ink); }
+.notes-button:hover { color: var(--paper); background: var(--ink-fill); }
 
-.notes-button.is-solid { color: var(--paper); background: var(--ink); font-weight: 700; }
+.notes-button.is-solid { color: var(--paper); background: var(--ink-fill); font-weight: 700; }
 .notes-button:disabled { cursor: var(--cur-dot); opacity: 1; }
 .notes-button:disabled:hover { color: var(--ink); background: none; }
 /* making flashcards: the button stays as it is and carries the state. while the reader downloads it
    turns white with the amount on it and a black bar filling along its foot */
 .notes-button.is-go { position: relative; overflow: hidden; transition: none; }   /* a fade from black to white passes through grey */
-.notes-button.is-go:disabled { color: var(--paper); background: var(--ink); }
-.notes-button.is-go.is-loading, .notes-button.is-go.is-loading:disabled { color: var(--ink); background: var(--paper); font-family: var(--num-font); font-size: 1rem; font-weight: 400; }
+.notes-button.is-go:disabled { color: var(--paper); background: var(--ink-fill); }
+.notes-button.is-go.is-loading, .notes-button.is-go.is-loading:disabled { color: var(--ink); background: var(--paper-fill); font-family: var(--num-font); font-size: 1rem; font-weight: 400; }
 .notes-button.is-go.is-loading::after {
 	content: '';
 	position: absolute;
@@ -3435,7 +3632,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	bottom: 0;
 	width: 100%;
 	height: 4px;
-	background: var(--ink);
+	background: var(--ink-fill);
 	transform: scaleX(var(--done, 0));
 	transform-origin: left;
 	transition: transform 0.3s var(--ease);
@@ -3485,14 +3682,14 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	flex: none;
 	padding: calc(0.5rem + var(--drop)) 0.6rem calc(0.5rem - var(--drop));
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--ink);
 	border-radius: 999px;
 	font-size: 0.85rem;
 	cursor: var(--cur-tap);
 	transition: background-color 0.18s var(--ease), color 0.18s var(--ease);
 }
-.notes-key-toggle:hover { color: var(--paper); background: var(--ink); }
+.notes-key-toggle:hover { color: var(--paper); background: var(--ink-fill); }
 /* nothing is written under the buttons — not the count, not the deck it went to, not the list
    reader's quiet link; the buttons carry what is happening (by request) */
 .notes-note, #notesRead { display: none !important; }
@@ -3543,7 +3740,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	height: 1.1rem;
 	padding: 0;
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border: 0;
 	border-radius: 0 0 0 var(--radius);
 	font-size: 0.85rem;
@@ -3563,7 +3760,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	margin: 0 calc(var(--gap) * -1) calc(var(--gap) * -1);
 	border-radius: 0 0 var(--radius) var(--radius);
 	overflow: hidden;
-	background: var(--paper);
+	background: var(--paper-fill);
 }
 .notes-slot .notes-panel {
 	flex: 1;
@@ -3598,13 +3795,13 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	height: 1.7rem;
 	padding: 0;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--ink);
 	border-radius: 999px;
 	cursor: var(--cur-tap);
 }
 .notes-clip svg { display: block; width: 0.95rem; height: 0.95rem; }
-.notes-clip:hover { color: var(--paper); background: var(--ink); }
+.notes-clip:hover { color: var(--paper); background: var(--ink-fill); }
 
 .notes-panel.is-catching .notes-box::after {
 	content: 'let go and it reads it';
@@ -3613,7 +3810,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	display: grid;
 	place-items: center;
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: var(--radius);
 	font-size: 0.85rem;
 	font-weight: 700;
@@ -3642,7 +3839,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 
 .recording-item.is-packing {
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-color: var(--ink);
 }
 
@@ -3650,9 +3847,9 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .recording-item.is-packing .clip-crop,
 .recording-item.is-packing .clip-download,
 .recording-item.is-packing .clip-discard { color: var(--paper); }
-.recording-item.is-packing .clip-handle span { background: var(--paper); }
+.recording-item.is-packing .clip-handle span { background: var(--paper-fill); }
 .recording-item.is-packing .clip-track { border-color: var(--paper); }
-.recording-item.is-packing .clip-fill { background: var(--paper); }
+.recording-item.is-packing .clip-fill { background: var(--paper-fill); }
 .recording-item.is-packing .crop-shade { filter: invert(1); }
 .recording-item.is-packing .clip-label::after {
 	content: '';
@@ -3661,7 +3858,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	height: 5px;
 	margin-left: 0.4rem;
 	vertical-align: middle;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border-radius: 999px;
 	animation: clip-waiting 0.9s ease-in-out infinite;
 }
@@ -3675,6 +3872,7 @@ body, body *, .modal-panel, .modal-panel *, .pop-panel, .pop-panel * {
 }
 
 .site-name, .tab-tip, .tab-tip * { font-weight: 700 !important; }   /* the site's name and the pages' names, by request */
+.clock-numdate { font-weight: 700 !important; }   /* the date under the clock, bold, by request */
 
 a:hover, a:focus-visible { font-weight: 700 !important; }
 
@@ -3691,7 +3889,7 @@ html.booting .app-shell { opacity: 0; }
 	align-items: center;
 	justify-content: center;
 	gap: 0.45rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	pointer-events: none;
 }
 html.booting .booting-mark { display: flex; }
@@ -3734,7 +3932,7 @@ html.booting .booting-mark { display: flex; }
 	width: 100%;
 	min-height: 0;
 	border: 0;
-	background: var(--paper);
+	background: var(--paper-fill);
 }
 
 .chat-panel {
@@ -3771,7 +3969,7 @@ html.booting .booting-mark { display: flex; }
 	height: 5rem;
 	padding: 0;
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border: 0;
 	border-radius: 50%;
 	font-size: 2rem;
@@ -3786,12 +3984,12 @@ html.booting .booting-mark { display: flex; }
 	width: 1.7rem;
 	height: 1.7rem;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 50%;
 }
 .account-face-edit svg { width: 60%; height: 60%; }
-.account-face:hover .account-face-edit { color: var(--paper); background: var(--ink); }
+.account-face:hover .account-face-edit { color: var(--paper); background: var(--ink-fill); }
 .account-name { max-width: 100%; margin: 0.8rem 0 0; overflow: hidden; font-size: 1.35rem; white-space: nowrap; text-overflow: ellipsis; }
 .account-handle { max-width: 100%; margin: 0.15rem 0 1rem; overflow: hidden; font-size: 0.8rem; white-space: nowrap; text-overflow: ellipsis; }
 .face-pic svg, .said-face svg { width: 62%; height: 62%; }
@@ -3801,7 +3999,7 @@ html.booting .booting-mark { display: flex; }
 /* every account on this browser, the one in use filled */
 .acc-list { display: flex; flex-direction: column; gap: var(--tight); width: 100%; margin: 0.4rem 0 0; padding: 0; list-style: none; }
 .acc-row { position: relative; display: flex; align-items: center; gap: 0.3rem; border: 1px solid var(--line); border-radius: 999px; }
-.acc-row.is-here { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.acc-row.is-here { color: var(--paper); background: var(--ink-fill); border-color: var(--ink); }
 .acc-pick {
 	display: flex;
 	flex: 1;
@@ -3824,7 +4022,7 @@ html.booting .booting-mark { display: flex; }
 	width: 2rem;
 	height: 2rem;
 	color: var(--paper);
-	background: var(--ink) center / cover;
+	background: var(--ink-fill) center / cover;
 	border-radius: 50%;
 	image-rendering: pixelated;
 }
@@ -3856,7 +4054,7 @@ html.booting .booting-mark { display: flex; }
 	right: 0;
 	z-index: 2;
 	padding: 4px;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	animation: confirm-in 0.16s var(--ease);
@@ -3872,7 +4070,7 @@ html.booting .booting-mark { display: flex; }
 	font-size: 0.85rem;
 	cursor: var(--cur-tap);
 }
-.acc-menu button:hover { color: var(--paper); background: var(--ink); }
+.acc-menu button:hover { color: var(--paper); background: var(--ink-fill); }
 /* the same pill as log out, only white */
 .acc-add {
 	width: 100%;
@@ -3880,10 +4078,10 @@ html.booting .booting-mark { display: flex; }
 	margin-top: var(--tight);
 	padding: calc(var(--drop) * 2) 0 0;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border-color: var(--line);
 }
-.acc-add:hover { color: var(--paper); background: var(--ink); }
+.acc-add:hover { color: var(--paper); background: var(--ink-fill); }
 .account-leave-wrap { width: 100%; margin-top: var(--tight); }
 .leave-split { display: flex; gap: var(--tight); }
 /* log out divides: both halves start stacked on the middle as the one black pill, then slide
@@ -3894,13 +4092,13 @@ html.booting .booting-mark { display: flex; }
 @keyframes leave-part { from { transform: translateX(var(--from)); } to { transform: none; } }
 /* cancel snaps from black to white once the halves have parted — a fade would pass through grey */
 @keyframes leave-pale {
-	0% { color: var(--ink); background: var(--ink); border-color: var(--ink); animation-timing-function: step-end; }
-	35% { color: var(--ink); background: var(--paper); border-color: var(--line); }
-	100% { color: var(--ink); background: var(--paper); border-color: var(--line); }
+	0% { color: var(--ink); background: var(--ink-fill); border-color: var(--ink); animation-timing-function: step-end; }
+	35% { color: var(--ink); background: var(--paper-fill); border-color: var(--line); }
+	100% { color: var(--ink); background: var(--paper-fill); border-color: var(--line); }
 }
 .leave-split .basic-button { flex: 1; min-width: 0; }
-.leave-split .leave-no { color: var(--ink); background: var(--paper); border-color: var(--line); }
-.leave-split .leave-no:hover { color: var(--paper); background: var(--ink); }
+.leave-split .leave-no { color: var(--ink); background: var(--paper-fill); border-color: var(--line); }
+.leave-split .leave-no:hover { color: var(--paper); background: var(--ink-fill); }
 
 .account-screen .set-list { display: flex; flex-direction: column; }
 .set-row { border-bottom: 1px solid var(--line); }
@@ -3928,8 +4126,8 @@ html.booting .booting-mark { display: flex; }
 .set-edit input { flex: 1; min-width: 0; height: var(--field); }
 .set-edit .basic-button { flex: none; height: var(--field); padding: calc(var(--drop) * 2) 1.2rem 0; }
 .set-face .basic-button { flex: 1; }
-.set-quiet { color: var(--ink); background: var(--paper); border-color: var(--line); }
-.set-quiet:hover { color: var(--paper); background: var(--ink); }
+.set-quiet { color: var(--ink); background: var(--paper-fill); border-color: var(--line); }
+.set-quiet:hover { color: var(--paper); background: var(--ink-fill); }
 .set-note { min-height: 1.2em; margin: var(--group) 0 0; font-size: 0.82rem; text-align: center; }
 .said-face { background-size: cover; background-position: center; image-rendering: pixelated; }
 .chat-who {
@@ -3989,7 +4187,7 @@ html.booting .booting-mark { display: flex; }
 	min-width: 0;
 	padding: 0.45rem 0.6rem;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid transparent;
 	border-radius: 0.9rem;
 	font: inherit;
@@ -3997,7 +4195,7 @@ html.booting .booting-mark { display: flex; }
 	cursor: var(--cur-tap);
 }
 .room-row:hover { border-color: var(--line); }
-.room-row.is-on { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.room-row.is-on { color: var(--paper); background: var(--ink-fill); border-color: var(--ink); }
 .room-row.is-waiting .room-face { border-style: dashed; }
 .room-face {
 	display: grid;
@@ -4006,11 +4204,11 @@ html.booting .booting-mark { display: flex; }
 	width: 2.3rem;
 	height: 2.3rem;
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border: 1px solid var(--ink);
 	border-radius: 50%;
 }
-.room-row.is-on .room-face { color: var(--ink); background: var(--paper); }
+.room-row.is-on .room-face { color: var(--ink); background: var(--paper-fill); }
 .room-face svg { width: 60%; height: 60%; }
 .room-words { display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.3; }
 .room-words b, .room-words small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -4032,7 +4230,7 @@ html.booting .booting-mark { display: flex; }
 	height: 2.4rem;
 	padding: 0;
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border: 1px solid var(--ink);
 	border-radius: 50%;
 	overflow: hidden;
@@ -4049,7 +4247,7 @@ html.booting .booting-mark { display: flex; }
 	height: var(--field);
 	padding: 0 0.75rem;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font: inherit;
@@ -4064,7 +4262,7 @@ html.booting .booting-mark { display: flex; }
 	min-width: 0;
 	height: var(--field);
 	padding: 0 0.35rem 0 0.9rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 }
@@ -4102,7 +4300,7 @@ html.booting .booting-mark { display: flex; }
 	gap: 0.6rem;
 	max-width: 16rem;
 	padding: 0.4rem 0.4rem 0.4rem 0.4rem;
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	animation: confirm-in 0.18s var(--ease);
@@ -4164,7 +4362,7 @@ html.booting .booting-mark { display: flex; }
 	margin-top: 0.2rem;
 	padding: 0.6rem 0.8rem;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	font: inherit;
@@ -4231,7 +4429,7 @@ html.booting .booting-mark { display: flex; }
 	overflow: hidden;
 	resize: none;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 8px;
 	font: inherit;
@@ -4248,13 +4446,13 @@ html.booting .booting-mark { display: flex; }
 	height: 1.9rem;
 	padding: 0;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	cursor: var(--cur-tap);
 }
 .field-go svg { display: block; width: 1rem; height: 1rem; }
-.field-go:hover { color: var(--paper); background: var(--ink); }
+.field-go:hover { color: var(--paper); background: var(--ink-fill); }
 
 /* the thread's header: who, their handle, and that it is sealed */
 .talk-head {
@@ -4303,8 +4501,8 @@ html.booting .booting-mark { display: flex; }
 .welcome-tally { margin: 0; font-size: 0.85rem; }
 .welcome-num { font-family: var(--num-font); font-size: 1.15rem; }
 .talk-welcome .basic-button { height: var(--field); margin-top: var(--tight); padding: calc(var(--drop) * 2) 1.6rem 0; }
-.welcome-quiet { color: var(--ink); background: var(--paper); border-color: var(--line); }
-.welcome-quiet:hover { color: var(--paper); background: var(--ink); }
+.welcome-quiet { color: var(--ink); background: var(--paper-fill); border-color: var(--line); }
+.welcome-quiet:hover { color: var(--paper); background: var(--ink-fill); }
 
 /* the top of an open thread, as discord starts one */
 .talk-start { display: flex; flex-direction: column; gap: 0.45rem; padding: var(--group) 0.5rem var(--group); }
@@ -4352,7 +4550,7 @@ html.booting .booting-mark { display: flex; }
 	height: 2.5rem;
 	margin-top: 0.1rem;
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: 50%;
 	font-size: 1.05rem;
 }
@@ -4411,22 +4609,27 @@ html.booting .booting-mark { display: flex; }
 	width: min(34rem, calc(100% - 2 * var(--group)));
 	padding: 3rem 2.5rem;            /* even all round: the fields sit 2.5rem in from either side */
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 1.4rem;
 }
 /* the log-in card, and the log-in window, are drawn the other way round from the page, by request:
    black on a light page, white on a dark one — by swapping the colour tokens, as the bar does */
 html:not(.inverted) .login-card, html:not(.inverted) #chatScreen {
-	--paper: #000;
+	--paper: var(--tint-main);
 	--ink: #ffffff;
+	--paper-fill: var(--tint-fill);   /* TEMPORARY: the gradient (solid was var(--tint-main)) */
+	--ink-fill: var(--ink);
 	--line: #ffffff;
 	--hover: #151515;
 }
+html:not(.inverted) .login-card, html:not(.inverted) #chatScreen { background: var(--tint-grad); }
 html.inverted .login-card, html.inverted #chatScreen {
 	--paper: #ffffff;
-	--ink: #000;
-	--line: #000;
+	--ink: var(--tint-main);
+	--line: var(--tint-main);
+	--paper-fill: var(--paper);
+	--ink-fill: var(--tint-fill);   /* TEMPORARY: the gradient */
 	--hover: #f1f1f1;
 }
 .login-face {
@@ -4435,7 +4638,7 @@ html.inverted .login-card, html.inverted #chatScreen {
 	width: 6rem;
 	height: 6rem;
 	color: var(--paper);
-	background: var(--ink);
+	background: var(--ink-fill);
 	border-radius: 50%;
 }
 .login-face svg { width: 58%; height: 58%; }
@@ -4468,7 +4671,7 @@ html.inverted .login-card, html.inverted #chatScreen {
 	height: var(--field);
 	padding: calc(var(--drop) * 2) 0 0;
 	color: var(--ink);
-	background: var(--paper);
+	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	font: inherit;
@@ -4476,7 +4679,7 @@ html.inverted .login-card, html.inverted #chatScreen {
 	cursor: var(--cur-tap);
 	transition: color 0.2s ease, background-color 0.2s ease;
 }
-.side-pick.is-on { color: var(--paper); background: var(--ink); }
+.side-pick.is-on { color: var(--paper); background: var(--ink-fill); }
 .side-picks.is-shaking { animation: field-shake 0.4s ease; }
 .account-side { margin: 0.15rem 0 0; font-size: 0.78rem; }
 .talk-start-side { margin: 0.2rem 0 0; font-size: 0.85rem; }
@@ -4540,11 +4743,11 @@ html.inverted .login-card, html.inverted #chatScreen {
 }
 .is-shaking { animation: field-shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
 
-.key-edit[aria-pressed="true"] { color: var(--paper); background: var(--ink); }
+.key-edit[aria-pressed="true"] { color: var(--paper); background: var(--ink-fill); }
 
 /* the box you pressed shows only its mark once it is marked: white behind it, the word taken out
    (kept in place, so the box keeps its size) */
-.answer-button.is-marked { color: var(--ink); background: var(--paper); }
+.answer-button.is-marked { color: var(--ink); background: var(--paper-fill); }
 .answer-button.is-marked .answer-word { visibility: hidden; }
 
 /* the pages, down the bar, as marks — each centred inside its bump, the same room either side
@@ -4582,7 +4785,7 @@ html.inverted .login-card, html.inverted #chatScreen {
 	align-items: center;
 	gap: calc(var(--wave-h) - 44px);      /* a mark every bump */
 }
-html:not(.inverted) .page-marks { --paper: #000; --ink: #ffffff; --line: #ffffff; }
+html:not(.inverted) .page-marks { --paper: var(--tint-main); --ink: #ffffff; --line: #ffffff; --paper-fill: var(--tint-fill); --ink-fill: var(--ink); }
 .section-tab {
 	position: relative;
 	display: grid;
@@ -4597,7 +4800,7 @@ html:not(.inverted) .page-marks { --paper: #000; --ink: #ffffff; --line: #ffffff
 	font-size: 0;
 	cursor: var(--cur-tap);
 }
-.section-tab.active { color: var(--paper); background: var(--ink); cursor: var(--cur-dot); }
+.section-tab.active { color: var(--paper); background: var(--ink-fill); cursor: var(--cur-dot); }
 .section-tab svg { width: 28px; height: 28px; }
 
 /* a pressed mark's bump pushed out to the right: the bar's own black, starting inside the bump so
@@ -4614,7 +4817,7 @@ html:not(.inverted) .page-marks { --paper: #000; --ink: #ffffff; --line: #ffffff
 	margin: 0;
 	padding: 0 22px 0 calc(var(--wave-w) / 2 + var(--wave-out) - 6px);   /* the name just inside the crest, 22px before the round end: more read as spaced on purpose */
 	color: #fff;
-	background: #000;
+	background: var(--tint-fill);
 	border: 0;
 	border-radius: 0 calc(var(--wave-h) / 2) calc(var(--wave-h) / 2) 0;
 	font-family: var(--title-font);
