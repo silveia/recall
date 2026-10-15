@@ -5654,7 +5654,7 @@ function placeTintList() {
     tintPop.style.right = '16px';     // in the window's corner, its right edge on the page's own (the dot sits in that corner)
 }
 function rollTintList(open) {
-    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop, 14, { fromPointer: false, rise: true }); }     // only round the list: none out of the pointer for the colour (by request)
+    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop, 11, { fromPointer: false, rise: true }); }     // only round the list: none out of the pointer for the colour (by request)
     tintPop.classList.toggle('is-open', open);
 }
 window.addEventListener('resize', () => { if (tintPop.classList.contains('is-open')) placeTintList(); });

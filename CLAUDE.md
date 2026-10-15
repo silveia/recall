@@ -2169,7 +2169,7 @@ and gone after about a third of a second — no slow shrink, no spin (the first 
 were too much). **One sparkle shape only**: a plus with thin straight arms tapering to blunt points and a slightly bolder
 middle (`.sparkle`, a mask, so it is painted like black is painted here: white in the dark, the colour layer's
 own colour at its spot in the light, black with no colour). On the graphics card. **`sparkleAround(el)`**: a list opened by a press sparkles **out of the pointer** too (a spray, as on any small
-press — by request, "a little bit of both") — except the colour list, which only sparkles round itself — and with a proper burst: 14 bubbles of every size,
+press — by request, "a little bit of both") — except the colour list, which only sparkles round itself — and with a proper burst: 11 bubbles of every size,
 starting at once (within about a fifth of a second), that pop up, rise a little and are gone (`rise`; by request, it felt plain — a version that dwindled away as
 it floated up was tried and put back; `dwindle` is kept in `sparkle` for it); and as it springs out of its mark, half twinkle **on the list itself**, near its
 edges and corners, white so they are plainly in front of it (all outside it, they read as coming from behind
