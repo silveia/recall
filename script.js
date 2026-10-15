@@ -763,18 +763,24 @@ window.sparkleAround = sparkleAround;
 document.querySelectorAll('.floaty').forEach((button) => {
     const letters = () => button.querySelectorAll('.rec-letter');
     button.addEventListener('pointerenter', () => {
-        letters().forEach((one) => { one.style.transform = ''; });
+        letters().forEach((one) => { one.style.transform = ''; one.style.translate = ''; });
         button.classList.add('is-floating');
     });
     button.addEventListener('pointerleave', () => {
-        const held = Array.from(letters(), (one) => getComputedStyle(one).transform);
-        button.classList.remove('is-floating');
+        // both halves are held where they are — the float (transform) and the parting (translate) — and then
+        // let go together, so both glide home; holding only the float let the parting snap shut
+        const held = Array.from(letters(), (one) => {
+            const look = getComputedStyle(one);
+            return { transform: look.transform, translate: look.translate };
+        });
         letters().forEach((one, i) => {
             one.style.transition = 'none';
-            one.style.transform = held[i] === 'none' ? '' : held[i];
+            one.style.transform = held[i].transform === 'none' ? '' : held[i].transform;
+            one.style.translate = held[i].translate === 'none' ? '' : held[i].translate;
         });
+        button.classList.remove('is-floating');
         void button.offsetWidth;
-        letters().forEach((one) => { one.style.transition = ''; one.style.transform = ''; });
+        letters().forEach((one) => { one.style.transition = ''; one.style.transform = ''; one.style.translate = ''; });
     });
 });
 // each mark that grows on hover keeps its own line width, so it can thin as it grows (style.css)
