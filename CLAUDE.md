@@ -161,9 +161,10 @@ inside one function (`window.startDrawing`, run the first time the page is shown
 meet the site's). Its keys only work on the draw page (`drawHere`), and the site's ctrl/cmd shortcuts stand
 aside there. Its little windows, sprites and fish are placed inside the page, not the whole window. Its
 holes are `window.drawHoles()`, read straight by `tintHoles`. Its loop for sprites and fish only runs while
-there is something to move. **Anything the site floats over the sheet** (the strip's lists, the search's results, a window,
-the confirm chip) puts the layer back where it covers it (`drawSheetBox`, square-cut): the sheet is a hole,
-so the colour list over it showed raw black and its colours were put back under the layer. **No holes are
+there is something to move. **Anything the site floats over the sheet or a chat picture** (the strip's lists, the search's results, a
+window, the confirm chip) puts the layer back where it covers it (square-cut), **for as long as it is on
+screen at all** — judged by its visibility and opacity, not by whether it is open: a list fades for a moment
+after it shuts, and that moment over a hole was the black flash on every close. **No holes are
 cut while a refresh holds the page back** (`booting`): the shell is see-through then, and the sheet's hole
 showed the black behind it — the black flash on refresh; they are cut the moment the page comes in. `drawing/` now holds only its pictures; `pages.sh` fingerprints `draw.js`.
 
@@ -1202,11 +1203,12 @@ By request, the plain and odd animations move like candy edits — a spring that
 is going and settles. **`--spring`** in `:root` is that curve (a damped spring, 1 − e^(−6t)·cos(8t), as a
 `linear()` easing); use it for anything new that pops. **Help's note and the bin's list** spring out of
 their mark from small and a little turned, coming into focus out of a soft blur, and shrink and blur away
-quicker. **The colour list** opens exactly as they do (by request — a dot-growing circle, a page flip and a
-turned spring were all tried and refused), but its colours are hidden while the box arrives (a colour cut out
-of the layer can't fade: under it is black) and, 300ms in, **pop in one after another** (`colours-in`,
-`rollTintList`: each springs up from nothing, 45ms apart, its hole cut to it frame by frame); shut, they
-go at once. **The page switch keeps its old slide** (a springy blur-in was tried and refused).
+quicker. **The colour list** opens exactly as they do, colours and all (by request — a dot-growing circle, a page
+flip, a turned spring and colours popping in after were all tried and refused). **It lies above the colour
+layer**: moved to the foot of `<body>`, `position: fixed` under its dot (`placeTintList`), z-index over
+`body::after`, and it paints its own back in the layer's colour or gradient (`--tint-layer`, fixed, so it is
+the same part the strip shows) with the strip's white words. So nothing in it is cut out of the layer and
+nothing in it can ever show black. **The page switch keeps its old slide** (a springy blur-in was tried and refused).
 
 ## What sits over what
 

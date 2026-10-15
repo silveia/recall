@@ -2983,19 +2983,30 @@ html.inverted .topbar::after {
 	cursor: var(--cur-tap);
 }
 .tint-swatch { width: 18px; height: 18px; background: var(--tint-fill); border: 1px solid var(--line); border-radius: 50%; }
+/* the colour list lies above the site's colour layer (by request, after one black flash too many): it is
+   moved to the foot of <body> and given the top place, so its colours are simply its colours — nothing cut
+   out of the layer, nothing that can show the black under a hole. it paints its own back in the layer's
+   colour or gradient (fixed, so it is the same part of it the strip shows), with the strip's white words */
 .tint-pop {
-	position: absolute;
-	top: calc(100% + var(--group));
-	left: 50%;
-	translate: -50% 0;
-	z-index: 70;
+	--paper: #000;
+	--ink: #fff;
+	--line: #fff;
+	--ink-fill: #fff;
+	--paper-fill: var(--tint-layer, #000);
+	position: fixed;     /* placed by the script under its dot */
+	top: 0;
+	left: auto;
+	right: 0;
+	transform-origin: 100% 0;
+	z-index: 2147483001;     /* over the colour layer (body::after, 2147483000) */
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
 	width: 14rem;
 	padding: 12px;
 	color: var(--ink);
-	background: var(--paper-fill);
+	background: var(--tint-layer, #000);
+	background-attachment: fixed;
 	border: 1px solid var(--line);
 	border-radius: 18px;
 	font-family: var(--font);
@@ -3195,7 +3206,7 @@ html.inverted .topbar::after {
    left edge rather than its middle, or it would run off the window */
 /* the controls sit at the strip's right end, so what hangs from help and the bin hangs from their right
    edge, or it would run off the window */
-.strip-right .rail-binned .binned-list, .strip-right .rail-tint .tint-pop { left: auto; right: -10px; translate: none; transform-origin: 100% 0; }
+.strip-right .rail-binned .binned-list { left: auto; right: -10px; translate: none; transform-origin: 100% 0; }
 /* the right-hand group (the bin, help and the clock) is lifted a pixel together: measured it sits on
    the strip's middle, but its lowercase words carry their weight low and it read as sitting low, by request */
 .topbar .strip-right, .topbar .strip-middle { top: -1px; }
@@ -3285,7 +3296,7 @@ html.inverted .topbar::after {
 	visibility: hidden;
 	transition: opacity 0.18s ease-in, transform 0.22s cubic-bezier(0.5, 0, 0.75, 0), filter 0.2s ease-in, visibility 0s linear 0.22s;
 }
-.help-box.is-open .help-body, .rail-binned.is-open .binned-list, .rail-tint.is-open .tint-pop {
+.help-box.is-open .help-body, .rail-binned.is-open .binned-list, .tint-pop.is-open {
 	opacity: 1;
 	transform: none;
 	filter: none;
@@ -3293,13 +3304,9 @@ html.inverted .topbar::after {
 	transition: opacity 0.2s ease-out, transform 0.62s var(--spring), filter 0.32s ease-out, visibility 0s;
 }
 
-/* the colour list opens as help's note and the bin's list do; its colours pop in after (rollTintList),
-   since a colour cut out of the layer can't fade — under it is black */
-/* its colours stay hidden while the box springs in, and pop in once it has landed (the script scales each) */
-.tint-pop :is(.tint-kind-dot, .hue-now, .hue-field, .hue-strip) { visibility: hidden; transform-origin: 50% 50%; }
-.tint-pop.colours-in :is(.tint-kind-dot, .hue-now, .hue-field, .hue-strip) { visibility: visible; }
 /* its rings are white only, no black rim (by request) */
 .tint-pop .hue-ring { box-shadow: none; }
+.tint-pop { transform-origin: 100% 0; }     /* it springs from its top right, under its dot */
 
 /* the clock: the moon, the half of the day, the date, and the time last, at the very right */
 .clock-suffix { position: relative; top: 0.75px; order: 1; line-height: 1; }

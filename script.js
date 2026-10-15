@@ -569,7 +569,6 @@ function unfoldSection(force) {
 // not the app round it, whose black takes the layer like everything else) and colour pictures in the
 // chat. measured at once — a frame late showed the layer on them first — and every frame while the page
 // slides in, since they move with it
-const TINT_HOLES = '.tint-kind-dot, .hue-now, #siteTintField, #siteTintHue';
 function tintHoles() {
     const holes = [];
     const add = (box) => { if (box && box.width && box.height) holes.push(box); };
@@ -578,35 +577,33 @@ function tintHoles() {
     // the black behind it until the page came in — the sheet flashed black
     const holding = document.documentElement.classList.contains('booting');
     if (activeSectionId === 'draw' && !holding && typeof window.drawHoles === 'function') window.drawHoles().forEach(add);
-    // whatever the site floats over the sheet (the strip's lists, the search's results, a window) puts the
-    // layer back there — the path is filled even-odd — or it showed as raw black over the sheet, and a
-    // colour cut out inside it (the colour list's) was put back under the layer instead
-    if (activeSectionId === 'draw' && !holding && window.drawSheetBox) {
-        const sheet = window.drawSheetBox;
-        document.querySelectorAll('.help-box.is-open .help-body, .rail-binned.is-open .binned-list, .rail-tint.is-open .tint-pop, .page-found:not([hidden]), .modal-veil:not([hidden]) .modal-panel:not([hidden]), #confirmChip:not([hidden])').forEach((el) => {
-            const box = el.getBoundingClientRect();
-            const left = Math.max(box.left, sheet.left), top = Math.max(box.top, sheet.top);
-            const right = Math.min(box.right, sheet.right), bottom = Math.min(box.bottom, sheet.bottom);
-            if (right > left && bottom > top) add({ left, top, width: right - left, height: bottom - top, round: 0 });     // square: the corners it leaves are over the white sheet, where the layer is white anyway, and a rounded cut where the sheet cuts it notched it
-        });
-    }
-    // the site's colour dropdown, while it is open: its colours are the colours themselves
-    // while it is open its colours are cut out, each where it is drawn as it pops in (`colours-in`): its
-    // box as it stands that frame, its rounding scaled with it
-    const tintBox = document.getElementById('railTint');
-    const tintList = document.getElementById('tintPop');
-    if (tintBox && tintList && tintBox.classList.contains('is-open') && tintList.classList.contains('colours-in')) {
-        tintList.querySelectorAll(TINT_HOLES).forEach((el) => {
-            if (el.closest('[hidden]')) return;
-            const box = el.getBoundingClientRect();
-            const scale = el.offsetWidth ? box.width / el.offsetWidth : 1;
-            add({ left: box.left, top: box.top, width: box.width, height: box.height, round: (parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0) * scale });
-        });
-    }
+    // what keeps its colours on the page under the site's own floating things: the drawing's sheet, the chat's
+    // colour pictures. (the colour list lies above the layer and needs none of this)
+    const bases = [];
+    if (activeSectionId === 'draw' && !holding && window.drawSheetBox) bases.push(window.drawSheetBox);
     if (activeSectionId === 'chat') {
         document.querySelectorAll('.said-file img, .tray-look img').forEach((img) => {
             const box = img.getBoundingClientRect();
-            if (box.bottom > 0 && box.top < window.innerHeight) add(box);
+            if (box.bottom > 0 && box.top < window.innerHeight) { add(box); bases.push(box); }
+        });
+    }
+    // whatever the site floats over them (the strip's lists, the search's results, a window, the confirm
+    // chip) puts the layer back there — the path is filled even-odd — or it showed as raw black over them.
+    // judged by what is on screen, not by what is open: a list fades and shrinks for a moment after it
+    // shuts, and that moment over a hole was the black flash on every close
+    if (bases.length) {
+        document.querySelectorAll('.help-body, .binned-list, .page-found, .modal-panel, #confirmChip').forEach((el) => {
+            if (!el.getClientRects().length) return;      // not laid out at all (hidden, display: none)
+            const look = getComputedStyle(el);
+            if (look.visibility !== 'visible' || Number(look.opacity) === 0) return;
+            const box = el.getBoundingClientRect();
+            bases.forEach((base) => {
+                const left = Math.max(box.left, base.left), top = Math.max(box.top, base.top);
+                const right = Math.min(box.right, base.right), bottom = Math.min(box.bottom, base.bottom);
+                // square: the corners it leaves are over the sheet or the picture, and a rounded cut where the
+                // edge cuts it notched it
+                if (right > left && bottom > top) add({ left, top, width: right - left, height: bottom - top, round: 0 });
+            });
         });
     }
     return holes;
@@ -639,7 +636,7 @@ window.addEventListener('site-tint', cutTintHole);
 // the holes follow the page being let in on a refresh (none are cut before), and anything opening or shutting
 // in the strip, which may lie over the drawing's sheet
 new MutationObserver(() => cutTintHole()).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-new MutationObserver(() => { if (activeSectionId === 'draw') cutTintHoleWhileMoving(700); })
+new MutationObserver(() => { if (activeSectionId === 'draw' || activeSectionId === 'chat') cutTintHoleWhileMoving(700); })
     .observe(document.querySelector('.topbar'), { attributes: true, attributeFilter: ['class', 'hidden'], subtree: true });
 document.addEventListener('scroll', () => { if (activeSectionId === 'chat') window.requestAnimationFrame(cutTintHole); }, true);
 document.addEventListener('load', (event) => { if (event.target.tagName === 'IMG') cutTintHole(); }, true);
@@ -5494,39 +5491,21 @@ function keepTint(next, keepCode) {
 function tintFromHsv(keepCode) {
     keepTint({ ...tintNow, [tintEnd]: hsvToHex(tintHsv) }, keepCode);
 }
-// the colour list opens the way help's note and the bin's list do (by request): it springs out of its mark
-// and comes into focus. its colours are cut out of the colour layer, and a fade there shows the black under
-// it, so they stay hidden while the box arrives — then, once it has landed, they pop in one after another,
-// each springing up from nothing, with its hole cut to it frame by frame. shut, they go at once and the box
-// springs away as the others do
+// the colour list opens the way help's note and the bin's list do, colours and all (by request). it lies
+// above the site's colour layer (moved to the foot of <body>), so nothing in it is cut out of the layer and
+// nothing can flash black; placed under its dot whenever it opens
 let closeTintList = () => {};     // set once the colour list is wired up
-const springOut = (p) => (p >= 1 ? 1 : 1 - Math.exp(-6 * p) * Math.cos(8 * p));
-const tintPop_ = { raf: 0, wait: 0 };
-function rollTintList(open) {
-    cancelAnimationFrame(tintPop_.raf);
-    clearTimeout(tintPop_.wait);
-    tintPop_.raf = 0;
-    const parts = Array.from(tintPop.querySelectorAll(TINT_HOLES));
-    tintPop.classList.remove('colours-in');
-    parts.forEach((part) => { part.style.transform = 'scale(0)'; });
-    cutTintHole();
-    if (!open) return;
-    tintPop_.wait = setTimeout(() => {
-        tintPop.classList.add('colours-in');
-        const start = performance.now();
-        const step = (now) => {
-            let going = false;
-            parts.forEach((part, i) => {
-                const p = Math.max(0, Math.min(1, (now - start - i * 45) / 420));
-                if (p < 1) going = true;
-                part.style.transform = p >= 1 ? '' : `scale(${springOut(p).toFixed(4)})`;
-            });
-            tintPop_.raf = going ? requestAnimationFrame(step) : 0;
-            cutTintHole();
-        };
-        tintPop_.raf = requestAnimationFrame(step);
-    }, 300);
+document.body.append(tintPop);
+function placeTintList() {
+    const dot = tintHead.getBoundingClientRect(), strip = document.querySelector('.topbar').getBoundingClientRect();
+    tintPop.style.top = `${strip.bottom + 8}px`;     // level with help's note and the bin's list
+    tintPop.style.right = `${Math.max(8, window.innerWidth - dot.right - 10)}px`;
 }
+function rollTintList(open) {
+    if (open) placeTintList();
+    tintPop.classList.toggle('is-open', open);
+}
+window.addEventListener('resize', () => { if (tintPop.classList.contains('is-open')) placeTintList(); });
 if (window.siteTint) {
     closeTintList = () => { if (railTint.classList.contains('is-open')) setOpen(false); };
     const setOpen = (open) => {
