@@ -613,6 +613,61 @@ html.tint-layer.tinted body::after {
 	min-height: 0;
 }
 
+/* under the board (14 Oct): a pad to jot on and a way into every page, filling what was an empty half */
+.home-lower { display: grid; flex: 1; grid-template-columns: calc(var(--tile) * 3 + var(--group) * 2) minmax(0, 1fr); gap: var(--group); min-height: 0; }   /* on the board's own columns: the pad under the first three, the pages under the last two */
+.home-box {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tight);
+	min-height: 0;
+	padding: var(--widget-pad);
+	background: var(--paper-fill);
+	border: 1px solid var(--line);
+	border-radius: 1.4rem;
+}
+/* the pad: ruled like a notebook in hairlines of the ink, the words sitting on the lines */
+.home-jot textarea {
+	flex: 1;
+	min-height: 0;
+	padding: 0.2rem 0.4rem;
+	color: var(--ink);
+	background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.9rem - 1px), var(--line) calc(1.9rem - 1px), var(--line) 1.9rem);
+	background-attachment: local;
+	border: 0;
+	outline: none;
+	resize: none;
+	font-family: var(--font);
+	font-size: 0.95rem;
+	line-height: 1.9rem;
+}
+.home-jot textarea::placeholder { color: var(--muted); }
+.jot-count { margin: 0; font-family: var(--num-font); font-size: 0.95rem; text-align: right; line-height: 1; min-height: 1em; }
+/* a row per page: its mark in a ring, its name, and a line on how it stands. it turns over on hover */
+.go-list { display: flex; flex: 1; flex-direction: column; justify-content: space-evenly; gap: var(--tight); min-height: 0; }
+.go-row {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 0.8rem;
+	width: 100%;
+	padding: 0.45rem 0.9rem 0.45rem 0.45rem;
+	color: var(--ink);
+	background: none;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font: inherit;
+	text-align: left;
+	cursor: var(--cur-tap);
+	transition: background-color 0.2s ease, color 0.2s ease, transform 0.45s var(--spring);
+}
+.go-row:hover { color: var(--paper); background: var(--ink-fill); transform: translateX(4px); }
+.go-mark { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border: 1px solid currentColor; border-radius: 50%; }
+.go-mark svg { width: 1.2rem; height: 1.2rem; }
+.go-name { font-size: 0.95rem; }
+.go-line { display: block; overflow: hidden; font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; }
+.go-arrow { width: 1rem; height: 1rem; transition: transform 0.45s var(--spring); }
+.go-row:hover .go-arrow { transform: translateX(3px); }
+
 /* =========================================================
    8. home — deck bar
    ========================================================= */

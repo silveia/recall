@@ -819,6 +819,15 @@ the name, the first place the word appears with it marked, and a count.
 A round black go button with a white arrow sits at the bar's far right. Pressing a result (or Enter, or the go button, for the first) switches to that page and outlines
 where the word is for a moment if it is on show.
 
+**Under the board (14 Oct, my own pass):** the empty half of home is two boxes on the board's own columns
+— **jot** under the first three (a ruled pad, kept in this browser under `home-jot` as it is typed, its
+word count in VT323 in the corner) and **go** under the last two (a row per page: its mark in a ring, its
+name, a line on how it stands — cards and decks, clips kept, friends — and an arrow; it turns over and
+springs 4px right on hover; `paintGo`, redrawn with the tiles and whenever home is shown). **A `today`
+tile** joins the board's choices: the date big, the weekday, and when wide the month and how far
+through the year. **The page marks have a little more character** (same plain hairlines): a house with an
+arched door, two cards fanned, a five-bar waveform, a bubble that is typing; the pencil is untouched.
+
 **The movable board is exactly three tiles** (by request; `fillBoard()`):
 one wide and two small, filling the four columns, packed in order. None
 can be added or removed — no cross, no resize corner, no bin, no

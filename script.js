@@ -393,10 +393,12 @@ function switchSection(id) {
 
 // one simple mark per page, drawn in the site's own hairline
 const PAGE_MARKS = {
-    home: '<path d="M4 11.5 12 5l8 6.5M6.5 10v9.5h11V10"/>',
-    cards: '<rect x="4.5" y="8" width="15" height="11" rx="1.5"/><path d="M7 5h10"/>',   // a card, one line behind it: as plain as the pencil
-    audio: '<path d="M8 9v6M12 5v14M16 9v6"/>',   // three bars, as plain as the pencil
-    chat: '<path d="M20 11.5c0 3.9-3.6 7-8 7-1.1 0-2.2-.2-3.1-.6L4.5 19.5l1.3-3.6C4.7 14.7 4 13.2 4 11.5c0-3.9 3.6-7 8-7s8 3.1 8 7z"/>',   // a round bubble, by request
+    // a little more character (14 Oct, my own pass, after pinterest- and discord-style line marks): a house
+    // with an arched door, two cards fanned, a rounder waveform, a bubble that is typing
+    home: '<path d="M4.5 11 12 4.8l7.5 6.2"/><path d="M6.5 9.4V19.2h11V9.4"/><path d="M10.4 19.2v-3.4a1.6 1.6 0 0 1 3.2 0v3.4"/>',
+    cards: '<rect x="4" y="8.2" width="12.5" height="11" rx="2"/><path d="M8.2 5.6l9.1-1.5a2 2 0 0 1 2.3 1.6l1.4 8.4a2 2 0 0 1-1.6 2.3l-.9.15"/>',
+    audio: '<path d="M4.5 11v2M8.25 8v8M12 5v14M15.75 8.5v7M19.5 10.5v3"/>',
+    chat: '<path d="M20 11.5c0 3.9-3.6 7-8 7-1.1 0-2.2-.2-3.1-.6L4.5 19.5l1.3-3.6C4.7 14.7 4 13.2 4 11.5c0-3.9 3.6-7 8-7s8 3.1 8 7z"/><circle cx="8.6" cy="11.5" r=".9" fill="currentColor" stroke="none"/><circle cx="12" cy="11.5" r=".9" fill="currentColor" stroke="none"/><circle cx="15.4" cy="11.5" r=".9" fill="currentColor" stroke="none"/>',
     draw: '<path d="M5 19l1-4L16 5l3 3L9 18z"/>'   // a pencil, one plain outline and nothing else, by request
 };
 const pageMark = (id) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PAGE_MARKS[id] || ''}</svg>`;
@@ -704,6 +706,7 @@ function renderSections() {
     if (activeSectionId === 'draw' && !drawFrame.src) {
         drawFrame.src = drawFrame.dataset.src + (document.documentElement.classList.contains('inverted') ? '#dark' : '');
     }
+    if (activeSectionId === 'home') paintGo();     // the go list's lines are current whenever home is shown
     if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
     if (activeSectionId !== 'audio') openSensing(false);
@@ -4772,6 +4775,28 @@ const WIDGETS = [
         }
     },
     {
+        // the day itself (14 Oct): the date big, the weekday under it, and in a wide tile how far through
+        // the year it is
+        id: 'date',
+        name: 'today',
+        fill(body, size) {
+            const now = new Date();
+            body.innerHTML = '';
+            const big = document.createElement('p');
+            big.className = 'widget-big';
+            big.textContent = String(now.getDate());
+            body.append(big);
+            const under = document.createElement('p');
+            under.className = 'widget-unit';
+            under.textContent = now.toLocaleDateString([], { weekday: 'long' }).toLowerCase();
+            body.append(under);
+            if (size === 'small') return;
+            const first = new Date(now.getFullYear(), 0, 1), next = new Date(now.getFullYear() + 1, 0, 1);
+            const through = Math.floor((now - first) / (next - first) * 100);
+            body.append(oneLine(`${now.toLocaleDateString([], { month: 'long' }).toLowerCase()} · ${through}% through the year`));
+        }
+    },
+    {
         id: 'decks',
         name: 'flashcards',
         fill(body, size) {
@@ -5051,6 +5076,69 @@ function paintWidgets() {
         const widget = entry && widgetById(entry.id);
         if (widget) widget.fill(card.querySelector('.widget-body'), card.dataset.size, entry.look);
     });
+    paintGo();
+}
+
+// under the board: a way into every page, each with a line on how it stands (redrawn with the tiles)
+const GO_ARROW = '<svg class="go-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg>';
+function goLine(id) {
+    const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    if (id === 'cards') {
+        const cards = decks.reduce((total, deck) => total + deck.cards.length, 0);
+        return `${plural(cards, 'card', 'cards')} in ${plural(decks.length, 'deck', 'decks')}`;
+    }
+    if (id === 'audio') {
+        const clips = recordingList.querySelectorAll('.recording-item').length;
+        return clips ? `${plural(clips, 'clip', 'clips')} kept` : 'nothing recorded yet';
+    }
+    if (id === 'draw') return 'your sheet, as you left it';
+    if (id === 'chat') {
+        // the chat's own state is declared further down; read it only once it is there
+        try {
+            if (!chatMe) return 'log in to start yapping';
+            return chatFriends.length ? plural(chatFriends.length, 'friend', 'friends') : 'add someone';
+        } catch (error) { return 'say hi'; }
+    }
+    return '';
+}
+function paintGo() {
+    const list = document.getElementById('homeGo');
+    if (!list) return;
+    if (!list.children.length) {
+        sections.filter((one) => one.id !== 'home').forEach((section) => {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'go-row';
+            row.dataset.go = section.id;
+            row.title = `go to ${section.name}`;
+            row.innerHTML = `<span class="go-mark">${pageMark(section.id)}</span><span><span class="go-name"></span><span class="go-line"></span></span>${GO_ARROW}`;
+            row.querySelector('.go-name').textContent = section.name;
+            row.addEventListener('click', () => switchSection(section.id));
+            list.append(row);
+        });
+    }
+    list.querySelectorAll('.go-row').forEach((row) => { row.querySelector('.go-line').textContent = goLine(row.dataset.go); });
+}
+
+// the jot pad: kept in this browser as it is typed, with a count of the words in the corner
+{
+    const pad = document.getElementById('homeJot');
+    const count = document.getElementById('jotCount');
+    if (pad) {
+        try { pad.value = localStorage.getItem('home-jot') || ''; } catch (error) { /* nothing kept */ }
+        const tally = () => {
+            const words = pad.value.trim() ? pad.value.trim().split(/\s+/).length : 0;
+            count.textContent = words ? `${words} ${words === 1 ? 'word' : 'words'}` : '';
+        };
+        let keepSoon = 0;
+        pad.addEventListener('input', () => {
+            tally();
+            clearTimeout(keepSoon);
+            keepSoon = setTimeout(() => { try { localStorage.setItem('home-jot', pad.value); } catch (error) { /* full */ } }, 300);
+        });
+        pad.addEventListener('blur', () => { try { localStorage.setItem('home-jot', pad.value); } catch (error) { /* full */ } });
+        tally();
+    }
 }
 
 /* --- the other ways a widget can be read --- */
