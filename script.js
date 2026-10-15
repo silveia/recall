@@ -672,7 +672,7 @@ function renderSections() {
     // the drawing app starts the first time its page is shown: started hidden it measures its sheet as
     // nothing, and keeps that size
     if (activeSectionId === 'draw' && typeof window.startDrawing === 'function') window.startDrawing();
-    if (activeSectionId === 'home') paintGo();     // the go list's lines are current whenever home is shown
+    if (activeSectionId === 'home') paintFlip();     // the card under the board is still one of yours whenever home is shown
     if (activeSectionId === 'chat' && chatReady) wakeChat();
     if (activeSectionId !== 'audio' && recorderReady) stopCapture();
     if (activeSectionId !== 'audio') openSensing(false);
@@ -5043,51 +5043,69 @@ function paintWidgets() {
         const widget = entry && widgetById(entry.id);
         if (widget) widget.fill(card.querySelector('.widget-body'), card.dataset.size, entry.look);
     });
-    paintGo();
+    paintFlip();
 }
 
-// under the board: a way into every page, each with a line on how it stands (redrawn with the tiles)
-const GO_ARROW = '<svg class="go-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg>';
-function goLine(id) {
-    const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-    if (id === 'cards') {
-        const cards = decks.reduce((total, deck) => total + deck.cards.length, 0);
-        return `${plural(cards, 'card', 'cards')} in ${plural(decks.length, 'deck', 'decks')}`;
-    }
-    if (id === 'audio') {
-        const clips = recordingList.querySelectorAll('.recording-item').length;
-        return clips ? `${plural(clips, 'clip', 'clips')} kept` : 'nothing recorded yet';
-    }
-    if (id === 'draw') return 'your sheet, as you left it';
-    if (id === 'chat') {
-        // the chat's own state is declared further down; read it only once it is there
-        try {
-            if (!chatMe) return 'log in to start yapping';
-            return chatFriends.length ? plural(chatFriends.length, 'friend', 'friends') : 'add someone';
-        } catch (error) { return 'say hi'; }
-    }
-    return '';
+// under the board: flip — a card from your decks, turned over on a press, and next for another. it keeps
+// the card it has until that card is gone (redrawn with the tiles)
+const flip = { card: null, deck: null };
+const flipCard = document.getElementById('flipCard');
+function flipCards() {
+    const all = [];
+    decks.forEach((deck) => deck.cards.forEach((card) => { if (card.question || card.answer) all.push({ card, deck }); }));
+    return all;
 }
-function paintGo() {
-    const list = document.getElementById('homeGo');
-    if (!list) return;
-    if (!list.children.length) {
-        sections.filter((one) => one.id !== 'home').forEach((section) => {
-            const row = document.createElement('button');
-            row.type = 'button';
-            row.className = 'go-row';
-            row.dataset.go = section.id;
-            row.title = `go to ${section.name}`;
-            row.innerHTML = `<span class="go-mark">${pageMark(section.id)}</span><span><span class="go-name"></span><span class="go-line"></span></span>${GO_ARROW}`;
-            row.querySelector('.go-name').textContent = section.name;
-            row.addEventListener('click', () => switchSection(section.id));
-            list.append(row);
-        });
+function showFlip() {
+    const q = document.getElementById('flipQ'), a = document.getElementById('flipA');
+    const from = document.getElementById('flipFrom'), next = document.getElementById('flipNext');
+    if (!flip.card) {
+        q.textContent = 'no cards yet (｡•́︿•̀｡)';
+        a.textContent = 'make some on the card page';
+        from.textContent = '';
+        next.hidden = true;
+        return;
     }
-    list.querySelectorAll('.go-row').forEach((row) => { row.querySelector('.go-line').textContent = goLine(row.dataset.go); });
+    q.textContent = flip.card.question || '…';
+    a.textContent = flip.card.answer || '…';
+    from.textContent = `from ${flip.deck.name}`;
+    next.hidden = flipCards().length < 2;
+}
+function dealFlip() {
+    const all = flipCards();
+    const others = all.filter((one) => one.card !== flip.card);
+    const pick = (others.length ? others : all)[Math.floor(Math.random() * (others.length || all.length))];
+    flip.card = pick ? pick.card : null;
+    flip.deck = pick ? pick.deck : null;
+    showFlip();
+}
+function paintFlip() {
+    if (!flipCard) return;
+    if (!flip.card || !flipCards().some((one) => one.card === flip.card)) dealFlip();
+    else showFlip();
+}
+if (flipCard) {
+    flipCard.addEventListener('click', () => {
+        const over = !flipCard.classList.contains('is-over');
+        flipCard.classList.toggle('is-over', over);
+        flipCard.setAttribute('aria-pressed', String(over));
+    });
+    document.getElementById('flipNext').addEventListener('click', () => {
+        // turned over, it turns back first and the next card is dealt once its answer is out of sight
+        const deal = () => {
+            dealFlip();
+            flipCard.classList.remove('is-dealt');
+            void flipCard.offsetWidth;          // so it plays again on the next press
+            flipCard.classList.add('is-dealt');
+        };
+        if (flipCard.classList.contains('is-over')) {
+            flipCard.classList.remove('is-over');
+            flipCard.setAttribute('aria-pressed', 'false');
+            setTimeout(deal, 260);
+        } else deal();
+    });
 }
 
-// the jot pad: kept in this browser as it is typed, with a count of the words in the corner
+// the notes: kept in this browser as they are typed, with a count of the words in the corner
 {
     const pad = document.getElementById('homeJot');
     const count = document.getElementById('jotCount');

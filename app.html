@@ -268,17 +268,26 @@
                                 </div>
                                 <div class="widget-list" id="widgetList"></div>
                             </div>
-                            <!-- under the board: a pad to jot on, kept in this browser, and a way into every page
-                                 with a line on how it stands -->
+                            <!-- under the board: notes, kept in this browser, and a card from your decks to turn over -->
                             <div class="home-lower">
-                                <section class="home-box home-jot" aria-label="jot">
-                                    <div class="widget-head"><h3>jot</h3></div>
-                                    <textarea id="homeJot" spellcheck="false" placeholder="write something down ( ˘▽˘)っ" aria-label="jot something down"></textarea>
+                                <section class="home-box home-jot" aria-label="notes">
+                                    <div class="widget-head"><h3>notes</h3></div>
+                                    <textarea id="homeJot" spellcheck="false" placeholder="write something down ( ˘▽˘)っ" aria-label="notes"></textarea>
                                     <p class="jot-count" id="jotCount" aria-live="polite"></p>
                                 </section>
-                                <section class="home-box home-go" aria-label="go">
-                                    <div class="widget-head"><h3>go</h3></div>
-                                    <div class="go-list" id="homeGo"></div>
+                                <section class="home-box home-flip" aria-label="flip">
+                                    <div class="widget-head"><h3>flip</h3></div>
+                                    <!-- a card from your decks: press it to turn it over, next for another -->
+                                    <button class="flip-card" id="flipCard" type="button" title="turn it over" aria-pressed="false">
+                                        <span class="flip-inner">
+                                            <span class="flip-face flip-front"><span class="flip-tag">Q</span><span class="flip-words" id="flipQ"></span></span>
+                                            <span class="flip-face flip-back"><span class="flip-tag">A</span><span class="flip-words" id="flipA"></span></span>
+                                        </span>
+                                    </button>
+                                    <div class="flip-foot">
+                                        <span class="flip-from" id="flipFrom"></span>
+                                        <button class="flip-next" id="flipNext" type="button" title="another card" aria-label="another card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 7l5 5-5 5"/></svg></button>
+                                    </div>
                                 </section>
                             </div>
                         </section>

@@ -642,31 +642,53 @@ html.tint-layer.tinted body::after {
 }
 .home-jot textarea::placeholder { color: var(--muted); }
 .jot-count { margin: 0; font-family: var(--num-font); font-size: 0.95rem; text-align: right; line-height: 1; min-height: 1em; }
-/* a row per page: its mark in a ring, its name, and a line on how it stands. it turns over on hover */
-.go-list { display: flex; flex: 1; flex-direction: column; justify-content: space-evenly; gap: var(--tight); min-height: 0; }
-.go-row {
-	display: grid;
-	grid-template-columns: auto minmax(0, 1fr) auto;
-	align-items: center;
-	gap: 0.8rem;
-	width: 100%;
-	padding: 0.45rem 0.9rem 0.45rem 0.45rem;
+/* flip: a card from your decks, turned over on a press like a real one — the question on white, the
+   answer on the other side in black — springing as it turns. next deals another */
+.flip-card {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+	padding: 0;
 	color: var(--ink);
 	background: none;
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	font: inherit;
-	text-align: left;
+	border: 0;
+	perspective: 1200px;
 	cursor: var(--cur-tap);
-	transition: background-color 0.2s ease, color 0.2s ease, transform 0.45s var(--spring);
 }
-.go-row:hover { color: var(--paper); background: var(--ink-fill); transform: translateX(4px); }
-.go-mark { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border: 1px solid currentColor; border-radius: 50%; }
-.go-mark svg { width: 1.2rem; height: 1.2rem; }
-.go-name { font-size: 0.95rem; }
-.go-line { display: block; overflow: hidden; font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; }
-.go-arrow { width: 1rem; height: 1rem; transition: transform 0.45s var(--spring); }
-.go-row:hover .go-arrow { transform: translateX(3px); }
+.flip-inner {
+	position: absolute;
+	inset: 0;
+	transform-style: preserve-3d;
+	transition: transform 0.75s var(--spring);
+}
+.flip-card.is-over .flip-inner { transform: rotateY(180deg); }
+.flip-card.is-dealt .flip-inner { animation: flip-deal 0.5s var(--spring); }
+@keyframes flip-deal { from { transform: translateX(14px) scale(0.94); } to { transform: none; } }
+.flip-face {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--tight);
+	padding: var(--group);
+	color: var(--ink);
+	background: var(--paper-fill);
+	border: 1px solid var(--line);
+	border-radius: 1rem;
+	backface-visibility: hidden;
+	overflow: hidden;
+}
+.flip-back { color: var(--paper); background: var(--ink-fill); transform: rotateY(180deg); }
+.flip-tag { font-family: var(--head-font); font-size: 0.85rem; line-height: 1; }
+.flip-words { display: -webkit-box; max-width: 100%; overflow: hidden; font-size: 1.15rem; line-height: 1.4; text-align: center; -webkit-box-orient: vertical; -webkit-line-clamp: 5; overflow-wrap: anywhere; }
+.flip-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--tight); min-height: 1.8rem; }
+.flip-from { overflow: hidden; font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
+.flip-next { display: grid; flex: none; place-items: center; width: 1.8rem; height: 1.8rem; padding: 0; color: var(--ink); background: none; border: 0; cursor: var(--cur-tap); transition: transform 0.45s var(--spring); }
+.flip-next svg { width: 1.2rem; height: 1.2rem; }
+.flip-next:hover { transform: translateX(3px); }
+.flip-next[hidden] { display: none; }
 
 /* =========================================================
    8. home — deck bar

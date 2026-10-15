@@ -837,10 +837,12 @@ A round black go button with a white arrow sits at the bar's far right. Pressing
 where the word is for a moment if it is on show.
 
 **Under the board (14 Oct, my own pass):** the empty half of home is two boxes on the board's own columns
-— **jot** under the first three (a ruled pad, kept in this browser under `home-jot` as it is typed, its
-word count in VT323 in the corner) and **go** under the last two (a row per page: its mark in a ring, its
-name, a line on how it stands — cards and decks, clips kept, friends — and an arrow; it turns over and
-springs 4px right on hover; `paintGo`, redrawn with the tiles and whenever home is shown). **A `today`
+— **notes** under the first three (a ruled pad, kept in this browser under `home-jot` as it is typed, its
+word count in VT323 in the corner; it was called `jot`, renamed by request) and **flip** under the last two
+(replacing a list of the pages, by request): a card from your decks, the question on white; a press turns
+it over like a real card (`rotateY`, on the `--spring`) to the answer in black; the arrow deals another
+(turning it back first, so the next answer is never seen), with the deck it came from beside it. It keeps
+its card until that card is gone (`paintFlip`, redrawn with the tiles and whenever home is shown). **A `today`
 tile** joins the board's choices: the date big, the weekday, and when wide the month and how far
 through the year. **The page marks have a little more character** (same plain hairlines): a house with an
 arched door, two cards fanned, a five-bar waveform, a bubble that is typing; the pencil is untouched.
