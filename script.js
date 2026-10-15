@@ -669,8 +669,13 @@ function sparkleBurst(x, y, count = 7) {
 // white so they show in front of it (all of them outside it read as coming from behind it); the other half
 // just outside its edges, flying outwards over what is round it and coloured by that. the nearest the
 // corner it grows from go first
-function sparkleAround(el, count = 12) {
+// where the last press was, so a list opened by it can sparkle out of the pointer as well
+let lastPress = { x: 0, y: 0, at: 0 };
+document.addEventListener('pointerdown', (event) => { lastPress = { x: event.clientX, y: event.clientY, at: performance.now() }; }, true);
+function sparkleAround(el, count = 8) {
     if (!el || stillMotion()) return;
+    // a little of both (by request): a spray out of the pointer that opened it, and a few round the list
+    if (performance.now() - lastPress.at < 500) sparkleBurst(lastPress.x, lastPress.y, 6);
     const at = restSpot(el), w = el.offsetWidth, h = el.offsetHeight;
     const origin = getComputedStyle(el).transformOrigin.split(' ').map(parseFloat);
     const ox = at.x + (origin[0] || 0), oy = at.y + (origin[1] || 0);
