@@ -609,11 +609,87 @@ function restSpot(el) {
     const along = (part, size) => (!part ? 0 : part.endsWith('%') ? parseFloat(part) / 100 * size : parseFloat(part) || 0);
     return { x: x + along(shift[0], el.offsetWidth), y: y + along(shift[1], el.offsetHeight) };
 }
+// sparkles (by request): one shape only, a plus with thin straight arms tapering to points and a slightly bolder middle
+// (style.css, .sparkle). painted the way black is painted here — white in the dark, and in the light the
+// colour layer's own colour at the spot it appears (or black with no colour chosen) — and laid over everything
+const sparkleLayer = document.createElement('div');
+sparkleLayer.className = 'sparkles';
+sparkleLayer.setAttribute('aria-hidden', 'true');
+document.body.append(sparkleLayer);
+const stillMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function sparkle(x, y, { size = 12, dx = 0, dy = 0, delay = 0, long = 620 } = {}) {
+    if (stillMotion()) return;
+    const one = document.createElement('span');
+    one.className = 'sparkle';
+    one.style.width = `${size}px`;
+    one.style.height = `${size}px`;
+    const root = document.documentElement;
+    if (root.classList.contains('inverted')) one.style.background = '#fff';
+    else if (root.classList.contains('tinted')) {
+        // the layer's own gradient, laid so that the part showing is the part of the window it sits on
+        one.style.backgroundImage = getComputedStyle(root).getPropertyValue('--tint-layer');
+        one.style.backgroundSize = `${window.innerWidth}px ${window.innerHeight}px`;
+        one.style.backgroundPosition = `${-(x - size / 2)}px ${-(y - size / 2)}px`;
+    } else one.style.background = '#000';
+    one.style.transform = `translate(${x - size / 2}px, ${y - size / 2}px) scale(0)`;
+    sparkleLayer.append(one);
+    const at = (t, s, r) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s}) rotate(${r}deg)`;
+    one.animate([
+        { transform: at(0, 0, 0) },
+        { transform: at(0.55, 1.15, 45), offset: 0.38 },
+        { transform: at(0.8, 0.85, 70), offset: 0.7 },
+        { transform: at(1, 0, 90) }
+    ], { duration: long, delay, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'backwards' }).onfinish = () => one.remove();
+}
+// a few out of the pointer, on a small press
+function sparkleBurst(x, y, count = 5) {
+    for (let i = 0; i < count; i += 1) {
+        const turn = (i / count) * Math.PI * 2 + Math.random() * 0.9;
+        const reach = 14 + Math.random() * 14;
+        sparkle(x, y, { size: 10 + Math.random() * 7, dx: Math.cos(turn) * reach, dy: Math.sin(turn) * reach, delay: Math.random() * 60, long: 520 + Math.random() * 160 });
+    }
+}
+// a handful round a list as it springs out of its mark: along its edges, the nearest the corner it grows
+// from first, each drifting a little outwards as it twinkles
+function sparkleAround(el, count = 7) {
+    if (!el || stillMotion()) return;
+    const at = restSpot(el), w = el.offsetWidth, h = el.offsetHeight;
+    const origin = getComputedStyle(el).transformOrigin.split(' ').map(parseFloat);
+    const ox = at.x + (origin[0] || 0), oy = at.y + (origin[1] || 0);
+    const spots = [];
+    for (let i = 0; i < count; i += 1) {
+        const side = Math.floor(Math.random() * 4), t = Math.random();
+        const x = side === 0 ? at.x + t * w : side === 1 ? at.x + w : side === 2 ? at.x + t * w : at.x;
+        const y = side === 0 ? at.y : side === 1 ? at.y + t * h : side === 2 ? at.y + h : at.y + t * h;
+        spots.push({ x, y, out: [side === 3 ? -1 : side === 1 ? 1 : 0, side === 0 ? -1 : side === 2 ? 1 : 0] });
+    }
+    spots.sort((a, b) => Math.hypot(a.x - ox, a.y - oy) - Math.hypot(b.x - ox, b.y - oy));
+    spots.forEach((spot, i) => sparkle(spot.x, spot.y, {
+        size: 12 + Math.random() * 8,
+        dx: spot.out[0] * (6 + Math.random() * 8),
+        dy: spot.out[1] * (6 + Math.random() * 8),
+        delay: 90 + i * 45,
+        long: 600 + Math.random() * 200
+    }));
+}
+window.sparkleAround = sparkleAround;
+// the small presses that sparkle: the page's own actions (create, practice and the rest of the pills)
+document.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || !event.target.closest) return;
+    if (event.target.closest('.quick-action, .basic-button, .square-button, .flip-card, .flip-next, .key-edit, .page-search-go, .tint-kind')) sparkleBurst(event.clientX, event.clientY);
+}, true);
+// placed once when something opens, moves or the window changes — never every frame: measuring every copy
+// and writing it back on each frame of an animation made the browser redo its layout every frame, and the
+// colour list's spring stuttered. only written when it has actually moved
 function placeOwnLayer(el) {
     if (!el.getClientRects().length) return;     // not laid out: nothing to place
     const at = restSpot(el);
-    el.style.setProperty('--at-x', `${at.x.toFixed(1)}px`);
-    el.style.setProperty('--at-y', `${at.y.toFixed(1)}px`);
+    const x = `${at.x.toFixed(1)}px`, y = `${at.y.toFixed(1)}px`;
+    if (el.dataset.atX === x && el.dataset.atY === y) return;
+    el.dataset.atX = x;
+    el.dataset.atY = y;
+    el.style.setProperty('--at-x', x);
+    el.style.setProperty('--at-y', y);
 }
 function placeOwnLayers() {
     if (!document.documentElement.classList.contains('tinted')) return;
@@ -621,7 +697,6 @@ function placeOwnLayers() {
 }
 window.placeOwnLayers = placeOwnLayers;
 function cutTintHole() {
-    placeOwnLayers();
     const root = document.documentElement;
     if (!root.classList.contains('tinted')) { root.style.removeProperty('--tint-hole'); return; }
     const holes = tintHoles();
@@ -644,24 +719,23 @@ function cutTintHoleWhileMoving(long) {
     const step = () => { cutTintHole(); if (performance.now() < until) window.requestAnimationFrame(step); };
     step();
 }
-window.addEventListener('resize', cutTintHole);
-window.addEventListener('site-tint', cutTintHole);
+window.addEventListener('resize', () => { cutTintHole(); placeOwnLayers(); });
+window.addEventListener('site-tint', () => { cutTintHole(); placeOwnLayers(); });
+// something opened, shut or moved: the copies are placed once, on the next frame; the chat's holes follow
+// for the length of the move
+function somethingMoved() {
+    window.requestAnimationFrame(placeOwnLayers);
+    if (activeSectionId === 'chat') cutTintHoleWhileMoving(700);
+}
 // the holes follow the page being let in on a refresh (none are cut before), and anything opening or shutting
 // in the strip, which may lie over the drawing's sheet
-new MutationObserver(() => cutTintHole()).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-new MutationObserver(() => cutTintHoleWhileMoving(700))
+new MutationObserver(() => { cutTintHole(); placeOwnLayers(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+new MutationObserver(somethingMoved)
     .observe(document.querySelector('.topbar'), { attributes: true, attributeFilter: ['class', 'hidden'], subtree: true });
-// the bin at the foot of the bar: its list's copy of the colour is placed as it opens, and the bin itself
-// sits in the last whole bump that fits the window, below the page marks
-new MutationObserver(() => cutTintHoleWhileMoving(700)).observe(document.getElementById('railBinned'), { attributes: true, attributeFilter: ['class'] });
-function placeBin() {
-    const shell = getComputedStyle(document.documentElement);
-    const bump = parseFloat(shell.getPropertyValue('--wave-h')) || 64, strip = parseFloat(shell.getPropertyValue('--topbar')) || 52;
-    const fits = Math.floor((window.innerHeight - strip) / bump);
-    document.documentElement.style.setProperty('--bin-row', String(Math.max(sections.length, fits - 1)));
-}
-placeBin();
-window.addEventListener('resize', placeBin);
+// the bin in the bar: its list's copy of the colour is placed as it opens. it sits in the bump straight
+// under the last page mark — a place that is the same in every browser and at every window height
+new MutationObserver(somethingMoved).observe(document.getElementById('railBinned'), { attributes: true, attributeFilter: ['class'] });
+document.documentElement.style.setProperty('--bin-row', String(sections.length));
 document.addEventListener('scroll', () => { if (activeSectionId === 'chat') window.requestAnimationFrame(cutTintHole); }, true);
 document.addEventListener('load', (event) => { if (event.target.tagName === 'IMG') cutTintHole(); }, true);
 
@@ -719,6 +793,7 @@ function renderSections() {
     });
     unfoldSection();
     cutTintHoleWhileMoving(480);     // after the slide has started, so the first frame is measured where it is drawn
+    window.setTimeout(placeOwnLayers, 460);     // and the copies once the page has landed
 }
 
 /* ---------- 5. decks ---------- */
@@ -1540,8 +1615,10 @@ function showScreen(screen) {
 
     window.clearTimeout(modalExitTimer);
     modalVeil.classList.remove('is-leaving');
+    const opening = screen.hidden;
     modalVeil.hidden = false;
     WINDOWS.forEach((one) => { one.hidden = one !== screen; });
+    if (opening) window.requestAnimationFrame(() => sparkleAround(screen, 9));
     if (screen !== notesScreen) returnNotesPanel();
 
     const held = document.activeElement;
@@ -5445,6 +5522,7 @@ function openSwapPicks(entry, card) {
 const helpToggle = document.getElementById('helpToggle');
 
 function setHelpOpen(open) {
+    if (open && !helpBox.classList.contains('is-open')) window.requestAnimationFrame(() => sparkleAround(document.getElementById('helpBody'), 5));
     helpBox.classList.toggle('is-open', open);
     helpToggle.setAttribute('aria-expanded', String(open));
 }
@@ -5457,6 +5535,7 @@ document.getElementById('binnedHead').addEventListener('click', (event) => {
     if (event.target.closest('.empty-ask')) return;
     event.stopPropagation();
     railBinned.classList.toggle('is-open');
+    if (railBinned.classList.contains('is-open')) sparkleAround(document.getElementById('binnedList'));     // exactly as the colour list
     if (!railBinned.classList.contains('is-open')) askToEmpty(false);
     else closeTintList();     // the two lists hang side by side; one open shuts the other
 });
@@ -5538,7 +5617,7 @@ function placeTintList() {
     tintPop.style.right = '16px';     // in the window's corner, its right edge on the page's own (the dot sits in that corner)
 }
 function rollTintList(open) {
-    if (open) placeTintList();
+    if (open) { placeTintList(); placeOwnLayer(tintPop); sparkleAround(tintPop); }
     tintPop.classList.toggle('is-open', open);
 }
 window.addEventListener('resize', () => { if (tintPop.classList.contains('is-open')) placeTintList(); });
@@ -5703,6 +5782,7 @@ function showFound(open) {
     if (open) {
         pageFound.hidden = false;
         wrap.classList.add('is-open');
+        window.requestAnimationFrame(() => sparkleAround(pageFound, 5));     // a few as the results drop
     }
     pageFound.style.clipPath = open ? FOUND_OPEN : FOUND_SHUT;
     foundMove = pageFound.animate([{ clipPath: from === 'none' ? FOUND_OPEN : from }, { clipPath: open ? FOUND_OPEN : FOUND_SHUT }],

@@ -1552,6 +1552,7 @@ brushSize.addEventListener('input', (e) => {
                 });
             }
         }
+        if (pick.id === 'colourPick' && window.sparkleAround) window.sparkleAround(menu, 7);     // the site's sparkles round it as it opens
         var growing = pick.id === 'colourPick';
         roll(menu, true, growing ? 460 : 240, growing ? 'cubic-bezier(0.5, 0, 0.15, 1)' : 'cubic-bezier(0.22, 1, 0.36, 1)').onfinish = function () {
             if (!menu.isOpen) return;

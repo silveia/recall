@@ -2151,13 +2151,32 @@ colour pictures) slides in without the fade; and with a colour on, the drawing a
 opens from that corner (16px in, its right edge on the page's). The moon is now the same hairline as every
 other mark (an outlined crescent) and both sit in the same 36px box with a 20px mark, so side by side they
 read as a pair — they were centred, but a filled 16px crescent beside an 18px ring looked off. **The colour
-list has no blur.** **The bin is at the foot of the black bar** (`.bin-dock`, my recommendation, like the bin
-in a dock: pages at the top, the bin waiting at the bottom), in the marks' column, in the last whole bump that
-fits the window (`--bin-row`, `placeBin`); its list opens out to the right, its left edge on the page's boxes.
+list has no blur.** **The bin is in the black bar** (`.bin-dock`), in the marks' column (see "sparkles, and the pop" for where);
+its list opens out to the right, its left edge on the page's boxes.
 It lies over the colour layer with the marks; its count and list carry their own copies. **The notes have no
 word count.** **The page column starts under the strip** (`margin-top: var(--topbar)` on `.app-content`, not
 padding): a page sliding in from above was drawn over the strip for a moment — the white flash moving up to
 home.
+
+## Sparkles, and the pop (14 Oct, by request)
+
+**One sparkle shape only**: a plus with thin straight arms tapering to blunt points and a slightly bolder
+middle (`.sparkle`, a mask, so it is painted like black is painted here: white in the dark, the colour layer's
+own colour at its spot in the light, black with no colour). Each twinkles once — grows, turns a quarter,
+shrinks — on the graphics card. **`sparkleAround(el)`**: a handful round a list as it springs out of its mark,
+nearest its corner first, drifting outwards — the colour list, the bin's list (exactly as the colour list),
+help's note, the search's results, every window, and the drawing's colour adjuster. **`sparkleBurst(x, y)`**:
+a few out of the pointer on a small press (create, practice, the pills and square buttons, flip, the search's
+go). **The pop-ups pop**: no fade and no blur (both tried and refused) — the spring out of the mark from
+small, a quicker shrink back.
+
+**Smoothness:** the copies of the colour layer are placed once when something opens, moves or the window
+changes (`somethingMoved`), and only written when they have actually moved — placed on every frame of an
+animation, they made the browser redo its layout each frame and the colour list's spring stuttered.
+
+**The bin is in the bump straight under the last page mark** (`--bin-row` = the number of pages): at the bar's
+foot it moved with the window height, which differs from browser to browser. Its list opens from its top-left
+corner, as the colour list opens from its corner.
 
 ## The colour, in layers — no holes on the draw page (14 Oct)
 

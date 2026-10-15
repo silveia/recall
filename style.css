@@ -3311,23 +3311,22 @@ html.inverted .topbar::after {
    does; it goes back quicker, shrinking and blurring away. hidden after, so it can't be pressed while shut */
 .help-body, .binned-list, .tint-pop {
 	transform-origin: 50% 0;
-	opacity: 0;
-	transform: translateY(-10px) scale(0.6) rotate(-4deg);
-	filter: blur(6px);
+	transform: translateY(-8px) scale(0.4) rotate(-4deg);
 	visibility: hidden;
-	transition: opacity 0.18s ease-in, transform 0.22s cubic-bezier(0.5, 0, 0.75, 0), filter 0.2s ease-in, visibility 0s linear 0.22s;
+	transition: transform 0.22s cubic-bezier(0.5, 0, 0.75, 0), visibility 0s linear 0.22s;
 }
+/* they pop: no fade and no blur (both tried, both refused — the colour list's spring alone is what was
+   liked), just the spring out of their mark, a little sparkle round them as they land (sparkleAround), and
+   a quicker shrink back into the mark */
 .help-box.is-open .help-body, .rail-binned.is-open .binned-list, .tint-pop.is-open {
-	opacity: 1;
 	transform: none;
-	filter: none;
 	visibility: visible;
-	transition: opacity 0.2s ease-out, transform 0.62s var(--spring), filter 0.32s ease-out, visibility 0s;
+	transition: transform 0.62s var(--spring), visibility 0s;
 }
 
 /* its rings are white only, no black rim (by request) */
 .tint-pop .hue-ring { box-shadow: none; }
-.tint-pop { transform-origin: 100% 0; filter: none !important; }     /* it springs from its top right corner, under its dot; no blur (by request) */
+.tint-pop { transform-origin: 100% 0; }     /* it springs from its top right corner, under its dot */
 
 /* the clock: the moon, the half of the day, the date, and the time last, at the very right */
 .clock-suffix { position: relative; top: 0.75px; order: 1; line-height: 1; }
@@ -5652,9 +5651,9 @@ html.tint-layer.tinted .own-layer::after {
 /* the colour list is black like the strip, and its copy colours it; its colours lie over the copy */
 .tint-pop :is(.tint-kind-dot, .hue-now, .hue-field, .hue-strip) { position: relative; z-index: 60; }
 
-/* the bin, at the foot of the black bar (14 Oct, by request — it was in the strip): in the marks' own column,
-   in the last whole bump that fits the window (--bin-row, set by script.js), its list opening out to the
-   right, its foot on the bin's. it lies over the colour layer with the marks — it is white on the bar, which
+/* the bin in the black bar (14 Oct, by request — it was in the strip, then at the bar's foot, which moved
+   with the window): in the marks' own column, in the bump straight under the last mark (--bin-row), its list
+   opening out to the right from its top-left corner. it lies over the colour layer with the marks — it is white on the bar, which
    needs no colouring; its count and its list carry their own copies */
 .bin-dock {
 	position: absolute;
@@ -5669,4 +5668,18 @@ html:not(.inverted) .bin-dock { --paper: var(--tint-main); --ink: #ffffff; --lin
 html.inverted .bin-dock { color: var(--ink); }
 .bin-dock .binned-head { width: 44px; height: 44px; }
 .bin-dock .binned-head svg { width: 24px; height: 24px; }
-.bin-dock .binned-list { top: auto; bottom: 0; left: calc(100% + 28px); translate: none; transform-origin: 0 100%; }     /* its left edge on the page's boxes' (12px off the crests), clear of the bumps */
+.bin-dock .binned-list { top: 0; bottom: auto; left: calc(100% + 28px); translate: none; transform-origin: 0 0; }     /* opens from its top-left corner, by the bin, exactly as the colour list opens from its corner; its left edge on the page's boxes' (12px off the crests) */
+
+/* sparkles (14 Oct, by request): one shape only — a plus whose arms thin to points and swell a little in the
+   middle — cut from whatever paints it (a mask), so it can be the colour layer's own colour at its spot while
+   lying over everything. a few pop round a list as it lands and out of the pointer on a press (sparkleAround,
+   sparkleBurst); each twinkles once — grows, turns a quarter, shrinks — on the graphics card */
+.sparkles { position: fixed; inset: 0; z-index: 2147483030; overflow: hidden; pointer-events: none; }
+.sparkle {
+	position: absolute;
+	left: 0;
+	top: 0;
+	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.5 0.5H12.5L13.5 9.4Q13.9 10.1 14.6 10.5L23.5 11.5V12.5L14.6 13.5Q13.9 13.9 13.5 14.6L12.5 23.5H11.5L10.5 14.6Q10.1 13.9 9.4 13.5L0.5 12.5V11.5L9.4 10.5Q10.1 10.1 10.5 9.4Z'/%3E%3C/svg%3E") center / contain no-repeat;
+	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.5 0.5H12.5L13.5 9.4Q13.9 10.1 14.6 10.5L23.5 11.5V12.5L14.6 13.5Q13.9 13.9 13.5 14.6L12.5 23.5H11.5L10.5 14.6Q10.1 13.9 9.4 13.5L0.5 12.5V11.5L9.4 10.5Q10.1 10.1 10.5 9.4Z'/%3E%3C/svg%3E") center / contain no-repeat;
+	will-change: transform;
+}
