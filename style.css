@@ -3293,12 +3293,11 @@ html.inverted .topbar::after {
 	transition: opacity 0.2s ease-out, transform 0.62s var(--spring), filter 0.32s ease-out, visibility 0s;
 }
 
-/* the colour list does not fade: its colours are cut out of the colour layer, and anything fading in
-   a hole shows the black under it first — the colours came up out of black. it springs out of its dot
-   instead, like everything that hangs from the strip, only without the fade and blur (played by the script,
-   `rollTintList`), each colour cut where it is drawn on the way */
-.tint-pop { opacity: 1; transform: none; filter: none; transition: visibility 0s linear 0.24s; }
-.rail-tint.is-open .tint-pop { transform: none; filter: none; transition: visibility 0s; }
+/* the colour list opens as help's note and the bin's list do; its colours pop in after (rollTintList),
+   since a colour cut out of the layer can't fade — under it is black */
+/* its colours stay hidden while the box springs in, and pop in once it has landed (the script scales each) */
+.tint-pop :is(.tint-kind-dot, .hue-now, .hue-field, .hue-strip) { visibility: hidden; transform-origin: 50% 50%; }
+.tint-pop.colours-in :is(.tint-kind-dot, .hue-now, .hue-field, .hue-strip) { visibility: visible; }
 /* its rings are white only, no black rim (by request) */
 .tint-pop .hue-ring { box-shadow: none; }
 

@@ -1186,11 +1186,11 @@ By request, the plain and odd animations move like candy edits — a spring that
 is going and settles. **`--spring`** in `:root` is that curve (a damped spring, 1 − e^(−6t)·cos(8t), as a
 `linear()` easing); use it for anything new that pops. **Help's note and the bin's list** spring out of
 their mark from small and a little turned, coming into focus out of a soft blur, and shrink and blur away
-quicker. **The colour list** springs out of its own dot the same way but without the fade or the blur
-(its colours are cut out of the layer, where a fade comes up out of black): `rollTintList` draws it frame
-by frame and cuts each colour's box through the same scale, turn and lift (`tintFlip`), so the holes stay
-exactly on it. **A page arriving** springs in a little past its place, growing from just under its size out
-of a blur — except a page with holes (draw, chat with pictures), which keeps the plain slide.
+quicker. **The colour list** opens exactly as they do (by request — a dot-growing circle, a page flip and a
+turned spring were all tried and refused), but its colours are hidden while the box arrives (a colour cut out
+of the layer can't fade: under it is black) and, 300ms in, **pop in one after another** (`colours-in`,
+`rollTintList`: each springs up from nothing, 45ms apart, its hole cut to it frame by frame); shut, they
+go at once. **The page switch keeps its old slide** (a springy blur-in was tried and refused).
 
 ## What sits over what
 
@@ -1583,7 +1583,7 @@ apart, starting in the bump under the menu's. The marks have no ring (only the p
 and are 28px. The column (`.page-marks`) lives over the bar and its bumps
 rather than inside the bar — the bumps are drawn over the bar and cut
 anything inside it off — and each mark is centred between the bar's left
-wall and the bumps' crests. **Hovering a mark pushes its bump out to the right with
+wall and the bumps' crests. **In the dark, the name's white edge starts at the dip** (fixed 14 Oct): drawn from the shape's own left edge back in the bar, it left white stubs in the bar at both corners. **Hovering a mark pushes its bump out to the right with
 the page's name in it** (`.tab-tip`, the bar's black starting inside the
 bar behind the mark, exactly one bump tall, round at its far end), and
 leaving slides it back in — both ways animated from wherever the shape is
