@@ -654,9 +654,11 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
     // was not to travel on after the pop)
     const along = (t) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px)`;
     one.animate(plus ? [
-        { transform: `${along(0)} scale(0)`, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
+        // full size from the first moment (by request: its size never changes until it goes), and then
+        // shrunk away fast at the very end
+        { transform: `${along(0)} scale(1)`, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
         { transform: `${along(1)} scale(1)`, offset: 0.22 },
-        { transform: `${along(1)} scale(1)`, offset: 0.86 },
+        { transform: `${along(1)} scale(1)`, offset: 0.9, easing: 'ease-in' },
         { transform: `${along(1)} scale(0)` }
     ] : dwindle ? [
         { transform: at(0, 0) },
