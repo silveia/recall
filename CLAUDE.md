@@ -2296,8 +2296,11 @@ nothing is ever painted grey.
 ## One layout, shrunk to fit
 
 **This is no longer done on a computer (16 Oct, by request):** shrunk with `zoom`, every 1px outline came out a
-different thickness. The page is never shrunk now — `body` has `min-width: 1280px`, and a narrower window shows
-it at full size, a little cut off, scrolling sideways to the rest (`html { overflow-x: auto }`). The zoom
+different thickness. The page is never shrunk now. **Down to 960px everything fits the window** (the boxes narrower;
+the strip's search narrows too, `min(24rem, 50% − 115px)`, so it ends clear of the time) — checked on home,
+cards, audio and draw at 1000px. **Narrower than 960 the page keeps its 960** (`body { min-width: 960px }`) and
+the window shows it a little cut off, scrolling sideways to the rest (`html { overflow-x: auto }`); **shorter
+than 620 it keeps 620** (`.app-shell`'s height) and scrolls down. The zoom
 script's `z` stays 1; its measuring wrappers are left in, doing nothing, so it can come back. Phones still get
 the 1280 viewport, which the browser fits itself.
 

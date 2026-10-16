@@ -146,11 +146,11 @@ html, body {
 	overflow: hidden;
 	overscroll-behavior: none;
 }
-/* the page is never shrunk to fit (16 Oct, by request — shrunk, every 1px outline came out a different
-   thickness): it is always at least 1280 wide, and a narrower window shows it at full size, a little cut
-   off, and scrolls sideways to the rest */
-html { overflow-x: auto; }
-body { min-width: 1280px; }
+/* the page is never shrunk (16 Oct, by request — shrunk, every 1px outline came out a different thickness).
+   down to 960 wide everything fits the window, the boxes simply narrower; narrower than that, the page keeps
+   its 960 and the window shows it a little cut off, scrolling sideways to the rest */
+html { overflow-x: auto; overflow-y: auto; }
+body { min-width: 960px; }     /* and the same for the height: below 620 tall the page keeps 620 and scrolls down to the rest (.app-shell) */
 
 a {
 	color: inherit;
@@ -330,7 +330,7 @@ html.tint-layer.tinted body::after {
 .app-shell {
 	position: relative;
 	display: flex;
-	height: calc(var(--vh, 1vh) * 100);
+	height: max(620px, calc(var(--vh, 1vh) * 100));     /* never squashed shorter than 620: a shorter window scrolls instead */
 	overflow: hidden;
 }
 
@@ -2925,7 +2925,7 @@ html.inverted .topbar::after {
 }
 
 /* the search over every page, at the strip's right end */
-.page-search { --field: 34px; position: relative; flex: none; width: 24rem; margin: 0; }   /* at the strip's left, beside hi (14 Oct): the thing used most, where the eye starts */
+.page-search { --field: 34px; position: relative; flex: none; width: min(24rem, calc(50% - 115px)); margin: 0; }     /* narrows with a narrow window, so it always ends clear of the time in the strip's middle */   /* at the strip's left, beside hi (14 Oct): the thing used most, where the eye starts */
 .page-search input {
 	width: 100%;
 	height: var(--field);
