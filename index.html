@@ -23,6 +23,8 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 	}
 	html.inverted { --paper: var(--tint-main, #000); --ink: #fff; }
 	html { background: var(--paper); color: var(--ink); cursor: var(--cur-dot); }
+	/* nothing to scroll here: no bounce past the top, which showed a black band (by request) */
+	html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 	/* the site's colour: one layer over everything, blended to screen (see style.css) */
 	html.tint-layer.tinted { --tint-main: #000 !important; }
 	html.tint-layer.tinted body::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: var(--tint-layer); mix-blend-mode: screen; pointer-events: none; }
@@ -36,7 +38,7 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 		user-select: none;
 		-webkit-user-select: none;
 	}
-	/* the enter pill sits at the exact middle of the screen, the run above it */
+	/* the whole group sits in the middle of the screen */
 	.door {
 		position: fixed;
 		left: 50%;
@@ -45,8 +47,8 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 		flex-direction: column;
 		align-items: center;
 		gap: 16px;
-		transform: translate(-50%, calc(-100% + 1.2rem)) scale(var(--fit, 1));
-		transform-origin: 50% calc(100% - 1.2rem);   /* the pill's middle stays the screen's middle */
+		transform: translate(-50%, calc(-50% + 18px)) scale(var(--fit, 1));   /* +18: the score hangs 36px over the group */
+		transform-origin: 50% 50%;   /* the whole group — score, run, search and pill — sits in the middle of the screen (by request) */
 	}
 	html.embedded .enter, html.embedded .seek { display: none; }
 	/* the search, a smaller copy of the one on home */
@@ -474,8 +476,9 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
     let fit = 1;
     const fitDoor = () => {
         const framed = document.documentElement.classList.contains('embedded');
-        const above = framed ? 92 : door.offsetHeight - pill.offsetHeight / 2 + 40;   // the score sits 36px over the run; framed, 'died' reaches 92px below the middle
-        fit = Math.min(1, framed ? Infinity : (window.innerWidth - 32) / door.offsetWidth, (window.innerHeight / 2 - (framed ? 4 : 16)) / above);
+        
+        // framed under the home board it is never shrunk (by request: nothing's size changes, only the space round it)
+        fit = framed ? 1 : Math.min(1, (window.innerWidth - 32) / door.offsetWidth, (window.innerHeight - 80) / (door.offsetHeight + 40));   // the score sits 36px over the group's top
         document.documentElement.style.setProperty('--fit', fit);
     };
     window.addEventListener('resize', () => { if (FRAMED) { sizeCanvas(); draw(); } fitDoor(); });
