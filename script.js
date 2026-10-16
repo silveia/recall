@@ -708,11 +708,11 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
     // each time) — spread round its edges, more of them down the left and along the bottom, a few pixels of
     // wobble and nothing more. side: 0 top, 1 right, 2 bottom, 3 left; t along that side; on it or past it
     const PLACES = [
-        [3, 0.32, false], [3, 0.6, true], [3, 0.86, false],
-        [2, 0.16, true], [2, 0.42, false], [2, 0.74, true],
-        [1, 0.55, false], [0, 0.3, false]
+        [3, 0.18, false], [3, 0.42, true], [3, 0.64, false], [3, 0.88, true],
+        [2, 0.1, false], [2, 0.34, true], [2, 0.58, false], [2, 0.84, true],
+        [1, 0.3, false], [1, 0.72, false], [0, 0.4, false]
     ];
-    const SIZES = [17, 11, 14, 9, 15, 12, 10, 13];
+    const SIZES = [17, 11, 14, 9, 15, 12, 10, 13, 16, 11, 12];
     if (rise) {
         // each wanders inside its own stretch of the edge (up to 8% of the side along it, a few pixels in or
         // out) and the sizes are shuffled, so no two openings look alike; one that lands too near another is
