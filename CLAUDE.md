@@ -863,6 +863,9 @@ the time tile and pushed the alignment about); while arranging every tile sways 
 off the board finishes. **The bin moved into the strip, right after the search** (finding a thing and getting
 one back together; in the bar's bumps it was the wrong home), its list opening from its top-left corner.
 
+**Every tile's name and the notes and bin heads look like the panels' heads** (16 Oct, by request): Pixelify at
+1.25rem over a hairline rule, held off the walls the same way (`.widget-head`).
+
 **The movable board is exactly three tiles** (by request; `fillBoard()`):
 one wide and two small, filling the four columns, packed in order. None
 can be added or removed — no cross, no resize corner, no bin, no

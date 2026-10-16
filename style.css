@@ -3489,6 +3489,11 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	align-items: center;
 	flex: none;
 	min-height: 0.95rem;
+	/* the same head as the flashcards and ai card maker boxes (16 Oct, by request): pixelify over a hairline
+	   rule, held off the box's walls the same way */
+	margin: 0 0.35rem;
+	padding: 0 0.35rem calc(var(--tight) + 3px);
+	border-bottom: 1px solid var(--line);
 }
 .widget-head > * { grid-area: 1 / 1; }
 .widget-head h3 {
@@ -3497,9 +3502,9 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-	font-family: var(--font);   /* amiko, by request: the tiles' names were the heading face */
-	font-size: 0.95rem;
-	font-weight: 400;
+	font-family: var(--head-font);   /* pixelify, as the panels' heads (by request; amiko before that) */
+	font-size: 1.25rem;
+	line-height: 1.25;
 	text-align: center;
 }
 
