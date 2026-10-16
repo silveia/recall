@@ -616,6 +616,13 @@ const sparkleLayer = document.createElement('div');
 sparkleLayer.className = 'sparkles';
 sparkleLayer.setAttribute('aria-hidden', 'true');
 document.body.append(sparkleLayer);
+// the clicks' sparkles (create, practice) go under the windows, so the window those presses open covers
+// them (by request); they lie under the colour layer there too, so they are painted black or white and the
+// layer colours them like everything else
+const sparkleLayerLow = document.createElement('div');
+sparkleLayerLow.className = 'sparkles is-low';
+sparkleLayerLow.setAttribute('aria-hidden', 'true');
+document.querySelector('.app-shell').append(sparkleLayerLow);
 const stillMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 // what a sparkle lands on decides its colour: over anything filled dark (a black button, the bar, a pressed
 // row — black under the colour layer) it is white; over the page it is the ink, i.e. the colour layer's own
@@ -638,14 +645,15 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
     one.style.height = `${size}px`;
     const root = document.documentElement;
     const onDark = white === null ? sparkleOnDark(x + dx * 0.5, y + dy * 0.5, ignore) : white;
-    if (onDark) one.style.background = '#fff';
+    if (onDark || (plus && root.classList.contains('inverted'))) one.style.background = '#fff';
+    else if (plus) one.style.background = '#000';     // under the colour layer: it colours it
     else if (root.classList.contains('tinted')) {
         // the layer's own gradient, laid so that the part showing is the part of the window it flies over
         one.style.backgroundImage = getComputedStyle(root).getPropertyValue('--tint-layer');
         one.style.backgroundSize = `${window.innerWidth}px ${window.innerHeight}px`;
         one.style.backgroundPosition = `${-(x + dx * 0.7 - size / 2)}px ${-(y + dy * 0.7 - size / 2)}px`;
     } else one.style.background = '#000';
-    sparkleLayer.append(one);
+    (plus ? sparkleLayerLow : sparkleLayer).append(one);
     // minimal (by request): it pops to size, drifts a few pixels, and is gone — no slow shrink at the end
     const at = (t, s) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s})`;
     // a bubble (dwindle) pops up to size, then floats up getting smaller and smaller until it is gone
