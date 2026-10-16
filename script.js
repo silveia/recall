@@ -636,16 +636,20 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
     one.className = plus ? 'sparkle is-plus' : 'sparkle';
     one.style.width = `${size}px`;
     one.style.height = `${size}px`;
-    const root = document.documentElement;
-    const onDark = white === null ? sparkleOnDark(x + dx * 0.5, y + dy * 0.5, ignore) : white;
-    if (onDark) one.style.background = '#fff';
-    else if (root.classList.contains('tinted')) {
-        // the layer's own gradient, laid so that the part showing is the part of the window it flies over
-        one.style.backgroundImage = getComputedStyle(root).getPropertyValue('--tint-layer');
-        one.style.backgroundSize = `${window.innerWidth}px ${window.innerHeight}px`;
-        one.style.backgroundPosition = `${-(x + dx * 0.7 - size / 2)}px ${-(y + dy * 0.7 - size / 2)}px`;
-    } else one.style.background = '#000';
-    sparkleLayer.append(one);
+    // every sparkle is the exact opposite of what is right behind it (by request): white, blended by
+    // difference under the colour layer — over white it comes out black, which the layer turns to the colour,
+    // and over anything dark it stays white; pixel by pixel, so one lying across an edge is two-toned. only
+    // one that sits on something lying over the colour layer (the colour list, the drawing) can't reach it
+    // that way, and is drawn white on top as before
+    const at0 = document.elementsFromPoint(x + dx * 0.5, y + dy * 0.5).find((el) => !el.closest('.sparkles') && !el.classList.contains('sparkle') && !(ignore && ignore.contains(el)));
+    const overLayer = white === true || (at0 && at0.closest('.own-layer, .tint-pop, .draw-panel canvas, .page-marks'));
+    if (overLayer) {
+        one.style.background = '#fff';
+        sparkleLayer.append(one);
+    } else {
+        one.classList.add('is-inverting');
+        document.body.append(one);
+    }
     // minimal (by request): it pops to size, drifts a few pixels, and is gone — no slow shrink at the end
     const at = (t, s) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s})`;
     // a bubble (dwindle) pops up to size, then floats up getting smaller and smaller until it is gone

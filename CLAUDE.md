@@ -2176,8 +2176,11 @@ home.
 
 ## Sparkles, and the pop (14 Oct, by request)
 
-**Sparkles lie over everything** (z 2147483647) and **take their colour from what they land on**
-(`sparkleOnDark`): white over anything filled dark (create, the bar, a pressed row), the ink over the page.
+**Every sparkle is the exact opposite of what is right behind it** (15 Oct, by request): white, blended by
+`difference`, on its own just under the colour layer (`.is-inverting`, z 2147482999 — over every window, under
+the layer) — over white it is black and the layer colours it, over anything dark it is white, pixel by pixel.
+One sitting on something over the colour layer (the colour list, the drawing, the marks) is drawn white on top
+(`.sparkles`, z 2147483647).
 Small (8–15px) and **minimal** (by request): a few at a time, each popping to size, drifting a few pixels,
 and gone after about a third of a second — no slow shrink, no spin (the first ones spun, then flew, and both
 were too much). **One sparkle shape only**: a plus with thin straight arms tapering to blunt points and a slightly bolder

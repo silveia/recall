@@ -5706,6 +5706,10 @@ html.tint-layer.tinted .own-layer::after {
 	25% { rotate: -8deg; }
 	70% { rotate: 7deg; }
 }
+/* a sparkle that inverts what is behind it: on its own in the page (not in .sparkles, whose stacking would
+   keep it from blending with the page), white, blended by difference, just under the colour layer — so over
+   white it is black and the layer colours it, over anything dark it is white */
+.sparkle.is-inverting { position: fixed; z-index: 2147482999; background: #fff; mix-blend-mode: difference; pointer-events: none; }
 /* the clicks' sparkle (create, practice): a plain plus, thin arms tapering a little to their tips and no
    bolder middle (by request) — the lists keep their bubbles */
 .sparkle.is-plus {
