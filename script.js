@@ -680,7 +680,6 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
 }
 // a little spray out of the pointer, on a small press
 function sparkleBurst(x, y, count = 5) {
-    const white = sparkleOnDark(x, y);
     // freer than the lists' bubbles (by request): any way round the pointer, travelling further, each on its
     // own curving path, and staying a while before they go
     const start = Math.random() * Math.PI * 2;
@@ -693,7 +692,7 @@ function sparkleBurst(x, y, count = 5) {
             dy: Math.sin(way) * reach,
             delay: Math.random() * 60,
             long: 440 + Math.random() * 160,     // about half a second (by request: a second stayed too long)
-            white,
+            white: false,     // never forced white: they invert whatever passes behind them, the window that opens included
             plus: true
         });
     }
