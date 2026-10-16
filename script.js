@@ -763,8 +763,7 @@ window.sparkleAround = sparkleAround;
 // the floating buttons (record, sign in and up, the account's): on hover their letters float freely from the
 // moment the pointer arrives, and on leaving each glides back from wherever it was in its float. the letters
 // are wrapped on the first hover after the words change (a button that rewrites its own words — sign in, sign
-// up — is wrapped again), each given its own spread, three points of its own path, its tilt and its clock,
-// all random, so no two move alike and they never line up into a wave (by request)
+// up — is wrapped again), each given its own drift, tilt and clock
 const floatHost = (button) => button.querySelector('.float-word') || button;
 function wrapFloatLetters(button) {
     const host = floatHost(button);
@@ -779,14 +778,13 @@ function wrapFloatLetters(button) {
         one.className = 'float-letter';
         one.textContent = letter;
         const set = (name, value) => one.style.setProperty(name, value);
-        set('--sx', `${((i - middle) * 2.6 + any(-1.2, 1.2)).toFixed(2)}px`);
-        set('--sy', `${any(-1.6, 1.6).toFixed(2)}px`);
-        ['a', 'b', 'c'].forEach((point) => {
-            set(`--${point}x`, `${(any(0.8, 2.8) * either()).toFixed(2)}px`);
-            set(`--${point}y`, `${(any(1.2, 3.6) * either()).toFixed(2)}px`);
-            set(`--${point}r`, `${(any(3, 10) * either()).toFixed(1)}deg`);
-        });
-        set('--dur', `${any(4.5, 7.5).toFixed(2)}s`);
+        // the float that was liked (by request, after a freer one): an even parting, and each letter on its
+        // own drift, tilt and clock along one gentle path
+        set('--i', String(i - middle));
+        set('--fx', `${(any(0.8, 1.8) * either()).toFixed(2)}px`);
+        set('--fy', `${(any(1.6, 2.8) * either()).toFixed(2)}px`);
+        set('--fr', `${(any(3.5, 7) * either()).toFixed(1)}deg`);
+        set('--dur', `${any(4.7, 7.9).toFixed(2)}s`);
         host.append(one);
     });
     host.dataset.floatWords = words;

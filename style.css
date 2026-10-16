@@ -2276,18 +2276,17 @@ html.tint-layer.tinted body::after {
    `.floaty`). only for the big, one-of-a-kind buttons like this one */
 .meter-idle { border-radius: 999px; }
 .rec-word { display: inline-flex; }
-/* every floating button's letters (script.js wraps them, giving each its own spread, path, tilt and clock —
-   three points of its own, not one shape scaled, which lined them up like a wave, by request) */
+/* every floating button's letters (script.js wraps them, each with its own drift, tilt and clock) */
 .float-letter { display: inline-block; white-space: pre; transition: translate 0.9s var(--ease), transform 0.9s var(--ease); }
 .floaty.is-floating .float-letter {
-	translate: var(--sx) var(--sy);
-	animation: float-free var(--dur) ease-in-out infinite;
+	translate: calc(var(--i) * 3px) 0;
+	animation: rec-float var(--dur) ease-in-out infinite;
 }
-@keyframes float-free {
+@keyframes rec-float {
 	0%, 100% { transform: translate(0, 0) rotate(0deg); }
-	27% { transform: translate(var(--ax), var(--ay)) rotate(var(--ar)); }
-	58% { transform: translate(var(--bx), var(--by)) rotate(var(--br)); }
-	82% { transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); }
+	25% { transform: translate(var(--fx), var(--fy)) rotate(var(--fr)); }
+	55% { transform: translate(calc(var(--fx) * -0.6), calc(var(--fy) * -0.75)) rotate(calc(var(--fr) * -0.7)); }
+	80% { transform: translate(calc(var(--fx) * 0.35), calc(var(--fy) * 0.4)) rotate(calc(var(--fr) * 0.45)); }
 }
 .live-stop { flex: none; font-size: 0.78rem; }
 .live-meter { color: var(--paper); background: var(--ink-fill); }
