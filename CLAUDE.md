@@ -2195,7 +2195,8 @@ the rest open as they always did, by request). **`sparkleBurst(x, y)`**:
 a few **plus signs** (thin arms tapering to their tips, no bolder middle — `.sparkle.is-plus`) out of the
 pointer, **never turned** (by request), popping out any way round it 28–62px in the first fifth of their life and
 then **staying exactly where they landed** (by request: no travelling on after the pop), **the same size
-the whole time** until they shrink away fast at the very end — lingering at
+the whole time** until the very end, where they go out with a little swell and shrink away as they slip a
+touch further on — lingering at
 full size for about half a second in all (a second was too long), then gone quickly
 — **only on create and practice** (by request: on every minor press they stopped
 being special); opening a list sparkles round the list only. **A sparkle is now a bubble** (by request, after a plain

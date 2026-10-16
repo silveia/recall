@@ -658,8 +658,10 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
         // shrunk away fast at the very end
         { transform: `${along(0)} scale(1)`, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
         { transform: `${along(1)} scale(1)`, offset: 0.22 },
-        { transform: `${along(1)} scale(1)`, offset: 0.9, easing: 'ease-in' },
-        { transform: `${along(1)} scale(0)` }
+        { transform: `${along(1)} scale(1)`, offset: 0.72, easing: 'ease-out' },
+        // and out: a little swell and then it shrinks away as it slips a touch further on (by request)
+        { transform: `${along(1.04)} scale(1.25)`, offset: 0.82, easing: 'ease-in' },
+        { transform: `${along(1.18)} scale(0)` }
     ] : dwindle ? [
         { transform: at(0, 0) },
         { transform: at(0.04, 1), offset: 0.06 },
