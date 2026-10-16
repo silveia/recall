@@ -6935,7 +6935,7 @@ async function makeCards() {
     if (notesBusy) return;
     const text = notesInput.value.trim();
     if (!text && !notesBitsHeld.length) {
-        shake(notesInput);
+        shake(notesInput.closest('.notes-box') || notesInput);   // the whole box shakes, its buttons with it
         return;
     }
 

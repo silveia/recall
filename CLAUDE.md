@@ -61,7 +61,7 @@ more to read than the column holds — it *moves*, so there is one panel
 and one set of state, never two to keep in step. `#notesHome` is the
 slot it returns to.
 
-**One button: make flashcards**, and it works with nothing set up. **While it works, the button says what is happening and nothing is written under the box**: `making flashcards...` (with the count as cards arrive), and while the in-browser reader is downloading it turns white with `312 mb / 1.1 gb` on it and a black bar filling along its foot (`goSay`, `goSayLocal`). **Nothing is written under the buttons at all** (`.notes-note` and the `read the list myself` link are hidden, by request): an empty box shakes the box, a failure shakes the button. **`sharper reading` sits straight under `make flashcards`** as the same pill in white. **Both now sit inside the text box, along its foot** (`.notes-dock`, by request): `make flashcards` on the left, `sharper reading` as a round question mark right of it (filled while a key is saved), the photo mark at the far end. It
+**One button: make flashcards**, and it works with nothing set up. **While it works, the button says what is happening and nothing is written under the box**: `making flashcards...` (with the count as cards arrive), and while the in-browser reader is downloading it turns white with `312 mb / 1.1 gb` on it and a black bar filling along its foot (`goSay`, `goSayLocal`). **Nothing is written under the buttons at all** (`.notes-note` and the `read the list myself` link are hidden, by request): an empty box shakes the box, a failure shakes the button. **`sharper reading` sits straight under `make flashcards`** as the same pill in white. An empty box shakes **the whole box**, its buttons with it, and the panel keeps a `--tight` of room each side so the shake isn't cut by its scroll edge. **Both now sit inside the text box, along its foot** (`.notes-dock`, by request): `make flashcards` on the left, `sharper reading` as a round question mark right of it (filled while a key is saved), the photo mark at the far end. It
 takes whatever is in the panel —
 prose, an essay, a transcript, a chapter, a photo of a handwritten page,
 a slide, a PDF, or any mix — and comes back with cards. The material
@@ -1930,7 +1930,7 @@ with one name while only one of them could read their own messages.
 a page that turns somebody away over a missing digit is pretending to
 protect something it cannot.
 
-**A mistake shakes the field it is in**, by request, instead of a line of words appearing (`shake()`): no such account, a name that's taken or not allowed, or an empty username → the username shakes; a wrong or empty password → the password shakes; the board not answering → the button shakes. The same in `find or add someone` (nobody by that name, or yourself). No error lines are added under a box.
+**A shake is never cut off**: whatever scrolls round a field that can shake needs room for the 7px travel. **A mistake shakes the field it is in**, by request, instead of a line of words appearing (`shake()`): no such account, a name that's taken or not allowed, or an empty username → the username shakes; a wrong or empty password → the password shakes; the board not answering → the button shakes. The same in `find or add someone` (nobody by that name, or yourself). No error lines are added under a box.
 
 **The door is locked while it works.** Making an account is three slow
 things in a row — the board, a key pair, and the pbkdf2 wrapping — so the
@@ -2294,6 +2294,12 @@ drawn in whole pixels on a canvas sized to the screen's pixel ratio, so
 nothing is ever painted grey.
 
 ## One layout, shrunk to fit
+
+**16 Oct, later, by request — this replaces the paragraph below:** down to **960×620** the boxes simply get
+smaller and everything fits; only a window smaller than that (where home's tiles and the drawing's toolbar start
+to break — measured at 880 and 800) is drawn at 960×620 and **shrunk to fit** with `zoom` (`LEAST_W`/`LEAST_H` in
+the head script, `z = min(1, W/960, H/620)`), never scrolled. The clock tile's numbers give way with a small tile
+(`min(4rem, tile × 0.3)`) instead of wrapping onto two lines.
 
 **This is no longer done on a computer (16 Oct, by request):** shrunk with `zoom`, every 1px outline came out a
 different thickness. The page is never shrunk now. **Down to 960px everything fits the window** (the boxes narrower;

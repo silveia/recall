@@ -150,7 +150,7 @@ html, body {
    down to 960 wide everything fits the window, the boxes simply narrower; narrower than that, the page keeps
    its 960 and the window shows it a little cut off, scrolling sideways to the rest */
 html { overflow-x: auto; overflow-y: auto; }
-body { min-width: 960px; }     /* and the same for the height: below 620 tall the page keeps 620 and scrolls down to the rest (.app-shell) */
+body { min-width: 960px; }     /* the least the layout holds; a smaller window is shrunk to it (app.html head), so this only shows if that script is off */
 
 a {
 	color: inherit;
@@ -590,12 +590,10 @@ html.tint-layer.tinted body::after {
 	text-align: center;
 }
 
-#deckCardList .empty-message { position: relative; }
+#deckCardList .empty-message { position: relative; gap: 0.7rem; }
+/* the words and the face sit together in the middle as one group, at any size of the box (they were
+   hung above a face pinned to the middle, so the whole lot sat low and slid off when the box was resized) */
 .empty-words {
-	position: absolute;
-	right: 0;
-	bottom: calc(50% + 1.4rem);
-	left: 0;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -3538,7 +3536,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	font-weight: 600;
 }
 
-.widget-body.is-clock .widget-big { font-size: 4rem; }
+.widget-body.is-clock .widget-big { font-size: min(4rem, calc(var(--tile, 15rem) * 0.3)); white-space: nowrap; overflow-wrap: normal; }   /* gives way with a small tile rather than wrapping 01:06 onto two lines */
 .widget-unit { font-size: 0.95rem; }
 .widget-line { font-size: 0.92rem; }
 .clock-half {
@@ -3907,7 +3905,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .notes-slot .notes-found { max-height: none; }
 .notes-slot .notes-bit { width: 4.5rem; height: 4.5rem; }
 
-.notes-home .notes-panel { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.notes-home .notes-panel { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; margin: 0 calc(var(--tight) * -1); padding: 0 var(--tight); }   /* room each side so a shaking box isn't cut by the scroll's edge */
 .notes-home .notes-panel::-webkit-scrollbar { display: none; }
 
 .notes-home .notes-box { flex: 1 1 auto; min-height: 3.2rem; }
