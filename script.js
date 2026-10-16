@@ -680,10 +680,13 @@ function sparkleBurst(x, y, count = 5) {
     for (let i = 0; i < count; i += 1) {
         const way = start + (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 1.1;
         const reach = 28 + Math.random() * 34;
+        // they barely rise (by request: drifting up while they linger read wrong) — an upward throw is cut
+        // to a third, and all of them settle a few pixels downward, like sparks
+        const lift = Math.sin(way) * reach;
         sparkle(x + Math.cos(way) * 4, y + Math.sin(way) * 4, {
             size: 9 + Math.random() * 6,
             dx: Math.cos(way) * reach,
-            dy: Math.sin(way) * reach,
+            dy: (lift < 0 ? lift * 0.33 : lift) + 8 + Math.random() * 6,
             delay: Math.random() * 60,
             long: 900 + Math.random() * 400,
             white,
