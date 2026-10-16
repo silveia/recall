@@ -2292,6 +2292,12 @@ nothing is ever painted grey.
 
 ## One layout, shrunk to fit
 
+**This is no longer done on a computer (16 Oct, by request):** shrunk with `zoom`, every 1px outline came out a
+different thickness. The page is never shrunk now — `body` has `min-width: 1280px`, and a narrower window shows
+it at full size, a little cut off, scrolling sideways to the rest (`html { overflow-x: auto }`). The zoom
+script's `z` stays 1; its measuring wrappers are left in, doing nothing, so it can come back. Phones still get
+the 1280 viewport, which the browser fits itself.
+
 By request, a phone, a tiny window and a computer zoomed right in all get
 **the computer's layout, smaller**, never a re-arranged one. **1280px is the
 floor** (it was 800, and between 800 and 1280 tiles and boxes squeezed —

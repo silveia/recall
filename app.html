@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- one layout everywhere: a screen narrower than 1280px gets the same page, shrunk to fit.
-         A phone is told to draw it 800 wide, which the browser fits for us; a narrow or zoomed-in
-         window on a computer is shrunk with css zoom, and everything the script measures with is
-         divided back out so the script still works in the page's own pixels -->
+    <!-- one layout everywhere: a screen narrower than 1280px gets the same page. A phone is told to draw
+         it 1280 wide, which the browser fits for us; a narrow window on a computer keeps it at full size and
+         scrolls sideways (it used to be shrunk with css zoom, which made the outlines uneven) -->
     <script>
         (function () {
             var FLOOR = 1280;   // narrower than this, the whole page is drawn at 1280 and shrunk — never squeezed
@@ -26,9 +25,13 @@
             var realW = function () { return wGet ? wGet.call(window) : root.clientWidth; };
             var realH = function () { return hGet ? hGet.call(window) : root.clientHeight; };
             var z = 1;
+            // never shrunk on a computer any more (by request: shrunk, every 1px outline came out a different
+            // thickness). a window narrower than the floor shows the page at its full size, a little cut off,
+            // and scrolls sideways to the rest (html's min-width, style.css). z stays 1; the measuring below is
+            // kept so it can come back
             function fit() {
-                z = Math.min(1, realW() / FLOOR);
-                root.style.zoom = z === 1 ? '' : String(z);
+                z = 1;
+                root.style.zoom = '';
                 root.style.setProperty('--vw', (realW() / z / 100) + 'px');
                 root.style.setProperty('--vh', (realH() / z / 100) + 'px');
             }

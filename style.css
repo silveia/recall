@@ -145,6 +145,11 @@ html, body {
 	overflow: hidden;
 	overscroll-behavior: none;
 }
+/* the page is never shrunk to fit (16 Oct, by request — shrunk, every 1px outline came out a different
+   thickness): it is always at least 1280 wide, and a narrower window shows it at full size, a little cut
+   off, and scrolls sideways to the rest */
+html { overflow-x: auto; }
+body { min-width: 1280px; }
 
 a {
 	color: inherit;
