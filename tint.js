@@ -98,7 +98,8 @@
             fill: b ? 'linear-gradient(to top, ' + a + ', ' + b + ') fixed' : a,
             grad: b ? 'linear-gradient(to top, ' + a + ', ' + b + ')' : a,
             layer: b ? 'linear-gradient(to top, ' + a + ', ' + b + ')' : a,
-            top: b || a
+            top: b || a,
+            bottom: a
         };
     }
     function apply(t) {
@@ -110,6 +111,7 @@
             root.style.removeProperty('--tint-grad');
             root.style.removeProperty('--tint-layer');
             root.style.removeProperty('--tint-top');
+            root.style.removeProperty('--tint-bottom');
             root.classList.remove('tinted');
             return;
         }
@@ -118,6 +120,7 @@
         root.style.setProperty('--tint-grad', made.grad);
         root.style.setProperty('--tint-layer', made.layer);
         root.style.setProperty('--tint-top', made.top);
+        root.style.setProperty('--tint-bottom', made.bottom);
         root.classList.add('tinted');
     }
     function save(t) {

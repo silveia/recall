@@ -223,10 +223,18 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 700; }
 /* the page's own scrollbars (a window smaller than 960x620, or zoomed in): the site's 1px line with the
    same room on both sides of it, starting under the black strip and clear of the black bar, so it never runs
    into either and gets cut off square */
-/* chrome draws the page's own scrollbars from body's style, not html's (measured) */
-body::-webkit-scrollbar { width: 10px; height: 10px; background: none; }
-body::-webkit-scrollbar-thumb { border: 4px solid transparent; border-radius: 999px; }   /* a 2px bar dead centre in its 10px, round at both ends */
-body::-webkit-scrollbar-track { margin: 60px 8px 8px 73px; }   /* down: from under the strip; across: from past the bar */
+/* chrome draws the page's own scrollbars from body's style, not html's (measured). both are the site's 1px line,
+   dead centre in 9px. their strips are not under the colour layer, so where they run beside the black strip (top
+   right) and the black bar (bottom left) they are filled in its colour themselves — left white, the strip and the
+   bar looked cut off there */
+body::-webkit-scrollbar { width: 9px; height: 9px; background: none; }
+body::-webkit-scrollbar:vertical { background: linear-gradient(to bottom, var(--gutter-top, #000) 0 var(--topbar), transparent var(--topbar)); }
+body::-webkit-scrollbar:horizontal { background: linear-gradient(to right, var(--gutter-foot, #000) 0 var(--rail), transparent var(--rail)); }
+body::-webkit-scrollbar-thumb { border: solid transparent; border-width: 0 4px; border-radius: 0; }
+body::-webkit-scrollbar-thumb:horizontal { border-width: 4px 0; }
+body::-webkit-scrollbar-track:vertical { margin: calc(var(--topbar) + 8px) 0 8px; }
+body::-webkit-scrollbar-track:horizontal { margin: 0 8px 0 calc(var(--rail) + 8px); }
+html.tinted { --gutter-top: var(--tint-top); --gutter-foot: var(--tint-bottom); }
 .app-content::-webkit-scrollbar,
 .rail::-webkit-scrollbar,
 #recordingList::-webkit-scrollbar,
