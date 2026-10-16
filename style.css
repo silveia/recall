@@ -2270,22 +2270,24 @@ html.tint-layer.tinted body::after {
 	font-size: 1rem;
 }
 /* the record button: round at both ends (by request), and on hover its letters float — freely, slowly and
-   steadily, each on its own drift, tilt and clock (set on each in app.html) so they never move in step —
+   steadily, each on its own path, tilt and clock (set by script.js) so they never move in step —
    from the moment the pointer arrives, while they draw a little apart (the parting is `translate`, the float
    is `transform`, so the two run at once). on leaving, each glides back from wherever it is (script.js,
    `.floaty`). only for the big, one-of-a-kind buttons like this one */
 .meter-idle { border-radius: 999px; }
 .rec-word { display: inline-flex; }
-.rec-letter { display: inline-block; transition: translate 0.9s var(--ease), transform 0.9s var(--ease); }
-.floaty.is-floating .rec-letter {
-	translate: calc(var(--i) * 3px) 0;
-	animation: rec-float var(--dur) ease-in-out infinite;
+/* every floating button's letters (script.js wraps them, giving each its own spread, path, tilt and clock —
+   three points of its own, not one shape scaled, which lined them up like a wave, by request) */
+.float-letter { display: inline-block; white-space: pre; transition: translate 0.9s var(--ease), transform 0.9s var(--ease); }
+.floaty.is-floating .float-letter {
+	translate: var(--sx) var(--sy);
+	animation: float-free var(--dur) ease-in-out infinite;
 }
-@keyframes rec-float {
+@keyframes float-free {
 	0%, 100% { transform: translate(0, 0) rotate(0deg); }
-	25% { transform: translate(var(--fx), var(--fy)) rotate(var(--fr)); }
-	55% { transform: translate(calc(var(--fx) * -0.6), calc(var(--fy) * -0.75)) rotate(calc(var(--fr) * -0.7)); }
-	80% { transform: translate(calc(var(--fx) * 0.35), calc(var(--fy) * 0.4)) rotate(calc(var(--fr) * 0.45)); }
+	27% { transform: translate(var(--ax), var(--ay)) rotate(var(--ar)); }
+	58% { transform: translate(var(--bx), var(--by)) rotate(var(--br)); }
+	82% { transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); }
 }
 .live-stop { flex: none; font-size: 0.78rem; }
 .live-meter { color: var(--paper); background: var(--ink-fill); }

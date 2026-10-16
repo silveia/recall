@@ -760,17 +760,47 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
     });
 }
 window.sparkleAround = sparkleAround;
-// the floating buttons (record): the letters float from the moment the pointer arrives, and on leaving each
-// glides back from wherever it was in its float — taken off mid-float it snapped home
+// the floating buttons (record, sign in and up, the account's): on hover their letters float freely from the
+// moment the pointer arrives, and on leaving each glides back from wherever it was in its float. the letters
+// are wrapped on the first hover after the words change (a button that rewrites its own words — sign in, sign
+// up — is wrapped again), each given its own spread, three points of its own path, its tilt and its clock,
+// all random, so no two move alike and they never line up into a wave (by request)
+const floatHost = (button) => button.querySelector('.float-word') || button;
+function wrapFloatLetters(button) {
+    const host = floatHost(button);
+    const words = host.textContent;
+    if (host.dataset.floatWords === words && host.querySelector('.float-letter')) return;
+    const any = (low, high) => low + Math.random() * (high - low);
+    const either = () => (Math.random() < 0.5 ? -1 : 1);
+    const middle = (words.length - 1) / 2;
+    host.textContent = '';
+    [...words].forEach((letter, i) => {
+        const one = document.createElement('span');
+        one.className = 'float-letter';
+        one.textContent = letter;
+        const set = (name, value) => one.style.setProperty(name, value);
+        set('--sx', `${((i - middle) * 2.6 + any(-1.2, 1.2)).toFixed(2)}px`);
+        set('--sy', `${any(-1.6, 1.6).toFixed(2)}px`);
+        ['a', 'b', 'c'].forEach((point) => {
+            set(`--${point}x`, `${(any(0.8, 2.8) * either()).toFixed(2)}px`);
+            set(`--${point}y`, `${(any(1.2, 3.6) * either()).toFixed(2)}px`);
+            set(`--${point}r`, `${(any(3, 10) * either()).toFixed(1)}deg`);
+        });
+        set('--dur', `${any(4.5, 7.5).toFixed(2)}s`);
+        host.append(one);
+    });
+    host.dataset.floatWords = words;
+}
 document.querySelectorAll('.floaty').forEach((button) => {
-    const letters = () => button.querySelectorAll('.rec-letter');
+    const letters = () => floatHost(button).querySelectorAll('.float-letter');
     button.addEventListener('pointerenter', () => {
+        wrapFloatLetters(button);
         letters().forEach((one) => { one.style.transform = ''; one.style.translate = ''; });
         button.classList.add('is-floating');
     });
     button.addEventListener('pointerleave', () => {
         // both halves are held where they are — the float (transform) and the parting (translate) — and then
-        // let go together, so both glide home; holding only the float let the parting snap shut
+        // let go together, so both glide home
         const held = Array.from(letters(), (one) => {
             const look = getComputedStyle(one);
             return { transform: look.transform, translate: look.translate };

@@ -76,7 +76,7 @@
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <!-- the site's colour, set before anything is drawn -->
     <script src="tint.js"></script>
-    <link rel="stylesheet" href="style.css?v=aeec72d5f4">
+    <link rel="stylesheet" href="style.css?v=2b1cb36cdd">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -136,9 +136,9 @@
         <p class="account-handle" id="accHandle"></p>
         <p class="account-side" id="accSide" hidden></p>
         <ul class="acc-list" id="accList" aria-label="accounts on this browser"></ul>
-        <button class="basic-button acc-add" id="accAdd" type="button">add account</button>
+        <button class="basic-button acc-add floaty" id="accAdd" type="button">add account</button>
         <div class="account-leave-wrap">
-            <button class="basic-button account-leave" id="chatSignOut" type="button">log out</button>
+            <button class="basic-button account-leave floaty" id="chatSignOut" type="button">log out</button>
             <div class="leave-split" id="leaveSplit" hidden>
                 <button class="basic-button" id="leaveYes" type="button">confirm</button>
                 <button class="basic-button leave-no" id="leaveNo" type="button">cancel</button>
@@ -396,7 +396,7 @@
                                 <!-- the whole long box is the record button; while recording it is the meter, and a press stops -->
                                 <button class="bar-meter floaty" id="recordToggle" type="button" aria-label="record">
                                     <span class="record-status" id="recordStatus" aria-live="polite"></span>
-                                    <span class="meter-idle"><span class="rec-word" aria-hidden="true"><span class="rec-letter" style="--i:-2.5;--fx:-1.12px;--fy:-2.07px;--fr:-3.8deg;--dur:5.87s;--lag:0.09s">r</span><span class="rec-letter" style="--i:-1.5;--fx:-1.31px;--fy:1.7px;--fr:-3.7deg;--dur:6.46s;--lag:0.09s">e</span><span class="rec-letter" style="--i:-0.5;--fx:-1.37px;--fy:-2.36px;--fr:5.5deg;--dur:4.84s;--lag:0.35s">c</span><span class="rec-letter" style="--i:0.5;--fx:-1.36px;--fy:-1.95px;--fr:5.4deg;--dur:6.5s;--lag:1.09s">o</span><span class="rec-letter" style="--i:1.5;--fx:-0.9px;--fy:-2.05px;--fr:-5.5deg;--dur:6.28s;--lag:0.85s">r</span><span class="rec-letter" style="--i:2.5;--fx:1.58px;--fy:2.3px;--fr:-4.8deg;--dur:7.25s;--lag:1.12s">d</span></span></span></span>
+                                    <span class="meter-idle"><span class="rec-word float-word">record</span></span></span></span>
                                     <span class="live-meter">
                                         <span class="clip-pulse"></span>
                                         <canvas id="levelCanvas" width="600" height="10"></canvas>
@@ -765,7 +765,7 @@
                                             <button type="button" class="side-pick" data-side="pizza" role="radio" aria-checked="false">pizza</button>
                                         </div>
                                     </div>
-                                    <button class="basic-button is-solid ask-go" id="chatGo" type="button">sign up</button>
+                                    <button class="basic-button is-solid ask-go floaty" id="chatGo" type="button">sign up</button>
                                     <button class="scratch-plain ask-swap" id="chatSwap" type="button">already have an account?</button>
                                 </div>
 
@@ -917,7 +917,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=b1d6578ce9"></script>
+    <script src="script.js?v=d781f668fe"></script>
     <script src="draw.js?v=b3556d2132"></script>
 </body>
 </html>
