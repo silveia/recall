@@ -9576,3 +9576,25 @@ chatReady = true;
 paintChatBar();
 paintChatDoor();
 if (activeSectionId === 'chat') wakeChat();
+
+/* ---------- home grows the page rather than scrolling inside it ---------- */
+// on a short window home's run, tiles and notes can need more height than the window has. a scroller of its own
+// inside the scrolling page caught the swipe (by request: it was near impossible to scroll), so instead the page
+// is made exactly as much taller as home needs, and the one page scrollbar does it all
+{
+    const shell = document.querySelector('.app-shell');
+    const fitShell = () => {
+        if (!shell || !homePanel) return;
+        shell.style.setProperty('--shell-extra', '0px');            // measured from scratch each time, so it can shrink too
+        if (activeSectionId !== 'home' || homePanel.hidden) return;
+        const need = Math.ceil(homePanel.scrollHeight - homePanel.clientHeight);
+        if (need > 0) shell.style.setProperty('--shell-extra', need + 'px');
+    };
+    window.fitShell = fitShell;
+    window.addEventListener('resize', fitShell);
+    if (window.ResizeObserver && homePanel) new ResizeObserver(() => requestAnimationFrame(fitShell)).observe(homePanel);
+    const sectionsWere = renderSections;
+    renderSections = function () { const out = sectionsWere.apply(this, arguments); requestAnimationFrame(fitShell); return out; };
+    requestAnimationFrame(fitShell);
+    setTimeout(fitShell, 600);   // after the fonts and the board have settled
+}

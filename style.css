@@ -150,7 +150,7 @@ html, body {
    down to 960 wide everything fits the window, the boxes simply narrower; narrower than that, the page keeps
    its 960 and the window shows it a little cut off, scrolling sideways to the rest */
 html { overflow-x: auto; overflow-y: auto; }
-body { min-width: 960px; min-height: 620px; }     /* the least the layout holds: a smaller (or zoomed-in) window scrolls to the rest, on the site's scrollbar */
+body { min-width: 960px; min-height: 620px; height: auto; overflow: clip; }   /* body grows with the page (it was held to the window's height and clipped what home added); clip, not hidden, so it is never a scroller of its own */     /* the least the layout holds: a smaller (or zoomed-in) window scrolls to the rest, on the site's scrollbar */
 
 a {
 	color: inherit;
@@ -223,11 +223,10 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 700; }
 /* the page's own scrollbars (a window smaller than 960x620, or zoomed in): the site's 1px line with the
    same room on both sides of it, starting under the black strip and clear of the black bar, so it never runs
    into either and gets cut off square */
-html::-webkit-scrollbar { width: 10px; height: 10px; background: none; }
-html::-webkit-scrollbar-thumb { border-width: 0 4px 0 5px; }   /* the site's 1px line, in the middle of its 10px */
-html::-webkit-scrollbar-thumb:horizontal { border-width: 5px 0 4px 0; }
-html::-webkit-scrollbar-track:vertical { margin: 60px 0 8px; }
-html::-webkit-scrollbar-track:horizontal { margin: 0 8px 0 73px; }
+/* chrome draws the page's own scrollbars from body's style, not html's (measured) */
+body::-webkit-scrollbar { width: 10px; height: 10px; background: none; }
+body::-webkit-scrollbar-thumb { border: 4px solid transparent; border-radius: 999px; }   /* a 2px bar dead centre in its 10px, round at both ends */
+body::-webkit-scrollbar-track { margin: 60px 8px 8px 73px; }   /* down: from under the strip; across: from past the bar */
 .app-content::-webkit-scrollbar,
 .rail::-webkit-scrollbar,
 #recordingList::-webkit-scrollbar,
@@ -340,7 +339,7 @@ html.tint-layer.tinted body::after {
 .app-shell {
 	position: relative;
 	display: flex;
-	height: max(620px, calc(var(--vh, 1vh) * 100));     /* never squashed shorter than 620: a shorter window scrolls instead */
+	height: calc(max(620px, calc(var(--vh, 1vh) * 100)) + var(--shell-extra, 0px));     /* never squashed shorter than 620, and home adds what it needs (--shell-extra, script.js): a shorter window scrolls the page instead */
 	overflow: hidden;
 }
 
@@ -629,18 +628,12 @@ html.tint-layer.tinted body::after {
 	min-height: 0;
 	/* a window too short for the run, the tiles and a few lines of notes scrolls home rather than squashing the
 	   notes to nothing; the 8px of padding, given back in the margin, keeps the board's lifted tiles uncut */
-	overflow-y: auto;
-	overflow-x: hidden;
-	margin: -8px calc(var(--group) * -1) -8px -8px;   /* out to the window's edge on the right, so its scrollbar */
-	padding: 8px 0 8px 8px;                          /* can sit in the middle of the white strip beside the boxes */
-	scrollbar-gutter: stable;
+	overflow: hidden;   /* never a scroller of its own: a scroller inside the scrolling page caught the swipe. the page
+	                       grows by what home needs instead (--shell-extra) */
+	margin: -8px;
+	padding: 8px;
 	width: auto;   /* not 100%: the negative margins have to widen it, not slide it */
 }
-/* home's own scrollbar: a round-ended bar, the same white either side, in the middle of the --group strip between
-   the boxes and the window's edge (by request — at the boxes' edge it read as too far left) */
-.home-panel::-webkit-scrollbar { width: var(--group); }
-.home-panel::-webkit-scrollbar-thumb { border-width: 0 1px 0 14px; }   /* the site's 1px line, out at the window's right edge (by request; in the strip's middle and 4px thick were tried) */
-.home-panel::-webkit-scrollbar-track { margin: 8px 0; }
 
 /* under the board (14 Oct): a pad to jot on and a way into every page, filling what was an empty half */
 .home-lower { display: grid; flex: 1; grid-template-columns: calc(var(--tile) * 3 + var(--group) * 2) minmax(0, 1fr); gap: var(--group); min-height: 11rem; }   /* never squashed past its head and a few lines: past that, home scrolls (.home-panel) */   /* on the board's own columns: the pad under the first three, the pages under the last two */
