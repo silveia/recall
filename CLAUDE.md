@@ -1604,7 +1604,7 @@ hang from their right edges there, so they stay on the window (centred, the colo
 
 ## The pages are marks (a layout test, not pushed)
 
-**The marks sit 3px left of centre** (`--marks-in`, 16 Oct, by request): measured, the space either side was even at the crest, but the bump curves away above and below it, so the left read as the bigger; `hi` moves with them. **Each mark sits at the centre of its bump's own circle.** A bump is an
+**The bar is 65px now** (16 Oct, by request — narrowed 6px from 71, so the space left of the marks reads smaller; moving the marks off centre instead was tried and was not it; `--marks-in` is kept at 0). **Each mark sits at the centre of its bump's own circle.** A bump is an
 arc of a circle (radius 37.5 of the tile's 39 units, ~38.5px); those
 circles overlap down the bar, which is what makes the bumps. The bar is as
 wide as one circle reaches from the window's edge to the crest

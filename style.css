@@ -34,7 +34,7 @@
    1. tokens
    ========================================================= */
 :root {
-	--marks-in: 3px;     /* how far left of centre the page marks (and hi over them) sit, so the space either side reads even */
+	--marks-in: 0px;     /* how far left of centre the page marks (and hi over them) sit — back at the centre, with the bar narrowed instead */
 	/* the site's spring (by request, after the smooth bouncy transitions of candy edits): it runs a little
 	   past where it is going and settles back — a damped spring, 1 − e^(−6t)·cos(8t), as a curve */
 	--spring: linear(0, 0.1564, 0.3177, 0.4737, 0.6176, 0.7448, 0.8527, 0.9405, 1.0088, 1.0589, 1.0929, 1.1130, 1.1219, 1.1219, 1.1154, 1.1043, 1.0906, 1.0755, 1.0603, 1.0458, 1.0325, 1.0210, 1.0113, 1.0036, 0.9976, 0.9933, 0.9905, 0.9889, 0.9884, 0.9886, 0.9893, 0.9905, 0.9918, 0.9933, 0.9947, 0.9960, 0.9973, 0.9983, 0.9992, 0.9998, 1);
@@ -63,7 +63,7 @@
 	/* each bump is an arc of a circle (radius 37.5 of the tile's 39, so about 38.5px); the bar is as
 	   wide as that circle reaches from the window's edge to the crest, and each mark sits at its circle's
 	   centre. the circles overlap down the bar, which is what makes the bumps */
-	--rail: 71px;      /* = --wave-w × 75/39 − --wave-out (70.8), rounded: a fraction of a pixel here draws a grey seam down the bar */
+	--rail: 65px;      /* narrowed by 6px (16 Oct, by request: the space left of the marks read too big) — it was --wave-w × 75/39 − --wave-out (70.8), rounded; keep it a whole number, a fraction draws a grey seam down the bar */
 	--widget-pad: 1rem;    /* the one inset inside every home tile */
 	/* keep --wave-w even: half of it is an offset, and a half pixel draws a grey line */
 	--wave-w: 40px;
