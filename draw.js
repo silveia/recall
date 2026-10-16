@@ -1261,8 +1261,10 @@ function drawCustomShape(x, y) {
 }
 
 class Shimeji {
+    // they live inside the sheet's box, so its rounded corners clip them: they walk along the sheet's own
+    // foot and slip behind the curve at either end, rather than standing on the outline over the corners
     constructor() {
-        this.x = Math.random() * (DRAW_ROOT.clientWidth - 100);
+        this.x = Math.random() * Math.max(0, container.clientWidth - 64);
         this.y = -50; 
         this.velocityY = 0; 
         this.velocityX = (Math.random() - 0.5) * 2; 
@@ -1275,7 +1277,7 @@ class Shimeji {
         this.element = document.createElement('img');
         this.element.src = charImgUrl;
         this.element.classList.add('shimeji-char');
-        DRAW_ROOT.appendChild(this.element); 
+        container.appendChild(this.element); 
         this.updateElementPosition();
     }
 
@@ -1297,7 +1299,7 @@ class Shimeji {
     }
     
     update() {
-        const floorLevel = DRAW_ROOT.clientHeight - 100;
+        const floorLevel = this.floor();
 
         if (!this.isGrounded && this.state !== 'climbing') {
             this.velocityY += this.gravity;
@@ -1330,8 +1332,8 @@ class Shimeji {
             this.stateTimer--;
             if (this.stateTimer <= 0) this.chooseNewState();
     
-            if (this.x <= 0 || this.x >= DRAW_ROOT.clientWidth - 100) {
-                this.x = this.x <= 0 ? 0 : DRAW_ROOT.clientWidth - 100;
+            if (this.x <= 0 || this.x >= this.wall()) {
+                this.x = this.x <= 0 ? 0 : this.wall();
                 if (Math.random() > 0.5) {
                     this.state = 'climbing';
                     this.isGrounded = false;
@@ -1346,13 +1348,16 @@ class Shimeji {
         }
         
         if (this.x < 0) this.x = 0;
-        if (this.x > DRAW_ROOT.clientWidth - 100) this.x = DRAW_ROOT.clientWidth - 100;
+        if (this.x > this.wall()) this.x = this.wall();
 
         if (this.state !== 'climbing' && this.velocityX !== 0) {
             this.element.style.transform = this.velocityX > 0 ? 'scaleX(1)' : 'scaleX(-1)';
         }
         this.updateElementPosition();
     }
+
+    floor() { return container.clientHeight - (this.element.offsetHeight || 64); }
+    wall() { return Math.max(0, container.clientWidth - (this.element.offsetWidth || 64)); }
 
     updateElementPosition() {
         this.element.style.left = `${this.x}px`;
