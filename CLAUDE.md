@@ -2193,9 +2193,9 @@ it), and half start just outside its edges and fly outwards, coloured by what is
 the nearest its corner go first — the colour list, help's note, the search's results and the drawing's colour adjuster — not the windows (create, practice and
 the rest open as they always did, by request). **`sparkleBurst(x, y)`**:
 a few **plus signs** (thin arms tapering to their tips, no bolder middle — `.sparkle.is-plus`) out of the
-pointer, **never turned** (by request), wandering any way round it 28–62px along gentle curves — barely upwards,
-settling a few pixels down like sparks (by request; the bubbles still rise) — lingering at
-full size for most of a second as the bubbles do, then gone quickly
+pointer, **never turned** (by request), popping out any way round it 28–62px in the first fifth of their life and
+then **staying exactly where they landed** (by request: no travelling on after the pop) — lingering at
+full size for most of a second, then gone quickly
 — **only on create and practice** (by request: on every minor press they stopped
 being special); opening a list sparkles round the list only. **A sparkle is now a bubble** (by request, after a plain
 circle): a hollow ring with a little curved highlight at its top left, a touch bigger to read; the plus is

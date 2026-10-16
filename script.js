@@ -649,16 +649,15 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
     // minimal (by request): it pops to size, drifts a few pixels, and is gone — no slow shrink at the end
     const at = (t, s) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s})`;
     // a bubble (dwindle) pops up to size, then floats up getting smaller and smaller until it is gone
-    // a plus (a click's) stays a plus — never turned (by request) — and wanders: out along a gentle curve,
-    // lingering at full size as the bubbles do, then gone quickly
-    const sway = (Math.random() - 0.5) * 0.9;              // how far its path bends to one side
-    const along = (t, bend) => `translate(${x - size / 2 + dx * t - dy * bend * sway}px, ${y - size / 2 + dy * t + dx * bend * sway}px)`;
+    // a plus (a click's) stays a plus — never turned (by request) — pops outwards any way at all, then stays
+    // exactly where it landed, lingering at full size as the bubbles do, and is gone quickly (by request: it
+    // was not to travel on after the pop)
+    const along = (t) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px)`;
     one.animate(plus ? [
-        { transform: `${along(0, 0)} scale(0)` },
-        { transform: `${along(0.25, 0.15)} scale(1)`, offset: 0.12 },
-        { transform: `${along(0.6, 0.35)} scale(1)`, offset: 0.45 },
-        { transform: `${along(0.88, 0.2)} scale(1)`, offset: 0.85 },
-        { transform: `${along(1, 0)} scale(0)` }
+        { transform: `${along(0)} scale(0)`, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
+        { transform: `${along(1)} scale(1)`, offset: 0.22 },
+        { transform: `${along(1)} scale(1)`, offset: 0.86 },
+        { transform: `${along(1)} scale(0)` }
     ] : dwindle ? [
         { transform: at(0, 0) },
         { transform: at(0.04, 1), offset: 0.06 },
@@ -669,7 +668,7 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
         { transform: at(0.35, 1), offset: 0.18 },
         { transform: at(1, 1), offset: 0.9 },
         { transform: at(1, 0) }
-    ], { duration: long, delay, easing: plus ? 'ease-out' : dwindle ? 'cubic-bezier(0.3, 0.6, 0.5, 1)' : 'linear', fill: 'backwards' }).onfinish = () => one.remove();
+    ], { duration: long, delay, easing: plus ? 'linear' : dwindle ? 'cubic-bezier(0.3, 0.6, 0.5, 1)' : 'linear', fill: 'backwards' }).onfinish = () => one.remove();
 }
 // a little spray out of the pointer, on a small press
 function sparkleBurst(x, y, count = 5) {
@@ -680,13 +679,10 @@ function sparkleBurst(x, y, count = 5) {
     for (let i = 0; i < count; i += 1) {
         const way = start + (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 1.1;
         const reach = 28 + Math.random() * 34;
-        // they barely rise (by request: drifting up while they linger read wrong) — an upward throw is cut
-        // to a third, and all of them settle a few pixels downward, like sparks
-        const lift = Math.sin(way) * reach;
         sparkle(x + Math.cos(way) * 4, y + Math.sin(way) * 4, {
             size: 9 + Math.random() * 6,
             dx: Math.cos(way) * reach,
-            dy: (lift < 0 ? lift * 0.33 : lift) + 8 + Math.random() * 6,
+            dy: Math.sin(way) * reach,
             delay: Math.random() * 60,
             long: 900 + Math.random() * 400,
             white,
