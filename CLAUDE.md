@@ -198,7 +198,7 @@ The brush paints whole art pixels — a round block `size` across, each row one
 ever blended. A stroke takes **every pointer position the browser recorded** (`getCoalescedEvents`),
 not one a frame, and runs through them as a smooth curve through the midpoints — a quick round stroke
 used to break into straight pieces. Sizes count art pixels (1–64), and the readout beside the size pill
-(`5px`) is exactly the brush's width in them. Stamps land hard-edged too. The size
+(`5px`) is exactly the brush's width in them. Stamps land hard-edged too. **A stamp is 20 art pixels per step of the brush** (16 Oct): it was 2.5, written when an art pixel was 8 screen pixels, so once the sheet went to one screen pixel per art pixel a stamp came out 5px wide and read as not working. Choosing a picture lets go of the file field, so shift stamps straight away. The size
 is a slider with `−` and `+` at its two ends and no outline round them (by request) (by request — a fill-up pill and a
 stepper were both tried): a hairline with a solid round thumb — the stretch behind the thumb 3px, bolder than the 1px ahead, by request — dragged or pressed anywhere; held,
 the marks keep stepping; the wheel and arrow keys nudge it. The `#px` count sits beside the pill. Menu rows show an outline on hover, never gray.

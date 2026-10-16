@@ -777,6 +777,8 @@ imageLoader.addEventListener('change', (e) => {
     if (e.target.files[0]) {
         reader.readAsDataURL(e.target.files[0]);
     }
+    imageLoader.value = '';     // the same picture chosen again still loads
+    imageLoader.blur();         // shift stamps straight away, not only after a click on the sheet
 });
 
 if (windowImageLoader) {
@@ -1236,7 +1238,9 @@ function drawCustomShape(x, y) {
     x = at.x + 0.5;
     y = at.y + 0.5;
     keepArt();
-    const baseSize = Math.max(1, Math.round(Number(brushSize.value) * 2.5)); 
+    // 20 art pixels per step of the brush: written as 2.5 when an art pixel was 8 screen pixels, which left a
+    // stamp 5 pixels wide — a dot — once the sheet went to one screen pixel per art pixel
+    const baseSize = Math.max(1, Math.round(Number(brushSize.value) * 20));
     const aspect = stampImage.width / stampImage.height;
     let targetWidth = baseSize;
     let targetHeight = baseSize;
