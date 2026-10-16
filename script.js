@@ -657,11 +657,11 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
         // full size from the first moment (by request: its size never changes until it goes), and then
         // shrunk away fast at the very end
         { transform: `${along(0)} scale(1)`, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
-        { transform: `${along(1)} scale(1)`, offset: 0.22 },
-        { transform: `${along(1)} scale(1)`, offset: 0.72, easing: 'ease-out' },
-        // and out: a little swell and then it shrinks away as it slips a touch further on (by request)
-        { transform: `${along(1.04)} scale(1.25)`, offset: 0.82, easing: 'ease-in' },
-        { transform: `${along(1.18)} scale(0)` }
+        { transform: `${along(1)} scale(1)`, offset: 0.22, easing: 'ease-in-out' },
+        // and out: a soft swell and then it shrinks away as it slips a touch further on, each step easing
+        // into the next so nothing lurches (by request: smoother)
+        { transform: `${along(1.03)} scale(1.12)`, offset: 0.62, easing: 'cubic-bezier(0.45, 0, 0.55, 1)' },
+        { transform: `${along(1.14)} scale(0)` }
     ] : dwindle ? [
         { transform: at(0, 0) },
         { transform: at(0.04, 1), offset: 0.06 },
@@ -688,7 +688,7 @@ function sparkleBurst(x, y, count = 5) {
             dx: Math.cos(way) * reach,
             dy: Math.sin(way) * reach,
             delay: Math.random() * 60,
-            long: 450 + Math.random() * 200,     // about half a second (by request: a second stayed too long)
+            long: 520 + Math.random() * 200,     // about half a second (by request: a second stayed too long)
             white,
             plus: true
         });
