@@ -150,7 +150,7 @@ html, body {
    down to 960 wide everything fits the window, the boxes simply narrower; narrower than that, the page keeps
    its 960 and the window shows it a little cut off, scrolling sideways to the rest */
 html { overflow-x: auto; overflow-y: auto; }
-body { min-width: 960px; }     /* the least the layout holds; a smaller window is shrunk to it (app.html head), so this only shows if that script is off */
+body { min-width: 960px; min-height: 620px; }     /* the least the layout holds: a smaller (or zoomed-in) window scrolls to the rest, on the site's scrollbar */
 
 a {
 	color: inherit;
@@ -617,10 +617,16 @@ html.tint-layer.tinted body::after {
 	flex-direction: column;
 	gap: var(--group);
 	min-height: 0;
+	/* a window too short for the run, the tiles and a few lines of notes scrolls home rather than squashing the
+	   notes to nothing; the 8px of padding, given back in the margin, keeps the board's lifted tiles uncut */
+	overflow-y: auto;
+	overflow-x: hidden;
+	margin: -8px;
+	padding: 8px;
 }
 
 /* under the board (14 Oct): a pad to jot on and a way into every page, filling what was an empty half */
-.home-lower { display: grid; flex: 1; grid-template-columns: calc(var(--tile) * 3 + var(--group) * 2) minmax(0, 1fr); gap: var(--group); min-height: 0; }   /* on the board's own columns: the pad under the first three, the pages under the last two */
+.home-lower { display: grid; flex: 1; grid-template-columns: calc(var(--tile) * 3 + var(--group) * 2) minmax(0, 1fr); gap: var(--group); min-height: 11rem; }   /* never squashed past its head and a few lines: past that, home scrolls (.home-panel) */   /* on the board's own columns: the pad under the first three, the pages under the last two */
 .home-box {
 	display: flex;
 	flex-direction: column;
@@ -3629,9 +3635,10 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 
 /* under the board: the front door's dino run, the same page, framed */
 .home-run {
-	flex: none;
+	flex: 0 1 11.25rem;   /* on a short window the run gives way first (down to 7rem), so the notes keep their lines */
 	width: 100%;
-	height: 11.25rem;   /* over the search: the score, the words, the run and room for 'died' — a little thinner, by request */
+	height: 11.25rem;
+	min-height: 7rem;   /* over the search: the score, the words, the run and room for 'died' — a little thinner, by request */
 	min-height: 0;
 	border: 0;
 	background: var(--paper-fill);

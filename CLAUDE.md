@@ -2295,6 +2295,13 @@ nothing is ever painted grey.
 
 ## One layout, shrunk to fit
 
+**16 Oct, latest, by request — this replaces the two paragraphs below:** the page is **never shrunk** —
+shrinking changes the words' size and every outline's thickness. Down to 960×620 the boxes get smaller; a
+smaller window, or one zoomed in, keeps the page at 960×620 (`body`'s min sizes) and **scrolls sideways and
+down on the site's own 1px scrollbar**. On home a short window takes height from the dino run first (down to
+7rem), the notes keep at least their head and a few lines (`.home-lower` min 11rem), and past that home
+scrolls (`.home-panel`, 8px padding given back in its margin so lifted tiles aren't cut).
+
 **16 Oct, later, by request — this replaces the paragraph below:** down to **960×620** the boxes simply get
 smaller and everything fits; only a window smaller than that (where home's tiles and the drawing's toolbar start
 to break — measured at 880 and 800) is drawn at 960×620 and **shrunk to fit** with `zoom` (`LEAST_W`/`LEAST_H` in
