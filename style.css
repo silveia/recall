@@ -220,12 +220,12 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 700; }
 ::-webkit-scrollbar-thumb { background: var(--ink-fill); background-clip: padding-box; border: solid transparent; border-width: 0 4px 0 1px; }
 ::-webkit-scrollbar-thumb:horizontal { border-width: 1px 0 4px 0; }
 ::-webkit-scrollbar-corner, ::-webkit-resizer { background: none; }
-/* the page's own scrollbars (a window smaller than 960x620, or zoomed in): a little round-ended bar with the
+/* the page's own scrollbars (a window smaller than 960x620, or zoomed in): the site's 1px line with the
    same room on both sides of it, starting under the black strip and clear of the black bar, so it never runs
    into either and gets cut off square */
 html::-webkit-scrollbar { width: 10px; height: 10px; background: none; }
-html::-webkit-scrollbar-thumb { border-width: 3px; border-radius: 999px; }
-html::-webkit-scrollbar-thumb:horizontal { border-width: 3px; }
+html::-webkit-scrollbar-thumb { border-width: 0 4px 0 5px; }   /* the site's 1px line, in the middle of its 10px */
+html::-webkit-scrollbar-thumb:horizontal { border-width: 5px 0 4px 0; }
 html::-webkit-scrollbar-track:vertical { margin: 60px 0 8px; }
 html::-webkit-scrollbar-track:horizontal { margin: 0 8px 0 73px; }
 .app-content::-webkit-scrollbar,
@@ -631,9 +631,16 @@ html.tint-layer.tinted body::after {
 	   notes to nothing; the 8px of padding, given back in the margin, keeps the board's lifted tiles uncut */
 	overflow-y: auto;
 	overflow-x: hidden;
-	margin: -8px;
-	padding: 8px;
+	margin: -8px calc(var(--group) * -1) -8px -8px;   /* out to the window's edge on the right, so its scrollbar */
+	padding: 8px 0 8px 8px;                          /* can sit in the middle of the white strip beside the boxes */
+	scrollbar-gutter: stable;
+	width: auto;   /* not 100%: the negative margins have to widen it, not slide it */
 }
+/* home's own scrollbar: a round-ended bar, the same white either side, in the middle of the --group strip between
+   the boxes and the window's edge (by request — at the boxes' edge it read as too far left) */
+.home-panel::-webkit-scrollbar { width: var(--group); }
+.home-panel::-webkit-scrollbar-thumb { border-width: 0 1px 0 14px; }   /* the site's 1px line, out at the window's right edge (by request; in the strip's middle and 4px thick were tried) */
+.home-panel::-webkit-scrollbar-track { margin: 8px 0; }
 
 /* under the board (14 Oct): a pad to jot on and a way into every page, filling what was an empty half */
 .home-lower { display: grid; flex: 1; grid-template-columns: calc(var(--tile) * 3 + var(--group) * 2) minmax(0, 1fr); gap: var(--group); min-height: 11rem; }   /* never squashed past its head and a few lines: past that, home scrolls (.home-panel) */   /* on the board's own columns: the pad under the first three, the pages under the last two */
@@ -3426,9 +3433,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	grid-auto-rows: var(--tile);
 	gap: var(--group);
 	min-height: 0;
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	scrollbar-width: none;
+	overflow: hidden;     /* one row, nothing to scroll: as a scroller it caught the wheel over the tiles, and home wouldn't scroll there */
 	padding: 8px;
 	margin: -8px -8px -8px;     /* the tiles start the same gap under the strip as they sit apart */
 }

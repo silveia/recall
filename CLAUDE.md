@@ -2299,7 +2299,7 @@ nothing is ever painted grey.
 is a fixed 11.75rem and doesn't give way), so only the space round things changes. **The page's own scrollbars**
 (`html::-webkit-scrollbar`) are a 4px round-ended bar with 3px clear on both sides, the vertical one starting
 under the black strip and the horizontal one clear of the bar. `.app-content` and the bar no longer hold a wheel
-(`overscroll-behavior: contain` taken off them), so a wheel over empty page scrolls the page. **The front door**
+(`overscroll-behavior: contain` taken off them), so a wheel over empty page scrolls the page. **Home's own scrollbar** (`.home-panel`, when a short window scrolls it) runs out to the window's right edge and is the site's 1px line there (by request — at the boxes' edge it read as too far left; centred in the strip and 4px thick were tried). The board row (`.widget-list`) and the framed dino run no longer hold a wheel — they were dead spots where home wouldn't scroll. **The front door**
 centres its whole group (score to pill) rather than the pill, and cannot bounce past the top (it showed black).
 
 **16 Oct, latest, by request — this replaces the two paragraphs below:** the page is **never shrunk** —
