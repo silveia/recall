@@ -747,7 +747,7 @@ function sparkleAround(el, count = 6, { fromPointer = false, rise = false } = {}
     spots.forEach((spot, i) => {
         const reach = spot.onIt ? 3 + Math.random() * 4 : 6 + Math.random() * 6;
         // rising (the colour list): bubbles of every size, drifting up as bubbles do, over a longer moment
-        const up = 0;     // no rising (by request): they drift only outwards from the list's edge
+        const up = rise ? 16 + (i % 3) * 7 : 0;
         sparkle(spot.x, spot.y, {
             size: spot.size || 12 + Math.random() * 6,
             dx: spot.out[0] * reach + (rise ? (Math.random() - 0.5) * 4 : 0),
