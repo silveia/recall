@@ -76,7 +76,7 @@
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <!-- the site's colour, set before anything is drawn -->
     <script src="tint.js"></script>
-    <link rel="stylesheet" href="style.css?v=8b6c58c8da">
+    <link rel="stylesheet" href="style.css?v=aeec72d5f4">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -180,17 +180,7 @@
                     </button>
                     <ol class="page-found own-layer" id="pageFound" hidden></ol>
                 </div>
-                <!-- the bin, beside the search (by request: finding a thing and getting one back sit together) -->
-                <section class="rail-binned" id="railBinned" aria-label="recently binned">
-                    <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
-                    <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
-                        <span class="binned-count own-layer" id="binnedCount"></span>
-                    </div>
-                    <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
-                    <ol class="binned-list own-layer" id="binnedList"></ol>
-                </section>
-                <!-- the clock alone in the very middle of the strip (by request): the half of the day over it, the
+                        <!-- the clock alone in the very middle of the strip (by request): the half of the day over it, the
                      date under it; laid over the whole strip, so the time sits on the centre exactly -->
                 <div class="strip-middle">
                     <div class="mid-side mid-left">
@@ -269,25 +259,24 @@
                                 </div>
                                 <div class="widget-list" id="widgetList"></div>
                             </div>
-                            <!-- under the board: notes, kept in this browser, and a card from your decks to turn over -->
+                            <!-- under the board: notes, kept in this browser, and the bin -->
                             <div class="home-lower">
                                 <section class="home-box home-jot" aria-label="notes">
                                     <div class="widget-head"><h3>notes</h3></div>
                                     <textarea id="homeJot" spellcheck="false" placeholder="write something down ( ˘▽˘)っ" aria-label="notes"></textarea>
                                 </section>
-                                <section class="home-box home-flip" aria-label="flip">
-                                    <div class="widget-head"><h3>flip</h3></div>
-                                    <!-- a card from your decks: press it to turn it over, next for another -->
-                                    <button class="flip-card" id="flipCard" type="button" title="turn it over" aria-pressed="false">
-                                        <span class="flip-inner">
-                                            <span class="flip-face flip-front"><span class="flip-tag">Q</span><span class="flip-words" id="flipQ"></span></span>
-                                            <span class="flip-face flip-back"><span class="flip-tag">A</span><span class="flip-words" id="flipA"></span></span>
-                                        </span>
-                                    </button>
-                                    <div class="flip-foot">
-                                        <span class="flip-from" id="flipFrom"></span>
-                                        <button class="flip-next" id="flipNext" type="button" title="another card" aria-label="another card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 7l5 5-5 5"/></svg></button>
-                                    </div>
+                                <section class="home-box home-bin" aria-label="bin">
+                                    <div class="widget-head"><h3>bin</h3></div>
+                                <!-- the bin, open on home in place of flip (by request) -->
+                                        <section class="rail-binned" id="railBinned" aria-label="recently binned">
+                                            <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
+                                            <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
+                                                <span class="binned-count" id="binnedCount"></span>
+                                            </div>
+                                            <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+                                            <ol class="binned-list" id="binnedList"></ol>
+                                        </section>
                                 </section>
                             </div>
                         </section>
@@ -928,7 +917,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=afa02dd911"></script>
+    <script src="script.js?v=b1d6578ce9"></script>
     <script src="draw.js?v=b3556d2132"></script>
 </body>
 </html>

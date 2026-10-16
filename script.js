@@ -2238,7 +2238,7 @@ function renderBinned() {
     if (!deletedStack.length) {
         const none = document.createElement('span');
         none.className = 'binned-none';
-        none.textContent = 'nothing';
+        none.textContent = 'nothing in here (｡•ᴗ•｡)';
         box.append(none);
     }
     [...deletedStack].reverse().forEach((entry) => {

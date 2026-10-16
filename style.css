@@ -3295,10 +3295,7 @@ html.inverted .topbar::after {
 	border-radius: 999px;
 	cursor: var(--cur-tap);
 }
-/* in the time's place it reads as a button (by request): a round outline, filled on hover and while its
-   note is open, the mark turning the other way round in it, as every pressed thing here does */
-.time-stack .help-head { width: 34px; height: 34px; border: 1px solid var(--line); transition: background-color 0.2s ease, color 0.2s ease; }
-.time-stack .help-head:hover, .time-stack .help-box.is-open .help-head { color: var(--paper); background: var(--ink-fill); }
+.time-stack .help-head { width: 34px; height: 34px; }     /* a bare turning mark, no ring round it and no fill (by request) */
 .time-stack .help-spin { width: 19px; height: 19px; }
 /* the turning is on a plain box round the mark, as a transform the graphics card runs on its own: on the
    svg itself it was redone by the page every frame, forever, and slowed every other animation down */
@@ -5732,3 +5729,27 @@ html.tint-layer.tinted .own-layer::after {
 .home-panel.is-editing .widget-card:not(.is-dragging) { animation: tile-sway 0.36s ease-in-out infinite alternate; }
 .home-panel.is-editing .widget-card:nth-child(2n):not(.is-dragging) { animation-delay: -0.18s; }
 @keyframes tile-sway { from { rotate: -0.6deg; } to { rotate: 0.6deg; } }
+
+/* the bin, open on home in place of flip (15 Oct, by request): the same list as ever — empty at its top, the
+   binned things in a little box that scrolls, put back and delete for good on each — only it no longer pops
+   from a mark: it is always there, filling its box, in the page's own colours */
+.home-bin .rail-binned { display: flex; flex: 1; align-items: stretch; min-height: 0; }     /* stretched, so the list fills the box rather than sitting small in its middle */
+.home-bin .binned-head { display: none; }
+.home-bin .binned-list {
+	position: static;
+	z-index: auto;
+	flex: 1;
+	width: 100%;
+	height: auto;
+	padding: 0;
+	translate: none;
+	transform: none;
+	visibility: visible;
+	background: none;
+	border: 0;
+	border-radius: 0;
+	transition: none;
+}
+.home-bin .binned-row { border-radius: 999px; }
+.home-bin .binned-row:hover { box-shadow: inset 0 0 0 1px var(--line); }     /* an outline under the pointer, never grey */
+.home-bin .binned-name { font-size: 0.9rem; }
