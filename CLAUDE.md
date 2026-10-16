@@ -2194,7 +2194,9 @@ the nearest its corner go first — the colour list, help's note, the search's r
 the rest open as they always did, by request). **`sparkleBurst(x, y)`**:
 a few **plus signs** (thin arms tapering to their tips, no bolder middle — `.sparkle.is-plus`) out of the
 pointer, **never turned** (by request), popping out any way round it 28–62px in the first fifth of their life and
-then **staying exactly where they landed** (by request: no travelling on after the pop), **the same size
+then **staying exactly where they landed** (by request: no travelling on after the pop), (a short pause, by request), **under every window** (their own layer at z 49, under the veil and the colour
+layer, painted black or white for the layer to colour — by request, so the window create or practice opens
+covers them), **the same size
 the whole time** until the very end, where they go out with a little swell and shrink away as they slip a
 touch further on — lingering at
 full size for about half a second in all (a second was too long), then gone quickly

@@ -5673,6 +5673,7 @@ html.tint-layer.tinted .own-layer::after {
    of the pointer on a press (sparkleAround, sparkleBurst); each flies out, slowing, grows and shrinks, with
    only a slight turn — on the graphics card */
 .sparkles { position: fixed; inset: 0; z-index: 2147483647; overflow: hidden; pointer-events: none; }     /* the very top: over everything, windows and lists included */
+.sparkles.is-low { z-index: 49; }     /* the clicks' sparkles: under every window's veil (50), so a window opening covers them */
 .sparkle {
 	position: absolute;
 	left: 0;
