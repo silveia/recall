@@ -9598,3 +9598,63 @@ if (activeSectionId === 'chat') wakeChat();
     requestAnimationFrame(fitShell);
     setTimeout(fitShell, 600);   // after the fonts and the board have settled
 }
+
+/* ---------- the page's own scrollbars ---------- */
+// the browser's are hidden (style.css, .page-bar): these are the site's 1px line, laid over the right and bottom
+// edges of the page while it is bigger than the window, the down one starting under the strip and the across one
+// past the bar. they follow the scroll and can be dragged
+{
+    const make = (way) => { const bar = document.createElement('div'); bar.className = 'page-bar is-' + way; bar.setAttribute('aria-hidden', 'true'); document.body.append(bar); return bar; };
+    const down = make('down');
+    const across = make('across');
+    const px = (name) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
+    const paintPageBars = () => {
+        const de = document.documentElement;
+        const vw = de.clientWidth, vh = de.clientHeight, sw = de.scrollWidth, sh = de.scrollHeight;
+        const top = px('--topbar') + 8, left = px('--rail') + 8;
+        const canDown = sh > vh + 1, canAcross = sw > vw + 1;
+        down.classList.toggle('is-on', canDown);
+        across.classList.toggle('is-on', canAcross);
+        if (canDown) {
+            const track = vh - top - 8 - (canAcross ? 9 : 0);
+            const len = Math.max(24, track * vh / sh);
+            down.style.height = len + 'px';
+            down.style.top = (top + (track - len) * (window.scrollY / (sh - vh))) + 'px';
+        }
+        if (canAcross) {
+            const track = vw - left - 8 - (canDown ? 9 : 0);
+            const len = Math.max(24, track * vw / sw);
+            across.style.width = len + 'px';
+            across.style.left = (left + (track - len) * (window.scrollX / (sw - vw))) + 'px';
+        }
+    };
+    const drag = (bar, isDown) => {
+        bar.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            bar.setPointerCapture(event.pointerId);
+            const de = document.documentElement;
+            const from = isDown ? event.clientY : event.clientX;
+            const start = isDown ? window.scrollY : window.scrollX;
+            const view = isDown ? de.clientHeight : de.clientWidth;
+            const whole = isDown ? de.scrollHeight : de.scrollWidth;
+            const track = view - (isDown ? px('--topbar') : px('--rail')) - 16;
+            const len = isDown ? bar.offsetHeight : bar.offsetWidth;
+            const per = (whole - view) / Math.max(1, track - len);
+            const move = (e) => {
+                const by = ((isDown ? e.clientY : e.clientX) - from) * per;
+                if (isDown) window.scrollTo(window.scrollX, start + by); else window.scrollTo(start + by, window.scrollY);
+            };
+            const up = () => { bar.removeEventListener('pointermove', move); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up); };
+            bar.addEventListener('pointermove', move);
+            bar.addEventListener('pointerup', up);
+            bar.addEventListener('pointercancel', up);
+        });
+    };
+    drag(down, true);
+    drag(across, false);
+    window.addEventListener('scroll', paintPageBars, { passive: true });
+    window.addEventListener('resize', paintPageBars);
+    if (window.ResizeObserver) new ResizeObserver(paintPageBars).observe(document.body);
+    paintPageBars();
+    setTimeout(paintPageBars, 700);
+}

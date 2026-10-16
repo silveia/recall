@@ -204,9 +204,10 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 700; }
 
 ::selection { color: var(--paper); background: var(--ink-fill); }
 
+/* no box holds on to the wheel (overscroll-behavior: contain was taken off them all): one with nothing to scroll
+   passes it straight to the page, and one at its end hands on to the page too (by request) */
 #recordingList, .sense-controls,
 .deck-list-slot, #cardList, #deckCardList {
-	overscroll-behavior: contain;
 	scrollbar-width: none;
 }
 /* the page column and the bar don't hold a wheel: over empty page it scrolls the page (a small window) */
@@ -223,18 +224,24 @@ h2 { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 700; }
 /* the page's own scrollbars (a window smaller than 960x620, or zoomed in): the site's 1px line with the
    same room on both sides of it, starting under the black strip and clear of the black bar, so it never runs
    into either and gets cut off square */
-/* chrome draws the page's own scrollbars from body's style, not html's (measured). both are the site's 1px line,
-   dead centre in 9px. their strips are not under the colour layer, so where they run beside the black strip (top
-   right) and the black bar (bottom left) they are filled in its colour themselves — left white, the strip and the
-   bar looked cut off there */
-body::-webkit-scrollbar { width: 9px; height: 9px; background: none; }
-body::-webkit-scrollbar:vertical { background: linear-gradient(to bottom, var(--gutter-top, #000) 0 var(--topbar), transparent var(--topbar)); }
-body::-webkit-scrollbar:horizontal { background: linear-gradient(to right, var(--gutter-foot, #000) 0 var(--rail), transparent var(--rail)); }
-body::-webkit-scrollbar-thumb { border: solid transparent; border-width: 0 4px; border-radius: 0; }
-body::-webkit-scrollbar-thumb:horizontal { border-width: 4px 0; }
-body::-webkit-scrollbar-track:vertical { margin: calc(var(--topbar) + 8px) 0 8px; }
-body::-webkit-scrollbar-track:horizontal { margin: 0 8px 0 calc(var(--rail) + 8px); }
-html.tinted { --gutter-top: var(--tint-top); --gutter-foot: var(--tint-bottom); }
+/* the page's own scrollbars are not the browser's: a browser scrollbar takes a strip of the window, and beside the
+   black strip and bar that strip read as them being cut off. chrome draws the page's from body's style (measured),
+   so they are hidden there, and two of the site's own lines float over the page's edges instead (.page-bar,
+   script.js): 1px, following the scroll, draggable, only while the page is bigger than the window */
+body::-webkit-scrollbar { display: none; }
+.page-bar {
+	position: fixed;
+	z-index: 2147482990;     /* under the colour layer, so it takes the site's colour like every line */
+	display: none;
+	touch-action: none;
+	cursor: var(--cur-tap);
+}
+.page-bar.is-on { display: block; }
+.page-bar::before { content: ''; position: absolute; background: var(--ink); border-radius: 1px; }
+.page-bar.is-down { right: 0; width: 9px; }
+.page-bar.is-down::before { top: 0; bottom: 0; left: 4px; width: 1px; }
+.page-bar.is-across { bottom: 0; height: 9px; }
+.page-bar.is-across::before { left: 0; right: 0; top: 4px; height: 1px; }
 .app-content::-webkit-scrollbar,
 .rail::-webkit-scrollbar,
 #recordingList::-webkit-scrollbar,
@@ -3798,7 +3805,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	margin: 0;
 	padding: 0;
 	overflow-y: auto;
-	overscroll-behavior: contain;
 	scrollbar-width: none;
 	list-style: none;
 }
@@ -3919,7 +3925,6 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 	min-width: 0;
 	padding: var(--gap);
 	overflow-y: auto;
-	overscroll-behavior: contain;
 	scrollbar-width: none;
 }
 .notes-slot .notes-panel::-webkit-scrollbar { display: none; }
@@ -4343,7 +4348,6 @@ html.booting .booting-mark { display: flex; }
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
-	overscroll-behavior: contain;
 	scrollbar-width: none;
 }
 .room-scroll::-webkit-scrollbar { display: none; }
@@ -4695,7 +4699,6 @@ html.booting .booting-mark { display: flex; }
 	min-height: 0;
 	padding: 0 0.1rem var(--tight);
 	overflow-y: auto;
-	overscroll-behavior: contain;
 	scrollbar-width: none;
 }
 .talk-log::-webkit-scrollbar { display: none; }
