@@ -686,7 +686,7 @@ function sparkleBurst(x, y, count = 5) {
             dx: Math.cos(way) * reach,
             dy: Math.sin(way) * reach,
             delay: Math.random() * 60,
-            long: 900 + Math.random() * 400,
+            long: 450 + Math.random() * 200,     // about half a second (by request: a second stayed too long)
             white,
             plus: true
         });
