@@ -362,6 +362,13 @@
                                             <textarea id="notesInput" class="notes-input" rows="8" spellcheck="false"
                                                 placeholder="paste your notes here, or drop in a photo of them"></textarea>
                                             <input id="notesFile" class="notes-file" type="file" accept="image/*,application/pdf" multiple hidden>
+                                            <!-- inside the box, along its foot: make flashcards on the left, sharper reading as a round
+                                                 question mark right of it, the photo mark at the far end (by request) -->
+                                            <div class="notes-dock">
+                                            <button class="notes-button is-solid is-go" id="notesGo" type="button">make flashcards</button>
+                                            <button class="notes-key-toggle" id="notesKeyToggle" type="button" aria-label="sharper reading" title="sharper reading">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9.2 a3 3 0 1 1 4.3 2.7 c-0.9 0.45 -1.3 1.1 -1.3 2.1 v0.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="17.6" r="1.2" fill="currentColor"/></svg>
+                                            </button>
                                             <button class="notes-clip" id="notesAttach" type="button" aria-label="add a photo or a pdf" title="add a photo or a pdf">
                                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                                     <rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/>
@@ -369,13 +376,11 @@
                                                     <path d="M4 17 L9.5 12 L13 15 L16 12.5 L20 16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                                 </svg>
                                             </button>
+                                            </div>
                                         </div>
 
                                         <div class="notes-bits" id="notesBits"></div>
 
-                                        <button class="notes-button is-solid is-go" id="notesGo" type="button">make flashcards</button>
-                                        <!-- the same pill as make flashcards, white, straight under it -->
-                                        <button class="notes-key-toggle" id="notesKeyToggle" type="button">sharper reading</button>
                                         <button class="notes-plain" id="notesRead" type="button">read the list myself</button>
 
                                         <p class="notes-note" id="notesNote" aria-live="polite"></p>

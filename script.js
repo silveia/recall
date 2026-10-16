@@ -6643,7 +6643,8 @@ function savedKey() {
 
 function paintKeyState() {
     const key = savedKey();
-    notesKeyToggle.textContent = key ? 'sharper reading ✓' : 'sharper reading';
+    notesKeyToggle.classList.toggle('is-on', !!key);   // a round question mark now; filled while a key is saved
+    notesKeyToggle.title = key ? 'sharper reading · on' : 'sharper reading';
     notesRead.hidden = !key;
 }
 

@@ -3633,7 +3633,7 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .home-run {
 	flex: none;
 	width: 100%;
-	height: 12.5rem;    /* over the search: the score, the words, the run and room for 'died' */
+	height: 11.25rem;   /* over the search: the score, the words, the run and room for 'died' — a little thinner, by request */
 	min-height: 0;
 	border: 0;
 	background: var(--paper-fill);
@@ -3915,12 +3915,43 @@ html.fading, html.fading *, html.fading *::before, html.fading *::after {
 .notes-home .notes-found { max-height: 9rem; }
 
 .notes-box { position: relative; display: flex; }
-.notes-box .notes-input { padding-bottom: 2.2rem; }
-.notes-clip {
+.notes-box .notes-input { padding-bottom: 2.7rem; }
+/* the box's foot: make flashcards on the left, the round question mark (sharper reading) right of it,
+   the photo mark at the far end — all inside the box (by request) */
+.notes-dock {
 	position: absolute;
+	left: 0.45rem;
 	right: 0.45rem;
 	bottom: 0.45rem;
+	display: flex;
+	align-items: center;
+	gap: var(--tight);
+	pointer-events: none;
+}
+.notes-dock > * { pointer-events: auto; }
+.notes-dock .notes-button.is-go {
+	height: 1.9rem;
+	padding: calc(0rem + var(--drop) * 2) 1rem 0;
+	font-size: 0.8rem;
+	max-width: 100%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.notes-dock .notes-key-toggle {
 	display: grid;
+	place-items: center;
+	flex: none;
+	width: 1.9rem;
+	height: 1.9rem;
+	padding: 0;
+}
+.notes-dock .notes-key-toggle svg { display: block; width: 1.05rem; height: 1.05rem; }
+.notes-dock .notes-key-toggle.is-on { color: var(--paper); background: var(--ink-fill); }
+.notes-dock .notes-clip { margin-left: auto; width: 1.9rem; height: 1.9rem; }
+.notes-clip {
+	display: grid;
+	flex: none;
 	place-items: center;
 	width: 1.7rem;
 	height: 1.7rem;

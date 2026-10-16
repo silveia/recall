@@ -79,7 +79,7 @@
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <!-- the site's colour, set before anything is drawn -->
     <script src="tint.js"></script>
-    <link rel="stylesheet" href="style.css?v=f22429f4f6">
+    <link rel="stylesheet" href="style.css?v=9435369133">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -252,7 +252,7 @@
                     <section class="screen" id="homeScreen" data-title="home" aria-label="home">
                         <section class="home-panel" id="homePanel" hidden>
                             <!-- the front door's dino run, first thing on home -->
-                            <iframe class="home-run" src="index.html?embed&v=678ee96974" title="dino run"></iframe>
+                            <iframe class="home-run" src="index.html?embed&v=89b410b6b7" title="dino run"></iframe>
 
                             <!-- the leftmost tile is fixed: the time, and the board's settings behind a press -->
                             <div class="board-row">
@@ -364,6 +364,13 @@
                                             <textarea id="notesInput" class="notes-input" rows="8" spellcheck="false"
                                                 placeholder="paste your notes here, or drop in a photo of them"></textarea>
                                             <input id="notesFile" class="notes-file" type="file" accept="image/*,application/pdf" multiple hidden>
+                                            <!-- inside the box, along its foot: make flashcards on the left, sharper reading as a round
+                                                 question mark right of it, the photo mark at the far end (by request) -->
+                                            <div class="notes-dock">
+                                            <button class="notes-button is-solid is-go" id="notesGo" type="button">make flashcards</button>
+                                            <button class="notes-key-toggle" id="notesKeyToggle" type="button" aria-label="sharper reading" title="sharper reading">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9.2 a3 3 0 1 1 4.3 2.7 c-0.9 0.45 -1.3 1.1 -1.3 2.1 v0.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="17.6" r="1.2" fill="currentColor"/></svg>
+                                            </button>
                                             <button class="notes-clip" id="notesAttach" type="button" aria-label="add a photo or a pdf" title="add a photo or a pdf">
                                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                                     <rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/>
@@ -371,13 +378,11 @@
                                                     <path d="M4 17 L9.5 12 L13 15 L16 12.5 L20 16.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                                 </svg>
                                             </button>
+                                            </div>
                                         </div>
 
                                         <div class="notes-bits" id="notesBits"></div>
 
-                                        <button class="notes-button is-solid is-go" id="notesGo" type="button">make flashcards</button>
-                                        <!-- the same pill as make flashcards, white, straight under it -->
-                                        <button class="notes-key-toggle" id="notesKeyToggle" type="button">sharper reading</button>
                                         <button class="notes-plain" id="notesRead" type="button">read the list myself</button>
 
                                         <p class="notes-note" id="notesNote" aria-live="polite"></p>
@@ -920,7 +925,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=ea902b8048"></script>
+    <script src="script.js?v=ced1415f9f"></script>
     <script src="draw.js?v=b3556d2132"></script>
 </body>
 </html>

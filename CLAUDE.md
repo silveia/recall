@@ -61,7 +61,7 @@ more to read than the column holds — it *moves*, so there is one panel
 and one set of state, never two to keep in step. `#notesHome` is the
 slot it returns to.
 
-**One button: make flashcards**, and it works with nothing set up. **While it works, the button says what is happening and nothing is written under the box**: `making flashcards...` (with the count as cards arrive), and while the in-browser reader is downloading it turns white with `312 mb / 1.1 gb` on it and a black bar filling along its foot (`goSay`, `goSayLocal`). **Nothing is written under the buttons at all** (`.notes-note` and the `read the list myself` link are hidden, by request): an empty box shakes the box, a failure shakes the button. **`sharper reading` sits straight under `make flashcards`** as the same pill in white. It
+**One button: make flashcards**, and it works with nothing set up. **While it works, the button says what is happening and nothing is written under the box**: `making flashcards...` (with the count as cards arrive), and while the in-browser reader is downloading it turns white with `312 mb / 1.1 gb` on it and a black bar filling along its foot (`goSay`, `goSayLocal`). **Nothing is written under the buttons at all** (`.notes-note` and the `read the list myself` link are hidden, by request): an empty box shakes the box, a failure shakes the button. **`sharper reading` sits straight under `make flashcards`** as the same pill in white. **Both now sit inside the text box, along its foot** (`.notes-dock`, by request): `make flashcards` on the left, `sharper reading` as a round question mark right of it (filled while a key is saved), the photo mark at the far end. It
 takes whatever is in the panel —
 prose, an essay, a transcript, a chapter, a photo of a handwritten page,
 a slide, a PDF, or any mix — and comes back with cards. The material
@@ -890,7 +890,7 @@ four columns (`BOARD_COLS = 4`); `--tile` on `.home-panel` is a fifth of
 the width less the gaps, and both the fixed tile and the board's rows use
 it.
 
-**Over the search bar, first thing on home, is the front door's dino run** (12.5rem tall), the same page framed
+**Over the search bar, first thing on home, is the front door's dino run** (11.25rem tall — thinned a little by request, the score 30px over the run rather than 36 when framed), the same page framed
 (`.home-run` → `index.html?embed`). Framed it hides the enter pill
 and the search, centres what shows (score down to the ground line) in the
 frame so it sits midway between the strip and the search bar, and follows
