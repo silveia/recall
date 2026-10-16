@@ -849,6 +849,15 @@ tile** joins the board's choices: the date big, the weekday, and when wide the m
 through the year. **The page marks have a little more character** (same plain hairlines): a house with an
 arched door, two cards fanned, a five-bar waveform, a bubble that is typing; the pencil is untouched.
 
+**15 Oct, by request:** **no two tiles are ever the same**, and none is the time (the fixed tile is): `fillBoard`
+drops a repeat and fills from the widgets not yet on the board, and the picker only offers those. **New widgets**,
+plainly named: `week` (the seven days, today filled), `best run` (the dino's record), `bin` (what is waiting
+in it) and `friends` (the chat's count, or `log in to chat`). **The pen is gone**: arranging starts by **holding any
+tile for half a second** (`holdToArrange`, like arranging apps on a phone — the pen took a place of its own in
+the time tile and pushed the alignment about); while arranging every tile sways a hair (`tile-sway`), and a press
+off the board finishes. **The bin moved into the strip, right after the search** (finding a thing and getting
+one back together; in the bar's bumps it was the wrong home), its list opening from its top-left corner.
+
 **The movable board is exactly three tiles** (by request; `fillBoard()`):
 one wide and two small, filling the four columns, packed in order. None
 can be added or removed — no cross, no resize corner, no bin, no
@@ -2179,7 +2188,8 @@ it), and half start just outside its edges and fly outwards, coloured by what is
 the nearest its corner go first — the colour list, help's note, the search's results and the drawing's colour adjuster — not the windows (create, practice and
 the rest open as they always did, by request). **`sparkleBurst(x, y)`**:
 a few **plus signs** (thin arms tapering to their tips, no bolder middle — `.sparkle.is-plus`) out of the
-pointer, flying freely any way round it, near or far, each turning its own way as it goes and shrinking away
+pointer, **never turned** (by request), wandering any way round it 28–62px along gentle curves, lingering at
+full size for most of a second as the bubbles do, then gone quickly
 — **only on create and practice** (by request: on every minor press they stopped
 being special); opening a list sparkles round the list only. **A sparkle is now a bubble** (by request, after a plain
 circle): a hollow ring with a little curved highlight at its top left, a touch bigger to read; the plus is
@@ -2190,8 +2200,7 @@ small, a quicker shrink back.
 changes (`somethingMoved`), and only written when they have actually moved — placed on every frame of an
 animation, they made the browser redo its layout each frame and the colour list's spring stuttered.
 
-**The bin is in the bump straight under the last page mark** (`--bin-row` = the number of pages): at the bar's
-foot it moved with the window height, which differs from browser to browser. Its list opens from its top-left
+**The bin is in the strip beside the search** (15 Oct; see "the home board"). Its list opens from its top-left
 corner, as the colour list opens from its corner.
 
 **Icon buttons rock on hover** (by request): the square icon buttons, the bin, the time tile's pen, the

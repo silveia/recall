@@ -5668,24 +5668,6 @@ html.tint-layer.tinted .own-layer::after {
 /* the colour list is black like the strip, and its copy colours it; its colours lie over the copy */
 .tint-pop :is(.tint-kind-dot, .hue-now, .hue-field, .hue-strip) { position: relative; z-index: 60; }
 
-/* the bin in the black bar (14 Oct, by request — it was in the strip, then at the bar's foot, which moved
-   with the window): in the marks' own column, in the bump straight under the last mark (--bin-row), its list
-   opening out to the right from its top-left corner. it lies over the colour layer with the marks — it is white on the bar, which
-   needs no colouring; its count and its list carry their own copies */
-.bin-dock {
-	position: absolute;
-	left: calc((var(--rail) + var(--wave-out)) / 2 - 22px);
-	top: calc(var(--topbar) + var(--bin-row, 6) * var(--wave-h) + (var(--wave-h) - 44px) / 2);
-	z-index: 2147483021;
-	width: 44px;
-	height: 44px;
-	justify-content: center;
-}
-html:not(.inverted) .bin-dock { --paper: var(--tint-main); --ink: #ffffff; --line: #ffffff; --paper-fill: var(--tint-fill); --ink-fill: var(--ink); color: var(--ink); }
-html.inverted .bin-dock { color: var(--ink); }
-.bin-dock .binned-head { width: 44px; height: 44px; }
-.bin-dock .binned-head svg { width: 24px; height: 24px; }
-.bin-dock .binned-list { top: 0; bottom: auto; left: calc(100% + 28px); translate: none; transform-origin: 0 0; }     /* opens from its top-left corner, by the bin, exactly as the colour list opens from its corner; its left edge on the page's boxes' (12px off the crests) */
 
 /* sparkles (14 Oct, by request): one shape only — a plus whose arms thin to points and swell a little in the
    middle — cut from whatever paints it (a mask), so it can be white over anything filled and the colour
@@ -5732,3 +5714,21 @@ html.inverted .bin-dock { color: var(--ink); }
 	-webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.4 1H12.6L13.2 10.8L23 11.4V12.6L13.2 13.2L12.6 23H11.4L10.8 13.2L1 12.6V11.4L10.8 10.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
 	mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M11.4 1H12.6L13.2 10.8L23 11.4V12.6L13.2 13.2L12.6 23H11.4L10.8 13.2L1 12.6V11.4L10.8 10.8Z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+
+/* the bin, in the strip beside the search (15 Oct, by request — the bar's bumps were the wrong home for it):
+   its list opens from its top-left corner, under it */
+.topbar > .rail-binned { margin-left: 2px; }
+.topbar > .rail-binned .binned-list { top: calc(100% + 8px); left: 0; translate: none; transform-origin: 0 0; }
+
+/* the week tile: the seven days in a row, today filled */
+.week-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; width: 100%; }
+.week-day { display: grid; place-items: center; gap: 2px; padding: 0.4rem 0; border-radius: 0.8rem; }
+.week-day small { font-size: 0.7rem; }
+.week-day b { font-family: var(--num-font); font-size: 1.5rem; font-weight: 400; line-height: 1; }
+.week-day.is-today { color: var(--paper); background: var(--ink-fill); }
+
+/* arranging (a tile held for half a second): every tile sways a hair, as apps on a phone do, so it is
+   plain the board is being arranged — the pen that used to say so is gone */
+.home-panel.is-editing .widget-card:not(.is-dragging) { animation: tile-sway 0.36s ease-in-out infinite alternate; }
+.home-panel.is-editing .widget-card:nth-child(2n):not(.is-dragging) { animation-delay: -0.18s; }
+@keyframes tile-sway { from { rotate: -0.6deg; } to { rotate: 0.6deg; } }

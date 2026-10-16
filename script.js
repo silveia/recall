@@ -630,7 +630,7 @@ function sparkleOnDark(x, y, ignore = null) {
     }
     return document.documentElement.classList.contains('inverted');
 }
-function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white = null, ignore = null, dwindle = false, plus = false, spin = 0 } = {}) {
+function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white = null, ignore = null, dwindle = false, plus = false } = {}) {
     if (stillMotion()) return;
     const one = document.createElement('span');
     one.className = plus ? 'sparkle is-plus' : 'sparkle';
@@ -649,13 +649,16 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
     // minimal (by request): it pops to size, drifts a few pixels, and is gone — no slow shrink at the end
     const at = (t, s) => `translate(${x - size / 2 + dx * t}px, ${y - size / 2 + dy * t}px) scale(${s})`;
     // a bubble (dwindle) pops up to size, then floats up getting smaller and smaller until it is gone
-    // a plus (a click's) flies out freely, slowing, turning as it goes, and shrinks away
-    const turning = (t, s) => `${at(t, s)} rotate(${spin * t}deg)`;
+    // a plus (a click's) stays a plus — never turned (by request) — and wanders: out along a gentle curve,
+    // lingering at full size as the bubbles do, then gone quickly
+    const sway = (Math.random() - 0.5) * 0.9;              // how far its path bends to one side
+    const along = (t, bend) => `translate(${x - size / 2 + dx * t - dy * bend * sway}px, ${y - size / 2 + dy * t + dx * bend * sway}px)`;
     one.animate(plus ? [
-        { transform: turning(0, 0) },
-        { transform: turning(0.3, 1.05), offset: 0.2 },
-        { transform: turning(0.75, 0.85), offset: 0.6 },
-        { transform: turning(1, 0) }
+        { transform: `${along(0, 0)} scale(0)` },
+        { transform: `${along(0.25, 0.15)} scale(1)`, offset: 0.12 },
+        { transform: `${along(0.6, 0.35)} scale(1)`, offset: 0.45 },
+        { transform: `${along(0.88, 0.2)} scale(1)`, offset: 0.85 },
+        { transform: `${along(1, 0)} scale(0)` }
     ] : dwindle ? [
         { transform: at(0, 0) },
         { transform: at(0.04, 1), offset: 0.06 },
@@ -666,26 +669,25 @@ function sparkle(x, y, { size = 9, dx = 0, dy = 0, delay = 0, long = 320, white 
         { transform: at(0.35, 1), offset: 0.18 },
         { transform: at(1, 1), offset: 0.9 },
         { transform: at(1, 0) }
-    ], { duration: long, delay, easing: plus ? 'cubic-bezier(0.2, 0.7, 0.35, 1)' : dwindle ? 'cubic-bezier(0.3, 0.6, 0.5, 1)' : 'linear', fill: 'backwards' }).onfinish = () => one.remove();
+    ], { duration: long, delay, easing: plus ? 'ease-out' : dwindle ? 'cubic-bezier(0.3, 0.6, 0.5, 1)' : 'linear', fill: 'backwards' }).onfinish = () => one.remove();
 }
 // a little spray out of the pointer, on a small press
 function sparkleBurst(x, y, count = 5) {
     const white = sparkleOnDark(x, y);
-    // freer than the lists' bubbles (by request): any way round the pointer, near or far, each turning its
-    // own way as it flies
+    // freer than the lists' bubbles (by request): any way round the pointer, travelling further, each on its
+    // own curving path, and staying a while before they go
     const start = Math.random() * Math.PI * 2;
     for (let i = 0; i < count; i += 1) {
         const way = start + (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 1.1;
-        const reach = 18 + Math.random() * 26;
+        const reach = 28 + Math.random() * 34;
         sparkle(x + Math.cos(way) * 4, y + Math.sin(way) * 4, {
             size: 9 + Math.random() * 6,
             dx: Math.cos(way) * reach,
             dy: Math.sin(way) * reach,
             delay: Math.random() * 60,
-            long: 520 + Math.random() * 240,
+            long: 900 + Math.random() * 400,
             white,
-            plus: true,
-            spin: (Math.random() < 0.5 ? -1 : 1) * (70 + Math.random() * 110)
+            plus: true
         });
     }
 }
@@ -784,7 +786,7 @@ document.querySelectorAll('.floaty').forEach((button) => {
     });
 });
 // each mark that grows on hover keeps its own line width, so it can thin as it grows (style.css)
-document.querySelectorAll('.square-button svg, .binned-head svg, .key-edit svg, .draw-panel .bare-mark svg, .draw-panel #uploadBtn svg').forEach((mark) => {
+document.querySelectorAll('.square-button svg, .binned-head svg, .draw-panel .bare-mark svg, .draw-panel #uploadBtn svg').forEach((mark) => {
     const width = parseFloat(mark.getAttribute('stroke-width') || getComputedStyle(mark).strokeWidth) || 1.7;
     mark.style.setProperty('--sw', String(width));
 });
@@ -848,10 +850,8 @@ function somethingMoved() {
 new MutationObserver(() => { cutTintHole(); placeOwnLayers(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 new MutationObserver(somethingMoved)
     .observe(document.querySelector('.topbar'), { attributes: true, attributeFilter: ['class', 'hidden'], subtree: true });
-// the bin in the bar: its list's copy of the colour is placed as it opens. it sits in the bump straight
-// under the last page mark — a place that is the same in every browser and at every window height
+// the bin, in the strip beside the search: its list's copy of the colour is placed as it opens
 new MutationObserver(somethingMoved).observe(document.getElementById('railBinned'), { attributes: true, attributeFilter: ['class'] });
-document.documentElement.style.setProperty('--bin-row', String(sections.length));
 document.addEventListener('scroll', () => { if (activeSectionId === 'chat') window.requestAnimationFrame(cutTintHole); }, true);
 document.addEventListener('load', (event) => { if (event.target.tagName === 'IMG') cutTintHole(); }, true);
 
@@ -5042,6 +5042,60 @@ const WIDGETS = [
                 [binned, 'in the bin']
             ]));
         }
+    },
+    {
+        // the week, its days in a row with today filled
+        id: 'week',
+        name: 'week',
+        fill(body) {
+            body.innerHTML = '';
+            const now = new Date();
+            const row = document.createElement('div');
+            row.className = 'week-row';
+            const monday = new Date(now);
+            monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+            for (let i = 0; i < 7; i += 1) {
+                const day = new Date(monday);
+                day.setDate(monday.getDate() + i);
+                const cell = document.createElement('span');
+                cell.className = 'week-day';
+                if (day.toDateString() === now.toDateString()) cell.classList.add('is-today');
+                cell.innerHTML = `<small>${'mtwtfss'[i]}</small><b>${day.getDate()}</b>`;
+                row.append(cell);
+            }
+            body.append(row);
+        }
+    },
+    {
+        // the best run on the dino, kept in this browser
+        id: 'run',
+        name: 'best run',
+        fill(body) {
+            let best = 0;
+            try { best = Number(localStorage.getItem('front-dino')) || 0; } catch (error) { best = 0; }
+            body.innerHTML = '';
+            body.append(bigReading(String(best).padStart(4, '0')));
+        }
+    },
+    {
+        // what is waiting in the bin
+        id: 'binned',
+        name: 'bin',
+        fill(body) {
+            body.innerHTML = '';
+            body.append(bigReading(String(deletedStack.length), deletedStack.length ? 'binned' : 'empty'));
+        }
+    },
+    {
+        // the people you talk to (read once the chat is up; until then, none)
+        id: 'friends',
+        name: 'friends',
+        fill(body) {
+            let count = 0, signedIn = false;
+            try { count = chatFriends.length; signedIn = Boolean(chatMe); } catch (error) { /* the chat isn't up yet */ }
+            body.innerHTML = '';
+            body.append(signedIn ? bigReading(String(count), count === 1 ? 'friend' : 'friends') : oneLine('log in to chat'));
+        }
     }
 ];
 
@@ -5179,15 +5233,20 @@ function placeCard(card, entry) {
 const BOARD_TILES = 3;
 const BOARD_START = ['decks', 'jump', 'kept'];
 function fillBoard() {
-    const seen = new Set();
-    let tiles = homeWidgets.filter((entry) => widgetById(entry.id) && !seen.has(entry.key) && seen.add(entry.key));
+    // no two tiles the same (by request), and none the same as the fixed time tile beside them
+    const seen = new Set(['clock']);
+    let tiles = homeWidgets.filter((entry) => widgetById(entry.id) && !seen.has(entry.id) && seen.add(entry.id));
     tiles.sort((a, b) => a.col - b.col);
     tiles = tiles.slice(0, BOARD_TILES);
     for (const id of BOARD_START) {
         if (tiles.length >= BOARD_TILES) break;
         if (!tiles.some((entry) => entry.id === id)) tiles.push({ id, key: nextWidgetKey(id), size: 'small', look: null, col: 99 });
     }
-    while (tiles.length < BOARD_TILES) tiles.push({ id: 'decks', key: nextWidgetKey('decks'), size: 'small', look: null, col: 99 });
+    WIDGETS.forEach((widget) => {
+        if (tiles.length < BOARD_TILES && widget.id !== 'clock' && !tiles.some((entry) => entry.id === widget.id)) {
+            tiles.push({ id: widget.id, key: nextWidgetKey(widget.id), size: 'small', look: null, col: 99 });
+        }
+    });
     let wide = tiles.findIndex((entry) => entry.size === 'wide');
     if (wide < 0) wide = 0;
     let col = 0;
@@ -5227,10 +5286,13 @@ function renderWidgets() {
         widget.fill(body, entry.size, entry.look);
 
         card.append(head, body);
-        card.addEventListener('pointerdown', (event) => startWidgetDrag(card, entry, event));
+        card.addEventListener('pointerdown', (event) => {
+            if (editingHome) startWidgetDrag(card, entry, event);
+            else holdToArrange(card, event);
+        });
 
         card.addEventListener('click', (event) => {
-            if (editingHome) return;
+            if (editingHome || justArranged) return;
             event.stopPropagation();
             openLookPicks(entry, card);
         });
@@ -5378,7 +5440,6 @@ document.addEventListener('pointerdown', (event) => {
 function setHomeEditing(on) {
     editingHome = on;
     homePanel.classList.toggle('is-editing', on);
-    keyEdit.setAttribute('aria-pressed', String(on));
     if (!on) closeWidgetPicks();
 }
 
@@ -5603,6 +5664,9 @@ function closeWidgetPicks() {
 function renderWidgetPicks() {
     widgetPickList.innerHTML = '';
     WIDGETS.forEach((widget) => {
+        // only what isn't on the board already: the time is the fixed tile, and every tile is different
+        const taken = widget.id === 'clock' || homeWidgets.some((one) => one.id === widget.id && (!pickingFor || one.key !== pickingFor.key));
+        if (taken) return;
         const pick = document.createElement('button');
         pick.className = 'option-pick widget-pick';
         pick.type = 'button';
@@ -6026,19 +6090,34 @@ function placeBelowLeft(panel, anchor) {
     panel.style.top = `${Math.round(spot.bottom + 8)}px`;
 }
 
-// the fixed time tile: it tells the time, and the pen in its corner turns arranging on and off — then
-// a press on a tile changes what it is, and a drag moves it
-const keyEdit = document.getElementById('keyEdit');
+// the fixed time tile: it tells the time. holding any tile turns arranging on (below) — then a press on
+// a tile changes what it is, and a drag moves it
 const keyBody = document.getElementById('keyBody');
 function paintKey() {
     const clock = widgetById('clock');
     clock.fill(keyBody, 'small', 'digits');
 }
-keyEdit.addEventListener('click', (event) => {
-    event.stopPropagation();
-    closeWidgetPicks();
-    setHomeEditing(!editingHome);
-});
+// arranging starts by pressing and holding any tile for half a second (by request: the pen in the time
+// tile's corner took a place of its own and pushed the alignment about) — the way phones arrange their
+// apps. a press anywhere off the board finishes
+let holdTimer = 0, justArranged = false;
+function holdToArrange(card, event) {
+    if (event.button) return;
+    const from = { x: event.clientX, y: event.clientY };
+    const cancel = () => { clearTimeout(holdTimer); window.removeEventListener('pointermove', moved); window.removeEventListener('pointerup', cancel); };
+    const moved = (move) => { if (Math.hypot(move.clientX - from.x, move.clientY - from.y) > 6) cancel(); };
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {
+        cancel();
+        closeWidgetPicks();
+        setHomeEditing(true);
+        justArranged = true;              // the click that ends this press doesn't also open the tile
+        setTimeout(() => { justArranged = false; }, 400);
+    }, 500);
+    window.addEventListener('pointermove', moved);
+    window.addEventListener('pointerup', cancel);
+}
+document.getElementById('homeKey').addEventListener('pointerdown', (event) => { if (!editingHome) holdToArrange(event.currentTarget, event); });
 startClock();
 binnedEmpty.addEventListener('click', (event) => {
     event.stopPropagation();

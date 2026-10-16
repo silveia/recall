@@ -161,17 +161,6 @@
         <!-- the page marks ride over the bar and its bumps, so each circle shows whole in its bump -->
         <nav class="section-tabs page-marks" id="sectionTabs" aria-label="sections"></nav>
 
-        <!-- the bin, at the foot of the black bar (by request: like the bin in a dock — the pages at the top,
-             the bin waiting at the bottom); its list opens out to the right -->
-        <section class="rail-binned bin-dock" id="railBinned" aria-label="recently binned">
-            <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
-            <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
-                <span class="binned-count own-layer" id="binnedCount"></span>
-            </div>
-            <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
-            <ol class="binned-list own-layer" id="binnedList"></ol>
-        </section>
 
         <aside class="rail rail-left" aria-label="menu">
         </aside>
@@ -189,6 +178,16 @@
                     </button>
                     <ol class="page-found own-layer" id="pageFound" hidden></ol>
                 </div>
+                <!-- the bin, beside the search (by request: finding a thing and getting one back sit together) -->
+                <section class="rail-binned" id="railBinned" aria-label="recently binned">
+                    <!-- a bin mark, not words; empty sits at the foot of the list it drops -->
+                    <div class="binned-head" id="binnedHead" role="button" tabindex="0" title="recently binned" aria-label="recently binned">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 4.5h4M7 7l.8 12.5h8.4L17 7"/></svg>
+                        <span class="binned-count own-layer" id="binnedCount"></span>
+                    </div>
+                    <button class="binned-empty" id="binnedEmpty" type="button" title="empty the bin for good">empty</button>
+                    <ol class="binned-list own-layer" id="binnedList"></ol>
+                </section>
                 <!-- the clock alone in the very middle of the strip (by request): the half of the day over it, the
                      date under it; laid over the whole strip, so the time sits on the centre exactly -->
                 <div class="strip-middle">
@@ -265,9 +264,6 @@
                                 <div class="home-key" id="homeKey">
                                     <div class="widget-head"><h3>time</h3></div>
                                     <div class="widget-body" id="keyBody"></div>
-                                    <button class="key-edit" id="keyEdit" type="button" aria-pressed="false" aria-label="arrange the board" title="arrange the board">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20 L4.6 16.2 L15.6 5.2 L18.8 8.4 L7.8 19.4 Z M13.6 7.2 L16.8 10.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
-                                    </button>
                                 </div>
                                 <div class="widget-list" id="widgetList"></div>
                             </div>
