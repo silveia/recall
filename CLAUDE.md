@@ -2186,7 +2186,7 @@ own colour at its spot in the light, black with no colour). On the graphics card
 press — by request, "a little bit of both") — except the colour list, which only sparkles round itself — and with a proper burst: 11 bubbles (8 read as too few), each in its own stretch of the edges — more down the left and along the bottom — wandering a
 little inside it (8% of the side, a few pixels in or out), sizes shuffled, and placed again if one lands too
 near another (fully random they clumped; fully set they looked the same every time) —
-starting at once (within about a fifth of a second), that pop up, rise a little and are gone (`rise`; by request, it felt plain — a version that dwindled away as
+starting at once (within about a fifth of a second), that pop up, drift a little outwards — not upwards, by request — and are gone (`rise`; by request, it felt plain — a version that dwindled away as
 it floated up was tried and put back; `dwindle` is kept in `sparkle` for it); and as it springs out of its mark, half twinkle **on the list itself**, near its
 edges and corners, white so they are plainly in front of it (all outside it, they read as coming from behind
 it), and half start just outside its edges and fly outwards, coloured by what is round the list (`ignore`);
