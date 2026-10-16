@@ -206,7 +206,7 @@ The colour adjuster **grows out of the colour dot** as a widening circle (460ms)
 the hue strip and the code slide in one after another, and shrinks back into the dot to close (300ms).
 Other menus unroll down out of their button (a clip revealing them top to bottom, 240ms) and roll
 back up quicker (170ms); nothing is scaled — a spring with a scale and staggered rows made the
-1px outline and the words shimmer, which read as a glitch. Either turns round mid-way. Every button's hover fades over 0.2s. The two round marks in the canvas's corner wiggle on hover, exactly as the face under create and practice does (by request — a whole spin was not it).
+1px outline and the words shimmer, which read as a glitch. Either turns round mid-way. Every button's hover fades over 0.2s. **Every button on the draw page has a short name for holding option** (15 Oct, by request): `brush colour`, `pen · press for eraser`, `brush size`, `a picture to stamp`, `a picture to walk about`, `drop a sprite in`, `wipe the sheet`, `reference picture`, `yams, a little game`, `start the game`. The two round marks in the canvas's corner wiggle on hover, exactly as the face under create and practice does (by request — a whole spin was not it).
 
 The **player** section (songs off your own disk) was deleted by request:
 its tab, page, folder, script, styles and the bar's mini player are all

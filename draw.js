@@ -1602,7 +1602,7 @@ brushSize.addEventListener('input', (e) => {
         if (shown === rubbing) return;
         shown = rubbing;
         turn.classList.toggle('is-rubbing', rubbing);
-        swap.title = rubbing ? 'eraser' : 'pen';
+        swap.title = rubbing ? 'eraser · press for pen' : 'pen · press for eraser';
         swap.setAttribute('aria-label', rubbing ? 'eraser — press for the pen' : 'pen — press for the eraser');
     };
     var spinning = null;
