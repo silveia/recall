@@ -798,9 +798,18 @@ function wrapFloatLetters(button) {
 }
 document.querySelectorAll('.floaty').forEach((button) => {
     const letters = () => floatHost(button).querySelectorAll('.float-letter');
+    // wrapped as the page loads, and again the moment its words change — not on the first hover: wrapped
+    // and set floating in one breath, the new letters had never been drawn, and the first hover after a
+    // refresh glitched instead of floating
+    wrapFloatLetters(button);
+    new MutationObserver(() => {
+        const host = floatHost(button);
+        if (host.dataset.floatWords !== host.textContent || !host.querySelector('.float-letter')) wrapFloatLetters(button);
+    }).observe(floatHost(button), { childList: true, characterData: true, subtree: true });
     button.addEventListener('pointerenter', () => {
         wrapFloatLetters(button);
         letters().forEach((one) => { one.style.transform = ''; one.style.translate = ''; });
+        void button.offsetWidth;          // drawn once as they are, so the parting and the float both start from there
         button.classList.add('is-floating');
     });
     button.addEventListener('pointerleave', () => {
