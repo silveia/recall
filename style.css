@@ -5319,7 +5319,7 @@ html.inverted .tab-tip svg { display: block; }   /* the bumps' own white edge, i
     min-height: 0;
     width: 100%;
     overflow: hidden;
-    background: var(--paper-fill);
+    background: #000;   /* round the sheet when it is zoomed out or moved: black, which the colour layer turns to the site's colour */
     border: 1px solid var(--line);
     border-radius: var(--radius);
     z-index: 1;
@@ -5332,6 +5332,7 @@ html.inverted .tab-tip svg { display: block; }   /* the bumps' own white edge, i
     display: block;
     image-rendering: pixelated;   /* one canvas pixel is one art pixel, shown big and hard-edged */
 }
+.draw-panel canvas.is-shrunk { image-rendering: auto; }   /* zoomed out: smooth, or pixels go missing */
 /* the game and the reference, as two round marks in the canvas's corner */
 .draw-panel .corner-buttons {
     position: absolute;

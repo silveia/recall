@@ -565,7 +565,7 @@ let canvasOffsetY = 0;
 
 const ZOOM_SPEED = 0.25; 
 const MAX_ZOOM = 5;
-const MIN_ZOOM = 0.2;
+const MIN_ZOOM = 0.5;     // 0.2 was too far out (by request)
 
 let isDrawing = false;
 let currentTool = 'round';
@@ -813,6 +813,9 @@ charLoader.addEventListener('change', (e) => {
 function updateCSSView() {
     canvas.style.transform = `translate(${canvasOffsetX}px, ${canvasOffsetY}px) scale(${zoomLevel})`;
     canvas.style.transformOrigin = '0 0';
+    // hard-edged pixels only at full size or bigger: shrunk, nearest-pixel drops whole rows and columns and
+    // thin lines break up or vanish, so under 1 the sheet is drawn smoothly instead
+    canvas.classList.toggle('is-shrunk', zoomLevel < 0.999);
 }
 
 function resizeCanvas() {
