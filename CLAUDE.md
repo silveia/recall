@@ -2348,6 +2348,26 @@ zoomed page, so they would re-arrange a page that is meant not to.
 The front door does its own: the whole group is scaled about the pill's
 middle (`--fit`) to fit the width and the half-height, so the spacing holds.
 
+## Phones and tablets (22 Oct, by request)
+
+Tested in WebKit (Playwright's, `python3 -m playwright install webkit`) with an iPad's settings, since there is no
+device here. **On a screen with no hover at all, every hover-only rule is taken out of the stylesheet as the page
+starts** (`TOUCH_ONLY`, `html.touch`, end of script.js): a tap counts as a hover and then sticks, which left buttons
+filled, lifted or rocking — the "glitchy" buttons. A mouse or trackpad never meets it. The floating letters and the
+pages' names out of the bumps ignore a finger; **a tap on the time brings help's question mark up** (hover does it
+with a mouse). **A long press is the right click** (half a second held still): the deck, card and page menus open
+on touch too, and the press that opened one doesn't also count as a tap. No grey tap flash, no iOS callout on held
+buttons. **iPhone/iPad keep the 1280 layout without zooming in on a tapped box**: the viewport carries
+`maximum-scale` at the fitting scale (worked out per orientation) — iOS still lets a pinch zoom. The message box
+has `enterkeyhint="send"`. **Draw:** the sheet takes the finger (`touch-action: none`) — one finger draws, **two
+move the sheet** (whatever the first had begun is taken back), and the little windows drag on pointer events
+rather than mouse ones. Measured: a stroke drew, a two-finger slide moved the sheet 56,28 and added nothing.
+**Chat pictures are shown at their own full resolution** (the file itself, not a smaller copy; one address per
+picture so redraws don't reload it), and **saving goes through the share sheet on a touch device** — `save image`
+puts it in photos/the gallery, `save to files` in files — and downloads anywhere else (`keepOnDevice`). Measured:
+a 3000×2000 png sent from WebKit arrived 3000×2000 at both ends; sending from the iPad, signing up and logging in
+there both work.
+
 ## Known limits — accepted, don't re-raise
 
 - A speaker's interrupted turns can't be stitched back together.

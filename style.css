@@ -174,6 +174,11 @@ button, button *, a, a *, label, label *, summary, summary *,
 }
 .clip-text.is-editing { -webkit-user-select: text; user-select: text; }
 input, textarea { -webkit-user-select: text; user-select: text; }
+/* touch screens: no grey flash where a finger lands (the no-grey rule), and no ios callout on a held button
+   — a long press opens the site's own menus instead (script.js). a picture in the chat keeps its callout */
+* { -webkit-tap-highlight-color: transparent; }
+button, a, [role="button"], .deck-card, .card-item, .stage-card, .widget-card { -webkit-touch-callout: none; }
+.said-file img { -webkit-touch-callout: default; }
 
 body {
 	margin: 0;
@@ -5358,7 +5363,9 @@ html.inverted .tab-tip svg { display: block; }   /* the bumps' own white edge, i
     display: block;
     image-rendering: pixelated;   /* one canvas pixel is one art pixel, shown big and hard-edged */
 }
-.draw-panel canvas.is-shrunk { image-rendering: auto; }   /* zoomed out: smooth, or pixels go missing */
+.draw-panel canvas.is-shrunk { image-rendering: auto; }
+.draw-panel canvas { touch-action: none; }   /* a finger on the sheet draws (two move it, draw.js) rather than scrolling the page */
+.draw-panel #windowHeader, .draw-panel #windowHeader2 { touch-action: none; }   /* and a finger drags the little windows by their bars */   /* zoomed out: smooth, or pixels go missing */
 /* the game and the reference, as two round marks in the canvas's corner */
 .draw-panel .corner-buttons {
     position: absolute;

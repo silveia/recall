@@ -662,17 +662,17 @@ resetGameBtn.addEventListener('click', () => {
     }
 });
 
-miniWindow.addEventListener('mousedown', () => {
+miniWindow.addEventListener('pointerdown', () => {
     miniWindow.style.zIndex = '2147483005';
     miniWindow2.style.zIndex = '2147483004';
 });
 
-miniWindow2.addEventListener('mousedown', () => {
+miniWindow2.addEventListener('pointerdown', () => {
     miniWindow2.style.zIndex = '2147483005';
     miniWindow.style.zIndex = '2147483004';
 });
 
-windowHeader.addEventListener('mousedown', (e) => {
+windowHeader.addEventListener('pointerdown', (e) => {     // pointer, not mouse: a finger drags them too
     isDraggingWindow = true;
     offsetX = e.clientX - miniWindow.offsetLeft;
     offsetY = e.clientY - miniWindow.offsetTop;
@@ -683,7 +683,7 @@ windowHeader.addEventListener('mousedown', (e) => {
     miniWindow2.style.zIndex = '2147483004';
 });
 
-windowHeader2.addEventListener('mousedown', (e) => {
+windowHeader2.addEventListener('pointerdown', (e) => {
     isDraggingWindow2 = true;
     offsetX = e.clientX - miniWindow2.offsetLeft;
     offsetY = e.clientY - miniWindow2.offsetTop;
@@ -715,7 +715,7 @@ window.addEventListener('resize', () => {
     tuckIn(miniWindow2, 'miniWindow2Left', 'miniWindow2Top');
 });
 
-window.addEventListener('mousemove', (e) => {
+window.addEventListener('pointermove', (e) => {
     if (isDraggingWindow) {
         const held = keepInside(miniWindow, e.clientX - offsetX, e.clientY - offsetY);
         const finalLeft = held.left;
@@ -741,7 +741,7 @@ window.addEventListener('mousemove', (e) => {
     }
 });
 
-window.addEventListener('mouseup', () => {
+window.addEventListener('pointerup', () => {
     if (isDraggingWindow) {
         isDraggingWindow = false;
         windowHeader.classList.remove('is-held'); 
@@ -752,7 +752,7 @@ window.addEventListener('mouseup', () => {
     }
 });
 
-miniWindow2.addEventListener('mouseup', () => {
+miniWindow2.addEventListener('pointerup', () => {
     tuckIn(miniWindow2, 'miniWindow2Left', 'miniWindow2Top');
     const rect = miniWindow2.getBoundingClientRect();
     localStorage.setItem('miniWindow2Width', `${rect.width}px`);
@@ -1079,6 +1079,34 @@ function keepArt() {
     }, 600);
 }
 window.addEventListener('pointerup', () => { if (undoStack.length) keepArt(); });
+
+// touch: one finger draws; a second finger makes it a two-finger slide that moves the sheet about (space and
+// drag needs a keyboard), and whatever the first finger had begun to draw is taken back
+const fingers = new Map();
+let twoAt = null;
+const fingersMiddle = () => { const at = [...fingers.values()]; return { x: (at[0].x + at[1].x) / 2, y: (at[0].y + at[1].y) / 2 }; };
+canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch') return;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.size < 2) return;
+    e.stopImmediatePropagation();          // no stroke for the second finger
+    if (isDrawing) { isDrawing = false; executeUndo(); redoStack.pop(); }
+    twoAt = fingersMiddle();
+}, { capture: true });
+window.addEventListener('pointermove', (e) => {
+    if (!fingers.has(e.pointerId)) return;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.size < 2 || !twoAt) return;
+    const now = fingersMiddle();
+    canvasOffsetX += now.x - twoAt.x;
+    canvasOffsetY += now.y - twoAt.y;
+    twoAt = now;
+    updateCSSView();
+});
+['pointerup', 'pointercancel'].forEach((name) => window.addEventListener(name, (e) => {
+    fingers.delete(e.pointerId);
+    if (fingers.size < 2) twoAt = null;
+}));
 
 function draw(e) {
     if (isPanning) {
@@ -1816,7 +1844,7 @@ brushSize.addEventListener('input', (e) => {
 // (.own-layer: the windows, the colour adjuster, the corner marks, the note), pinned to where each sits —
 // so they are placed again whenever something here may have moved them
 ['pointerup', 'click', 'keyup'].forEach((name) => DRAW_ROOT.addEventListener(name, () => requestAnimationFrame(window.placeOwnLayers), { capture: true, passive: true }));
-window.addEventListener('mousemove', () => { if (isDraggingWindow || isDraggingWindow2) window.placeOwnLayers(); }, { passive: true });
+window.addEventListener('pointermove', () => { if (isDraggingWindow || isDraggingWindow2) window.placeOwnLayers(); }, { passive: true });
 new ResizeObserver(() => window.placeOwnLayers()).observe(DRAW_ROOT);
 window.placeOwnLayers();
 

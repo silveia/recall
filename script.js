@@ -805,13 +805,15 @@ document.querySelectorAll('.floaty').forEach((button) => {
         const host = floatHost(button);
         if (host.dataset.floatWords !== host.textContent || !host.querySelector('.float-letter')) wrapFloatLetters(button);
     }).observe(floatHost(button), { childList: true, characterData: true, subtree: true });
-    button.addEventListener('pointerenter', () => {
+    button.addEventListener('pointerenter', (event) => {
+        if (event.pointerType === 'touch') return;     // a tap is not a hover: on a touch screen the letters stay put
         wrapFloatLetters(button);
         letters().forEach((one) => { one.style.transform = ''; one.style.translate = ''; });
         void button.offsetWidth;          // drawn once as they are, so the parting and the float both start from there
         button.classList.add('is-floating');
     });
     button.addEventListener('pointerleave', () => {
+        if (!button.classList.contains('is-floating')) return;
         // both halves are held where they are — the float (transform) and the parting (translate) — and then
         // let go together, so both glide home
         const held = Array.from(letters(), (one) => {
@@ -939,7 +941,7 @@ function renderSections() {
             tab.innerHTML = pageMark(section.id);
             tab.addEventListener('click', () => { hideTabTip(); switchSection(section.id); });
             // rest on it half a second and the name slides out of its bump; leave and it slides back
-            tab.addEventListener('pointerenter', () => waitForTip(tab, section.name));
+            tab.addEventListener('pointerenter', (event) => { if (event.pointerType !== 'touch') waitForTip(tab, section.name); });   // a tap goes straight to the page
             tab.addEventListener('pointerleave', hideTabTip);
             sectionTabs.appendChild(tab);
         });
@@ -2281,7 +2283,7 @@ function renderBinned() {
     if (!deletedStack.length) {
         const none = document.createElement('span');
         none.className = 'binned-none';
-        none.textContent = 'nothing in here (｡•ᴗ•｡)';
+        none.textContent = '(｡•ᴗ•｡)';
         box.append(none);
     }
     [...deletedStack].reverse().forEach((entry) => {
@@ -5900,12 +5902,27 @@ if (window.siteTint) {
     const time = document.querySelector('.time-stack');
     let peekIn = 0;
     const back = () => { clearTimeout(peekIn); if (!helpBox.classList.contains('is-open')) strip.classList.remove('help-peek'); };
-    time.addEventListener('pointerenter', () => {
+    // on a touch screen there is no hover: a tap on the time brings the question mark up in its place,
+    // and a tap anywhere else (help's note shut) puts the time back
+    let touched = false;
+    time.addEventListener('pointerdown', (event) => { touched = event.pointerType === 'touch'; });
+    time.addEventListener('click', () => {
+        if (!touched) return;
+        clearTimeout(peekIn);
+        strip.classList.add('help-peek');
+    });
+    document.addEventListener('pointerdown', (event) => {
+        if (event.pointerType !== 'touch' || !strip.classList.contains('help-peek')) return;
+        if (event.target.closest && event.target.closest('.time-stack, #helpToggle, .help-body')) return;
+        if (!helpBox.classList.contains('is-open')) strip.classList.remove('help-peek');
+    }, true);
+    time.addEventListener('pointerenter', (event) => {
+        if (event.pointerType === 'touch') return;
         clearTimeout(peekIn);
         if (!strip.classList.contains('help-peek')) peekIn = setTimeout(() => strip.classList.add('help-peek'), 500);
     });
-    time.addEventListener('pointerleave', back);
-    new MutationObserver(() => { if (!helpBox.classList.contains('is-open') && !time.matches(':hover')) back(); })
+    time.addEventListener('pointerleave', (event) => { if (event.pointerType !== 'touch') back(); });
+    new MutationObserver(() => { if (!helpBox.classList.contains('is-open') && !time.matches(':hover') && !touched) back(); })
         .observe(helpBox, { attributes: true, attributeFilter: ['class'] });
 }
 helpToggle.addEventListener('click', (event) => {
@@ -8716,13 +8733,16 @@ function fileBox(other, line) {
     size.textContent = fileSize(line.file.size || 0);
     name.append(called, size);
     box.append(name);
+    let have = null;     // the file, once it is here, so a press can hand it over at once (a phone only shares off a fresh press)
     if ((line.file.type || '').startsWith('image/')) {
-        fileOf(other, line).then(async (blob) => {
+        fileOf(other, line).then((blob) => {
             if (!blob) { gone(); return; }
-            const pic = await smallPicture(blob, 960);
-            if (!pic) return;
+            have = blob;
+            // the picture itself, at its own full resolution (by request) — not a smaller copy. it may take a
+            // moment for a big one; it is only drawn smaller to fit the line
             const img = document.createElement('img');
-            img.src = pic;
+            img.decoding = 'async';
+            img.src = pictureUrl(line.id, blob);
             img.alt = line.file.name || 'picture';
             box.append(img);
         });
@@ -8735,11 +8755,32 @@ function fileBox(other, line) {
         box.append(note);
     };
     box.addEventListener('click', async () => {
-        const blob = await fileOf(other, line);
-        if (blob) saveBlob(blob, line.file.name);
+        const blob = have || await fileOf(other, line);
+        if (blob) keepOnDevice(blob, line.file.name, line.file.type);
         else gone();
     });
     return box;
+}
+// one address per picture, kept: the thread is redrawn often, and a fresh address each time would load a
+// full-size photo again on every redraw
+const pictureUrls = new Map();
+function pictureUrl(id, blob) {
+    if (!pictureUrls.has(id)) pictureUrls.set(id, URL.createObjectURL(blob));
+    return pictureUrls.get(id);
+}
+// a file onto the device. on a phone or tablet it goes through the share sheet, which offers 'save image'
+// (into photos or the gallery) and 'save to files'; anywhere else, or if sharing isn't there, it downloads
+function keepOnDevice(blob, name, type) {
+    const file = new File([blob], name || 'file', { type: type || blob.type || '' });
+    if (typeof TOUCH_ONLY !== 'undefined' && TOUCH_ONLY && navigator.canShare && navigator.share) {
+        let ok = false;
+        try { ok = navigator.canShare({ files: [file] }); } catch (error) { ok = false; }
+        if (ok) {
+            navigator.share({ files: [file] }).catch((error) => { if (!error || error.name !== 'AbortError') saveBlob(blob, name); });
+            return;
+        }
+    }
+    saveBlob(blob, name);
 }
 
 /* --- the three dots on a line --- */
@@ -8771,7 +8812,7 @@ function lineTools(row, other, line, words) {
     });
     if (line.file) mark('save', 'save the file', async () => {
         const blob = await fileOf(other, line);
-        if (blob) saveBlob(blob, line.file.name); else saySomethingChat('that file has gone from the board');
+        if (blob) keepOnDevice(blob, line.file.name, line.file.type); else saySomethingChat('that file has gone from the board');
     });
     if (mine && line.said) mark('edit', 'edit', () => { tools.classList.remove('is-open'); editLine(row, other, line, words); });
     mark('bin', mine ? 'delete' : 'remove for me', () => deleteLine(other, line, mine));
@@ -9657,4 +9698,63 @@ if (activeSectionId === 'chat') wakeChat();
     if (window.ResizeObserver) new ResizeObserver(paintPageBars).observe(document.body);
     paintPageBars();
     setTimeout(paintPageBars, 700);
+}
+
+/* ---------- touch screens: phones and tablets ---------- */
+// a tap on a touch screen counts as a hover and the hover then sticks until something else is touched — a
+// button left filled black, lifted, or rocking forever, which read as glitchy. so on a screen with no hover at
+// all, every rule that only applies on hover is taken out of the stylesheet as the page starts (a selector
+// with :not(:hover) in it is left alone). a mouse or trackpad never meets this
+const TOUCH_ONLY = window.matchMedia && window.matchMedia('(hover: none)').matches;
+if (TOUCH_ONLY) {
+    document.documentElement.classList.add('touch');
+    const hoverOnly = (one) => /:hover/.test(one.replace(/:not\([^)]*:hover[^)]*\)/g, ''));
+    const strip = (list) => {
+        for (let i = list.length - 1; i >= 0; i -= 1) {
+            const rule = list[i];
+            if (rule.cssRules && !(rule instanceof CSSStyleRule)) { strip(rule.cssRules); continue; }
+            if (!(rule instanceof CSSStyleRule) || !rule.selectorText || !rule.selectorText.includes(':hover')) continue;
+            const kept = rule.selectorText.split(/,(?![^(]*\))/).map((one) => one.trim()).filter((one) => !hoverOnly(one));
+            try {
+                if (!kept.length) (rule.parentRule || rule.parentStyleSheet).deleteRule(i);
+                else if (kept.length < rule.selectorText.split(/,(?![^(]*\))/).length) rule.selectorText = kept.join(', ');
+            } catch (error) { /* left as it is */ }
+        }
+    };
+    Array.from(document.styleSheets).forEach((sheet) => {
+        try { strip(sheet.cssRules); } catch (error) { /* another site's sheet (the fonts): not ours to read */ }
+    });
+}
+
+// a long press is a touch screen's right click: held still for half a second, it opens the same menus a
+// right click does (renaming and deleting decks and cards, the page's own menu). never in a box you type in
+// (it has its own), on the drawing's sheet, or on home's tiles (holding one starts arranging them)
+{
+    let hold = 0, from = null, fired = false;
+    const cancel = () => { clearTimeout(hold); hold = 0; from = null; };
+    document.addEventListener('pointerdown', (event) => {
+        cancel();
+        fired = false;
+        if (event.pointerType !== 'touch' || !event.target.closest) return;
+        if (event.target.closest('input, textarea, select, canvas, [contenteditable], .widget-card, .home-key, .draw-panel, .talk-log')) return;
+        from = { x: event.clientX, y: event.clientY, target: event.target };
+        hold = setTimeout(() => {
+            if (!from) return;
+            fired = true;
+            from.target.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: from.x, clientY: from.y, button: 2 }));
+            from = null;
+        }, 520);
+    }, true);
+    document.addEventListener('pointermove', (event) => {
+        if (from && Math.hypot(event.clientX - from.x, event.clientY - from.y) > 8) cancel();
+    }, true);
+    ['pointerup', 'pointercancel', 'scroll'].forEach((name) => document.addEventListener(name, () => { if (hold) cancel(); }, true));
+    // the press that opened a menu doesn't also count as a tap on what was under it
+    document.addEventListener('click', (event) => {
+        if (!fired) return;
+        fired = false;
+        if (event.target.closest && event.target.closest('.context-menu')) return;
+        event.preventDefault();
+        event.stopPropagation();
+    }, true);
 }

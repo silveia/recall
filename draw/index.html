@@ -13,7 +13,20 @@
             var FLOOR = 1280;   // narrower than this, the whole page is drawn at 1280 and shrunk — never squeezed
             var root = document.documentElement;
             if (screen.width < FLOOR) {
-                document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=' + FLOOR);
+                var meta = document.querySelector('meta[name="viewport"]');
+                // an iphone or ipad zooms in on any box you tap to type in, and the page was left zoomed and
+                // shifted; held at the scale that fits the 1280, it can't (a pinch still zooms — ios lets the
+                // hand override this, and only this). worked out again when the device turns round
+                var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+                var place = function () {
+                    if (!ios) { meta.setAttribute('content', 'width=' + FLOOR); return; }
+                    var wide = window.matchMedia('(orientation: landscape)').matches;
+                    var across = wide ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+                    var fit = Math.min(1, across / FLOOR).toFixed(4);
+                    meta.setAttribute('content', 'width=' + FLOOR + ', initial-scale=' + fit + ', maximum-scale=' + fit);
+                };
+                place();
+                window.addEventListener('orientationchange', function () { setTimeout(place, 60); });
             }
             function nativeGetter(object, name) {
                 for (var o = object; o; o = Object.getPrototypeOf(o)) {
@@ -79,7 +92,7 @@
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <!-- the site's colour, set before anything is drawn -->
     <script src="tint.js"></script>
-    <link rel="stylesheet" href="style.css?v=70a3f76a87">
+    <link rel="stylesheet" href="style.css?v=8b6750edc8">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -266,7 +279,7 @@
                             <div class="home-lower">
                                 <section class="home-box home-jot" aria-label="notes">
                                     <div class="widget-head"><h3>notes</h3></div>
-                                    <textarea id="homeJot" spellcheck="false" placeholder="write something down ( ˘▽˘)っ" aria-label="notes"></textarea>
+                                    <textarea id="homeJot" spellcheck="false" placeholder="write something down" aria-label="notes"></textarea>
                                 </section>
                                 <section class="home-box home-bin" aria-label="bin">
                                     <div class="widget-head"><h3>bin</h3></div>
@@ -547,7 +560,7 @@
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>
                                         </button>
                                         <input id="talkFile" type="file" multiple hidden>
-                                        <input id="talkSay" type="text" aria-label="say something" placeholder="say something" maxlength="1000" disabled>
+                                        <input id="talkSay" type="text" aria-label="say something" placeholder="say something" maxlength="1000" enterkeyhint="send" disabled>
                                         <small class="talk-left" id="talkLeft" hidden></small>
                                         <button class="field-go" type="submit" aria-label="send it" title="send it">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h12.5M12 6.2 18.2 12 12 17.8"/></svg>
@@ -925,7 +938,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=ad1fd09275"></script>
-    <script src="draw.js?v=ccac34cb09"></script>
+    <script src="script.js?v=e17aa1aeb8"></script>
+    <script src="draw.js?v=7859146cad"></script>
 </body>
 </html>
