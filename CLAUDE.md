@@ -1181,7 +1181,7 @@ delay's easing out in full: a `var()` inside a two-animation shorthand
 takes the whole declaration down with it if it doesn't resolve, and
 then **neither** animation runs.
 
-**The page no longer fades in when it is let go** — it is just there, and its boxes unfold (see "one
+**The turning smiley no longer holds the place while the page loads** (22 Oct, by request — it read as unoriginal): it is only in the exportify window now, and a refresh is simply blank until the page comes in. **The page no longer fades in when it is let go** — it is just there, and its boxes unfold (see "one
 entrance for every section").
 
 **The holding-back is set in the head, not the stylesheet**, so a page
