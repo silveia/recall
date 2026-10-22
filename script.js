@@ -2031,6 +2031,7 @@ function showContextMenu(event, target) {
     contextMenu.hidden = false;
     contextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 200)}px`;
     contextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - 100)}px`;
+    requestAnimationFrame(() => placeOwnLayer(contextMenu));     // over everything, so it carries its own copy of the colour
 
     const item = (label, run) => {
         const action = document.createElement('button');
@@ -8808,13 +8809,13 @@ function lineTools(row, other, line, words) {
     };
     if (line.said) mark('copy', 'copy', () => {
         navigator.clipboard.writeText(line.said).then(() => saySomethingChat('copied'), () => {});
-        tools.classList.remove('is-open');
+        foldTools(tools);
     });
     if (line.file) mark('save', 'save the file', async () => {
         const blob = await fileOf(other, line);
         if (blob) keepOnDevice(blob, line.file.name, line.file.type); else saySomethingChat('that file has gone from the board');
     });
-    if (mine && line.said) mark('edit', 'edit', () => { tools.classList.remove('is-open'); editLine(row, other, line, words); });
+    if (mine && line.said) mark('edit', 'edit', () => { foldTools(tools); editLine(row, other, line, words); });
     mark('bin', mine ? 'delete' : 'remove for me', () => deleteLine(other, line, mine));
     const more = document.createElement('button');
     more.type = 'button';
@@ -8824,8 +8825,9 @@ function lineTools(row, other, line, words) {
     more.innerHTML = TOOL_MARKS.more;
     more.addEventListener('click', (event) => {
         event.stopPropagation();
-        talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => { if (one !== tools) one.classList.remove('is-open'); });
-        tools.classList.toggle('is-open');
+        talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => { if (one !== tools) foldTools(one); });
+        if (tools.classList.contains('is-open')) foldTools(tools);
+        else { tools.classList.remove('is-folding'); tools.classList.add('is-open'); }
     });
     tools.append(more);
     row.append(tools);
@@ -8928,8 +8930,97 @@ function editLine(row, other, line, words) {
     field.addEventListener('blur', () => done(true), { once: true });
 }
 document.addEventListener('click', () => {
-    talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => one.classList.remove('is-open'));
+    talkLog.querySelectorAll('.said-tools.is-open').forEach(foldTools);
 });
+// the marks fold back into the dots, the furthest first, rather than vanishing (style.css, .is-folding)
+function foldTools(tools) {
+    if (!tools.classList.contains('is-open')) return;
+    tools.classList.remove('is-open');
+    tools.classList.add('is-folding');
+    clearTimeout(tools.foldDone);
+    tools.foldDone = setTimeout(() => tools.classList.remove('is-folding'), 300);
+}
+// moving on to another message folds a menu left open on the last one
+talkLog.addEventListener('pointerover', (event) => {
+    const row = event.target.closest && event.target.closest('.said-row');
+    if (!row) return;
+    talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => { if (!row.contains(one)) foldTools(one); });
+});
+
+/* --- links in a line: underlined, opened in a new tab, and a glimpse of the page beside the pointer --- */
+const LINK_IN_WORDS = /\b((?:https?:\/\/|www\.)[^\s<>"]+)/gi;
+function writeWithLinks(el, words) {
+    el.textContent = '';
+    let from = 0;
+    words.replace(LINK_IN_WORDS, (found, _, at) => {
+        let url = found.replace(/[.,!?;:'")\]]+$/, '');      // a full stop or bracket after a link is not part of it
+        el.append(document.createTextNode(words.slice(from, at)));
+        const link = document.createElement('a');
+        link.className = 'said-link';
+        link.href = /^www\./i.test(url) ? `https://${url}` : url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = url;
+        el.append(link);
+        from = at + url.length;
+        return found;
+    });
+    el.append(document.createTextNode(words.slice(from)));
+}
+// rest the pointer on any link off the site for half a second and a small picture of the page comes up beside
+// it. a page can't be shown inside this one (most sites refuse to be framed), so it is a picture of the page,
+// taken by wordpress's free screenshot service (mshots) — the one place a link's address leaves for a preview
+{
+    const peek = document.createElement('div');
+    peek.className = 'link-peek own-layer';
+    peek.hidden = true;
+    peek.innerHTML = '<span class="link-peek-shot"><img alt=""></span><span class="link-peek-where"></span>';
+    document.body.append(peek);
+    const shot = peek.querySelector('img');
+    const where = peek.querySelector('.link-peek-where');
+    let waiting = 0, tries = 0, retry = 0, over = null, at = { x: 0, y: 0 };
+    const place = () => {
+        const w = peek.offsetWidth, h = peek.offsetHeight;
+        let x = at.x + 18, y = at.y + 18;
+        if (x + w > innerWidth - 8) x = at.x - w - 18;
+        if (y + h > innerHeight - 8) y = innerHeight - h - 8;
+        peek.style.left = `${Math.max(8, x)}px`;
+        peek.style.top = `${Math.max(8, y)}px`;
+        if (window.placeOwnLayer) window.placeOwnLayer(peek);
+    };
+    const hide = () => { clearTimeout(waiting); clearTimeout(retry); over = null; peek.hidden = true; peek.classList.remove('is-ready'); };
+    const load = (url) => {
+        shot.src = `https://s0.wp.com/mshots/v1/${encodeURIComponent(url)}?w=640&h=400${tries ? `&r=${tries}` : ''}`;
+    };
+    shot.addEventListener('load', () => {
+        // the service answers with a stand-in while it takes the picture; ask again until the real one is there
+        if (shot.naturalHeight !== 400 && tries < 6 && over) { tries += 1; retry = setTimeout(() => over && load(over.href), 1500); return; }
+        peek.classList.add('is-ready');
+    });
+    document.addEventListener('pointerover', (event) => {
+        if (event.pointerType === 'touch') return;
+        const link = event.target.closest && event.target.closest('a[href^="http"]');
+        if (!link || link === over) return;
+        if (new URL(link.href).origin === location.origin) return;
+        hide();
+        over = link;
+        at = { x: event.clientX, y: event.clientY };
+        waiting = setTimeout(() => {
+            if (over !== link) return;
+            tries = 0;
+            peek.classList.remove('is-ready');
+            where.textContent = new URL(link.href).hostname.replace(/^www\./, '');
+            load(link.href);
+            peek.hidden = false;
+            place();
+        }, 500);
+    });
+    document.addEventListener('pointermove', (event) => { if (over) { at = { x: event.clientX, y: event.clientY }; if (!peek.hidden) place(); } });
+    document.addEventListener('pointerout', (event) => {
+        if (over && !(event.relatedTarget && over.contains(event.relatedTarget))) { if (event.target === over || over.contains(event.target)) hide(); }
+    });
+    ['pointerdown', 'scroll', 'blur'].forEach((name) => window.addEventListener(name, hide, true));
+}
 
 function whatIsSaid() {
     return (chatWith && chatDms[chatWith]) || [];
@@ -8996,7 +9087,7 @@ function paintTalk() {
         }
         const words = document.createElement('p');
         words.className = 'said-words';
-        words.textContent = one.said || '';
+        writeWithLinks(words, one.said || '');
         if (one.edited) {
             const was = document.createElement('span');
             was.className = 'said-edited';

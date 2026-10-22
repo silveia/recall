@@ -2088,6 +2088,9 @@ edit is itself a sealed note (`{gone: id}` / `{edit: id, said}`), obeyed
 only when it comes from whoever wrote the line (`lineChanged`), and every
 deleted line or spent note goes in `chatSkip` so it is never read again.
 
+**Links in a line** (22 Oct, by request) are real links (`writeWithLinks`: `https://…` or `www.…`, a full stop or bracket after one left out), underlined in the site's link style, opening in a new tab. **Rest the pointer on any link off the site for half a second and a picture of the page comes up beside it** (`.link-peek`, kept on the window): a page can't be shown inside this one — most sites refuse to be framed — so it is a screenshot from wordpress's free mshots service, asked again until the real picture replaces its stand-in, with the address under it. That is the one place a link's address leaves for a preview. Not on touch. **No box round a line on hover any more** — only its dots come up. **The marks fold back into the dots** (`foldTools`, `.is-folding`: the furthest first, 0.2s, easing in) instead of vanishing, and **moving on to another message folds a menu left open**. Measured: open, hover the next line, folding, gone 300ms later.
+**The right-click menu is the frontmost thing everywhere** (z 2147483646, with its own copy of the colour layer since it lies over it); its grey drop shadow is gone.
+
 **A line is at most 1000 characters** (`TALK_MOST`, the field's `maxlength`) and 2800 bytes. ntfy turns any post over 4096 bytes into an attachment, and sealing plus base64 grows a line by about a third — that is why very long messages silently never arrived. The count left shows in the bar from 150 out, and `too long` if emoji push the bytes over first.
 
 **A line you typed goes up before it is sent.** Waiting on somebody
