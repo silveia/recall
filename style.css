@@ -2633,6 +2633,9 @@ html.tint-layer.tinted body::after {
 	cursor: var(--cur-bar);
 	outline: none;
 }
+/* the name is drawn in `difference`, so the site's black selection changed nothing under it and what was selected
+   couldn't be seen (by request): white here flips the strip behind it, a plain inverted block with the letters in it */
+.clip-text.is-editing::selection { color: #000; background: #fff; }
 
 .clip-number {
 	flex: none;

@@ -230,6 +230,9 @@ person's turn.
   sixteen-a-second ticks come from a worker (`startSenseTicks`), which a hidden tab doesn't slow; the `<video>`
   and a plain interval are the fallback. Measured: recording carried on after switching to home, and three
   changes of the picture there cut three times.
+- **Renaming a clip shows what is selected** (22 Oct, by request): the name is drawn in `difference`, so the site's
+  black selection changed nothing under it; `.clip-text.is-editing::selection` is white, which flips the strip
+  behind it into a plain inverted block with the letters still readable in it.
 - Clips under 2 seconds are discarded, which filters out interruptions.
 - Clips persist in IndexedDB until discarded.
 - A clip can be cropped, but nothing is ever cut: the crop is a
