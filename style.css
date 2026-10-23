@@ -4544,6 +4544,9 @@ html.booting .app-shell { opacity: 0; }
 .said-file-name svg { flex: none; width: 1rem; height: 1rem; }
 .said-file img { display: block; max-width: 100%; max-height: 14rem; border-radius: calc(var(--radius) - 4px); }
 .said-file-note { font-size: 0.75rem; }
+/* a big file handed over directly: its words say where it is, and a bar fills along its foot while it moves */
+.said-big { position: relative; overflow: hidden; }
+.said-big.is-moving::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--done, 0) * 100%); background: var(--ink-fill); }
 .said-edited { margin-left: 0.4rem; font-size: 0.7rem; }
 
 /* the three dots on a message: shown on hover, and they open into a row of small marks — no ring

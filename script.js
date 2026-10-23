@@ -8208,6 +8208,23 @@ async function openWhatIsWaiting() {
                     opened = true;
                     continue;
                 }
+                // the handshake for a big file handed over directly: acted on, never a line, and only while fresh
+                if (note && note.rtc) {
+                    chatSkip.add(post.id);
+                    keepSkip();
+                    if (from !== mine && Date.now() - (post.at || 0) < 120000) bigSignal(other, note.rtc);
+                    continue;
+                }
+                if (note && note.big) {
+                    const held = chatDms[other] || [];
+                    if (!held.some((one) => one.id === post.id)) {
+                        chatDms[other] = [...held, { id: post.id, by: from, said: '', at: post.at || 0, big: note.big }]
+                            .sort((one, two) => (one.at || 0) - (two.at || 0)).slice(-TALK_KEEP);
+                        if (!chatFriends.includes(other)) { chatFriends = [...chatFriends, other]; arrived = true; }
+                        opened = true;
+                    }
+                    continue;
+                }
                 if (note && note.file) { file = note.file; said = ''; } else continue;
             }
             const held = chatDms[other] || [];
@@ -8313,7 +8330,7 @@ function paintPeople() {
         name.textContent = displayName(key);
         const last = (chatDms[key] || []).slice(-1)[0];
         const line2 = document.createElement('small');
-        line2.textContent = last ? `${chatMe && whoIs(last.by) === chatMe.name.toLowerCase() ? 'you: ' : ''}${last.file ? `file · ${last.file.name}` : last.said}` : (them && them.pub ? 'say hi' : 'hasn\'t opened the chat yet');
+        line2.textContent = last ? `${chatMe && whoIs(last.by) === chatMe.name.toLowerCase() ? 'you: ' : ''}${last.file ? `file · ${last.file.name}` : last.big ? `file · ${last.big.name}` : last.said}` : (them && them.pub ? 'say hi' : 'hasn\'t opened the chat yet');
         words.append(name, line2);
         const when = document.createElement('span');
         when.className = 'room-when';
@@ -8544,10 +8561,9 @@ talkForm.addEventListener('submit', async (event) => {
     const going = traying.filter((one) => !one.chip.classList.contains('is-sending'));
     for (const held of going) {
         if (chatWith !== to || !traying.includes(held)) break;
-        if (held.file.size > CHAT_FILE_MOST) { shake(held.chip); continue; }
         held.chip.classList.remove('is-failed');
         held.chip.classList.add('is-sending');
-        const sent = await sendFile(to, held.file);
+        const sent = held.file.size > CHAT_FILE_MOST ? await sendBig(to, held.file) : await sendFile(to, held.file);
         held.chip.classList.remove('is-sending');
         if (sent) {
             traying = traying.filter((one) => one !== held);
@@ -8721,7 +8737,7 @@ function trayFile(file) {
     chip.append(look, words, out);
     talkTray.append(chip);
     traying.push(held);
-    if (file.size > CHAT_FILE_MOST) { chip.classList.add('is-failed'); size.textContent = 'over 15 mb'; shake(chip); }
+    if (file.size > CHAT_FILE_MOST) size.textContent = `${fileSize(file.size)} · sent directly`;     // too big for the board: handed over browser to browser (sendBig)
     paintTray();
     talkSay.focus();
 }
@@ -8836,6 +8852,215 @@ function fileBox(other, line) {
     });
     return box;
 }
+/* --- big files, handed over browser to browser (22 Oct, by request) ---
+   over the board's 15 mb a file is never uploaded: the line only says it is on offer, the file stays in the
+   sender's open tab, and when the other side presses for it the two browsers connect directly (webrtc) and it
+   moves across in pieces — encrypted on the way by the connection itself, which is set up through sealed notes
+   on the thread, so nobody else can step into it. no size limit past the disk; both have to be here at once.
+   a public stun server only helps each side find its own address; nothing of the file goes near it */
+const BIG_PIECE = 64 * 1024;
+const RTC_SETUP = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] };
+const bigOffers = new Map();     // a big file's id → the File, for as long as this tab is open
+const bigTalks = new Map();      // a handover's id → its connection and what it is doing
+const bigState = new Map();      // a big file's id → { say, part } for its box
+
+async function sendBig(other, file) {
+    const big = { id: newId(), name: (file.name || 'file').slice(0, 120), type: file.type || '', size: file.size };
+    const post = await sealedPost(other, CHAT_NOTE + JSON.stringify({ big }));
+    if (!post) return false;
+    bigOffers.set(big.id, file);
+    chatDms[other] = [...(chatDms[other] || []), { id: post.id, by: chatMe.name, said: '', at: post.at, big }].slice(-TALK_KEEP);
+    keepKnown();
+    paintTalk();
+    paintPeople();
+    try { await postToBoard(CHAT_TOPIC, post); } catch (error) { saySomethingChat('that did not reach the board'); return false; }
+    return true;
+}
+const sendRtc = (other, rtc) => sendNote(other, { rtc });
+
+function sayBig(id, say, part) {
+    const was = bigState.get(id);
+    bigState.set(id, { say, part });
+    // a box is only redrawn when the words change or the bar has moved a whole percent
+    if (was && was.say === say && part !== null && was.part !== null && Math.floor((part || 0) * 100) === Math.floor((was.part || 0) * 100)) return;
+    document.querySelectorAll(`[data-big="${id}"]`).forEach((box) => box.repaintBig && box.repaintBig());
+}
+
+function bigBox(other, line) {
+    const big = line.big;
+    const mine = chatMe && whoIs(line.by) === chatMe.name.toLowerCase();
+    const box = document.createElement('button');
+    box.type = 'button';
+    box.className = 'said-file said-big';
+    box.dataset.big = big.id;
+    box.title = mine ? 'your file, sent directly' : 'get the file';
+    const name = document.createElement('span');
+    name.className = 'said-file-name';
+    name.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4"/></svg>';
+    const called = document.createElement('span');
+    called.textContent = big.name || 'file';
+    const size = document.createElement('small');
+    size.textContent = fileSize(big.size || 0);
+    name.append(called, size);
+    const note = document.createElement('span');
+    note.className = 'said-file-note';
+    box.append(name, note);
+    box.repaintBig = () => {
+        const state = bigState.get(big.id);
+        note.textContent = state ? state.say
+            : mine ? (bigOffers.has(big.id) ? 'sent directly — keep this tab open till they have it' : 'no longer on offer — send it again')
+            : 'press to get it — they need to be online';
+        const moving = !!state && state.part !== null && state.part < 1;
+        box.classList.toggle('is-moving', moving);
+        box.style.setProperty('--done', String(state && state.part !== null ? state.part : 0));
+    };
+    box.repaintBig();
+    box.addEventListener('click', () => { if (!mine) getBig(other, line); });
+    return box;
+}
+
+// the receiving side, off a press: where to write it is asked first (while the press still counts), so a file
+// of gigabytes goes straight to the disk rather than through memory
+async function getBig(other, line) {
+    const big = line.big;
+    const state = bigState.get(big.id);
+    if (state && state.part !== null && state.part < 1) return;     // already on its way
+    let writer = null;
+    if (window.showSaveFilePicker) {
+        try {
+            const handle = await window.showSaveFilePicker({ suggestedName: big.name });
+            writer = await handle.createWritable();
+        } catch (error) {
+            if (error && error.name === 'AbortError') return;
+            writer = null;
+        }
+    }
+    const s = newId();
+    const pc = new RTCPeerConnection(RTC_SETUP);
+    const talk = { pc, other, big, writer, parts: writer ? null : [], got: 0, ice: [] };
+    bigTalks.set(s, talk);
+    pc.onicecandidate = (event) => { if (event.candidate) sendRtc(other, { t: 'ice', s, c: event.candidate.toJSON() }); };
+    pc.ondatachannel = (event) => takeBigChannel(s, event.channel);
+    pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') endBig(s, "couldn't reach them directly"); };
+    talk.timer = setTimeout(() => { if (!talk.started) endBig(s, "they aren't online — try again when they are"); }, 30000);
+    sayBig(big.id, 'asking them…', 0);
+    await sendRtc(other, { t: 'want', s, big: big.id });
+}
+
+async function bigSignal(other, rtc) {
+    if (!rtc || !rtc.s) return;
+    if (rtc.t === 'want') {
+        const file = bigOffers.get(rtc.big);
+        if (!file) { sendRtc(other, { t: 'gone', s: rtc.s }); return; }
+        if (bigTalks.has(rtc.s)) return;
+        const pc = new RTCPeerConnection(RTC_SETUP);
+        const talk = { pc, other, file, bigId: rtc.big, ice: [], giving: true };
+        bigTalks.set(rtc.s, talk);
+        pc.onicecandidate = (event) => { if (event.candidate) sendRtc(other, { t: 'ice', s: rtc.s, c: event.candidate.toJSON() }); };
+        pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') endBig(rtc.s, "couldn't reach them directly"); };
+        const channel = pc.createDataChannel('big', { ordered: true });
+        channel.binaryType = 'arraybuffer';
+        channel.onopen = () => giveBig(rtc.s, channel);
+        channel.onclose = () => { if (bigTalks.has(rtc.s) && !talk.done) endBig(rtc.s, 'the connection dropped'); };
+        await pc.setLocalDescription(await pc.createOffer());
+        sendRtc(other, { t: 'offer', s: rtc.s, sdp: pc.localDescription.sdp });
+        return;
+    }
+    const talk = bigTalks.get(rtc.s);
+    if (!talk) return;
+    const flush = () => { talk.ice.splice(0).forEach((c) => talk.pc.addIceCandidate(c).catch(() => {})); };
+    try {
+        if (rtc.t === 'offer') {
+            await talk.pc.setRemoteDescription({ type: 'offer', sdp: rtc.sdp });
+            await talk.pc.setLocalDescription(await talk.pc.createAnswer());
+            sendRtc(talk.other, { t: 'answer', s: rtc.s, sdp: talk.pc.localDescription.sdp });
+            flush();
+        } else if (rtc.t === 'answer') {
+            await talk.pc.setRemoteDescription({ type: 'answer', sdp: rtc.sdp });
+            flush();
+        } else if (rtc.t === 'ice') {
+            if (talk.pc.remoteDescription) talk.pc.addIceCandidate(rtc.c).catch(() => {});
+            else talk.ice.push(rtc.c);
+        } else if (rtc.t === 'gone') {
+            endBig(rtc.s, 'no longer on offer — ask them to send it again');
+        }
+    } catch (error) {
+        endBig(rtc.s, "couldn't reach them directly");
+    }
+}
+
+// the giving side: a short header, then the file in 64 kb pieces, never more than 8 mb waiting in the pipe
+async function giveBig(s, channel) {
+    const talk = bigTalks.get(s);
+    if (!talk) return;
+    const file = talk.file;
+    channel.bufferedAmountLowThreshold = 1 << 20;
+    channel.send(JSON.stringify({ size: file.size }));
+    let at = 0;
+    while (at < file.size) {
+        if (channel.readyState !== 'open') return;
+        if (channel.bufferedAmount > (8 << 20)) {
+            await new Promise((done) => { channel.onbufferedamountlow = () => { channel.onbufferedamountlow = null; done(); }; });
+            continue;
+        }
+        const piece = await file.slice(at, at + BIG_PIECE).arrayBuffer();
+        channel.send(piece);
+        at += piece.byteLength;
+        sayBig(talk.bigId, `sending ${Math.floor(at / file.size * 100)}%`, at / file.size);
+    }
+    channel.send(JSON.stringify({ done: true }));
+    talk.done = true;
+    sayBig(talk.bigId, 'sent ✓', 1);
+}
+
+function takeBigChannel(s, channel) {
+    const talk = bigTalks.get(s);
+    if (!talk) return;
+    channel.binaryType = 'arraybuffer';
+    talk.started = true;
+    clearTimeout(talk.timer);
+    let chain = Promise.resolve();
+    channel.onmessage = (event) => {
+        if (typeof event.data === 'string') {
+            let said = null;
+            try { said = JSON.parse(event.data); } catch (error) { said = null; }
+            if (said && said.size != null) talk.size = said.size;
+            if (said && said.done) chain = chain.then(() => finishBig(s));
+            return;
+        }
+        const piece = event.data;
+        chain = chain.then(async () => {
+            if (talk.writer) await talk.writer.write(piece); else talk.parts.push(piece);
+            talk.got += piece.byteLength;
+            const whole = talk.size || talk.big.size || 1;
+            sayBig(talk.big.id, `getting ${Math.floor(talk.got / whole * 100)}%`, Math.min(0.999, talk.got / whole));
+        }).catch(() => endBig(s, "couldn't write it to the disk"));
+    };
+    channel.onclose = () => { if (bigTalks.has(s) && !talk.finished) endBig(s, 'the connection dropped'); };
+}
+
+async function finishBig(s) {
+    const talk = bigTalks.get(s);
+    if (!talk) return;
+    talk.finished = true;
+    if (talk.writer) await talk.writer.close();
+    else keepOnDevice(new Blob(talk.parts, { type: talk.big.type || '' }), talk.big.name, talk.big.type);
+    sayBig(talk.big.id, 'saved ✓', 1);
+    endBig(s);
+}
+
+function endBig(s, why) {
+    const talk = bigTalks.get(s);
+    if (!talk) return;
+    bigTalks.delete(s);
+    clearTimeout(talk.timer);
+    try { talk.pc.close(); } catch (error) { /* already shut */ }
+    if (why) {
+        sayBig(talk.big ? talk.big.id : talk.bigId, why, null);
+        if (talk.writer && !talk.finished && talk.writer.abort) talk.writer.abort().catch(() => {});
+    }
+}
+
 // one address per picture, kept: the thread is redrawn often, and a fresh address each time would load a
 // full-size photo again on every redraw
 const pictureUrls = new Map();
@@ -9171,6 +9396,10 @@ function paintTalk() {
         if (one.file) {
             words.textContent = '';
             words.append(fileBox(chatWith, one));
+        }
+        if (one.big) {
+            words.textContent = '';
+            words.append(bigBox(chatWith, one));
         }
         row.append(words);
         lineTools(row, chatWith, one, words);

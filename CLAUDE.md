@@ -2093,6 +2093,18 @@ they used to be dithered to black and white like faces, which stay so);
 pressing the box saves the original.
 Verified: a file sealed, uploaded, fetched back and opened byte for byte.
 
+**Files over 15 MB are handed over browser to browser** (22 Oct, by request — the board stops at 15 MB, and with a
+handful of people the two of you being online at once is fine). The line only says the file is on offer
+(`{big:{id,name,type,size}}`); the file stays in the sender's open tab (`bigOffers`, memory only — a refresh takes
+it off offer, and the line then says so). Pressing it on the other side asks where to save (`showSaveFilePicker`,
+so gigabytes go straight to the disk; memory then a download where that isn't there), and the two browsers connect
+directly (webrtc data channel, google's public stun to find their own addresses; no relay, so a network that
+blocks direct connections says `couldn't reach them directly`). The handshake travels as sealed notes on the
+thread (`{rtc:…}`, acted on only while under two minutes old, never shown, never read twice). 64 kb pieces, at
+most 8 mb waiting in the pipe, a bar along the box's foot and `sending 40%` / `getting 40%`, then `sent ✓` /
+`saved ✓`. Nobody online answers after 30s with `they aren't online`. Measured: 20 MB across in 3.6s, the same
+bytes at the other end.
+
 **The three dots on a line** show on hover, centred down the line, with no ring round them and no hover animation, and open into marks that slide out from the right, the nearest first (0.26s, 40ms apart): copy,
 save (a file), edit (your own words), and the bin — delete for both on
 your own line, remove for me on someone else's. The bin acts on one
