@@ -7524,7 +7524,6 @@ function fitSite() {
 window.addEventListener('resize', fitSite);
 
 listFrame.addEventListener('load', () => { listFrame.dataset.loads = String(Number(listFrame.dataset.loads || 0) + 1); });
-document.getElementById('listOwn').addEventListener('click', (event) => { if (openExportify()) event.preventDefault(); });
 function wakeListSite() {
     if (listFrame.dataset.woke) return;
     listFrame.dataset.woke = 'yes';
@@ -8670,6 +8669,17 @@ async function fileOf(other, line) {
     filesOpen.set(line.id, blob);
     return blob;
 }
+// a size for a file box: the figure in the number face, the unit in the body face (the two fonts side by side
+// inside one word read as out of place)
+function sizeTag(bytes) {
+    const tag = document.createElement('small');
+    tag.className = 'file-size';
+    const [figure, unit] = fileSize(bytes).split(' ');
+    const num = document.createElement('b');
+    num.textContent = figure;
+    tag.append(num, document.createTextNode(` ${unit || ''}`));
+    return tag;
+}
 function fileSize(bytes) {
     if (bytes < 1024) return `${bytes} b`;
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} kb`;
@@ -8727,9 +8737,7 @@ function trayFile(file) {
     words.className = 'tray-words';
     const name = document.createElement('span');
     name.textContent = file.name || 'file';
-    const size = document.createElement('small');
-    size.textContent = fileSize(file.size || 0);
-    words.append(name, size);
+    words.append(name, sizeTag(file.size || 0));
     const out = document.createElement('button');
     out.type = 'button';
     out.className = 'tray-out';
@@ -8745,7 +8753,6 @@ function trayFile(file) {
     chip.append(look, words, out);
     talkTray.append(chip);
     traying.push(held);
-    if (file.size > CHAT_FILE_MOST) size.textContent = `${fileSize(file.size)} · sent directly`;     // too big for the board: handed over browser to browser (sendBig)
     paintTray();
     talkSay.focus();
 }
@@ -8828,9 +8835,7 @@ function fileBox(other, line) {
     name.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4"/></svg>';
     const called = document.createElement('span');
     called.textContent = line.file.name || 'file';
-    const size = document.createElement('small');
-    size.textContent = fileSize(line.file.size || 0);
-    name.append(called, size);
+    name.append(called, sizeTag(line.file.size || 0));
     box.append(name);
     let have = null;     // the file, once it is here, so a press can hand it over at once (a phone only shares off a fresh press)
     if ((line.file.type || '').startsWith('image/')) {
@@ -8846,13 +8851,7 @@ function fileBox(other, line) {
             box.append(img);
         });
     }
-    const gone = () => {
-        if (box.querySelector('.said-file-note')) return;
-        const note = document.createElement('span');
-        note.className = 'said-file-note';
-        note.textContent = 'gone from the board — files keep three hours';
-        box.append(note);
-    };
+    const gone = () => { box.classList.add('is-gone'); };     // gone from the board: a dashed box says it, no words
     box.addEventListener('click', async () => {
         const blob = have || await fileOf(other, line);
         if (blob) keepOnDevice(blob, line.file.name, line.file.type);
@@ -8901,29 +8900,28 @@ function bigBox(other, line) {
     box.type = 'button';
     box.className = 'said-file said-big';
     box.dataset.big = big.id;
-    box.title = mine ? 'your file, sent directly' : 'get the file';
+    box.title = mine ? 'save your copy' : 'get the file';
     const name = document.createElement('span');
     name.className = 'said-file-name';
     name.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4"/></svg>';
     const called = document.createElement('span');
     called.textContent = big.name || 'file';
-    const size = document.createElement('small');
-    size.textContent = fileSize(big.size || 0);
-    name.append(called, size);
-    const note = document.createElement('span');
-    note.className = 'said-file-note';
-    box.append(name, note);
+    name.append(called, sizeTag(big.size || 0));
+    box.append(name);
+    // no words under it (by request): a bar along its foot while it moves, a dashed box when it can't be had
     box.repaintBig = () => {
         const state = bigState.get(big.id);
-        note.textContent = state ? state.say
-            : mine ? (bigOffers.has(big.id) ? 'sent directly — keep this tab open till they have it' : 'no longer on offer — send it again')
-            : 'press to get it — they need to be online';
         const moving = !!state && state.part !== null && state.part < 1;
         box.classList.toggle('is-moving', moving);
+        box.classList.toggle('is-gone', (mine && !bigOffers.has(big.id)) || (!!state && state.part === null));
         box.style.setProperty('--done', String(state && state.part !== null ? state.part : 0));
     };
     box.repaintBig();
-    box.addEventListener('click', () => { if (!mine) getBig(other, line); });
+    box.addEventListener('click', () => {
+        if (!mine) { getBig(other, line); return; }
+        const file = bigOffers.get(big.id);       // your own: your copy, from this tab
+        if (file) keepOnDevice(file, big.name, big.type); else shake(box);
+    });
     return box;
 }
 
@@ -9064,7 +9062,9 @@ function endBig(s, why) {
     clearTimeout(talk.timer);
     try { talk.pc.close(); } catch (error) { /* already shut */ }
     if (why) {
-        sayBig(talk.big ? talk.big.id : talk.bigId, why, null);
+        const id = talk.big ? talk.big.id : talk.bigId;
+        sayBig(id, why, null);
+        document.querySelectorAll(`[data-big="${id}"]`).forEach((box) => shake(box));
         if (talk.writer && !talk.finished && talk.writer.abort) talk.writer.abort().catch(() => {});
     }
 }

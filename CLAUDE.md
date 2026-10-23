@@ -2111,7 +2111,11 @@ blocks direct connections says `couldn't reach them directly`). The handshake tr
 thread (`{rtc:…}`, acted on only while under two minutes old, never shown, never read twice). 64 kb pieces, at
 most 8 mb waiting in the pipe, a bar along the box's foot and `sending 40%` / `getting 40%`, then `sent ✓` /
 `saved ✓`. Nobody online answers after 30s with `they aren't online`. Measured: 20 MB across in 3.6s, the same
-bytes at the other end.
+bytes at the other end. **No words under a file box** (22 Oct, by request — "the user can figure it out"): a bar along the foot while
+it moves, a dashed box when it can't be had (a failure also shakes it); pressing your own big file saves your copy.
+The size sits at the box's right end on the name's line (`sizeTag`): the figure in VT323, the unit in the body face.
+The tray chip shows the size alone, and the `stuck signing in?` line in exportify's window is gone too. **No helper
+text anywhere new: just the main things.**
 
 **The three dots on a line** show on hover, centred down the line, with no ring round them and no hover animation, and open into marks that slide out from the right, the nearest first (0.26s, 40ms apart): copy,
 save (a file), edit (your own words), and the bin — delete for both on

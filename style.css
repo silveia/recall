@@ -1925,8 +1925,6 @@ html.tint-layer.tinted body::after {
 	mix-blend-mode: screen;
 }
 .tint-patch.is-on { display: block; }
-.list-own { align-self: center; margin-top: auto; font-size: 0.72rem; }   /* the quiet way out if spotify's log-in won't show in the frame */
-.list-own + .list-watch { margin-top: 0; }
 .list-watch {
 	align-self: stretch;
 	margin-top: auto;
@@ -4490,6 +4488,7 @@ html.booting .app-shell { opacity: 0; }
 .tray-words { display: flex; flex-direction: column; min-width: 0; }
 .tray-words span { overflow: hidden; font-size: 0.82rem; white-space: nowrap; text-overflow: ellipsis; }
 .tray-words small { font-family: var(--num-font); font-size: 0.95rem; }
+.tray-words .file-size { margin-left: 0; padding-left: 0; font-family: var(--font); font-size: 0.72rem; }
 .tray-out {
 	display: grid;
 	flex: none;
@@ -4540,11 +4539,16 @@ html.booting .app-shell { opacity: 0; }
 .said-file:hover { outline: 1px solid var(--line); }
 .said-file-name { display: flex; align-items: center; gap: 0.5rem; min-width: 0; font-size: 0.85rem; }
 .said-file-name span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.said-file-name small { flex: none; font-family: var(--num-font); font-size: 0.95rem; }
+.said-file-name { justify-content: flex-start; }
+.said-file-name span { flex: 1; }
+/* the size at the box's right end, on the name's line: the figure in the number face, the unit in the body's */
+.file-size { flex: none; margin-left: auto; padding-left: var(--tight); font-family: var(--font); font-size: 0.72rem; white-space: nowrap; }
+.file-size b { font-family: var(--num-font); font-size: 1.05rem; font-weight: 400; }
+.said-file.is-gone { border-style: dashed; }
 .said-file-name svg { flex: none; width: 1rem; height: 1rem; }
 .said-file img { display: block; max-width: 100%; max-height: 14rem; border-radius: calc(var(--radius) - 4px); }
 .said-file-note { font-size: 0.75rem; }
-/* a big file handed over directly: its words say where it is, and a bar fills along its foot while it moves */
+/* a big file handed over directly: a bar fills along its foot while it moves */
 .said-big { position: relative; overflow: hidden; }
 .said-big.is-moving::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--done, 0) * 100%); background: var(--ink-fill); }
 .said-edited { margin-left: 0.4rem; font-size: 0.7rem; }
