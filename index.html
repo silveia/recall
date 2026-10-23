@@ -28,7 +28,8 @@ if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add(
 	html.embedded, html.embedded body { overscroll-behavior: auto; }   /* framed on home, a wheel over the run passes on to the page */
 	/* the site's colour: one layer over everything, blended to screen (see style.css) */
 	html.tint-layer.tinted { --tint-main: #000 !important; }
-	html.tint-layer.tinted body::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: var(--tint-layer); mix-blend-mode: screen; pointer-events: none; }
+	html.inverted.tint-layer.tinted body::after { background: var(--tint-layer); }
+	html.tint-layer.tinted body::after { content: ''; position: fixed; inset: 0; z-index: 2147483000; background: var(--tint-light, var(--tint-layer)); mix-blend-mode: screen; pointer-events: none; }
 	html.embedded.tint-layer.tinted body::after { display: none; }   /* framed on home, the site's own layer lies over it already: two layers drew the wrong part of the gradient */
 	body {
 		display: grid;

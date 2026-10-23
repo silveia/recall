@@ -281,12 +281,17 @@ html.tint-layer.tinted {
 	--tint-fill: #000 !important;
 	--tint-grad: #000 !important;
 }
+/* on a light page the layer is the colour as a tint (--tint-light, tint.js: a bright end darkened until it reads
+   on white), so words are evenly dark and tinted; white stays white under screen. in the dark it is the colour
+   itself, since there it is the page's whole ground */
+html { --layer-now: var(--tint-light, var(--tint-layer)); }
+html.inverted { --layer-now: var(--tint-layer); }
 html.tint-layer.tinted body::after {
 	content: '';
 	position: fixed;
 	inset: 0;
 	z-index: 2147483000;
-	background: var(--tint-layer);
+	background: var(--layer-now);
 	mix-blend-mode: screen;
 	pointer-events: none;
 	clip-path: var(--tint-hole, none);
@@ -3083,7 +3088,7 @@ html.inverted .topbar::after {
 	--ink: #fff;
 	--line: #fff;
 	--ink-fill: #fff;
-	--paper-fill: var(--tint-layer, #000);
+	--paper-fill: var(--layer-now, #000);
 	position: fixed;     /* placed by the script under its dot */
 	top: 0;
 	left: auto;
@@ -5730,7 +5735,7 @@ html.tint-layer.tinted .own-layer::after {
 	z-index: 50;
 	pointer-events: none;
 	border-radius: inherit;
-	background-image: var(--tint-layer);
+	background-image: var(--layer-now);
 	background-repeat: no-repeat;
 	background-size: calc(var(--vw, 1vw) * 100) calc(var(--vh, 1vh) * 100);
 	background-position: calc((var(--at-x, 0px) - var(--own-edge, 0px)) * -1) calc((var(--at-y, 0px) - var(--own-edge, 0px)) * -1);

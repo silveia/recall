@@ -2173,6 +2173,12 @@ came up out of black. The colour list **unrolls** down out of the strip instead 
 240ms / 170ms back), its holes cut only as far as it shows; a page with holes on it (draw, chat with
 colour pictures) slides in without the fade; and with a colour on, the drawing adjuster's parts only slide.
 
+**On a light page the layer is the colour as a tint** (22 Oct, by request): `--tint-light` (tint.js, `tintOf`) is
+each end darkened, hue kept, until it reads on white at about 3:1 — makoto's cyan end made the words up top faint
+while the navy end below was near black, which read as uneven, glitchy contrast. A dark colour is left as it is.
+Screen still keeps white white. In the dark the layer is the colour itself (`--layer-now` picks; the front door
+does the same), since there it is the page's whole ground.
+
 ## The strip's corner, the bin in the bar, notes (14 Oct, by request)
 
 **The colour dot is in the strip's very top-right corner**, the moon just before it, and the colour list

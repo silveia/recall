@@ -71,6 +71,16 @@
         for (var i = 0; i < 60 && lum(rgbOfHsl(hsl[0], s, l)) > 0.15; i += 1) l -= 0.015;
         return hexOf(rgbOfHsl(hsl[0], s, Math.max(0, l)));
     }
+    // a tint rather than the colour itself (light pages only, by request): darkened, hue kept, until words and
+    // hairlines read on white at about 3:1 — a bright end like makoto's cyan became faint text up top while the
+    // navy end below was near black, which read as uneven, glitchy contrast. a dark colour is left alone
+    function tintOf(hex) {
+        var rgb = rgbOf(hex);
+        if (lum(rgb) <= 0.3) return hexOf(rgb);
+        var hsl = hslOf(rgb), l = hsl[2];
+        for (var i = 0; i < 60 && lum(rgbOfHsl(hsl[0], hsl[1], l)) > 0.3; i += 1) l -= 0.01;
+        return hexOf(rgbOfHsl(hsl[0], hsl[1], Math.max(0, l)));
+    }
     // what is kept, filled out: a choice from before the two were kept apart had the solid colour in a
     var whole = function (t) {
         if (!t || typeof t !== 'object') return Object.assign({}, FIRST);
@@ -98,6 +108,7 @@
             fill: b ? 'linear-gradient(to top, ' + a + ', ' + b + ') fixed' : a,
             grad: b ? 'linear-gradient(to top, ' + a + ', ' + b + ')' : a,
             layer: b ? 'linear-gradient(to top, ' + a + ', ' + b + ')' : a,
+            light: b ? 'linear-gradient(to top, ' + tintOf(a) + ', ' + tintOf(b) + ')' : tintOf(a),
             top: b || a,
             bottom: a
         };
@@ -110,6 +121,7 @@
             root.style.removeProperty('--tint-fill');
             root.style.removeProperty('--tint-grad');
             root.style.removeProperty('--tint-layer');
+            root.style.removeProperty('--tint-light');
             root.style.removeProperty('--tint-top');
             root.style.removeProperty('--tint-bottom');
             root.classList.remove('tinted');
@@ -119,6 +131,7 @@
         root.style.setProperty('--tint-fill', made.fill);
         root.style.setProperty('--tint-grad', made.grad);
         root.style.setProperty('--tint-layer', made.layer);
+        root.style.setProperty('--tint-light', made.light);
         root.style.setProperty('--tint-top', made.top);
         root.style.setProperty('--tint-bottom', made.bottom);
         root.classList.add('tinted');
