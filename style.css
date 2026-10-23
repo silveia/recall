@@ -1910,6 +1910,8 @@ html.tint-layer.tinted body::after {
 }
 .say-swap:hover, .say-swap.is-on { text-decoration: underline; }
 
+.list-own { align-self: center; margin-top: auto; font-size: 0.72rem; }   /* the quiet way out if spotify's log-in won't show in the frame */
+.list-own + .list-watch { margin-top: 0; }
 .list-watch {
 	align-self: stretch;
 	margin-top: auto;

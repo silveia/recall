@@ -74,8 +74,8 @@
             Document.prototype.elementFromPoint = function (x, y) { return at.call(this, x * z, y * z); };
         }());
     </script>
-    <!-- the exportify frame may load exportify and nothing else -->
-    <meta http-equiv="Content-Security-Policy" content="frame-src 'self' https://exportify.net;">
+    <!-- the exportify frame may load exportify and spotify's sign-in (which exportify's get started goes through) and nothing else -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'self' https://exportify.net https://accounts.spotify.com;">
     <title>:p</title>
     <!-- the lights are set before anything is drawn -->
     <script>
@@ -886,6 +886,7 @@
 
                                     <ul class="list-kept" id="listKept" hidden></ul>
 
+                                    <a class="list-own" id="listOwn" href="https://exportify.net/" target="_blank" rel="noopener noreferrer">stuck signing in? open it in its own window</a>
                                     <button class="basic-button is-plain list-watch" id="listFind" type="button">find export</button>
                                 </div>
                             </div>

@@ -7453,9 +7453,9 @@ function sayBlocked() {
     siteBlocked.onpointerenter = () => clearTimeout(blockedGone);
     siteBlocked.onpointerleave = later;
 }
-// exportify as a window of its own, laid over the frame's own spot so it reads as part of the window. it has to
-// be its own window: in the frame, spotify's sign-in can't run at all. opened only off a press (a browser blocks
-// it otherwise), shut again when the window shuts or an export comes in
+// exportify as a window of its own, laid over the frame's own spot — only a fallback now (by request exportify
+// stays in the frame): if spotify wants a fresh log-in it won't show that inside a frame. opened only off a
+// press, shut again when the window shuts or an export comes in
 let exportifyWin = null;
 function openExportify() {
     const site = document.getElementById('listSite').getBoundingClientRect();
@@ -7492,6 +7492,8 @@ function fitSite() {
 
 window.addEventListener('resize', fitSite);
 
+listFrame.addEventListener('load', () => { listFrame.dataset.loads = String(Number(listFrame.dataset.loads || 0) + 1); });
+document.getElementById('listOwn').addEventListener('click', (event) => { if (openExportify()) event.preventDefault(); });
 function wakeListSite() {
     if (listFrame.dataset.woke) return;
     listFrame.dataset.woke = 'yes';
@@ -7520,7 +7522,11 @@ scratchOpen.addEventListener('click', () => {
     fitSite();
     sentBack = 0;              // a fresh opening gets its goes again
     siteBlocked.classList.remove('is-up');
-    openExportify();     // right inside the press, so it isn't blocked (measured where the window will rest)
+    // put the frame back on exportify if it was left somewhere else (spotify's refusal, say) last time
+    if (listFrame.dataset.woke && Number(listFrame.dataset.loads || 0) > 1) {
+        listFrame.dataset.loads = '0';
+        listFrame.src = 'https://exportify.net/';
+    }
 });
 
 scratchFile.addEventListener('change', () => {

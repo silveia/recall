@@ -76,8 +76,8 @@
             Document.prototype.elementFromPoint = function (x, y) { return at.call(this, x * z, y * z); };
         }());
     </script>
-    <!-- the exportify frame may load exportify and nothing else -->
-    <meta http-equiv="Content-Security-Policy" content="frame-src 'self' https://exportify.net;">
+    <!-- the exportify frame may load exportify and spotify's sign-in (which exportify's get started goes through) and nothing else -->
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'self' https://exportify.net https://accounts.spotify.com;">
     <title>:p</title>
     <!-- the lights are set before anything is drawn -->
     <script>
@@ -92,7 +92,7 @@
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <!-- the site's colour, set before anything is drawn -->
     <script src="tint.js"></script>
-    <link rel="stylesheet" href="style.css?v=088324793a">
+    <link rel="stylesheet" href="style.css?v=3637da793e">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -888,6 +888,7 @@
 
                                     <ul class="list-kept" id="listKept" hidden></ul>
 
+                                    <a class="list-own" id="listOwn" href="https://exportify.net/" target="_blank" rel="noopener noreferrer">stuck signing in? open it in its own window</a>
                                     <button class="basic-button is-plain list-watch" id="listFind" type="button">find export</button>
                                 </div>
                             </div>
@@ -937,7 +938,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=0c3922f960"></script>
+    <script src="script.js?v=73aef63540"></script>
     <script src="draw.js?v=7859146cad"></script>
 </body>
 </html>
