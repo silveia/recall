@@ -2052,6 +2052,14 @@ password is typed again.
 
 **Logging in reads the board again as you.** The first read happens before anyone is logged in and passes over every line it can't own, so without a second read a new browser came up with no friends and no threads. Verified with three separate Chrome profiles on a test board: A and B message both ways live, and C, a fresh profile logging in as B, gets the whole thread.
 
+**Your history reaches every device of yours** (22 Oct, by request — a second computer found the account and
+none of the threads: the board forgets after twelve hours, and the friends list and old lines only ever lived in
+the first browser). Whenever the chat opens, you log in, or you switch accounts, the browser posts a sealed note
+to *yourself* (`{sync:{t:'hi', d}}`, each browser has its own `chat-device` id); any other of your devices with
+the chat open answers, the two connect directly (webrtc, as big files do) and each sends the other everything it
+holds — threads, the people added, what was deleted — which `mergeHistory` folds in by line id (an edit wins, a
+deletion wins). Not twice a minute with the same device. Both have to be open on the chat at the time. Measured:
+a fresh browser logging in got a friend and a week-old line that only the first browser had.
 **Accounts are put back by whoever knows them.** Each browser re-posts its friends' accounts and its own other accounts when the board has lost them (`sayAgainWhatIsMissing`), so an account doesn't disappear because its owner hasn't been round in twelve hours.
 
 **The board forgets after twelve hours**, which is the one real cost of

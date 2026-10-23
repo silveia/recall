@@ -8149,6 +8149,7 @@ async function wakeChat() {
     paintChatBar();
     paintPeople();
     openWith(whoWasOpen());
+    helloMyDevices();
 }
 
 async function catchUp() {
@@ -8206,6 +8207,13 @@ async function openWhatIsWaiting() {
                     chatSkip.add(post.id);
                     keepSkip();
                     opened = true;
+                    continue;
+                }
+                // your own devices finding each other to share history (syncSignal): only ever to yourself
+                if (note && note.sync) {
+                    chatSkip.add(post.id);
+                    keepSkip();
+                    if (from === mine && to === mine && Date.now() - (post.at || 0) < 120000) syncSignal(note.sync);
                     continue;
                 }
                 // the handshake for a big file handed over directly: acted on, never a line, and only while fresh
@@ -9061,6 +9069,143 @@ function endBig(s, why) {
     }
 }
 
+/* --- your history on every device (22 Oct, by request) ---
+   the board forgets after twelve hours and each browser only ever kept its own copy, so a second computer found
+   the account but none of the threads, nor who you had added. so whenever the chat opens or you log in, this
+   browser says hello to your other devices with a sealed note only your account can open; any of them that is
+   open answers, the two connect directly (the same webrtc as big files) and each hands the other everything it
+   holds — threads, the people you added, what was deleted. both end up with the lot. the other device has to be
+   open on the chat at the time; what either one has seen is never lost after that */
+const MY_DEVICE = (() => {
+    try {
+        let id = window.localStorage.getItem('chat-device');
+        if (!id) { id = newId(); window.localStorage.setItem('chat-device', id); }
+        return id;
+    } catch (error) { return newId(); }
+})();
+const syncTalks = new Map();
+const syncedLately = new Map();       // another device's id → when it was last caught up with
+const SYNC_PIECE = 60000;
+const sendSync = (sync) => (chatMe ? sendNote(chatMe.name.toLowerCase(), { sync: { ...sync, d: MY_DEVICE } }) : null);
+
+function helloMyDevices() {
+    if (!chatMe || !chatPriv || !window.RTCPeerConnection) return;
+    sendSync({ t: 'hi' });
+}
+
+function historyBundle() {
+    return JSON.stringify({ friends: chatFriends, dms: chatDms, skip: [...chatSkip].slice(-4000) });
+}
+function mergeHistory(got) {
+    if (!got || typeof got !== 'object') return;
+    let changed = false;
+    (got.skip || []).forEach((id) => { if (!chatSkip.has(id)) { chatSkip.add(id); changed = true; } });
+    (got.friends || []).forEach((who) => { if (typeof who === 'string' && !chatFriends.includes(who)) { chatFriends = [...chatFriends, who]; changed = true; } });
+    Object.entries(got.dms || {}).forEach(([who, lines]) => {
+        if (!Array.isArray(lines)) return;
+        const have = chatDms[who] || [];
+        const byId = new Map(have.map((one) => [one.id, one]));
+        const adding = [];
+        lines.forEach((one) => {
+            if (!one || !one.id || chatSkip.has(one.id)) return;
+            const there = byId.get(one.id);
+            if (!there) adding.push(one);
+            else if (one.edited && !there.edited) { there.said = one.said; there.edited = true; changed = true; }
+        });
+        if (adding.length) {
+            chatDms[who] = [...have, ...adding].sort((one, two) => (one.at || 0) - (two.at || 0)).slice(-TALK_KEEP);
+            changed = true;
+        }
+    });
+    Object.keys(chatDms).forEach((who) => {
+        const kept = chatDms[who].filter((one) => !chatSkip.has(one.id));
+        if (kept.length !== chatDms[who].length) { chatDms[who] = kept; changed = true; }
+    });
+    if (!changed) return;
+    keepSkip();
+    keepKnown();
+    if (typeof stashAccount === 'function') stashAccount();
+    paintPeople();
+    paintTalk();
+}
+
+function wireSyncChannel(s, channel) {
+    const talk = syncTalks.get(s);
+    if (!talk) return;
+    let pieces = [];
+    channel.onopen = () => {
+        const text = historyBundle();
+        const count = Math.max(1, Math.ceil(text.length / SYNC_PIECE));
+        for (let i = 0; i < count; i += 1) channel.send(JSON.stringify({ part: i, of: count, text: text.slice(i * SYNC_PIECE, (i + 1) * SYNC_PIECE) }));
+    };
+    channel.onmessage = (event) => {
+        let got = null;
+        try { got = JSON.parse(event.data); } catch (error) { return; }
+        pieces[got.part] = got.text;
+        if (pieces.filter((one) => typeof one === 'string').length === got.of) {
+            try { mergeHistory(JSON.parse(pieces.join(''))); } catch (error) { /* half a bundle: next time */ }
+            pieces = [];
+            talk.got = true;
+            syncedLately.set(talk.with, Date.now());
+            setTimeout(() => endSync(s), 4000);     // the other side may still be reading ours
+        }
+    };
+}
+function endSync(s) {
+    const talk = syncTalks.get(s);
+    if (!talk) return;
+    syncTalks.delete(s);
+    try { talk.pc.close(); } catch (error) { /* already shut */ }
+}
+function newSyncPeer(s, other) {
+    const pc = new RTCPeerConnection(RTC_SETUP);
+    const talk = { pc, with: other, ice: [] };
+    syncTalks.set(s, talk);
+    pc.onicecandidate = (event) => { if (event.candidate) sendSync({ t: 'ice', to: other, s, c: event.candidate.toJSON() }); };
+    pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') endSync(s); };
+    setTimeout(() => endSync(s), 60000);
+    return talk;
+}
+
+async function syncSignal(sync) {
+    if (!sync || !sync.d || sync.d === MY_DEVICE || !chatMe || !chatPriv) return;
+    if (sync.t === 'hi') {
+        // another of your devices has just opened: start a catch-up with it (not twice a minute)
+        if (Date.now() - (syncedLately.get(sync.d) || 0) < 60000) return;
+        syncedLately.set(sync.d, Date.now());
+        const s = newId();
+        const talk = newSyncPeer(s, sync.d);
+        const channel = talk.pc.createDataChannel('history', { ordered: true });
+        wireSyncChannel(s, channel);
+        await talk.pc.setLocalDescription(await talk.pc.createOffer());
+        sendSync({ t: 'offer', to: sync.d, s, sdp: talk.pc.localDescription.sdp });
+        return;
+    }
+    if (sync.to !== MY_DEVICE) return;      // meant for another of your devices
+    let talk = syncTalks.get(sync.s);
+    const flush = () => { talk.ice.splice(0).forEach((c) => talk.pc.addIceCandidate(c).catch(() => {})); };
+    try {
+        if (sync.t === 'offer' && !talk) {
+            talk = newSyncPeer(sync.s, sync.d);
+            talk.pc.ondatachannel = (event) => { wireSyncChannel(sync.s, event.channel); if (event.channel.readyState === 'open') event.channel.onopen(); };
+            await talk.pc.setRemoteDescription({ type: 'offer', sdp: sync.sdp });
+            await talk.pc.setLocalDescription(await talk.pc.createAnswer());
+            sendSync({ t: 'answer', to: sync.d, s: sync.s, sdp: talk.pc.localDescription.sdp });
+            flush();
+        } else if (!talk) {
+            return;
+        } else if (sync.t === 'answer') {
+            await talk.pc.setRemoteDescription({ type: 'answer', sdp: sync.sdp });
+            flush();
+        } else if (sync.t === 'ice') {
+            if (talk.pc.remoteDescription) talk.pc.addIceCandidate(sync.c).catch(() => {});
+            else talk.ice.push(sync.c);
+        }
+    } catch (error) {
+        endSync(sync.s);
+    }
+}
+
 // one address per picture, kept: the thread is redrawn often, and a fresh address each time would load a
 // full-size photo again on every redraw
 const pictureUrls = new Map();
@@ -9725,6 +9870,7 @@ async function useAccount(name) {
     if (chatOn) await catchUp();         // reads this account's sealed posts off the board
     openWith(whoWasOpen());
     paintAccount();
+    if (chatOn) helloMyDevices();
 }
 function forgetAccount(name) {
     keepAccounts(heldAccounts().filter((one) => one.name.toLowerCase() !== name.toLowerCase()));
@@ -9964,6 +10110,7 @@ chatGo.addEventListener('click', async () => {
         await catchUp();   // which also opens whatever was waiting for this account
         paintPeople();
         openWith(whoWasOpen());
+        helloMyDevices();     // and asks your other devices for what the board has forgotten
         closeModal();
     } finally {
         // whatever happened, the button goes back to being a button
