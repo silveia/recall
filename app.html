@@ -835,7 +835,7 @@
                             <div class="ask-body list-body">
                                 <div class="list-site" id="listSite">
                                     <div class="site-wait" aria-hidden="true"><svg class="spin-face" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10.6" stroke-width="1" vector-effect="non-scaling-stroke"/><path d="M6.53 13.73A5.75 5.75 0 0 0 17.47 13.73" stroke-width="1.7" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="8.85" cy="8.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.15" cy="8.6" r="1.15" fill="currentColor" stroke="none"/></svg></div>
-                                    <p class="site-blocked" id="siteBlocked" hidden>that step needs spotify's own page, which won't run inside here. <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">open exportify in a tab</a>, sign in there, then come back &mdash; this will know you. <b>(press to put this away)</b></p>
+                                    <p class="site-blocked" id="siteBlocked" role="status">spotify won't sign in inside here &mdash; <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer" id="siteOwn">open exportify in its own window</a> and export there</p>
                                     <iframe id="listFrame" title="exportify" src="about:blank"
                                         referrerpolicy="no-referrer"
                                         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
@@ -880,13 +880,13 @@
                                         </li>
                                         <li>
                                             <span class="ask-step">3</span>
-                                            <span class="ask-said">press find an export and pick it out of the list.</span>
+                                            <span class="ask-said">press find export and pick it out of the list.</span>
                                         </li>
                                     </ol>
 
                                     <ul class="list-kept" id="listKept" hidden></ul>
 
-                                    <button class="basic-button is-plain list-watch" id="listFind" type="button">find an export</button>
+                                    <button class="basic-button is-plain list-watch" id="listFind" type="button">find export</button>
                                 </div>
                             </div>
                         </section>

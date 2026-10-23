@@ -1974,20 +1974,29 @@ html.tint-layer.tinted body::after {
 }
 
 .site-blocked {
+	/* a short-lived note at the foot of the frame, in the middle: it rises in, stays about six seconds and goes */
 	position: absolute;
 	z-index: 3;
-	top: var(--group);
-	left: var(--group);
-	right: var(--group);
+	left: 50%;
+	bottom: var(--group);
+	width: max-content;
+	max-width: calc(100% - var(--group) * 2);
 	margin: 0;
-	padding: var(--tight) var(--group);
+	padding: calc(0.5rem + var(--drop)) 1.1rem calc(0.5rem - var(--drop));
+	color: var(--ink);
 	background: var(--paper-fill);
 	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	font-size: 0.82rem;
-	line-height: 1.55;
-	text-align: left;
+	border-radius: 999px;
+	font-size: 0.8rem;
+	line-height: 1.4;
+	text-align: center;
+	opacity: 0;
+	pointer-events: none;
+	transform: translate(-50%, 10px);
+	transition: opacity 0.22s var(--ease), transform 0.32s var(--spring);
 }
+.site-blocked.is-up { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.list-body { padding-bottom: var(--tight); }   /* find export sat too close to the window's foot (by request) */
 
 .list-site {
 	--site-wide: 1100px;

@@ -7438,9 +7438,23 @@ async function takeListFile(file) {
 
 const listFrame = document.getElementById('listFrame');
 const siteBlocked = document.getElementById('siteBlocked');
-siteBlocked.addEventListener('click', (event) => {
-    if (event.target.closest('a')) return;
-    siteBlocked.hidden = true;
+// spotify's sign-in can't run in the frame (it refuses to be framed, and a frame keeps its own storage, so
+// signing in at exportify in a tab doesn't carry over). so the note offers exportify in a window of its own,
+// where signing in works; it comes up for a few seconds at the foot of the frame and goes (by request), and
+// stays while the pointer rests on it
+let blockedGone = 0;
+function sayBlocked() {
+    clearTimeout(blockedGone);
+    siteBlocked.classList.add('is-up');
+    const later = () => { blockedGone = setTimeout(() => siteBlocked.classList.remove('is-up'), 6000); };
+    later();
+    siteBlocked.onpointerenter = () => clearTimeout(blockedGone);
+    siteBlocked.onpointerleave = later;
+}
+document.getElementById('siteOwn').addEventListener('click', (event) => {
+    const shown = window.open('https://exportify.net/', 'exportify', 'popup,width=1100,height=780');
+    if (shown) event.preventDefault();      // otherwise the link's own new tab does it
+    siteBlocked.classList.remove('is-up');
 });
 
 function fitSite() {
@@ -7469,7 +7483,7 @@ let sentBack = 0;
 window.addEventListener('securitypolicyviolation', (event) => {
     if (event.violatedDirective !== 'frame-src') return;
     if (!listFrame.dataset.woke) return;
-    siteBlocked.hidden = false;
+    sayBlocked();
     if (sentBack >= SITE_RETURNS) return;
     sentBack += 1;
     document.getElementById('listSite').classList.remove('is-here');
@@ -7482,7 +7496,7 @@ scratchOpen.addEventListener('click', () => {
     showScreen(listScreen);
     fitSite();
     sentBack = 0;              // a fresh opening gets its goes again
-    siteBlocked.hidden = true;
+    siteBlocked.classList.remove('is-up');
 });
 
 scratchFile.addEventListener('change', () => {

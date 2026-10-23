@@ -344,7 +344,13 @@ mid-login, so it bounces straight out again — three goes later the
 frame was dead anyway and nothing on screen said why. That is the grey
 square with a torn-page icon in it.
 
-Spotify's sign-in **refuses to be framed at all** (`x-frame-options:
+**22 Oct, by request — this corrects the paragraphs below:** signing in at exportify in a tab does **not** carry
+over into the frame — a frame keeps storage of its own (Chrome partitions it by the page it sits in), so the frame
+never knows you, and Spotify's sign-in refuses to be framed. So the refusal's note now offers **exportify in a
+window of its own** (`window.open`, a small popup — sign-in works there; the link's own new tab if popups are
+blocked), and it is **a short-lived pill at the foot of the frame**, in the middle (`sayBlocked`, about six
+seconds, held while the pointer rests on it), in place of the box laid over the top of their page. `find an
+export` is **`find export`**, and the window has a `--tight` more room under it. Spotify's sign-in **refuses to be framed at all** (`x-frame-options:
 deny`), so there is nothing in here that can fix it. A line goes up on
 the first refusal saying so and offering a tab; sign in there and come
 back, and the frame shares the cookies and knows you. The line lies
