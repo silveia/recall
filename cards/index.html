@@ -92,7 +92,7 @@
     <style>html { cursor: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='22'%20height='22'%20viewBox='0%200%2026%2026'%3E%3Ccircle%20cx='13'%20cy='13'%20r='5.8'%20fill='%23000'%20stroke='%23fff'%20stroke-width='1.20'/%3E%3C/svg%3E") 11 11, default; }</style>
     <!-- the site's colour, set before anything is drawn -->
     <script src="tint.js"></script>
-    <link rel="stylesheet" href="style.css?v=ae4de10384">
+    <link rel="stylesheet" href="style.css?v=69adc9a4f9">
 </head>
 <body>
     <!-- set here, not in css, so a page whose script never runs is never left hidden -->
@@ -264,7 +264,7 @@
                     <section class="screen" id="homeScreen" data-title="home" aria-label="home">
                         <section class="home-panel" id="homePanel" hidden>
                             <!-- the front door's dino run, first thing on home -->
-                            <iframe class="home-run" src="index.html?embed&v=8722b49dfc" title="dino run"></iframe>
+                            <iframe class="home-run" src="index.html?embed&v=289780bd66" title="dino run"></iframe>
 
                             <!-- the leftmost tile is fixed: the time, and the board's settings behind a press -->
                             <div class="board-row">
@@ -837,41 +837,17 @@
                             <div class="ask-body list-body">
                                 <div class="list-site" id="listSite">
                                     <div class="site-wait" aria-hidden="true"><svg class="spin-face" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10.6" stroke-width="1" vector-effect="non-scaling-stroke"/><path d="M6.53 13.73A5.75 5.75 0 0 0 17.47 13.73" stroke-width="1.7" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="8.85" cy="8.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.15" cy="8.6" r="1.15" fill="currentColor" stroke="none"/></svg></div>
-                                    <p class="site-blocked" id="siteBlocked" role="status">spotify won't sign in inside here &mdash; <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer" id="siteOwn">open exportify in its own window</a> and export there</p>
                                     <iframe id="listFrame" title="exportify" src="about:blank"
                                         referrerpolicy="no-referrer"
                                         sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"></iframe>
                                 </div>
 
                                 <div class="list-aside">
-                                    <div class="say-head">
-                                        <button class="say-swap" id="saySwap" type="button">short summary</button>
-                                    </div>
-
-                                    <p class="ask-why list-say" id="sayLong">wb to another lecture! i have created a feature helps unite souls and bring world peace, as it comes w convenience, specialty, and uniqueness that none other could rival.<br><br>one must complete a login/registration on the external website in order to prove oneself to the exquisiteness and holy presence of this platform.<br><br>the unspoken external website instructions r here</p>
-
-                                    <ol class="ask-steps" id="stepsLong">
-                                        <li>
-                                            <span class="ask-step">1</span>
-                                            <span class="ask-said">login to the ultimate
-                                                <a href="https://exportify.net/" target="_blank" rel="noopener noreferrer">exportify.net</a>
-                                                in order to complete this request laid upon you by the holy gods</span>
-                                        </li>
-                                        <li>
-                                            <span class="ask-step">2</span>
-                                            <span class="ask-said">if you wish to proceed, humbly select the export button and wait with patience and composure.</span>
-                                        </li>
-                                        <li>
-                                            <span class="ask-step">3</span>
-                                            <span class="ask-said">and if ur a lazy fuc u can allow permissions once and then u can always save the file to the list now</span>
-                                        </li>
-                                    </ol>
-
-                                    <p class="ask-why list-say" id="sayShort" hidden>a playlist only
+                                    <p class="ask-why list-say" id="sayShort">a playlist only
                                         has to come in once. after that it is in the list below and
                                         pressing it puts the songs back in the box.</p>
 
-                                    <ol class="ask-steps" id="stepsShort" hidden>
+                                    <ol class="ask-steps" id="stepsShort">
                                         <li>
                                             <span class="ask-step">1</span>
                                             <span class="ask-said">sign in at exportify.net, in its own tab.</span>
@@ -882,14 +858,14 @@
                                         </li>
                                         <li>
                                             <span class="ask-step">3</span>
-                                            <span class="ask-said">press find export and pick it out of the list.</span>
+                                            <span class="ask-said">press find export and pick the csv it saved.</span>
                                         </li>
                                     </ol>
 
                                     <ul class="list-kept" id="listKept" hidden></ul>
 
                                     <a class="list-own" id="listOwn" href="https://exportify.net/" target="_blank" rel="noopener noreferrer">stuck signing in? open it in its own window</a>
-                                    <button class="basic-button is-plain list-watch" id="listFind" type="button">find export</button>
+                                    <button class="basic-button is-plain list-watch" id="listFind" type="button" title="pick the exportify csv">find export</button>
                                 </div>
                             </div>
                         </section>
@@ -938,7 +914,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=07098df816"></script>
+    <script src="script.js?v=a40f576b73"></script>
     <script src="draw.js?v=7859146cad"></script>
 </body>
 </html>

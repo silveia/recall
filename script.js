@@ -572,11 +572,31 @@ function unfoldSection(force) {
 // not the app round it, whose black takes the layer like everything else) and colour pictures in the
 // chat. measured at once — a frame late showed the layer on them first — and every frame while the page
 // slides in, since they move with it
+const tintPatch = document.createElement('div');
+tintPatch.className = 'tint-patch';
+tintPatch.setAttribute('aria-hidden', 'true');
+document.body.append(tintPatch);
+function placeTintPatch(box) {
+    const on = !!box && document.documentElement.classList.contains('tinted');
+    tintPatch.classList.toggle('is-on', on);
+    if (!on) return;
+    tintPatch.style.left = `${box.left}px`;
+    tintPatch.style.top = `${box.top}px`;
+    tintPatch.style.width = `${box.width}px`;
+    tintPatch.style.height = `${box.height}px`;
+}
 function tintHoles() {
     const holes = [];
     const add = (box) => { if (box && box.width && box.height) holes.push(box); };
     // the chat's colour pictures. (the drawing's sheet lies over the layer instead, and everything that
     // floats over it carries its own copy of the layer — see placeOwnLayers)
+    // exportify's frame: cut out here and covered by its own patch of the gentler tint (placeTintPatch)
+    const listShown = !listScreen.hidden && !modalVeil.hidden;
+    if (listShown) {
+        const site = document.getElementById('listSite').getBoundingClientRect();
+        add({ left: site.left, top: site.top, width: site.width, height: site.height, round: 0 });
+    }
+    placeTintPatch(listShown ? document.getElementById('listSite').getBoundingClientRect() : null);
     if (activeSectionId === 'chat' && !document.documentElement.classList.contains('booting')) {
         document.querySelectorAll('.said-file img, .tray-look img').forEach((img) => {
             const box = img.getBoundingClientRect();
@@ -1763,6 +1783,7 @@ function closeModal() {
         modalVeil.classList.remove('is-leaving');
         WINDOWS.forEach((one) => { one.hidden = true; });
         if (window.shutExportify) window.shutExportify();     // exportify's own window goes with this one
+        cutTintHole();     // exportify's patch of tint goes with it
         addingAbandoned();
         returnNotesPanel();
     }, MODAL_EXIT_MS);
@@ -3542,16 +3563,6 @@ bundleWhere.addEventListener('click', async () => {
     if (folder) await showBundles(folder);
 });
 
-const saySwap = document.getElementById('saySwap');
-let sayingShort = false;
-saySwap.addEventListener('click', () => {
-    sayingShort = !sayingShort;
-    // the word stays the same; the underline is what says which is up
-    saySwap.classList.toggle('is-on', sayingShort);
-    ['sayLong', 'stepsLong'].forEach((id) => { document.getElementById(id).hidden = sayingShort; });
-    ['sayShort', 'stepsShort'].forEach((id) => { document.getElementById(id).hidden = !sayingShort; });
-});
-
 const CLIP_BUNDLES = {
     match: /\.call$/i,
     title: 'bring clips in',
@@ -3569,10 +3580,9 @@ unpackClips.addEventListener('click', () => {
     else unpackInput.click();
 });
 
-document.getElementById('listFind').addEventListener('click', () => {
-    if (window.showDirectoryPicker) openBundles(PLAYLIST_EXPORTS);
-    else scratchFile.click();
-});
+// straight to the file picker (by request): the folder step showed the csv greyed out — a folder picker only
+// lets folders be picked — and the list window in between was one window too many
+document.getElementById('listFind').addEventListener('click', () => scratchFile.click());
 unpackInput.addEventListener('change', () => {
     const file = unpackInput.files && unpackInput.files[0];
     unpackInput.value = '';   // the same file can be picked again
@@ -7478,20 +7488,6 @@ async function takeListFile(file) {
 }
 
 const listFrame = document.getElementById('listFrame');
-const siteBlocked = document.getElementById('siteBlocked');
-// spotify's sign-in can't run in the frame (it refuses to be framed, and a frame keeps its own storage, so
-// signing in at exportify in a tab doesn't carry over). so the note offers exportify in a window of its own,
-// where signing in works; it comes up for a few seconds at the foot of the frame and goes (by request), and
-// stays while the pointer rests on it
-let blockedGone = 0;
-function sayBlocked() {
-    clearTimeout(blockedGone);
-    siteBlocked.classList.add('is-up');
-    const later = () => { blockedGone = setTimeout(() => siteBlocked.classList.remove('is-up'), 6000); };
-    later();
-    siteBlocked.onpointerenter = () => clearTimeout(blockedGone);
-    siteBlocked.onpointerleave = later;
-}
 // exportify as a window of its own, laid over the frame's own spot — only a fallback now (by request exportify
 // stays in the frame): if spotify wants a fresh log-in it won't show that inside a frame. opened only off a
 // press, shut again when the window shuts or an export comes in
@@ -7514,10 +7510,6 @@ function shutExportify() {
     exportifyWin = null;
 }
 window.shutExportify = shutExportify;
-document.getElementById('siteOwn').addEventListener('click', (event) => {
-    if (openExportify()) event.preventDefault();      // otherwise the link's own new tab does it
-    siteBlocked.classList.remove('is-up');
-});
 
 function fitSite() {
     const site = document.getElementById('listSite');
@@ -7547,7 +7539,6 @@ let sentBack = 0;
 window.addEventListener('securitypolicyviolation', (event) => {
     if (event.violatedDirective !== 'frame-src') return;
     if (!listFrame.dataset.woke) return;
-    sayBlocked();
     if (sentBack >= SITE_RETURNS) return;
     sentBack += 1;
     document.getElementById('listSite').classList.remove('is-here');
@@ -7560,7 +7551,7 @@ scratchOpen.addEventListener('click', () => {
     showScreen(listScreen);
     fitSite();
     sentBack = 0;              // a fresh opening gets its goes again
-    siteBlocked.classList.remove('is-up');
+    cutTintHoleWhileMoving(700);     // exportify's own patch of tint follows the window in
     // put the frame back on exportify if it was left somewhere else (spotify's refusal, say) last time
     if (listFrame.dataset.woke && Number(listFrame.dataset.loads || 0) > 1) {
         listFrame.dataset.loads = '0';

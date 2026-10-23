@@ -281,11 +281,10 @@ html.tint-layer.tinted {
 	--tint-fill: #000 !important;
 	--tint-grad: #000 !important;
 }
-/* on a light page the layer is the colour as a tint (--tint-light, tint.js: a bright end darkened until it reads
-   on white), so words are evenly dark and tinted; white stays white under screen. in the dark it is the colour
-   itself, since there it is the page's whole ground */
-html { --layer-now: var(--tint-light, var(--tint-layer)); }
-html.inverted { --layer-now: var(--tint-layer); }
+/* the layer is the colour itself everywhere on the page. only exportify's frame takes the gentler tint
+   (--tint-light, tint.js): it is cut out of the layer and .tint-patch, laid exactly over it, screens the tint
+   there instead (by request — the tint across the whole page was too much) */
+html { --layer-now: var(--tint-layer); }
 html.tint-layer.tinted body::after {
 	content: '';
 	position: fixed;
@@ -1915,6 +1914,17 @@ html.tint-layer.tinted body::after {
 }
 .say-swap:hover, .say-swap.is-on { text-decoration: underline; }
 
+.tint-patch {
+	position: fixed;
+	z-index: 2147483000;
+	display: none;
+	pointer-events: none;
+	background-image: var(--tint-light, var(--tint-layer));
+	background-attachment: fixed;
+	background-size: calc(var(--vw, 1vw) * 100) calc(var(--vh, 1vh) * 100);
+	mix-blend-mode: screen;
+}
+.tint-patch.is-on { display: block; }
 .list-own { align-self: center; margin-top: auto; font-size: 0.72rem; }   /* the quiet way out if spotify's log-in won't show in the frame */
 .list-own + .list-watch { margin-top: 0; }
 .list-watch {
@@ -1980,29 +1990,6 @@ html.tint-layer.tinted body::after {
 	cursor: var(--cur-tap);
 }
 
-.site-blocked {
-	/* a short-lived note at the foot of the frame, in the middle: it rises in, stays about six seconds and goes */
-	position: absolute;
-	z-index: 3;
-	left: 50%;
-	bottom: var(--group);
-	width: max-content;
-	max-width: calc(100% - var(--group) * 2);
-	margin: 0;
-	padding: calc(0.5rem + var(--drop)) 1.1rem calc(0.5rem - var(--drop));
-	color: var(--ink);
-	background: var(--paper-fill);
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	font-size: 0.8rem;
-	line-height: 1.4;
-	text-align: center;
-	opacity: 0;
-	pointer-events: none;
-	transform: translate(-50%, 10px);
-	transition: opacity 0.22s var(--ease), transform 0.32s var(--spring);
-}
-.site-blocked.is-up { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
 .list-body { padding-bottom: var(--tight); }   /* find export sat too close to the window's foot (by request) */
 
 .list-site {
