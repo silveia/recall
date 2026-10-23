@@ -920,7 +920,7 @@ function renderSections() {
     if (activeSectionId === 'draw' && typeof window.startDrawing === 'function') window.startDrawing();
     if (activeSectionId === 'home') paintFlip();     // the card under the board is still one of yours whenever home is shown
     if (activeSectionId === 'chat' && chatReady) wakeChat();
-    if (activeSectionId !== 'audio' && recorderReady) stopCapture();
+    // leaving the clip page never stops a recording (by request): it carries on behind the other pages
     if (activeSectionId !== 'audio') openSensing(false);
     if (activeSectionId !== 'chat' && chatReady) closeAccount();
 
@@ -3109,9 +3109,47 @@ senseBox.addEventListener('pointercancel', endSenseDrag);
 
 /* --- change detection --- */
 
-function readRegion() {
-    const frameWidth = previewVideo.videoWidth;
-    const frameHeight = previewVideo.videoHeight;
+// the sensing must go on while this tab is out of sight (by request: switching tabs must not pause anything —
+// and the call being recorded is usually in another tab). a hidden tab slows its timers to a crawl and may stop
+// drawing a hidden <video>, so frames are taken straight off the shared screen's track (ImageCapture) and the
+// ticks come from a worker, which a hidden tab doesn't slow. the <video> is the fallback where neither exists
+let frameGrabber = null;
+let senseTicker = null;
+let senseBusy = false;
+function startSenseTicks() {
+    stopSenseTicks();
+    const track = activeStream && activeStream.getVideoTracks()[0];
+    try { frameGrabber = track && typeof ImageCapture === 'function' ? new ImageCapture(track) : null; } catch (error) { frameGrabber = null; }
+    try {
+        const url = URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 60);'], { type: 'text/javascript' }));
+        senseTicker = new Worker(url);
+        URL.revokeObjectURL(url);
+        senseTicker.onmessage = checkForChange;
+    } catch (error) {
+        senseTicker = null;
+        senseInterval = window.setInterval(checkForChange, 60);
+    }
+}
+function stopSenseTicks() {
+    if (senseTicker) { senseTicker.terminate(); senseTicker = null; }
+    window.clearInterval(senseInterval);
+    senseInterval = null;
+    frameGrabber = null;
+    senseBusy = false;
+}
+async function readRegionNow() {
+    if (frameGrabber) {
+        try {
+            const frame = await frameGrabber.grabFrame();
+            const sample = readRegion(frame, frame.width, frame.height);
+            frame.close();
+            return sample;
+        } catch (error) { /* no frame this time: the video below */ }
+    }
+    return readRegion();
+}
+
+function readRegion(source = previewVideo, frameWidth = previewVideo.videoWidth, frameHeight = previewVideo.videoHeight) {
     if (!frameWidth || !frameHeight) return null;
 
     const regionWidth = Math.max(1, Math.round(frameWidth * senseSettings.width / 100));
@@ -3122,16 +3160,19 @@ function readRegion() {
     ));
 
     sampleContext.drawImage(
-        previewVideo,
+        source,
         regionX, regionY, regionWidth, regionHeight,
         0, 0, SAMPLE_SIZE, SAMPLE_SIZE
     );
     return sampleContext.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data;
 }
 
-function checkForChange() {
-    const sample = readRegion();
-    if (!sample) return;
+async function checkForChange() {
+    if (senseBusy || !activeStream) return;
+    senseBusy = true;
+    let sample = null;
+    try { sample = await readRegionNow(); } finally { senseBusy = false; }
+    if (!sample || !activeStream) return;
 
     if (!previousSample) {
         previousSample = sample;
@@ -4720,8 +4761,7 @@ function stopCapture() {
     window.clearInterval(timerInterval);
     timerInterval = null;
     liveLabel.textContent = '';
-    window.clearInterval(senseInterval);
-    senseInterval = null;
+    stopSenseTicks();
     stopLevelMeter();
     previewWrap.classList.remove('showing-video');
     audioPanel.classList.remove('is-tuning');
@@ -4776,8 +4816,7 @@ async function startCapture() {
 
     activeStream.getVideoTracks()[0].addEventListener('ended', stopCapture);
 
-    window.clearInterval(senseInterval);
-    senseInterval = window.setInterval(checkForChange, 60);
+    startSenseTicks();
 
     startLevelMeter();
     startRecording();

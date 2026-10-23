@@ -223,6 +223,13 @@ speaker's username on a call site — when the name changes, the speaker changed
 so the recorder stops and immediately starts a new one. Each clip is one
 person's turn.
 
+- **Nothing pauses or stops a recording but the record button (or the shared tab ending)** (22 Oct, by request):
+  leaving the clip page no longer stops it, and the sensing goes on while this tab is out of sight — the call
+  being recorded is usually in another tab, and a hidden tab slows its timers to a crawl and may stop drawing a
+  hidden `<video>`. So frames are taken straight off the shared screen's track (`ImageCapture.grabFrame`) and the
+  sixteen-a-second ticks come from a worker (`startSenseTicks`), which a hidden tab doesn't slow; the `<video>`
+  and a plain interval are the fallback. Measured: recording carried on after switching to home, and three
+  changes of the picture there cut three times.
 - Clips under 2 seconds are discarded, which filters out interruptions.
 - Clips persist in IndexedDB until discarded.
 - A clip can be cropped, but nothing is ever cut: the crop is a
