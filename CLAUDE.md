@@ -349,7 +349,7 @@ over into the frame — a frame keeps storage of its own (Chrome partitions it b
 never knows you, and Spotify's sign-in refuses to be framed. So the refusal's note now offers **exportify in a
 window of its own** (`window.open`, a small popup — sign-in works there; the link's own new tab if popups are
 blocked), and it is **a short-lived pill at the foot of the frame**, in the middle (`sayBlocked`, about six
-seconds, held while the pointer rests on it), in place of the box laid over the top of their page. `find an
+seconds, held while the pointer rests on it), in place of the box laid over the top of their page. **Pressing `exportify` also opens exportify as a real window of its own, laid over the frame's spot** (`openExportify`, worked out from the frame's place on the screen; opened right inside the press so it isn't blocked), since that is the only place spotify's sign-in can run; it **shuts when the site's window shuts or an export comes in** (`shutExportify`). With popups blocked the frame and its pill are still there. Measured: the press opens exportify.net in its own window, and Escape shuts both. `find an
 export` is **`find export`**, and the window has a `--tight` more room under it. Spotify's sign-in **refuses to be framed at all** (`x-frame-options:
 deny`), so there is nothing in here that can fix it. A line goes up on
 the first refusal saying so and offering a tab; sign in there and come

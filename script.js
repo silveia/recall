@@ -1762,6 +1762,7 @@ function closeModal() {
         modalVeil.hidden = true;
         modalVeil.classList.remove('is-leaving');
         WINDOWS.forEach((one) => { one.hidden = true; });
+        if (window.shutExportify) window.shutExportify();     // exportify's own window goes with this one
         addingAbandoned();
         returnNotesPanel();
     }, MODAL_EXIT_MS);
@@ -7426,6 +7427,7 @@ const scratchOpen = document.getElementById('scratchOpen');
 const listKept = document.getElementById('listKept');
 
 async function takeListFile(file) {
+    if (window.shutExportify) window.shutExportify();     // the export is in: exportify's window has done its job
     if (!file) return false;
     try {
         // the file's own name is what the playlist goes by afterwards
@@ -7451,9 +7453,30 @@ function sayBlocked() {
     siteBlocked.onpointerenter = () => clearTimeout(blockedGone);
     siteBlocked.onpointerleave = later;
 }
+// exportify as a window of its own, laid over the frame's own spot so it reads as part of the window. it has to
+// be its own window: in the frame, spotify's sign-in can't run at all. opened only off a press (a browser blocks
+// it otherwise), shut again when the window shuts or an export comes in
+let exportifyWin = null;
+function openExportify() {
+    const site = document.getElementById('listSite').getBoundingClientRect();
+    const chromeTop = Math.max(0, window.outerHeight - window.innerHeight);
+    const chromeLeft = Math.max(0, (window.outerWidth - window.innerWidth) / 2);
+    const left = Math.round(window.screenX + chromeLeft + site.left);
+    const top = Math.round(window.screenY + chromeTop + site.top - 28);     // less the popup's own title bar
+    const width = Math.round(site.width), height = Math.round(site.height);
+    try {
+        if (exportifyWin && !exportifyWin.closed) { exportifyWin.focus(); return true; }
+        exportifyWin = window.open('https://exportify.net/', 'exportify', `popup,left=${left},top=${top},width=${width},height=${height}`);
+    } catch (error) { exportifyWin = null; }
+    return !!exportifyWin;
+}
+function shutExportify() {
+    try { if (exportifyWin && !exportifyWin.closed) exportifyWin.close(); } catch (error) { /* already gone */ }
+    exportifyWin = null;
+}
+window.shutExportify = shutExportify;
 document.getElementById('siteOwn').addEventListener('click', (event) => {
-    const shown = window.open('https://exportify.net/', 'exportify', 'popup,width=1100,height=780');
-    if (shown) event.preventDefault();      // otherwise the link's own new tab does it
+    if (openExportify()) event.preventDefault();      // otherwise the link's own new tab does it
     siteBlocked.classList.remove('is-up');
 });
 
@@ -7497,6 +7520,7 @@ scratchOpen.addEventListener('click', () => {
     fitSite();
     sentBack = 0;              // a fresh opening gets its goes again
     siteBlocked.classList.remove('is-up');
+    openExportify();     // right inside the press, so it isn't blocked (measured where the window will rest)
 });
 
 scratchFile.addEventListener('change', () => {
