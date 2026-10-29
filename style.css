@@ -1640,8 +1640,8 @@ html.tint-layer.tinted body::after {
 	z-index: 2147483646;     /* the frontmost thing on every page, always (by request): over windows, the drawing, the
 	                            colour layer and every floating list — only the sparkles' own layer is higher */
 	--own-edge: 1px;         /* over the colour layer, so it carries its own copy, outline included */
-	width: 11rem;
-	padding: 0.3rem;
+	width: 7.5rem;
+	padding: 0.2rem;
 	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
@@ -1649,10 +1649,12 @@ html.tint-layer.tinted body::after {
 .context-action {
 	display: block;
 	width: 100%;
-	padding: 0.5rem 0.6rem;
+	padding: 0.28rem 0.5rem;
 	background: none;
 	border: 0;
 	border-radius: 6px;
+	font-size: 0.8rem;
+	line-height: 1.2;
 	text-align: left;
 	cursor: var(--cur-tap);
 }
@@ -4248,7 +4250,6 @@ html.booting .app-shell { opacity: 0; }
 	background: var(--paper-fill);
 	border-color: var(--line);
 }
-.acc-add:hover { color: var(--paper); background: var(--ink-fill); }
 .account-leave-wrap { width: 100%; margin-top: var(--tight); }
 .leave-split { display: flex; gap: var(--tight); }
 /* log out divides: both halves start stacked on the middle as the one black pill, then slide
@@ -4423,29 +4424,39 @@ html.booting .app-shell { opacity: 0; }
 .talk-bar {
 	display: flex;
 	flex: none;
-	align-items: center;
+	align-items: flex-end;     /* the marks stay on the last line as the box grows */
 	gap: var(--tight);
 	min-width: 0;
-	height: var(--field);
+	min-height: var(--field);
 	padding: 0 0.35rem 0 0.9rem;
 	background: var(--paper-fill);
 	border: 1px solid var(--line);
-	border-radius: 999px;
+	border-radius: calc(var(--field) / 2);    /* a pill on one line, a rounded box on more */
 }
-.talk-bar input {
+.talk-bar > :not(textarea) { align-self: center; }
+.talk-bar:has(textarea.is-tall) > :not(textarea) { align-self: flex-end; margin-bottom: calc((var(--field) - 2px - 1.9rem) / 2); }
+/* the message box: one line until it holds more (shift+enter starts a new one), then it grows, up to ten */
+.talk-bar textarea {
 	flex: 1;
 	min-width: 0;
-	height: 100%;
-	padding: 0;
+	box-sizing: border-box;
+	height: calc(var(--field) - 2px);
+	max-height: calc(1.35 * 0.85rem * 10 + var(--field) - 2px);
+	padding: calc((var(--field) - 2px - 1.35 * 0.85rem) / 2) 0;
+	overflow-y: auto;
+	resize: none;
 	background: none;
 	border: 0;
 	color: var(--ink);
 	font: inherit;
 	font-size: 0.85rem;
+	line-height: 1.35;
 	outline: none;
+	scrollbar-width: none;
 }
-.talk-bar input::placeholder { color: var(--ink); opacity: 1; }
-.talk-bar input:disabled { opacity: 1; }
+.talk-bar textarea::-webkit-scrollbar { display: none; }
+.talk-bar textarea::placeholder { color: var(--ink); opacity: 1; }
+.talk-bar textarea:disabled { opacity: 1; }
 .talk-left { flex: none; font-family: var(--num-font); font-size: 1rem; }   /* characters left, shown near the limit */
 .talk-left[hidden] { display: none; }
 .talk-bar:has(.talk-attach) { padding-left: 0.35rem; }
@@ -4471,8 +4482,7 @@ html.booting .app-shell { opacity: 0; }
 	border-radius: var(--radius);
 	animation: confirm-in 0.18s var(--ease);
 }
-.tray-chip.is-failed { border-style: dashed; }
-.tray-chip.is-sending { opacity: 1; border-style: dotted; }
+.tray-chip.is-failed, .tray-chip.is-sending { opacity: 1; }   /* a plain box the whole time, never dashed or dotted (by request) */
 .tray-look {
 	display: grid;
 	flex: none;
@@ -4536,7 +4546,6 @@ html.booting .app-shell { opacity: 0; }
 	text-align: left;
 	cursor: var(--cur-tap);
 }
-.said-file:hover { outline: 1px solid var(--line); }
 .said-file-name { display: flex; align-items: center; gap: 0.5rem; min-width: 0; font-size: 0.85rem; }
 .said-file-name span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .said-file-name { justify-content: flex-start; }
@@ -4544,7 +4553,6 @@ html.booting .app-shell { opacity: 0; }
 /* the size at the box's right end, on the name's line: the figure in the number face, the unit in the body's */
 .file-size { flex: none; margin-left: auto; padding-left: var(--tight); font-family: var(--font); font-size: 0.72rem; white-space: nowrap; }
 .file-size b { font-family: var(--num-font); font-size: 1.05rem; font-weight: 400; }
-.said-file.is-gone { border-style: dashed; }
 .said-file-name svg { flex: none; width: 1rem; height: 1rem; }
 .said-file img { display: block; max-width: 100%; max-height: 14rem; border-radius: calc(var(--radius) - 4px); }
 .said-file-note { font-size: 0.75rem; }
@@ -4553,54 +4561,41 @@ html.booting .app-shell { opacity: 0; }
 .said-big.is-moving::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--done, 0) * 100%); background: var(--ink-fill); }
 .said-edited { margin-left: 0.4rem; font-size: 0.7rem; }
 
-/* the three dots on a message: shown on hover, and they open into a row of small marks — no ring
-   round them and nothing moving, sitting halfway down the line they belong to */
+/* the marks beside a message's bubble: shown on hover — a quick edit (your own) and a quick copy; a right
+   click opens edit, copy and delete. no ring round them and nothing moving. they keep their place while hidden, so the
+   bubble never shifts; the nearest the bubble comes first on either side */
 .said-tools {
-	position: absolute;
-	top: 50%;
-	right: 0.4rem;
-	display: none;
-	align-items: center;
-	gap: 2px;
+	display: flex;
+	flex: none;
+	align-self: center;
+	visibility: hidden;
 	background: none;          /* nothing round or behind them at all, only the marks */
-	transform: translateY(-50%);
 }
-.said-row:hover .said-tools, .said-tools.is-open, .said-tools.is-folding { display: flex; }
-.said-tools button {
+.said-row.is-mine .said-tools { flex-direction: row-reverse; }
+.said-row:hover .said-tools, .said-row.has-menu .said-tools { visibility: visible; }
+.said-tools button, .said-bin {
 	display: grid;
 	place-items: center;
-	width: 1.7rem;
-	height: 1.7rem;
+	width: 1.6rem;
+	height: 1.6rem;
 	padding: 0;
 	color: var(--ink);
 	background: none;
 	border: 0;
 	cursor: var(--cur-tap);
 }
-.said-tools button svg { width: 0.95rem; height: 0.95rem; }
-.said-tools button { -webkit-tap-highlight-color: transparent; }
+/* holding shift: every bubble slides in from its edge a little, and the one under the pointer shows a bin
+   in the room that leaves at the very edge — one press deletes it */
+.said-row > :not(.said-bin) { transition: translate 0.18s var(--ease); }
+.talk-log.is-shift .said-row:not(.is-mine) > :not(.said-bin) { translate: 2rem 0; }
+.talk-log.is-shift .said-row.is-mine > :not(.said-bin) { translate: -2rem 0; }
+.said-bin { position: absolute; top: 50%; left: 0.4rem; visibility: hidden; transform: translateY(-50%); }
+.said-row.is-mine .said-bin { left: auto; right: 0.4rem; }
+.talk-log.is-shift .said-row:hover .said-bin { visibility: visible; }
+.said-bin svg { width: 1rem; height: 1rem; }
+.said-tools button svg, .said-bin svg { width: 0.95rem; height: 0.95rem; }
+.said-tools button, .said-bin { -webkit-tap-highlight-color: transparent; }
 .said-tools button:active { background: none; color: var(--ink); }
-.said-tools .tool-mark { display: none; }
-.said-tools.is-open .tool-mark { display: grid; animation: tool-out 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
-/* they slide out from under the dots, the nearest first */
-.said-tools.is-open .tool-mark:nth-last-of-type(2) { animation-delay: 0ms; }
-.said-tools.is-open .tool-mark:nth-last-of-type(3) { animation-delay: 40ms; }
-.said-tools.is-open .tool-mark:nth-last-of-type(4) { animation-delay: 80ms; }
-.said-tools.is-open .tool-mark:nth-last-of-type(5) { animation-delay: 120ms; }
-@keyframes tool-out {
-	from { opacity: 0; transform: translateX(14px) scale(0.85); }
-	to   { opacity: 1; transform: none; }
-}
-/* and fold back into the dots the other way round, the furthest first — quicker, easing in (foldTools) */
-.said-tools.is-folding .tool-mark { display: grid; animation: tool-back 0.2s cubic-bezier(0.55, 0, 0.75, 0.2) both; }
-.said-tools.is-folding .tool-mark:nth-last-of-type(5) { animation-delay: 0ms; }
-.said-tools.is-folding .tool-mark:nth-last-of-type(4) { animation-delay: 30ms; }
-.said-tools.is-folding .tool-mark:nth-last-of-type(3) { animation-delay: 60ms; }
-.said-tools.is-folding .tool-mark:nth-last-of-type(2) { animation-delay: 90ms; }
-@keyframes tool-back {
-	from { opacity: 1; transform: none; }
-	to   { opacity: 0; transform: translateX(14px) scale(0.85); }
-}
 /* a link in a line: underlined, in the words' own colour */
 .said-link { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; cursor: var(--cur-tap); -webkit-user-select: text; user-select: text; word-break: break-all; }
 /* the glimpse of a linked page, beside the pointer: a picture of the page with its address under it */
@@ -4629,24 +4624,23 @@ html.booting .app-shell { opacity: 0; }
    line out a little — the words keep their place across, the row grows a touch top and bottom */
 .said-edit {
 	display: block;
-	grid-column: 2;
 	box-sizing: border-box;
-	width: calc(100% + 0.6rem);
+	width: min(70%, 34rem);
 	min-height: 0;
-	margin: 0.2rem 0 0.2rem calc(-0.3rem - 1px);
-	padding: 0.3rem 0.3rem;
+	margin: 0;
+	padding: 0.42rem 0.8rem;
 	overflow: hidden;
 	resize: none;
 	color: var(--ink);
 	background: var(--paper-fill);
 	border: 1px solid var(--line);
-	border-radius: 8px;
+	border-radius: 1.1rem;
 	font: inherit;
 	font-size: 0.9rem;
-	line-height: 1.45;
+	line-height: 1.4;
 	outline: none;
 }
-.said-row.is-editing .said-tools { display: none; }   /* the dots never sit over the box being typed in */
+.said-row.is-editing .said-tools { visibility: hidden; }   /* the mark never shows beside the box being typed in */
 .field-go {
 	flex: none;
 	display: grid;
@@ -4655,13 +4649,11 @@ html.booting .app-shell { opacity: 0; }
 	height: 1.9rem;
 	padding: 0;
 	color: var(--ink);
-	background: var(--paper-fill);
-	border: 1px solid var(--line);
-	border-radius: 999px;
+	background: none;
+	border: 0;                       /* the arrow bare, no circle round it (by request) */
 	cursor: var(--cur-tap);
 }
-.field-go svg { display: block; width: 1rem; height: 1rem; }
-.field-go:hover { color: var(--paper); background: var(--ink-fill); }
+.field-go svg { display: block; width: 1.35rem; height: 1.35rem; }
 
 /* the thread's header: who, their handle, and that it is sealed */
 .talk-head {
@@ -4737,52 +4729,21 @@ html.booting .app-shell { opacity: 0; }
 }
 .talk-log::-webkit-scrollbar { display: none; }
 
+/* a line is a bubble on its sender's side, as in google chat: yours on the right, solid; theirs on the
+   left, outlined. no picture or name on a line (as in imessage), and no time on hover */
 .said-row {
-	position: relative;   /* the three dots hang off it */
-	display: grid;
-	grid-template-columns: 2.5rem minmax(0, 1fr);
-	align-items: start;
-	gap: 0 1rem;
-	padding: 0.15rem 0.5rem;
-	margin-top: 1rem;
-	border-radius: var(--radius);
-}
-.said-row:first-of-type { margin-top: 0; }
-.said-row.is-run-on { margin-top: 0; }
-/* no box round a line on hover (by request): only its three dots come up */
-.said-face {
-	grid-row: span 2;
-	display: grid;
-	place-items: center;
-	width: 2.5rem;
-	height: 2.5rem;
-	margin-top: 0.1rem;
-	color: var(--paper);
-	background: var(--ink-fill);
-	border-radius: 50%;
-	font-size: 1.05rem;
-}
-.said-gutter {
-	align-self: center;
-	visibility: hidden;
-	color: var(--muted);
-	font-size: 0.62rem;
-	text-align: center;
-}
-.said-row:hover .said-gutter { visibility: visible; }
-.said-head {
+	position: relative;
 	display: flex;
-	align-items: baseline;
-	gap: 0.5rem;
-	min-width: 0;
-	margin: 0;
-	font-size: 0.92rem;
+	align-items: flex-end;
+	gap: 0.25rem;
+	padding: 0 0.5rem;
+	margin-top: 0.9rem;
 }
-.said-head b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.said-head { gap: 0.6rem; }
-/* times the way discord sets them: the body face, small, and greyed (by request, the one place
-   besides placeholders the no-grey rule gives way), a little further off the name */
-.said-when { flex: none; margin-left: 0.45rem; color: var(--muted); font-size: 0.64rem; }
+.said-row.is-mine { flex-direction: row-reverse; }
+.said-row:first-of-type { margin-top: 0; }
+.said-row.is-run-on { margin-top: 0.4rem; }     /* every bubble the same shape, a little apart (by request) */
+/* a gap of ten minutes or more: the time, small, over the next line */
+.said-time { margin: 0.9rem 0 0.1rem; color: var(--muted); font-size: 0.64rem; text-align: center; }
 /* a new day gets a line across the thread with its date, and the next line starts a new head */
 .said-day {
 	display: flex;
@@ -4794,12 +4755,65 @@ html.booting .app-shell { opacity: 0; }
 }
 .said-day::before, .said-day::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .said-words {
-	grid-column: 2;
+	max-width: min(70%, 34rem);
 	margin: 0;
+	padding: 0.42rem 0.8rem;
+	color: var(--ink);
+	background: var(--paper-fill);
+	border: 1px solid var(--line);
+	border-radius: 1.1rem;
 	font-size: 0.9rem;
-	line-height: 1.45;
+	line-height: 1.4;
 	overflow-wrap: anywhere;
 }
+.said-row.is-mine .said-words { color: var(--paper); background: var(--ink-fill); }
+.said-text { white-space: pre-wrap; }      /* the lines a message was typed on are kept */
+/* a block of code (``` on either side, as on discord): its own box in the bubble, kept exactly as typed,
+   in the number face so the columns line up, with a copy mark in its corner */
+.said-words.has-code { width: min(70%, 34rem); }
+.said-code {
+	position: relative;
+	margin: 0.3rem 0;
+	color: var(--ink);
+	background: var(--paper-fill);
+	border: 1px solid var(--line);
+	border-radius: 0.6rem;
+}
+.said-code:first-child { margin-top: 0.1rem; }
+.said-code:last-child { margin-bottom: 0.1rem; }
+.said-code pre {
+	margin: 0;
+	padding: 0.55rem 2.2rem 0.55rem 0.7rem;
+	overflow-x: auto;
+	font-family: var(--num-font);
+	font-size: 1.1rem;
+	line-height: 1.2;
+	white-space: pre;
+	tab-size: 4;
+	-webkit-user-select: text;
+	user-select: text;
+	scrollbar-width: none;
+}
+.said-code pre::-webkit-scrollbar { display: none; }
+.said-code-copy {
+	position: absolute;
+	top: 0.25rem;
+	right: 0.25rem;
+	display: grid;
+	place-items: center;
+	width: 1.6rem;
+	height: 1.6rem;
+	padding: 0;
+	color: var(--ink);
+	background: var(--paper-fill);
+	border: 0;
+	border-radius: 0.4rem;
+	cursor: var(--cur-tap);
+}
+.said-code-copy svg { width: 0.9rem; height: 0.9rem; }
+/* a file is its own box, not a bubble round one */
+.said-words.is-file, .said-row.is-mine .said-words.is-file { padding: 0; color: var(--ink); background: none; border: 0; border-radius: 0; }
+.said-row.is-mine .said-file { margin-left: auto; }
 
 /* signed out: a log-in screen, the one thing on the page */
 .chat-login {
@@ -4820,7 +4834,9 @@ html.booting .app-shell { opacity: 0; }
 	background: var(--paper-fill);
 	border: 1px solid var(--line);
 	border-radius: 1.4rem;
+	position: relative;
 }
+.login-close[hidden] { display: none; }    /* only while adding a second account: back to the one you were on */
 /* the log-in card, and the log-in window, are drawn the other way round from the page, by request:
    black on a light page, white on a dark one — by swapping the colour tokens, as the bar does */
 html:not(.inverted) .login-card, html:not(.inverted) #chatScreen {
@@ -5861,3 +5877,100 @@ html.tint-layer.tinted .own-layer::after {
 .home-bin .binned-row { border-radius: 999px; }
 .home-bin .binned-row:hover { box-shadow: inset 0 0 0 1px var(--line); }     /* an outline under the pointer, never grey */
 .home-bin .binned-name { font-size: 0.9rem; }
+
+/* =========================================================
+   28. phones — a layout of their own
+   ---------------------------------------------------------
+   a phone (app.html's head adds html.phone) is drawn at its own width, not the 1280 page shrunk to fit,
+   which left everything tiny. the bar and its bumps lie down along the foot as a row of the page marks;
+   every split stacks; the chat shows the list or a thread, one at a time
+   ========================================================= */
+.talk-back { display: none; }
+html.phone {
+	--rail: 0px;
+	--topbar: 52px;
+	--marks-h: 58px;
+	--gap: 1rem;
+	--col: 100%;
+	overflow-x: hidden;
+}
+html.phone body { min-width: 0; min-height: 0; }
+html.phone .app-shell { height: calc(var(--vh, 1vh) * 100); }
+html.phone .app-shell::before, html.phone .app-shell::after, html.phone .rail, html.phone .tab-tip, html.phone .page-bar { display: none; }
+html.phone .site-name { left: 14px; }
+/* the strip: hi, the search, and the moon and colour. the clock is the board's to show */
+html.phone .topbar { left: 0; gap: 0.6rem; padding: 0 0.75rem 0 3.6rem; }
+html.phone .strip-middle { display: none; }
+html.phone .page-search { flex: 1; width: auto; min-width: 0; }
+html.phone .page-search input { font-size: 16px; }     /* 16px or more, or ios zooms in on it */
+/* the page marks along the foot, evenly apart, over the safe area */
+html.phone .page-marks {
+	position: fixed;
+	top: auto;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	flex-direction: row;
+	justify-content: space-around;
+	gap: 0;
+	height: calc(var(--marks-h) + env(safe-area-inset-bottom));
+	padding: 7px 0.5rem env(safe-area-inset-bottom);
+	align-items: flex-start;
+	background: var(--bar);
+}
+html.inverted.phone .page-marks { border-top: 1px solid #fff; }
+html.phone .app-content { margin-top: var(--topbar); padding-bottom: calc(var(--marks-h) + env(safe-area-inset-bottom)); }
+html.phone .screen { padding: var(--group); }
+html.phone #homeScreen { height: auto; min-height: 100%; }
+/* every box you type in is 16px or more on a phone, or ios zooms the page in on it */
+html.phone input, html.phone textarea, html.phone select { font-size: max(16px, 1em); }
+
+/* home: the time across the top, the board two to a row, then the notes and the bin */
+html.phone .home-panel { --tile: calc((100cqw - var(--group)) / 2); overflow: visible; }
+html.phone .home-run { height: 8rem; }
+html.phone .board-row { flex-direction: column; align-items: stretch; }
+html.phone .home-key { width: 100%; height: 8.5rem; }
+html.phone .widget-list { grid-template-columns: repeat(2, minmax(0, 1fr)); flex: none; }
+html.phone .widget-card { grid-column: auto / span 1 !important; grid-row: auto !important; }
+html.phone .widget-card[data-size="wide"] { grid-column: 1 / -1 !important; }
+html.phone .home-lower { grid-template-columns: minmax(0, 1fr); flex: none; }
+html.phone .home-box { min-height: 16rem; }
+
+/* cards and clips: the two sides stacked, the grips between them gone */
+html.phone .home-body, html.phone .recorder-panel .clip-body, html.phone .audio-body { flex-direction: column; }
+html.phone .pane-split { display: none !important; }
+html.phone .deck-side, html.phone .card-side, html.phone .clip-column, html.phone .clip-side, html.phone .room-column {
+	flex: none !important;
+	width: 100% !important;
+	max-width: none !important;
+	min-width: 0 !important;
+}
+html.phone .deck-side { max-height: 40vh; }
+html.phone .card-side { min-height: 24rem; }
+
+/* chat: the list, or a thread — never both */
+html.phone .chat-body { flex-direction: column; gap: var(--group); }
+html.phone .chat-body .room-column { flex: 1 !important; }
+html.phone .chat-body.is-talking .room-column, html.phone .chat-body:not(.is-talking) .talk-side { display: none; }
+html.phone .talk-back { display: grid; flex: none; place-items: center; width: 2rem; height: 2rem; margin-left: -0.4rem; padding: 0; color: var(--ink); background: none; border: 0; }
+html.phone .talk-back svg { width: 1.3rem; height: 1.3rem; }
+html.phone .chat-body .talk-side { flex: 1; padding: 0.6rem; }
+html.phone .said-words, html.phone .said-edit { max-width: 82%; }
+html.phone .said-tools { display: none; }      /* a long press on a bubble opens its dropdown instead */
+html.phone .login-card { width: 100%; padding: 2rem 1.2rem; }
+html.phone .login-title { font-size: 2.6rem; }
+
+/* windows: nearly the whole screen */
+html.phone .modal-panel { width: calc(100vw - 1.5rem) !important; max-width: none !important; max-height: calc(var(--vh, 1vh) * 100 - 2rem) !important; }
+html.phone .home-run { height: 10rem; }
+html.phone .home-key { height: 10rem; }
+/* draw: the toolbar wraps onto as many rows as it needs, as a rounded box rather than a pill */
+html.phone .draw-panel #toolbar { flex-wrap: wrap; justify-content: center; border-radius: 1.4rem; padding: var(--tight); }
+html.phone .draw-panel .toolbar-group { flex-wrap: wrap; justify-content: center; }
+/* the chat fills the screen between the strip and the marks, rather than running on under them: the thread
+   scrolls inside itself and the message box stays in sight */
+html.phone .app-content:has(#chatPanel:not([hidden])) #homeScreen { height: 100%; min-height: 0; }
+html.phone #chatPanel { flex: 1; min-height: 0; }
+html.phone .talk-start-face { width: 3.5rem; height: 3.5rem; }
+/* holding shift, only the bin shows beside a message: the edit, copy and dots step aside */
+.talk-log.is-shift .said-tools { visibility: hidden !important; }

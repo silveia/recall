@@ -10,7 +10,13 @@
         (function () {
             var FLOOR = 1280;   // narrower than this, the whole page is drawn at 1280 and shrunk — never squeezed
             var root = document.documentElement;
-            if (screen.width < FLOOR) {
+            // a phone gets a layout of its own (style.css, the phone section at the end), drawn at the
+            // phone's own width rather than the 1280 page shrunk to fit, which was tiny
+            var phone = Math.min(screen.width, screen.height) < 600 && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+            if (phone) {
+                root.classList.add('phone');
+                document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover');
+            } else if (screen.width < FLOOR) {
                 var meta = document.querySelector('meta[name="viewport"]');
                 // an iphone or ipad zooms in on any box you tap to type in, and the page was left zoomed and
                 // shifted; held at the scale that fits the 1280, it can't (a pinch still zooms — ios lets the
@@ -149,9 +155,9 @@
         <p class="account-handle" id="accHandle"></p>
         <p class="account-side" id="accSide" hidden></p>
         <ul class="acc-list" id="accList" aria-label="accounts on this browser"></ul>
-        <button class="basic-button acc-add floaty" id="accAdd" type="button">add account</button>
+        <button class="basic-button acc-add" id="accAdd" type="button">add account</button>
         <div class="account-leave-wrap">
-            <button class="basic-button account-leave floaty" id="chatSignOut" type="button">log out</button>
+            <button class="basic-button account-leave" id="chatSignOut" type="button">log out</button>
             <div class="leave-split" id="leaveSplit" hidden>
                 <button class="basic-button" id="leaveYes" type="button">confirm</button>
                 <button class="basic-button leave-no" id="leaveNo" type="button">cancel</button>
@@ -500,6 +506,7 @@
                             <!-- signed out, the chat is a log-in screen; the form itself is moved in here from the window -->
                             <div class="chat-login" id="chatLogin" hidden>
                                 <div class="login-card">
+                                    <button class="modal-close login-close" id="loginClose" type="button" aria-label="close" title="close" hidden>&times;</button>
                                     <span class="login-face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>
                                     <h2 class="login-title" id="loginTitle">welcome back</h2>
                                     <p class="login-say" id="loginSay">log in to see your chats</p>
@@ -524,6 +531,8 @@
 
                                 <section class="talk-side" id="talkSide">
                                     <div class="talk-head">
+                                        <!-- on a phone the list and a thread take the screen in turn: this goes back to the list -->
+                                        <button class="talk-back" id="talkBack" type="button" aria-label="back" title="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>
                                         <span class="talk-face face-pic" id="talkFace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="9" r="3.6"/><path d="M5.2 19.2a7.2 6.2 0 0 1 13.6 0"/></svg></span>
                                         <span class="talk-names">
                                             <h2 id="talkName"></h2>
@@ -557,7 +566,7 @@
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"/></svg>
                                         </button>
                                         <input id="talkFile" type="file" multiple hidden>
-                                        <input id="talkSay" type="text" aria-label="say something" placeholder="say something" maxlength="1000" enterkeyhint="send" disabled>
+                                        <textarea id="talkSay" rows="1" aria-label="say something" placeholder="say something" maxlength="1000" enterkeyhint="send" disabled></textarea>
                                         <small class="talk-left" id="talkLeft" hidden></small>
                                         <button class="field-go" type="submit" aria-label="send it" title="send it">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h12.5M12 6.2 18.2 12 12 17.8"/></svg>

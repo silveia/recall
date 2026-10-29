@@ -2451,3 +2451,33 @@ there both work.
 
 All of these need to be uploaded to GitHub Pages. Missing `mp3-worker.js` or
 `lame.min.js` breaks downloads with a worker error that looks like a code bug.
+
+## 28 Oct, by request
+
+- **Right click opens nothing on empty space** (no more back / forward / reload); a box you type in keeps the
+  browser's own menu. The menu is smaller (0.8rem, tighter rows, 7.5rem wide).
+- **Chat lines are bubbles, Google Chat style**: yours on the right, solid; theirs on the left, outlined; every
+  bubble the same shape. No picture, name or hover time on a line (as in iMessage); a gap of ten minutes puts
+  the time, small, over the next line. Hovering shows a quick **edit** (your own) and **copy** beside the bubble;
+  **right click on a bubble** (a long press on touch) opens edit, copy, delete, opening toward the side of the
+  window the pointer was on. **Holding shift** slides every bubble in and shows a bin at the outer edge of the
+  one under the pointer: one press deletes.
+- **A deletion reaches the other side at once** (it used to wait out the 30s undo); ctrl/cmd+z still brings it
+  back for 30s and sends it back to them (`{back: line}`, `lineChanged`).
+- **Messages keep their lines**: the box is a textarea — enter sends, shift+enter (or enter inside an open
+  ```) is a new line, on touch enter is always a new line. **```code```** draws as a box in the number face with
+  a copy mark in its corner (`writeSaid`, `codeBox`). The send arrow is bare and bigger.
+- **Logging out keeps that account's threads in this browser** (`chat-kept-<era>`, without key or password),
+  and logging back in brings them back — logging out used to throw them away. The card comes back as log in.
+- **Add account uses the page's own log-in card** (with a cross back to the account you were on), not a
+  window over an emptied page. Switching accounts shows what is held at once, eased in, and reads the board
+  after. Add account and log out don't float or fill on hover.
+- **The pointer takes the colour**: its black is redrawn in the colour layer's colour where the pointer is
+  (in a gradient, that part of it, in 24 steps).
+- **File boxes**: no hover outline or press boing; never dashed or dotted.
+- **iPad sign in**: a tap on the door's buttons that brings no click is clicked for it after 450ms.
+- **Phones get a layout of their own** (`html.phone`, set in the head when the short side is under 600px;
+  style.css section 28): drawn at the phone's width, the bar and bumps gone, the page marks along the foot,
+  every split stacked, home's board two to a row, the draw toolbar wrapped, and the chat one side at a time
+  (a back arrow in the thread's head). This reverses "one layout, shrunk to fit" for phones only; tablets
+  keep the 1280 page.

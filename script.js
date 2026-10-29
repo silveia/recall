@@ -2045,13 +2045,15 @@ function checkAnswer(selectedButton, selectedAnswer) {
 function hideContextMenu() {
     contextMenu.hidden = true;
     contextMenu.innerHTML = '';
+    if (contextMenu.forRow) contextMenu.forRow.classList.remove('has-menu');
+    contextMenu.forRow = null;
 }
 
 function showContextMenu(event, target) {
     event.preventDefault();
-    contextMenu.innerHTML = '';
+    hideContextMenu();
     contextMenu.hidden = false;
-    contextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 200)}px`;
+    contextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - 130)}px`;
     contextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - 100)}px`;
     requestAnimationFrame(() => placeOwnLayer(contextMenu));     // over everything, so it carries its own copy of the colour
 
@@ -2064,15 +2066,17 @@ function showContextMenu(event, target) {
         return action;
     };
 
-    if (target.type === 'page') {
-        [
-            ['back', () => window.history.back()],
-            ['forward', () => window.history.forward()],
-            ['reload', () => window.location.reload()]
-        ].forEach(([label, run]) => contextMenu.append(item(label, () => {
-            hideContextMenu();
-            run();
-        })));
+    if (target.type === 'line') {
+        contextMenu.forRow = target.row;
+        target.row.classList.add('has-menu');
+        contextMenu.append(...lineMenuRows(target.row, item));
+        // opened from the mark it hangs under it; either way it opens toward the side the pointer was on —
+        // pressed in the right half of the window its right edge is on the pointer, in the left its left edge
+        const width = contextMenu.offsetWidth;
+        const x = event.clientX || (target.under ? (target.under.left + target.under.right) / 2 : 0);
+        const left = x > window.innerWidth / 2 ? x - width : x;
+        contextMenu.style.left = `${Math.max(8, Math.min(Math.round(left), window.innerWidth - width - 8))}px`;
+        if (target.under) contextMenu.style.top = `${Math.round(Math.min(target.under.bottom + 4, window.innerHeight - contextMenu.offsetHeight - 8))}px`;
     }
 
     if (target.type === 'deck') {
@@ -2379,7 +2383,7 @@ function restoreDeleted(undone) {
 
 /* ---------- 10. wiring ---------- */
 
-const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle, .hint-button, .field-add, .answer-button';
+const noBoing = '.square-button, .deck-card, .quick-action, .clip-handle, .hint-button, .field-add, .answer-button, .said-file, .tray-chip, #accAdd, #chatSignOut, .field-go, .said-tools, .said-bin';
 document.addEventListener('pointerdown', (event) => {
     const button = event.target.closest('button');
     if (!button || button.closest(noBoing)) return;
@@ -2618,11 +2622,14 @@ document.addEventListener('contextmenu', (event) => {
         });
         return;
     }
-    if (event.target.closest('input, textarea')) {
-        hideContextMenu();
+    const lineRow = event.target.closest('.said-words') && event.target.closest('.said-row');
+    if (lineRow && lineRow.lineMenu) {
+        showContextMenu(event, { type: 'line', row: lineRow });
         return;
     }
-    showContextMenu(event, { type: 'page' });
+    hideContextMenu();
+    // a box you type in keeps the browser's own menu; anywhere else a right click opens nothing
+    if (!event.target.closest('input, textarea')) event.preventDefault();
 });
 contextMenu.addEventListener('contextmenu', (event) => event.preventDefault());
 contextMenu.addEventListener('click', (event) => event.stopPropagation());
@@ -5946,6 +5953,44 @@ if (window.siteTint) {
     paintTint();
 }
 
+// the pointer takes the colour too (by request): its black is redrawn in the colour layer's own colour right
+// where the pointer is — in a gradient, that part of it, so it shifts as the pointer moves up and down. the
+// cursors are rewritten only when the colour under the pointer has moved a step (24 steps top to bottom), as
+// a new cursor restyles the page
+{
+    const CURSORS = ['dot', 'tap', 'bar', 'wide', 'tall', 'grab', 'held', 'move', 'menu', 'no'];
+    const root = document.documentElement;
+    const plain = {};
+    CURSORS.forEach((name) => { plain[name] = getComputedStyle(root).getPropertyValue(`--cur-${name}`).trim(); });
+    const rgb = (hex) => { const n = parseInt(String(hex).replace('#', ''), 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+    const hex = (c) => c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+    let painted = '000000';
+    const paintCursor = (colour) => {
+        if (colour === painted) return;
+        painted = colour;
+        CURSORS.forEach((name) => {
+            if (!plain[name]) return;
+            if (colour === '000000') root.style.removeProperty(`--cur-${name}`);
+            else root.style.setProperty(`--cur-${name}`, plain[name].replace(/%23000(?![0-9a-fA-F])/g, `%23${colour}`));
+        });
+    };
+    let lastY = window.innerHeight / 2, queued = false;
+    const colourAt = () => {
+        queued = false;
+        const t = window.siteTint ? window.siteTint.whole(window.siteTint.read()) : null;
+        if (!t || (t.mode === 'solid' && /^#?0{6}$/.test(t.solid))) { paintCursor('000000'); return; }
+        if (t.mode === 'solid') { paintCursor(t.solid.replace('#', '').toLowerCase()); return; }
+        // the gradient runs from a at the window's foot to b at its top
+        const up = 1 - Math.round(Math.max(0, Math.min(1, lastY / window.innerHeight)) * 24) / 24;
+        const a = rgb(t.a), b = rgb(t.b);
+        paintCursor(hex(a.map((v, i) => v + (b[i] - v) * up)));
+    };
+    const queueCursor = () => { if (!queued) { queued = true; requestAnimationFrame(colourAt); } };
+    document.addEventListener('pointermove', (event) => { lastY = event.clientY; queueCursor(); }, { passive: true });
+    window.addEventListener('site-tint', queueCursor);
+    queueCursor();
+}
+
 // help takes the time's place: the time hovered for half a second fades out and the question mark fades
 // in where it was; away again they swap back, unless help's note is open (then once it shuts)
 {
@@ -8201,7 +8246,7 @@ async function openWhatIsWaiting() {
             if (said.startsWith(CHAT_NOTE)) {
                 let note = null;
                 try { note = JSON.parse(said.slice(1)); } catch (error) { note = null; }
-                if (note && (note.gone || note.edit)) {
+                if (note && (note.gone || note.edit || note.back)) {
                     lineChanged(other, note, from);
                     chatSkip.add(post.id);
                     keepSkip();
@@ -8254,6 +8299,17 @@ async function openWhatIsWaiting() {
 
 // a deletion or an edit, from whoever wrote the line — nobody else's counts
 function lineChanged(other, note, from) {
+    // a deleted line put back by whoever wrote it (their undo)
+    if (note.back) {
+        const back = note.back;
+        if (!back.id || whoIs(back.by) !== from) return;
+        chatSkip.delete(back.id);
+        keepSkip();
+        if (!(chatDms[other] || []).some((one) => one.id === back.id)) {
+            chatDms[other] = [...(chatDms[other] || []), back].sort((x, y) => (x.at || 0) - (y.at || 0));
+        }
+        return;
+    }
     const lines = chatDms[other] || [];
     const id = note.gone || note.edit;
     const line = lines.find((one) => one.id === id);
@@ -8404,6 +8460,7 @@ function paintChatShape() {
     const ready = Boolean(chatMe);
     chatLogin.hidden = ready;
     chatBody.hidden = !ready;
+    document.getElementById('loginClose').hidden = ready || !addingFrom;
     if (!ready && chatScreen.hidden) { placeDoor(true); paintChatDoor(); }
     talkWelcome.hidden = Boolean(chatWith);
     document.getElementById('talkForm').hidden = !chatWith;   // no thread, no box to type in
@@ -8474,6 +8531,7 @@ document.getElementById('welcomeBack').addEventListener('click', (event) => {
     if (who) openWith(who);
 });
 
+document.getElementById('talkBack').addEventListener('click', () => openWith(null));
 function openWith(who) {
     // files waiting in the tray were meant for the thread they were added in
     try { if (who !== chatWith && traying.length) clearTray(); } catch (error) { /* not set up yet */ }
@@ -8484,6 +8542,7 @@ function openWith(who) {
     roomList.querySelectorAll('.room-row').forEach((row) => {
         row.classList.toggle('is-on', row.dataset.key === chatWith);
     });
+    document.getElementById('chatBody').classList.toggle('is-talking', Boolean(chatWith));   // a phone shows one side at a time
     paintTalk();
     paintChatShape();
 
@@ -8557,10 +8616,28 @@ function paintLeft() {
     talkLeft.textContent = heavy ? 'too long' : String(left);
 }
 talkSay.addEventListener('input', paintLeft);
+function fitTalkSay() {
+    talkSay.style.height = '';
+    const one = talkSay.offsetHeight;
+    talkSay.style.height = `${Math.max(one, talkSay.scrollHeight)}px`;
+    talkSay.classList.toggle('is-tall', talkSay.scrollHeight > one + 2);
+}
+talkSay.addEventListener('input', fitTalkSay);
+// enter sends; shift+enter starts a new line, and so does enter inside a ``` block still open. on a touch
+// screen enter is always a new line — the arrow sends
+talkSay.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || event.isComposing || event.shiftKey) return;
+    if (typeof TOUCH_ONLY !== 'undefined' && TOUCH_ONLY) return;
+    const before = talkSay.value.slice(0, talkSay.selectionStart);
+    if ((before.match(/```/g) || []).length % 2 === 1) return;
+    event.preventDefault();
+    talkForm.requestSubmit();
+});
 
 talkForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const words = talkSay.value.trim();
+    // blank lines and spaces at the ends go, but not the indent at the start of a pasted block of code
+    const words = talkSay.value.trim() ? talkSay.value.replace(/^(\s*\n)+/, '').trimEnd() : '';
     if ((!words && !traying.length) || !chatMe || !chatWith) return;
     if (words && !fitsBoard(words)) { shake(talkForm); return; }
     const to = chatWith;     // switching thread mid-send must not carry the rest to someone else
@@ -8583,6 +8660,7 @@ talkForm.addEventListener('submit', async (event) => {
     paintTray();
     if (words) {
         talkSay.value = '';
+        fitTalkSay();
         await sendSealed(to, words.slice(0, TALK_MOST));
         paintLeft();
     }
@@ -9228,7 +9306,7 @@ function keepOnDevice(blob, name, type) {
     saveBlob(blob, name);
 }
 
-/* --- the three dots on a line --- */
+/* --- the marks beside a line's bubble --- */
 const TOOL_MARKS = {
     more: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18.5" cy="12" r="1.7"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></svg>',
@@ -9237,44 +9315,53 @@ const TOOL_MARKS = {
     bin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 6.5h15M10 6.5V4.5h4v2M6.8 6.5l.9 13h8.6l.9-13"/></svg>'
 };
 function lineTools(row, other, line, words) {
+    // beside the bubble on hover: a quick edit (your own words) and a quick copy; a right click on the bubble
+    // opens edit, copy and delete (the dots were taken off, by request). holding shift slides every bubble in a little and a bin
+    // comes up at the outer edge of the one under the pointer, which deletes it on one press
+    row.lineMenu = { other, line, words };
     const mine = chatMe && whoIs(line.by) === chatMe.name.toLowerCase();
     const tools = document.createElement('div');
     tools.className = 'said-tools';
-    const mark = (name, title, act) => {
+    const mark = (name, title, act, cls = 'tool-mark') => {
         const press = document.createElement('button');
         press.type = 'button';
-        press.className = 'tool-mark';
+        press.className = cls;
         press.title = title;
         press.setAttribute('aria-label', title);
         press.innerHTML = TOOL_MARKS[name];
-        press.addEventListener('click', (event) => { event.stopPropagation(); act(press); });
-        tools.append(press);
+        press.addEventListener('click', (event) => { event.stopPropagation(); act(press, event); });
         return press;
     };
-    if (line.said) mark('copy', 'copy', () => {
+    if (mine && line.said) tools.append(mark('edit', 'edit', () => { hideContextMenu(); editLine(row, other, line, words); }));
+    if (line.said) tools.append(mark('copy', 'copy', () => {
         navigator.clipboard.writeText(line.said).then(() => saySomethingChat('copied'), () => {});
-        foldTools(tools);
-    });
-    if (line.file) mark('save', 'save the file', async () => {
-        const blob = await fileOf(other, line);
-        if (blob) keepOnDevice(blob, line.file.name, line.file.type); else saySomethingChat('that file has gone from the board');
-    });
-    if (mine && line.said) mark('edit', 'edit', () => { foldTools(tools); editLine(row, other, line, words); });
-    mark('bin', mine ? 'delete' : 'remove for me', () => deleteLine(other, line, mine));
-    const more = document.createElement('button');
-    more.type = 'button';
-    more.className = 'said-more';
-    more.title = 'more';
-    more.setAttribute('aria-label', 'more');
-    more.innerHTML = TOOL_MARKS.more;
-    more.addEventListener('click', (event) => {
-        event.stopPropagation();
-        talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => { if (one !== tools) foldTools(one); });
-        if (tools.classList.contains('is-open')) foldTools(tools);
-        else { tools.classList.remove('is-folding'); tools.classList.add('is-open'); }
-    });
-    tools.append(more);
+    }));
     row.append(tools);
+    row.append(mark('bin', mine ? 'delete' : 'remove for me', () => deleteLine(other, line, mine), 'said-bin'));
+}
+// the rows of a line's right-click dropdown
+function lineMenuRows(row, item) {
+    const { other, line, words } = row.lineMenu;
+    const mine = chatMe && whoIs(line.by) === chatMe.name.toLowerCase();
+    const rows = [];
+    if (mine && line.said) rows.push(item('edit', () => { hideContextMenu(); editLine(row, other, line, words); }));
+    if (line.said) rows.push(item('copy', () => {
+        hideContextMenu();
+        navigator.clipboard.writeText(line.said).then(() => saySomethingChat('copied'), () => {});
+    }));
+    rows.push(item(mine ? 'delete' : 'remove for me', () => { hideContextMenu(); deleteLine(other, line, mine); }));
+    return rows;
+}
+// shift held on the chat page: the thread makes room for the bins (style.css, .is-shift)
+{
+    const shiftOn = (on) => talkLog.classList.toggle('is-shift', on);
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Shift' || activeSectionId !== 'chat') return;
+        if (event.target.closest && event.target.closest('input, textarea')) return;
+        shiftOn(true);
+    });
+    document.addEventListener('keyup', (event) => { if (event.key === 'Shift') shiftOn(false); });
+    window.addEventListener('blur', () => shiftOn(false));
 }
 // a deleted line can be had back with ctrl/cmd+z for thirty seconds. the deletion only goes to the
 // board once those are up, so an undo never has to chase a note the other side already obeyed
@@ -9290,11 +9377,11 @@ function deleteLine(other, line, mine) {
     keepKnown();
     paintTalk();
     paintPeople();
-    const held = { other, line, at, timer: 0 };
-    held.timer = window.setTimeout(() => {
-        lineUndo = lineUndo.filter((one) => one !== held);
-        if (mine) sendNote(other, { gone: line.id });
-    }, UNDO_FOR);
+    // the deletion goes to the other side at once (it used to wait out the thirty seconds of undo, so the
+    // line stayed on their screen); an undo sends the line back to them
+    if (mine) sendNote(other, { gone: line.id });
+    const held = { other, line, at, mine, timer: 0 };
+    held.timer = window.setTimeout(() => { lineUndo = lineUndo.filter((one) => one !== held); }, UNDO_FOR);
     lineUndo.push(held);
 }
 function undoDelete() {
@@ -9309,16 +9396,9 @@ function undoDelete() {
     keepKnown();
     paintTalk();
     paintPeople();
+    if (held.mine) sendNote(held.other, { back: held.line });
     return true;
 }
-// leaving the page sends what is still waiting, so a deletion isn't lost with the tab
-window.addEventListener('pagehide', () => {
-    lineUndo.forEach((held) => {
-        window.clearTimeout(held.timer);
-        if (chatMe && whoIs(held.line.by) === chatMe.name.toLowerCase()) sendNote(held.other, { gone: held.line.id });
-    });
-    lineUndo = [];
-});
 document.addEventListener('keydown', (event) => {
     if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.key.toLowerCase() !== 'z') return;
     if (activeSectionId !== 'chat' || !lineUndo.length) return;
@@ -9368,31 +9448,60 @@ function editLine(row, other, line, words) {
         paintPeople();
     };
     field.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') { event.preventDefault(); done(true); }
+        if (event.key === 'Enter' && !event.shiftKey && (field.value.slice(0, field.selectionStart).match(/```/g) || []).length % 2 === 0) { event.preventDefault(); done(true); }
         if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); done(false); }
     });
     field.addEventListener('blur', () => done(true), { once: true });
 }
-document.addEventListener('click', () => {
-    talkLog.querySelectorAll('.said-tools.is-open').forEach(foldTools);
-});
-// the marks fold back into the dots, the furthest first, rather than vanishing (style.css, .is-folding)
-function foldTools(tools) {
-    if (!tools.classList.contains('is-open')) return;
-    tools.classList.remove('is-open');
-    tools.classList.add('is-folding');
-    clearTimeout(tools.foldDone);
-    tools.foldDone = setTimeout(() => tools.classList.remove('is-folding'), 300);
-}
-// moving on to another message folds a menu left open on the last one
-talkLog.addEventListener('pointerover', (event) => {
-    const row = event.target.closest && event.target.closest('.said-row');
-    if (!row) return;
-    talkLog.querySelectorAll('.said-tools.is-open').forEach((one) => { if (!row.contains(one)) foldTools(one); });
-});
-
 /* --- links in a line: underlined, opened in a new tab, and a glimpse of the page beside the pointer --- */
 const LINK_IN_WORDS = /\b((?:https?:\/\/|www\.)[^\s<>"]+)/gi;
+// a line's words: kept on the lines they were typed on, with any ``` block drawn as a box of code that
+// copies from its corner, as on discord. a language name right after the opening ``` is left off
+const CODE_IN_WORDS = /```(?:[\w+#.-]*\n)?([\s\S]*?)```/g;
+function writeSaid(el, words) {
+    el.textContent = '';
+    el.classList.remove('has-code');
+    let from = 0;
+    const text = (part) => {
+        part = part.replace(/^\n+|\n+$/g, '');
+        if (!part) return;
+        const span = document.createElement('span');
+        span.className = 'said-text';
+        writeWithLinks(span, part);
+        el.append(span);
+    };
+    words.replace(CODE_IN_WORDS, (found, code, at) => {
+        text(words.slice(from, at));
+        el.append(codeBox(code.replace(/^\n+|\s+$/g, '')));
+        el.classList.add('has-code');
+        from = at + found.length;
+        return found;
+    });
+    text(words.slice(from));
+}
+function codeBox(code) {
+    const box = document.createElement('div');
+    box.className = 'said-code';
+    const pre = document.createElement('pre');
+    pre.textContent = code;
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'said-code-copy';
+    copy.title = 'copy code';
+    copy.setAttribute('aria-label', 'copy code');
+    copy.innerHTML = TOOL_MARKS.copy;
+    copy.addEventListener('click', (event) => {
+        event.stopPropagation();
+        navigator.clipboard.writeText(code).then(() => {
+            // a tick for a moment where the copy mark was
+            copy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+            clearTimeout(copy.back);
+            copy.back = setTimeout(() => { copy.innerHTML = TOOL_MARKS.copy; }, 1200);
+        }, () => {});
+    });
+    box.append(pre, copy);
+    return box;
+}
 function writeWithLinks(el, words) {
     el.textContent = '';
     let from = 0;
@@ -9477,7 +9586,7 @@ function paintTalk() {
     // where the reader was, read before the rows go — afterwards the log is short and always 'at the bottom'
     const stuck = talkLog.scrollHeight - talkLog.scrollTop - talkLog.clientHeight < 60;
     const was = talkLog.scrollTop;
-    talkLog.querySelectorAll('.said-row, .said-day').forEach((row) => row.remove());
+    talkLog.querySelectorAll('.said-row, .said-day, .said-time').forEach((row) => row.remove());
     const said = whatIsSaid();
     // like discord: an open thread begins with who it is with
     talkStart.hidden = !chatWith;
@@ -9507,31 +9616,21 @@ function paintTalk() {
         }
         const row = document.createElement('article');
         row.className = 'said-row';
+        // like google chat: your lines on the right, theirs on the left, each a bubble — no picture or name on
+        // a line (as in imessage), and no time on hover; a gap of ten minutes or more puts the time over the next
+        const mine = chatMe && whoIs(one.by) === chatMe.name.toLowerCase();
+        row.classList.toggle('is-mine', Boolean(mine));
         const runOn = one.by === lastBy && (one.at || 0) - lastAt < SAME_BREATH;
-        if (runOn) {
-            // like discord: a grouped line shows its own short time in the gutter on hover
-            row.classList.add('is-run-on');
-            const gutter = document.createElement('span');
-            gutter.className = 'said-gutter';
-            gutter.textContent = one.at ? new Date(one.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(/\s?[ap]m$/, '') : '';
-            row.append(gutter);
-        } else {
-            const face = document.createElement('span');
-            face.className = 'said-face';
-            wearFace(face, chatMe && whoIs(one.by) === chatMe.name.toLowerCase());
-            const head = document.createElement('p');
-            head.className = 'said-head';
-            const who = document.createElement('b');
-            who.textContent = displayName(one.by) || 'someone';
-            const when = document.createElement('span');
-            when.className = 'said-when';
-            when.textContent = saidAt(one.at);
-            head.append(who, when);
-            row.append(face, head);
+        if (runOn) row.classList.add('is-run-on');
+        else if (one.at && lastAt && (one.at || 0) - lastAt >= SAME_BREATH && day === lastDay) {
+            const when = document.createElement('div');
+            when.className = 'said-time';
+            when.textContent = new Date(one.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+            talkLog.append(when);
         }
         const words = document.createElement('p');
         words.className = 'said-words';
-        writeWithLinks(words, one.said || '');
+        writeSaid(words, one.said || '');
         if (one.edited) {
             const was = document.createElement('span');
             was.className = 'said-edited';
@@ -9540,10 +9639,12 @@ function paintTalk() {
         }
         if (one.file) {
             words.textContent = '';
+            words.classList.add('is-file');      // a file is its own box, not a bubble round a box
             words.append(fileBox(chatWith, one));
         }
         if (one.big) {
             words.textContent = '';
+            words.classList.add('is-file');
             words.append(bigBox(chatWith, one));
         }
         row.append(words);
@@ -9844,6 +9945,19 @@ function stashAccount() {
     list.push({ name: chatMe.name, word: chatMe.word, priv: chatPriv, friends: chatFriends, dms: chatDms, with: chatWith });
     keepAccounts(list);
 }
+// threads and friends kept for an account that has logged out of this browser, without its key or password,
+// so logging back in brings the history straight back — logging out used to throw this browser's copy away,
+// and with the board forgetting after twelve hours, that was the whole history gone
+const KEPT_KEY = `chat-kept-${CHAT_ERA}`;
+function keptThreads() {
+    try { return JSON.parse(window.localStorage.getItem(KEPT_KEY) || '{}'); } catch (error) { return {}; }
+}
+function keepThreads(name, held) {
+    if (!name || !held) return;
+    const all = keptThreads();
+    all[name.toLowerCase()] = { friends: held.friends || [], dms: held.dms || {}, with: held.with || null };
+    try { window.localStorage.setItem(KEPT_KEY, JSON.stringify(all)); } catch (error) { /* no room */ }
+}
 function clearSignedIn() {
     chatMe = null;
     chatPriv = null;
@@ -9867,12 +9981,24 @@ async function useAccount(name) {
     keepKnown();
     paintChatBar();
     paintPeople();
-    if (chatOn) await catchUp();         // reads this account's sealed posts off the board
+    // what this browser holds is shown at once, eased in, rather than after the board has been read again
+    // (that wait was the delay on every switch); the board's answer is folded in when it comes
     openWith(whoWasOpen());
     paintAccount();
-    if (chatOn) helloMyDevices();
+    const body = document.getElementById('chatBody');
+    body.getAnimations().forEach((one) => one.cancel());
+    body.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    if (!chatOn) return;
+    const switchedTo = chatMe.name;
+    await catchUp();                     // reads this account's sealed posts off the board
+    if (!chatMe || chatMe.name !== switchedTo) return;     // switched again meanwhile
+    paintPeople();
+    if (chatWith) paintTalk(); else openWith(whoWasOpen());
+    helloMyDevices();
 }
 function forgetAccount(name) {
+    keepThreads(name, heldAccounts().find((one) => one.name.toLowerCase() === name.toLowerCase()));
     keepAccounts(heldAccounts().filter((one) => one.name.toLowerCase() !== name.toLowerCase()));
     if (chatMe && chatMe.name.toLowerCase() === name.toLowerCase()) { logOut(); return; }
     paintAccount();
@@ -9931,6 +10057,7 @@ function paintAccountList() {
 document.getElementById('accAdd').addEventListener('click', () => {
     stashAccount();
     addingFrom = chatMe ? chatMe.name : null;
+    chatHandle.value = '';           // a new account's card starts empty, not with the one you were on
     clearSignedIn();
     keepKnown();
     paintChatBar();
@@ -9940,6 +10067,7 @@ document.getElementById('accAdd').addEventListener('click', () => {
     openChatDoor(false);
 });
 
+document.getElementById('loginClose').addEventListener('click', () => addingAbandoned());
 // the log-in window shut without logging anyone in: back to the account you were using
 function addingAbandoned() {
     if (!addingFrom || chatMe) { addingFrom = null; return; }
@@ -9986,8 +10114,10 @@ function openChatDoor(signingUp) {
     chatDoorNew = signingUp === true;
     saySomethingChat('');
     paintChatDoor();
-    // signed out the form is already on the page; adding a second account still uses the window
-    if (!chatMe && !addingFrom) {
+    // signed out the form is on the page — adding a second account too: the window opened over an emptied
+    // page, with the page's own card showing behind it. the card's cross goes back to the account you were on
+    document.getElementById('loginClose').hidden = !addingFrom;
+    if (!chatMe) {
         placeDoor(true);
         if (activeSectionId !== 'chat') switchSection('chat');
         chatHandle.focus();
@@ -10012,6 +10142,16 @@ function doorWorking(busy) {
     // it is only locked, so a second press can't start a second account
     chatGo.textContent = chatDoorNew ? 'sign up' : 'sign in';     // the same words paintChatDoor gives it
 }
+// a tap on the door's buttons always counts. ipad safari can take a first tap on a button as a hover and
+// send no click at all, which read as sign in doing nothing; if no click follows a tap, it is sent here
+[chatGo, chatSwap].forEach((button) => {
+    let clickedAt = 0;
+    button.addEventListener('click', () => { clickedAt = Date.now(); }, true);
+    button.addEventListener('touchend', () => {
+        const tappedAt = Date.now();
+        setTimeout(() => { if (clickedAt < tappedAt && !button.disabled) button.click(); }, 450);
+    });
+});
 // enter in any of the door's boxes is the button
 document.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter' || event.isComposing || !event.target.matches || !event.target.matches('input')) return;
@@ -10094,6 +10234,11 @@ chatGo.addEventListener('click', async () => {
         window.localStorage.setItem(CHAT_ME, JSON.stringify(chatMe));
         const held = heldAccounts().find((one) => one.name.toLowerCase() === chatMe.name.toLowerCase());
         if (held) { chatFriends = held.friends || []; chatDms = held.dms || {}; chatWith = held.with || null; if (!chatPriv) chatPriv = held.priv || null; }
+        else {
+            // logged out of here before: its threads were kept
+            const kept = keptThreads()[chatMe.name.toLowerCase()];
+            if (kept) { chatFriends = kept.friends || []; chatDms = kept.dms || {}; chatWith = kept.with || null; }
+        }
         addingFrom = null;
         stashAccount();
         keepKnown();
@@ -10125,8 +10270,12 @@ chatSignOut.addEventListener('click', () => {
 
 function logOut() {
     closeAccount();
-    if (chatMe) keepAccounts(heldAccounts().filter((one) => one.name.toLowerCase() !== chatMe.name.toLowerCase()));
-    clearSignedIn();      // the key goes with the account, not the browser
+    if (chatMe) {
+        keepThreads(chatMe.name, { friends: chatFriends, dms: chatDms, with: chatWith });
+        keepAccounts(heldAccounts().filter((one) => one.name.toLowerCase() !== chatMe.name.toLowerCase()));
+    }
+    clearSignedIn();      // the key goes with the account, not the browser; the threads stay (keepThreads)
+    chatDoorNew = false;  // the card comes back as log in, not as the sign up it was made with
     keepKnown();
     const next = heldAccounts()[0];
     if (next) { useAccount(next.name); return; }
@@ -10277,7 +10426,8 @@ if (TOUCH_ONLY) {
         cancel();
         fired = false;
         if (event.pointerType !== 'touch' || !event.target.closest) return;
-        if (event.target.closest('input, textarea, select, canvas, [contenteditable], .widget-card, .home-key, .draw-panel, .talk-log')) return;
+        if (event.target.closest('input, textarea, select, canvas, [contenteditable], .widget-card, .home-key, .draw-panel, .said-file, .said-link')) return;
+        if (event.target.closest('.talk-log') && !event.target.closest('.said-words')) return;     // in a thread, only a bubble
         from = { x: event.clientX, y: event.clientY, target: event.target };
         hold = setTimeout(() => {
             if (!from) return;
